@@ -1,4 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { KWICModal } from "./KWICModal";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface WordData {
   word: string;
@@ -29,7 +35,32 @@ export const OrbitalConstellationChart = ({
   const [draggedButton, setDraggedButton] = useState<string | null>(null);
   const [buttonOffsets, setButtonOffsets] = useState<Record<string, { x: number; y: number }>>({});
   const [orbitProgress, setOrbitProgress] = useState<Record<string, number>>({});
+  const [hoveredWord, setHoveredWord] = useState<string | null>(null);
+  const [kwicModalOpen, setKwicModalOpen] = useState(false);
+  const [selectedWordForKwic, setSelectedWordForKwic] = useState<string>("");
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Mock KWIC data - será substituído por dados reais
+  const getMockKWICData = (word: string) => [
+    {
+      leftContext: "quando o",
+      keyword: word,
+      rightContext: "vem pras casa",
+      source: "Quando o verso vem pras casa - Luiz Marenco"
+    },
+    {
+      leftContext: "e o",
+      keyword: word,
+      rightContext: "se faz canção",
+      source: "Quando o verso vem pras casa - Luiz Marenco"
+    },
+    {
+      leftContext: "um",
+      keyword: word,
+      rightContext: "bem gateado",
+      source: "Quando o verso vem pras casa - Luiz Marenco"
+    }
+  ];
 
   // Cores da análise de prosódia semântica
   const centerWordColors: Record<string, string> = {
@@ -457,6 +488,24 @@ export const OrbitalConstellationChart = ({
                   style={{ pointerEvents: 'none' }}
                 />
                 
+                {/* Área clicável para hover do KWIC */}
+                {isZoomed && (
+                  <circle
+                    cx={pos.x}
+                    cy={pos.y}
+                    r={12 * scale}
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredWord(word.word)}
+                    onMouseLeave={() => setHoveredWord(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedWordForKwic(word.word);
+                      setKwicModalOpen(true);
+                    }}
+                  />
+                )}
+
                 <text
                   x={pos.x}
                   y={pos.y - 2 * scale}
@@ -487,6 +536,58 @@ export const OrbitalConstellationChart = ({
                 >
                   {word.strength}%
                 </text>
+                
+                {/* Tooltip KWIC ao passar o mouse */}
+                {isZoomed && hoveredWord === word.word && (
+                  <g>
+                    <rect
+                      x={pos.x + 15}
+                      y={pos.y - 35}
+                      width="200"
+                      height="70"
+                      rx="6"
+                      fill="hsl(var(--popover))"
+                      stroke="hsl(var(--border))"
+                      strokeWidth="1"
+                      opacity="0.98"
+                      style={{ 
+                        filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15))'
+                      }}
+                    />
+                    <text
+                      x={pos.x + 25}
+                      y={pos.y - 20}
+                      className="fill-foreground font-semibold"
+                      style={{ fontSize: '10px' }}
+                    >
+                      {word.word}
+                    </text>
+                    <text
+                      x={pos.x + 25}
+                      y={pos.y - 5}
+                      className="fill-muted-foreground"
+                      style={{ fontSize: '8px' }}
+                    >
+                      "quando o {word.word} vem..."
+                    </text>
+                    <text
+                      x={pos.x + 25}
+                      y={pos.y + 8}
+                      className="fill-muted-foreground"
+                      style={{ fontSize: '8px' }}
+                    >
+                      "e o {word.word} se faz canção"
+                    </text>
+                    <text
+                      x={pos.x + 25}
+                      y={pos.y + 20}
+                      className="fill-primary"
+                      style={{ fontSize: '7px', fontStyle: 'italic' }}
+                    >
+                      Clique para ver mais →
+                    </text>
+                  </g>
+                )}
               </g>
             );
           })
@@ -735,10 +836,31 @@ export const OrbitalConstellationChart = ({
 
     return (
       <>
-        {/* Controles de posição orbital - acima e à esquerda */}
-        <div className="mb-3 p-3 bg-muted/30 rounded-lg w-64 animate-fade-in">
-          <h4 className="font-semibold mb-2.5 text-sm">Controles Orbitais</h4>
-          <div className="space-y-2.5">
+        {/* Cabeçalho centralizado com título e botão voltar */}
+        <div className="flex items-center justify-between mb-4 px-4 animate-fade-in">
+          <div className="flex-1"></div>
+          <div className="flex items-center gap-3">
+            <span
+              className="inline-block w-4 h-4 rounded-full"
+              style={{ backgroundColor: centerWordColors[system.centerWord] }}
+            />
+            <h3 className="text-xl font-bold px-6 py-2.5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
+              Constelação: {system.centerWord}
+            </h3>
+          </div>
+          <div className="flex-1 flex justify-end">
+            <button
+              onClick={() => setViewMode('systems')}
+              className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm"
+            >
+              ← Voltar
+            </button>
+          </div>
+        </div>
+
+        {/* Controles orbitais horizontais - à esquerda */}
+        <div className="mb-4 px-4 animate-fade-in">
+          <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
             {system.words
               .sort((a, b) => b.strength - a.strength)
               .map((word, index) => {
@@ -746,70 +868,55 @@ export const OrbitalConstellationChart = ({
                 const currentProgress = orbitProgress[wordKey] ?? (index / system.words.length * 100);
                 
                 return (
-                  <div key={word.word} className="space-y-1 animate-fade-in">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-medium">{word.word}</span>
-                      <span 
-                        className="text-xs font-semibold px-1.5 py-0.5 rounded"
-                        style={{ 
-                          backgroundColor: `${word.color}20`,
-                          color: word.color
-                        }}
-                      >
-                        {word.strength}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={currentProgress}
-                        onChange={(e) => handleOrbitProgressChange(wordKey, parseFloat(e.target.value))}
-                        className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer slider-orbit"
-                        style={{
-                          background: `linear-gradient(to right, ${word.color} 0%, ${word.color} ${currentProgress}%, hsl(var(--muted)) ${currentProgress}%, hsl(var(--muted)) 100%)`
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground w-10 text-right">
-                        {Math.round(currentProgress)}°
-                      </span>
+                  <div key={word.word} className="flex items-center gap-3 min-w-[220px]">
+                    <div className="flex flex-col gap-1 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium">{word.word}</span>
+                        <span 
+                          className="text-xs font-semibold px-2 py-0.5 rounded"
+                          style={{ 
+                            backgroundColor: `${word.color}20`,
+                            color: word.color
+                          }}
+                        >
+                          {word.strength}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={currentProgress}
+                          onChange={(e) => handleOrbitProgressChange(wordKey, parseFloat(e.target.value))}
+                          className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer slider-orbit"
+                          style={{
+                            background: `linear-gradient(to right, ${word.color} 0%, ${word.color} ${currentProgress}%, hsl(var(--muted)) ${currentProgress}%, hsl(var(--muted)) 100%)`
+                          }}
+                        />
+                        <span className="text-xs text-muted-foreground w-8 text-right">
+                          {Math.round(currentProgress)}°
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
           </div>
+          <p className="text-xs text-muted-foreground mt-2 px-1">
+            💡 Dica: Arraste as palavras no gráfico ou use os controles acima. Passe o mouse sobre uma palavra para ver sua concordância.
+          </p>
         </div>
 
-        <div className="flex items-center justify-between mb-3 animate-fade-in">
-          <div>
-            <h3 className="text-base font-semibold flex items-center gap-2">
-              <span
-                className="inline-block w-3.5 h-3.5 rounded-full"
-                style={{ backgroundColor: centerWordColors[system.centerWord] }}
-              />
-              Constelação: {system.centerWord}
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Arraste as palavras para reposicioná-las
-            </p>
-          </div>
-          <button
-            onClick={() => setViewMode('systems')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm text-sm"
-          >
-            ← Voltar
-          </button>
-        </div>
         <svg
           ref={svgRef}
           width="900"
-          height="650"
-          viewBox="0 0 900 650"
+          height="600"
+          viewBox="0 0 900 600"
           className="w-full h-auto animate-scale-in"
           style={{ userSelect: draggedWord ? 'none' : 'auto' }}
         >
-          {renderOrbitalSystem(system, 450, 325, true)}
+          {renderOrbitalSystem(system, 450, 300, true)}
         </svg>
       </>
     );
@@ -934,6 +1041,14 @@ export const OrbitalConstellationChart = ({
           <span>Extensão de Identidade</span>
         </div>
       </div>
+
+      {/* Modal KWIC */}
+      <KWICModal
+        open={kwicModalOpen}
+        onOpenChange={setKwicModalOpen}
+        word={selectedWordForKwic}
+        data={getMockKWICData(selectedWordForKwic)}
+      />
 
       {/* Explicação das órbitas */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
