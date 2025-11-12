@@ -25,10 +25,7 @@ export const OrbitalConstellationChart = ({
 }: OrbitalConstellationChartProps) => {
   const [viewMode, setViewMode] = useState<'mother' | 'systems' | 'zoomed'>('mother');
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
-  const [draggedWord, setDraggedWord] = useState<string | null>(null);
-  const [customPositions, setCustomPositions] = useState<Record<string, { angle: number }>>({});
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const svgRef = useState<SVGSVGElement | null>(null)[0];
   // Cores da análise de prosódia semântica e mapeamento de cores por palavra central
   const centerWordColors: Record<string, string> = {
     "verso": "hsl(var(--primary))", // Protagonista Personificado
@@ -112,7 +109,7 @@ export const OrbitalConstellationChart = ({
     4: 95,
   };
 
-  // Renderiza um sistema orbital individual (com suporte a zoom e drag)
+  // Renderiza um sistema orbital individual (com suporte a zoom)
   const renderOrbitalSystem = (system: OrbitalSystem, centerX: number, centerY: number, isZoomed: boolean = false) => {
     const scale = isZoomed ? 2.5 : 1;
     const orbitRadiiScaled = {
@@ -130,59 +127,16 @@ export const OrbitalConstellationChart = ({
       return acc;
     }, {} as Record<number, WordData[]>);
 
-    // Calcula posição de cada palavra em sua órbita (considerando posições customizadas)
+    // Calcula posição de cada palavra em sua órbita
     const getWordPosition = (word: WordData, index: number, totalInOrbit: number) => {
       const orbit = getOrbit(word.strength);
       const radius = orbitRadiiScaled[orbit as keyof typeof orbitRadiiScaled];
-      const wordKey = `${system.centerWord}-${word.word}`;
-      
-      // Usa ângulo customizado se existir, senão usa distribuição uniforme
-      const angle = customPositions[wordKey]?.angle ?? ((index / totalInOrbit) * 2 * Math.PI - Math.PI / 2);
+      const angle = (index / totalInOrbit) * 2 * Math.PI - Math.PI / 2;
       
       return {
         x: centerX + radius * Math.cos(angle),
         y: centerY + radius * Math.sin(angle),
-        angle,
-        radius,
       };
-    };
-
-    // Handler para drag de palavras - versão simplificada e robusta
-    const handleWordMouseDown = (word: WordData, svgElement: SVGSVGElement | null) => {
-      if (!isZoomed || !svgElement) return;
-      
-      const wordKey = `${system.centerWord}-${word.word}`;
-      setDraggedWord(wordKey);
-      
-      const handleMouseMove = (e: MouseEvent) => {
-        const rect = svgElement.getBoundingClientRect();
-        const viewBox = svgElement.viewBox.baseVal;
-        
-        // Coordenadas do mouse no SVG
-        const scaleX = viewBox.width / rect.width;
-        const scaleY = viewBox.height / rect.height;
-        const x = (e.clientX - rect.left) * scaleX;
-        const y = (e.clientY - rect.top) * scaleY;
-        
-        // Calcula o ângulo relativo ao centro
-        const dx = x - centerX;
-        const dy = y - centerY;
-        const newAngle = Math.atan2(dy, dx);
-        
-        setCustomPositions(prev => ({
-          ...prev,
-          [wordKey]: { angle: newAngle }
-        }));
-      };
-      
-      const handleMouseUp = () => {
-        setDraggedWord(null);
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-      
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
     };
 
     return (
@@ -246,25 +200,10 @@ export const OrbitalConstellationChart = ({
         {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
           wordsInOrbit.map((word, index) => {
             const pos = getWordPosition(word, index, wordsInOrbit.length);
-            const wordKey = `${system.centerWord}-${word.word}`;
-            const isDragging = draggedWord === wordKey;
             
             return (
               <g 
                 key={`word-${system.centerWord}-${word.word}-${index}`}
-                className={isZoomed ? "cursor-grab active:cursor-grabbing" : ""}
-                onMouseDown={(e) => {
-                  if (isZoomed) {
-                    e.preventDefault();
-                    const svg = e.currentTarget.closest('svg');
-                    handleWordMouseDown(word, svg);
-                  }
-                }}
-                style={{ 
-                  opacity: isDragging ? 0.6 : 1,
-                  transition: isDragging ? 'none' : 'opacity 0.2s',
-                  userSelect: 'none'
-                }}
               >
                 {/* Glow effect */}
                 <circle
@@ -273,7 +212,6 @@ export const OrbitalConstellationChart = ({
                   r={6 * scale}
                   fill={word.color}
                   opacity="0.2"
-                  style={{ pointerEvents: 'none' }}
                 />
                 <circle
                   cx={pos.x}
@@ -283,14 +221,13 @@ export const OrbitalConstellationChart = ({
                   opacity="1"
                   stroke="hsl(var(--background))"
                   strokeWidth={0.5 * scale}
-                  style={{ pointerEvents: 'none' }}
                 />
                 <text
                   x={pos.x}
                   y={pos.y - (9 * scale)}
                   textAnchor="middle"
                   className="fill-foreground font-medium"
-                  style={{ fontSize: `${8 * scale}px`, pointerEvents: 'none', userSelect: 'none' }}
+                  style={{ fontSize: `${8 * scale}px` }}
                 >
                   {word.word}
                 </text>
@@ -299,7 +236,7 @@ export const OrbitalConstellationChart = ({
                   y={pos.y + (13 * scale)}
                   textAnchor="middle"
                   className="fill-muted-foreground"
-                  style={{ fontSize: `${7 * scale}px`, pointerEvents: 'none', userSelect: 'none' }}
+                  style={{ fontSize: `${7 * scale}px` }}
                 >
                   {word.strength}%
                 </text>
@@ -538,7 +475,7 @@ export const OrbitalConstellationChart = ({
               Sistema Orbital: {system.centerWord}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Análise detalhada das associações semânticas • Arraste as palavras para reorganizar
+              Análise detalhada das associações semânticas
             </p>
           </div>
           <button
