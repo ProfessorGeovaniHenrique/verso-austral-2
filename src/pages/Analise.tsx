@@ -492,6 +492,19 @@ export default function Analise() {
                     <div className="space-y-3">
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-amber-500/10 text-amber-500">Melancólico</Badge>
+                          <span className="font-semibold">saudade</span>
+                          <span className="text-sm text-muted-foreground ml-auto">Força: 92%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">cansado</Badge>
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">silêncio</Badge>
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">redomona</Badge>
+                        </div>
+                      </div>
+
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
                           <Badge className="bg-green-500/10 text-green-500">Positiva</Badge>
                           <span className="font-semibold">calma</span>
                           <span className="text-sm text-muted-foreground ml-auto">Força: 88%</span>
@@ -500,6 +513,19 @@ export default function Analise() {
                           <Badge variant="outline" className="text-xs bg-green-500/5">copada</Badge>
                           <Badge variant="outline" className="text-xs bg-green-500/5">lindo</Badge>
                           <Badge variant="outline" className="text-xs bg-green-500/5">primavera</Badge>
+                        </div>
+                      </div>
+
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-purple-500/10 text-purple-500">Contemplativo</Badge>
+                          <span className="font-semibold">sonhos</span>
+                          <span className="text-sm text-muted-foreground ml-auto">Força: 85%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">mansidão</Badge>
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">querência</Badge>
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">adormecidos</Badge>
                         </div>
                       </div>
 
@@ -514,32 +540,6 @@ export default function Analise() {
                           <Badge variant="outline" className="text-xs bg-blue-500/5">galpão</Badge>
                           <Badge variant="outline" className="text-xs bg-blue-500/5">mate</Badge>
                           <Badge variant="outline" className="text-xs bg-blue-500/5">arreios</Badge>
-                        </div>
-                      </div>
-
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-amber-500/10 text-amber-500">Melancólico</Badge>
-                          <span className="font-semibold">saudade</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 92%</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">cansado</Badge>
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">silêncio</Badge>
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">redomona</Badge>
-                        </div>
-                      </div>
-
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-purple-500/10 text-purple-500">Contemplativo</Badge>
-                          <span className="font-semibold">sonhos</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 85%</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">mansidão</Badge>
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">querência</Badge>
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">adormecidos</Badge>
                         </div>
                       </div>
                     </div>

@@ -33,13 +33,32 @@ const MIN_ORBIT_RADIUS = 120; // distância mínima da palavra-chave (em pixels)
 
 export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticNetworkProps) {
   const [nodes, setNodes] = useState<NetworkNode[]>([
+    // Palavra-chave central
     { id: "verso", label: "verso", x: 300, y: 200, distance: 0, prosody: "contemplative", frequency: 45 },
-    { id: "tarumã", label: "tarumã", x: 180, y: 150, distance: 0.15, prosody: "neutral", frequency: 8 },
-    { id: "saudade", label: "saudade", x: 420, y: 160, distance: 0.18, prosody: "melancholic", frequency: 12 },
-    { id: "galpão", label: "galpão", x: 240, y: 280, distance: 0.25, prosody: "neutral", frequency: 15 },
-    { id: "várzea", label: "várzea", x: 360, y: 290, distance: 0.30, prosody: "positive", frequency: 10 },
-    { id: "sonhos", label: "sonhos", x: 150, y: 240, distance: 0.35, prosody: "contemplative", frequency: 9 },
-    { id: "gateada", label: "gateada", x: 450, y: 270, distance: 0.40, prosody: "neutral", frequency: 6 },
+    
+    // Órbita 1 - Associação muito forte (distance 0.08-0.15)
+    { id: "saudade", label: "saudade", x: 300, y: 80, distance: 0.08, prosody: "melancholic", frequency: 42 },
+    { id: "tarumã", label: "tarumã", x: 450, y: 120, distance: 0.12, prosody: "neutral", frequency: 38 },
+    { id: "galpão", label: "galpão", x: 470, y: 240, distance: 0.15, prosody: "neutral", frequency: 35 },
+    
+    // Órbita 2 - Associação forte (distance 0.20-0.30)
+    { id: "várzea", label: "várzea", x: 430, y: 340, distance: 0.22, prosody: "positive", frequency: 28 },
+    { id: "sonhos", label: "sonhos", x: 300, y: 370, distance: 0.25, prosody: "contemplative", frequency: 26 },
+    { id: "coxilha", label: "coxilha", x: 160, y: 340, distance: 0.28, prosody: "positive", frequency: 24 },
+    { id: "mate", label: "mate", x: 100, y: 240, distance: 0.30, prosody: "neutral", frequency: 22 },
+    
+    // Órbita 3 - Associação moderada (distance 0.35-0.45)
+    { id: "gateada", label: "gateada", x: 100, y: 130, distance: 0.35, prosody: "neutral", frequency: 18 },
+    { id: "campanha", label: "campanha", x: 180, y: 70, distance: 0.38, prosody: "positive", frequency: 16 },
+    { id: "querência", label: "querência", x: 360, y: 50, distance: 0.40, prosody: "contemplative", frequency: 15 },
+    { id: "prenda", label: "prenda", x: 500, y: 180, distance: 0.43, prosody: "positive", frequency: 14 },
+    
+    // Órbita 4 - Associação fraca (distance 0.50-0.65)
+    { id: "arreios", label: "arreios", x: 520, y: 300, distance: 0.50, prosody: "neutral", frequency: 12 },
+    { id: "coplas", label: "coplas", x: 420, y: 380, distance: 0.55, prosody: "contemplative", frequency: 11 },
+    { id: "mansidão", label: "mansidão", x: 180, y: 380, distance: 0.58, prosody: "contemplative", frequency: 10 },
+    { id: "maragato", label: "maragato", x: 80, y: 300, distance: 0.62, prosody: "neutral", frequency: 9 },
+    { id: "esporas", label: "esporas", x: 80, y: 180, distance: 0.65, prosody: "neutral", frequency: 8 },
   ]);
 
   const [dragging, setDragging] = useState<string | null>(null);
