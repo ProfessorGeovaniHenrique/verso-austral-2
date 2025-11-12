@@ -8,7 +8,6 @@ interface NetworkNode {
   y: number;
   distance: number;
   frequency: number;
-  prosody: "positive" | "neutral" | "melancholic" | "contemplative";
 }
 
 interface InteractiveSemanticNetworkProps {
@@ -192,13 +191,13 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
   const [hasDragged, setHasDragged] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseDown = (e: React.MouseEvent, nodeId: string) => {
-    e.preventDefault();
+  const handleMouseDown = (nodeId: string) => {
+    if (nodes.find((n) => n.id === nodeId)?.distance === 0) return;
     setDragging(nodeId);
     setHasDragged(false);
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent) => {
     if (dragging && containerRef.current) {
       setHasDragged(true);
       const rect = containerRef.current.getBoundingClientRect();
@@ -230,10 +229,15 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
 
   useEffect(() => {
     if (dragging) {
+      document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
-      return () => document.removeEventListener("mouseup", handleMouseUp);
+
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
     }
-  }, [dragging]);
+  }, [dragging, nodes]);
 
   const centerNode = nodes.find((n) => n.distance === 0);
 
@@ -245,10 +249,7 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
 
       <div
         ref={containerRef}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        className="border border-border rounded-lg bg-background/50 cursor-move overflow-hidden"
+        className="border border-border rounded-lg bg-background/50 overflow-hidden"
         style={{ width: "100%", height: "500px", position: "relative" }}
       >
         <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
@@ -263,6 +264,7 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
                 stroke={prosodyColors[node.prosody]}
                 strokeWidth="2"
                 opacity="0.3"
+                pointerEvents="none"
               />
             );
           })}
@@ -280,8 +282,9 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
                   cursor: node.distance === 0 ? "default" : "grab",
                   opacity: dragging && dragging !== node.id ? 0.5 : 1,
                   transition: dragging === node.id ? "none" : "opacity 0.2s",
+                  userSelect: "none",
                 }}
-                onMouseDown={(e) => handleMouseDown(e as any, node.id)}
+                onMouseDown={() => handleMouseDown(node.id)}
                 onClick={() => handleClick(node.id, node.label)}
               />
               <text
