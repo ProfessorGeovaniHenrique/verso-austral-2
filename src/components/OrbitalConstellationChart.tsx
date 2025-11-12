@@ -26,6 +26,8 @@ export const OrbitalConstellationChart = ({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [customAngles, setCustomAngles] = useState<Record<string, number>>({});
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
+  const [draggedButton, setDraggedButton] = useState<string | null>(null);
+  const [buttonOffsets, setButtonOffsets] = useState<Record<string, { x: number; y: number }>>({});
   const svgRef = useRef<SVGSVGElement>(null);
 
   // Cores da análise de prosódia semântica
@@ -143,19 +145,59 @@ export const OrbitalConstellationChart = ({
 
   const handleMouseUp = useCallback(() => {
     setDraggedWord(null);
+    
+    // Retornar botão à posição inicial com animação
+    if (draggedButton) {
+      setDraggedButton(null);
+      setButtonOffsets(prev => {
+        const newOffsets = { ...prev };
+        delete newOffsets[draggedButton];
+        return newOffsets;
+      });
+    }
+  }, [draggedButton]);
+
+  // Handlers para botões flutuantes
+  const handleButtonMouseDown = useCallback((e: React.MouseEvent<SVGGElement>, buttonId: string) => {
+    e.stopPropagation();
+    setDraggedButton(buttonId);
   }, []);
+
+  const handleButtonMouseMove = useCallback((e: MouseEvent) => {
+    if (!draggedButton || !svgRef.current) return;
+    
+    const svg = svgRef.current;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
+
+    const buttonElement = svg.querySelector(`[data-button-id="${draggedButton}"]`);
+    if (!buttonElement) return;
+    
+    const originalX = parseFloat(buttonElement.getAttribute('data-original-x') || '0');
+    const originalY = parseFloat(buttonElement.getAttribute('data-original-y') || '0');
+
+    setButtonOffsets(prev => ({
+      ...prev,
+      [draggedButton]: {
+        x: svgP.x - originalX,
+        y: svgP.y - originalY
+      }
+    }));
+  }, [draggedButton]);
 
   // Efeito para gerenciar eventos de drag
   useEffect(() => {
-    if (draggedWord) {
-      window.addEventListener('mousemove', handleMouseMove);
+    if (draggedWord || draggedButton) {
+      window.addEventListener('mousemove', draggedWord ? handleMouseMove : handleButtonMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mousemove', draggedWord ? handleMouseMove : handleButtonMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [draggedWord, handleMouseMove, handleMouseUp]);
+  }, [draggedWord, draggedButton, handleMouseMove, handleButtonMouseMove, handleMouseUp]);
 
   // Renderiza um sistema orbital individual
   const renderOrbitalSystem = (system: OrbitalSystem, centerX: number, centerY: number, isZoomed: boolean = false) => {
@@ -229,8 +271,20 @@ export const OrbitalConstellationChart = ({
           })
         )}
 
-        {/* Palavra central - Botão flutuante */}
-        <g>
+        {/* Palavra central - Botão flutuante interativo */}
+        <g
+          data-button-id={`center-${system.centerWord}`}
+          data-original-x={centerX}
+          data-original-y={centerY}
+          style={{ 
+            cursor: draggedButton === `center-${system.centerWord}` ? 'grabbing' : 'grab',
+            transform: buttonOffsets[`center-${system.centerWord}`] 
+              ? `translate(${buttonOffsets[`center-${system.centerWord}`].x}px, ${buttonOffsets[`center-${system.centerWord}`].y}px)` 
+              : 'none',
+            transition: draggedButton === `center-${system.centerWord}` ? 'none' : 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
+          }}
+          onMouseDown={(e) => handleButtonMouseDown(e, `center-${system.centerWord}`)}
+        >
           {/* Glow externo */}
           <circle
             cx={centerX}
@@ -472,22 +526,34 @@ export const OrbitalConstellationChart = ({
             })
           )}
 
-          {/* Legendas dos sistemas ao redor - Botões flutuantes */}
+          {/* Legendas dos sistemas ao redor - Botões flutuantes interativos */}
           {orbitalSystems.map((system, index) => {
             const angle = (index / orbitalSystems.length) * 2 * Math.PI;
             const legendRadius = 420;
             const x = centerX + legendRadius * Math.cos(angle);
             const y = centerY + legendRadius * Math.sin(angle);
+            const buttonId = `legend-${system.centerWord}`;
 
             return (
               <g
-                key={`legend-${system.centerWord}`}
-                className="cursor-pointer transition-all"
-                onClick={() => {
-                  setSelectedSystem(system.centerWord);
-                  setViewMode('systems');
+                key={buttonId}
+                data-button-id={buttonId}
+                data-original-x={x}
+                data-original-y={y}
+                style={{ 
+                  cursor: draggedButton === buttonId ? 'grabbing' : 'grab',
+                  transform: buttonOffsets[buttonId] 
+                    ? `translate(${buttonOffsets[buttonId].x}px, ${buttonOffsets[buttonId].y}px)` 
+                    : 'none',
+                  transition: draggedButton === buttonId ? 'none' : 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
                 }}
-                style={{ transform: 'translateZ(0)' }}
+                onMouseDown={(e) => handleButtonMouseDown(e, buttonId)}
+                onClick={(e) => {
+                  if (!draggedButton) {
+                    setSelectedSystem(system.centerWord);
+                    setViewMode('systems');
+                  }
+                }}
               >
                 {/* Sombra externa (glow) */}
                 <circle cx={x} cy={y} r={35} fill={centerWordColors[system.centerWord]} opacity="0.15" className="animate-pulse" />
