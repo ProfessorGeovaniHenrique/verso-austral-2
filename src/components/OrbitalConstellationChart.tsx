@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { KWICModal } from "./KWICModal";
+import { ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
 import {
   Popover,
   PopoverContent,
@@ -912,27 +913,27 @@ export const OrbitalConstellationChart = ({
             </p>
             
             {/* Controles de Zoom */}
-            <div className="flex flex-col gap-1.5 bg-background border rounded-lg p-1.5 shadow-sm ml-4">
+            <div className="flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg ml-4">
               <button
                 onClick={handleZoomIn}
-                className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                title="Zoom In"
+                className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+                title="Aumentar zoom"
               >
-                <span className="text-base font-bold">+</span>
+                <ZoomIn className="h-4 w-4" />
               </button>
               <button
                 onClick={handleResetZoom}
-                className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors text-[10px] font-medium"
-                title="Reset Zoom"
+                className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+                title="Resetar zoom"
               >
-                {Math.round(zoomLevel * 100)}%
+                <Minimize2 className="h-3 w-3" />
               </button>
               <button
                 onClick={handleZoomOut}
-                className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                title="Zoom Out"
+                className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+                title="Reduzir zoom"
               >
-                <span className="text-base font-bold">−</span>
+                <ZoomOut className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -1001,27 +1002,27 @@ export const OrbitalConstellationChart = ({
       >
         {/* Controles de Zoom - Para visualizações mother e systems */}
         {(viewMode === 'mother' || viewMode === 'systems') && (
-          <div className="absolute top-4 right-4 z-10 flex flex-col gap-1.5 bg-background/90 backdrop-blur-sm border rounded-lg p-1.5 shadow-lg">
+          <div className="absolute top-4 right-4 z-10 flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg">
             <button
               onClick={handleZoomIn}
-              className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-              title="Zoom In (Ctrl + Scroll Up)"
+              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+              title="Aumentar zoom"
             >
-              <span className="text-base font-bold">+</span>
+              <ZoomIn className="h-4 w-4" />
             </button>
             <button
               onClick={handleResetZoom}
-              className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors text-[10px] font-medium"
-              title="Reset Zoom"
+              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+              title="Resetar zoom"
             >
-              {Math.round(zoomLevel * 100)}%
+              <Minimize2 className="h-3 w-3" />
             </button>
             <button
               onClick={handleZoomOut}
-              className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-              title="Zoom Out (Ctrl + Scroll Down)"
+              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+              title="Reduzir zoom"
             >
-              <span className="text-base font-bold">−</span>
+              <ZoomOut className="h-4 w-4" />
             </button>
           </div>
         )}

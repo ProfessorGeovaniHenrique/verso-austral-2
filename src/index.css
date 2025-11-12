@@ -111,4 +111,14 @@ All colors MUST be HSL.
       transform: rotate(360deg);
     }
   }
+
+  /* Spin animation for orbital circles */
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
