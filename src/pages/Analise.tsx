@@ -696,17 +696,14 @@ export default function Analise() {
                   <div className="p-4 bg-muted/30 rounded-lg border">
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      Sistema Orbital Hierárquico - Prosódia Semântica
+                      Constelação Orbital - Prosódia Semântica
                     </h4>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Visualização hierárquica em 3 níveis: <strong>(1)</strong> Clique em "Canção Analisada" para ver os sistemas orbitais, 
-                      <strong>(2)</strong> clique em um sistema (verso, saudade, sonhos, etc.) para ver em detalhe suas palavras e força de associação semântica.
+                      A palavra central <span className="font-semibold text-foreground">"verso"</span> é o protagonista personificado do poema. 
+                      As demais palavras orbitam em diferentes distâncias, refletindo sua força de associação semântica no corpus.
                     </p>
                   </div>
-                  <OrbitalConstellationChart 
-                    songName="Quando o verso vem pras casa"
-                    artistName="Luiz Marenco"
-                  />
+                  <OrbitalConstellationChart />
                 </div>
 
                 <div className="space-y-4">
