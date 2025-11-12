@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { KWICModal } from "@/components/KWICModal";
 import { InteractiveSemanticNetwork } from "@/components/InteractiveSemanticNetwork";
 import { OrbitalConstellationChart } from "@/components/OrbitalConstellationChart";
+import { NavigationToolbar } from "@/components/NavigationToolbar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown, ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
+import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
@@ -547,6 +548,7 @@ export default function Analise() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [orbitProgress, setOrbitProgress] = useState<Record<string, number>>({});
   const [isDraggingWord, setIsDraggingWord] = useState(false);
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
@@ -660,6 +662,7 @@ export default function Analise() {
   // Handlers de zoom com foco no cursor
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     
     if (!containerRef.current || !svgRef.current) return;
     
@@ -697,7 +700,17 @@ export default function Analise() {
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
   };
-  return <div className="pt-[150px] px-8 pb-8 space-y-8">
+
+  const handleFitToView = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleToggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  return <div className={`pt-[150px] px-8 pb-8 space-y-8 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4 pt-20' : ''}`}>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold mb-2">
@@ -1482,6 +1495,7 @@ E uma saudade redomona pelos cantos do galpão`}
                 <div 
                   ref={containerRef}
                   className={`relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border overflow-hidden ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '750px' }}
                   onMouseDown={handleCanvasMouseDown}
                   onMouseMove={handleCanvasPanMove}
                   onMouseUp={handleCanvasPanEnd}
@@ -1489,29 +1503,15 @@ E uma saudade redomona pelos cantos do galpão`}
                   onWheel={handleWheel}
                 >
                   {/* Controles de Zoom - Interno */}
-                  <div className="absolute top-4 right-4 z-30 flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg">
-                    <button
-                      onClick={handleZoomIn}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                      title="Aumentar zoom"
-                    >
-                      <ZoomIn className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={handleResetZoom}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                      title="Resetar zoom e centralizar"
-                    >
-                      <Minimize2 className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={handleZoomOut}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                      title="Reduzir zoom"
-                    >
-                      <ZoomOut className="h-4 w-4" />
-                    </button>
-                  </div>
+                  <NavigationToolbar
+                    onZoomIn={handleZoomIn}
+                    onZoomOut={handleZoomOut}
+                    onReset={handleResetZoom}
+                    onFitToView={handleFitToView}
+                    onToggleFullscreen={handleToggleFullscreen}
+                    isFullscreen={isFullscreen}
+                    className="absolute top-4 right-4 z-30"
+                  />
 
                   <div 
                     className="pan-area absolute inset-0"

@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { KWICModal } from "./KWICModal";
-import { ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
+import { NavigationToolbar } from "@/components/NavigationToolbar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 interface WordData {
   word: string;
@@ -32,6 +32,7 @@ export const OrbitalConstellationChart = ({
     x: 0,
     y: 0
   });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [customAngles, setCustomAngles] = useState<Record<string, number>>({});
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [draggedButton, setDraggedButton] = useState<string | null>(null);
@@ -734,17 +735,18 @@ export const OrbitalConstellationChart = ({
             </p>
             
             {/* Controles de Zoom */}
-            <div className="flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg ml-4">
-              <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Aumentar zoom">
-                <ZoomIn className="h-4 w-4" />
-              </button>
-              <button onClick={handleResetZoom} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Resetar zoom">
-                <Minimize2 className="h-3 w-3" />
-              </button>
-              <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Reduzir zoom">
-                <ZoomOut className="h-4 w-4" />
-              </button>
-            </div>
+            <NavigationToolbar
+              onZoomIn={handleZoomIn}
+              onZoomOut={handleZoomOut}
+              onReset={handleResetZoom}
+              onFitToView={() => {
+                setZoomLevel(1);
+                setPanOffset({ x: 0, y: 0 });
+              }}
+              onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
+              isFullscreen={isFullscreen}
+              className="ml-4"
+            />
           </div>
         </div>
 
@@ -783,6 +785,7 @@ export const OrbitalConstellationChart = ({
   // Handlers de zoom com foco no cursor
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!containerRef.current) return;
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
@@ -820,7 +823,17 @@ export const OrbitalConstellationChart = ({
       y: 0
     });
   };
-  return <div className="space-y-3">
+
+  const handleFitToView = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleToggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  return <div className={`space-y-3 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4' : ''}`}>
       {/* Cabeçalho com navegação */}
       <div className="bg-background border rounded-lg p-2 shadow-sm">
         <div className="flex gap-2">
@@ -833,19 +846,21 @@ export const OrbitalConstellationChart = ({
         </div>
       </div>
 
-      <div ref={containerRef} className={`relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border overflow-hidden transition-all duration-500 p-4 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`} onWheel={handleWheel} onMouseDown={handleCanvasMouseDown} onMouseMove={handleCanvasPanMove} onMouseUp={handleCanvasPanEnd} onMouseLeave={handleCanvasPanEnd}>
+      <div ref={containerRef} className={`relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border overflow-hidden transition-all duration-500 p-4 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`} 
+        style={{ height: isFullscreen ? 'calc(100vh - 150px)' : 'auto' }}
+        onWheel={handleWheel} onMouseDown={handleCanvasMouseDown} onMouseMove={handleCanvasPanMove} onMouseUp={handleCanvasPanEnd} onMouseLeave={handleCanvasPanEnd}>
         {/* Controles de Zoom - Para visualizações mother e systems */}
-        {(viewMode === 'mother' || viewMode === 'systems') && <div className="absolute top-4 right-4 z-10 flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg">
-            <button onClick={handleZoomIn} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Aumentar zoom">
-              <ZoomIn className="h-4 w-4" />
-            </button>
-            <button onClick={handleResetZoom} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Resetar zoom">
-              <Minimize2 className="h-3 w-3" />
-            </button>
-            <button onClick={handleZoomOut} className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors" title="Reduzir zoom">
-              <ZoomOut className="h-4 w-4" />
-            </button>
-          </div>}
+        {(viewMode === 'mother' || viewMode === 'systems') && (
+          <NavigationToolbar
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onReset={handleResetZoom}
+            onFitToView={handleFitToView}
+            onToggleFullscreen={handleToggleFullscreen}
+            isFullscreen={isFullscreen}
+            className="absolute top-4 right-4 z-10"
+          />
+        )}
 
         <div className="pan-area" style={{
         pointerEvents: 'none'

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
+import { NavigationToolbar } from "@/components/NavigationToolbar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -210,6 +210,7 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef({ dragging: null as string | null, nodes, hasDragged: false });
 
@@ -249,11 +250,10 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
   }, []);
 
   const handleWheel = (e: React.WheelEvent) => {
-    if (e.shiftKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoomLevel((prev) => Math.max(0.3, Math.min(3, prev + delta)));
-    }
+    e.preventDefault();
+    e.stopPropagation();
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    setZoomLevel((prev) => Math.max(0.3, Math.min(3, prev + delta)));
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -286,6 +286,15 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
       setSelectedWord(label);
       setStatsModalOpen(true);
     }
+  };
+
+  const handleFitToView = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleToggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
   };
 
   const getWordStats = (word: string): WordStats | null => {
@@ -350,43 +359,29 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
   };
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4' : ''}`}>
       <div className="text-sm text-muted-foreground text-center">
-        💡 Arraste as palavras para reorganizar. Segure Shift + roda do mouse para zoom. Arraste o fundo para navegar.
+        💡 Arraste as palavras para reorganizar. Use a roda do mouse para zoom. Arraste o fundo para navegar.
       </div>
 
       <div
         ref={containerRef}
         className="border border-border rounded-lg bg-background/50 overflow-hidden relative"
-        style={{ width: "100%", height: "500px" }}
+        style={{ width: "100%", height: isFullscreen ? "calc(100vh - 100px)" : "500px" }}
         onWheel={handleWheel}
       >
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
-          <Button
-            size="icon"
-            variant="secondary"
-            onClick={() => setZoomLevel((prev) => Math.min(3, prev + 0.2))}
-          >
-            <ZoomIn className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="secondary"
-            onClick={() => setZoomLevel((prev) => Math.max(0.3, prev - 0.2))}
-          >
-            <ZoomOut className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="secondary"
-            onClick={() => {
-              setZoomLevel(1);
-              setPanOffset({ x: 0, y: 0 });
-            }}
-          >
-            <Minimize2 className="h-4 w-4" />
-          </Button>
-        </div>
+        <NavigationToolbar
+          onZoomIn={() => setZoomLevel((prev) => Math.min(3, prev + 0.2))}
+          onZoomOut={() => setZoomLevel((prev) => Math.max(0.3, prev - 0.2))}
+          onReset={() => {
+            setZoomLevel(1);
+            setPanOffset({ x: 0, y: 0 });
+          }}
+          onFitToView={handleFitToView}
+          onToggleFullscreen={handleToggleFullscreen}
+          isFullscreen={isFullscreen}
+          className="absolute top-4 right-4 z-10"
+        />
 
         <div
           className={`w-full h-full ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
