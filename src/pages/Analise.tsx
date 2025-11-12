@@ -1433,12 +1433,12 @@ E uma saudade redomona pelos cantos do galpão`}
             <CardHeader>
               <CardTitle>Nuvem de Domínios Semânticos - Visualização Orbital</CardTitle>
               <CardDescription>
-                Clique nas palavras para ver concordância (KWIC). Arraste os domínios para reorganizar.
+                Clique nas palavras para ver concordância (KWIC). Arraste os domínios para reorganizar. As palavras estão organizadas em 4 órbitas por frequência.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               {/* Controles de Zoom */}
-              <div className="absolute top-8 right-8 z-10 flex flex-col gap-1.5 bg-background/90 backdrop-blur-sm border rounded-lg p-1.5 shadow-lg">
+              <div className="absolute top-4 right-4 z-20 flex flex-col gap-1.5 bg-background/90 backdrop-blur-sm border rounded-lg p-1.5 shadow-lg">
                 <button
                   onClick={handleZoomIn}
                   className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
@@ -1464,205 +1464,174 @@ E uma saudade redomona pelos cantos do galpão`}
               
               <div 
                 ref={containerRef} 
-                className="relative min-h-[800px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg p-16 cursor-default select-none border transition-transform duration-300" 
+                className="relative h-[900px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg cursor-default select-none border overflow-hidden transition-transform duration-300" 
                 onMouseMove={handleMouseMove} 
                 onMouseUp={handleMouseUp} 
                 onMouseLeave={handleMouseUp}
                 style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
               >
-                {/* Natureza e Paisagem Campeira - Centro (mais saliente: 28.2%) */}
-                <div className="absolute -translate-x-1/2 -translate-y-1/2" style={{
-                top: `${domainPositions["Natureza e Paisagem Campeira"].top}%`,
-                left: `${domainPositions["Natureza e Paisagem Campeira"].left}%`
-              }} data-domain-container>
-                  <div className="relative">
-                    {/* Círculos orbitais de fundo */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/8 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[320px] h-[320px] rounded-full border border-primary/5 pointer-events-none" />
-                    
-                    <Badge onMouseDown={e => handleMouseDown(e, "Natureza e Paisagem Campeira")} onClick={() => handleDomainClick("Natureza e Paisagem Campeira")} className="text-3xl font-bold px-8 py-4 hover:scale-110 transition-all cursor-move shadow-2xl border-0 relative z-10 text-center" style={{
-                    backgroundColor: "hsl(142, 35%, 25%)",
-                    color: "hsl(142, 80%, 75%)",
-                    boxShadow: "0 0 40px hsla(142, 35%, 25%, 0.3)"
-                  }}>
-                      Natureza e Paisagem Campeira
-                    </Badge>
-                    {/* Distribuição orbital */}
-                    {["tarumã", "várzea", "coxilha", "campo", "campanha", "horizonte", "sombra", "sol"].map((word, idx) => {
-                      const angle = (idx / 8) * 2 * Math.PI - Math.PI / 2;
-                      const radius = 120;
-                      const x = Math.cos(angle) * radius;
-                      const y = Math.sin(angle) * radius;
-                      const key = `nat-${word}`;
-                      const pos = satellitePositions[key] || { left: x, top: y };
-                      const style: React.CSSProperties = {
-                        backgroundColor: "hsl(142, 35%, 25%, 0.7)",
-                        color: "hsl(142, 80%, 75%)",
-                        left: typeof pos.left === 'number' ? `calc(50% + ${pos.left}px)` : pos.left,
-                        top: typeof pos.top === 'number' ? `calc(50% + ${pos.top}px)` : pos.top,
+                {dominiosData.map((dominio, index) => {
+                  // Posições centrais para cada domínio baseado no seu tamanho/relevância
+                  const positions = [
+                    { top: 450, left: 500 },  // Centro - Natureza (maior)
+                    { top: 200, left: 250 },  // Topo esquerda
+                    { top: 200, left: 750 },  // Topo direita
+                    { top: 650, left: 300 },  // Baixo esquerda
+                    { top: 650, left: 700 }   // Baixo direita
+                  ];
+                  
+                  const position = positions[index];
+                  const posKey = dominio.dominio as keyof typeof domainPositions;
+                  const customPos = domainPositions[posKey];
+                  
+                  // Converte posição customizada para pixels se existir
+                  let centerX = position.left;
+                  let centerY = position.top;
+                  
+                  if (customPos) {
+                    const containerWidth = 1000;
+                    const containerHeight = 900;
+                    if ('left' in customPos) {
+                      centerX = (customPos.left / 100) * containerWidth;
+                    } else if ('right' in customPos) {
+                      centerX = containerWidth - (customPos.right / 100) * containerWidth;
+                    }
+                    if ('top' in customPos) {
+                      centerY = (customPos.top / 100) * containerHeight;
+                    } else if ('bottom' in customPos) {
+                      centerY = containerHeight - (customPos.bottom / 100) * containerHeight;
+                    }
+                  }
+                  
+                  // Calcula tamanho do badge baseado na relevância
+                  const sizeScale = 0.5 + (dominio.percentual / 28.2) * 0.5; // 28.2% é o maior
+                  const fontSize = `${1 + sizeScale * 0.5}rem`;
+                  const padding = `${0.5 + sizeScale * 0.3}rem ${0.8 + sizeScale * 0.5}rem`;
+                  
+                  // Define 4 órbitas baseadas em frequência
+                  const orbitRadii = [
+                    60 * sizeScale,   // Órbita 1 (palavras mais frequentes)
+                    95 * sizeScale,   // Órbita 2
+                    130 * sizeScale,  // Órbita 3
+                    165 * sizeScale   // Órbita 4 (palavras menos frequentes)
+                  ];
+                  
+                  // Distribui palavras nas órbitas
+                  const totalWords = dominio.palavras.length;
+                  const wordsPerOrbit = Math.ceil(totalWords / 4);
+                  
+                  return (
+                    <div
+                      key={dominio.dominio}
+                      className="absolute"
+                      style={{
+                        left: `${centerX}px`,
+                        top: `${centerY}px`,
                         transform: 'translate(-50%, -50%)'
-                      };
-                      return <Badge key={key} data-satellite-key={key} onMouseDown={e => handleSatelliteMouseDown(e, key, { left: x, top: y })} onClick={() => handleWordClick(word)} className="absolute px-3 py-1.5 shadow-md hover:scale-110 transition-all cursor-move border-0" style={style}>
-                          {word}
-                        </Badge>;
-                    })}
-                  </div>
+                      }}
+                    >
+                      {/* Círculos de órbita */}
+                      {orbitRadii.map((radius, orbitIndex) => (
+                        <div
+                          key={`orbit-${orbitIndex}`}
+                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none"
+                          style={{
+                            width: `${radius * 2}px`,
+                            height: `${radius * 2}px`,
+                            borderColor: dominio.cor,
+                            opacity: 0.15 - orbitIndex * 0.03,
+                            borderWidth: '1px'
+                          }}
+                        />
+                      ))}
+                      
+                      {/* Domínio central */}
+                      <Badge
+                        onMouseDown={(e) => handleMouseDown(e, dominio.dominio)}
+                        onClick={() => handleDomainClick(dominio.dominio)}
+                        className="relative z-10 hover:scale-105 transition-all cursor-move shadow-2xl border-0 text-center font-bold"
+                        style={{
+                          backgroundColor: dominio.cor,
+                          color: dominio.corTexto,
+                          fontSize,
+                          padding,
+                          boxShadow: `0 0 ${30 * sizeScale}px ${dominio.cor}40`
+                        }}
+                      >
+                        {dominio.dominio}
+                      </Badge>
+                      
+                      {/* Palavras orbitando */}
+                      {dominio.palavras.map((palavra, wordIndex) => {
+                        // Determina a órbita baseada no índice
+                        const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
+                        const orbit = Math.min(orbitLevel, 3);
+                        const radius = orbitRadii[orbit];
+                        
+                        // Calcula ângulo para distribuição uniforme na órbita
+                        const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
+                        const indexInOrbit = wordIndex % wordsPerOrbit;
+                        const angle = (indexInOrbit / wordsInThisOrbit) * 2 * Math.PI - Math.PI / 2;
+                        
+                        // Posição calculada
+                        const x = Math.cos(angle) * radius;
+                        const y = Math.sin(angle) * radius;
+                        
+                        const satelliteKey = `${dominio.dominio}-${palavra}`;
+                        const customSatPos = satellitePositions[satelliteKey];
+                        
+                        // Usa posição customizada se existir
+                        const finalX = customSatPos?.left ?? x;
+                        const finalY = customSatPos?.top ?? y;
+                        
+                        // Tamanho da palavra baseado na órbita (mais próximo = maior)
+                        const wordScale = 1 - (orbit * 0.15);
+                        
+                        return (
+                          <Badge
+                            key={satelliteKey}
+                            data-satellite-key={satelliteKey}
+                            onMouseDown={(e) => handleSatelliteMouseDown(e, satelliteKey, { left: x, top: y })}
+                            onClick={() => handleWordClick(palavra)}
+                            className="absolute shadow-md hover:scale-110 transition-all cursor-move border-0"
+                            style={{
+                              backgroundColor: `${dominio.cor}B3`,
+                              color: dominio.corTexto,
+                              left: `calc(50% + ${finalX}px)`,
+                              top: `calc(50% + ${finalY}px)`,
+                              transform: `translate(-50%, -50%) scale(${wordScale})`,
+                              padding: '0.25rem 0.5rem',
+                              fontSize: '0.875rem',
+                              fontWeight: orbit === 0 ? 600 : 500,
+                              opacity: 0.95 - orbit * 0.1
+                            }}
+                          >
+                            {palavra}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Legenda das órbitas */}
+              <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
+                <div className="p-2 rounded bg-muted/30">
+                  <div className="font-semibold mb-1">Órbita 1</div>
+                  <div className="text-muted-foreground">Mais frequentes</div>
                 </div>
-
-                {/* Cavalo e Aperos - Top Left (22.4%) */}
-                <div className="absolute" style={{
-                top: `${domainPositions["Cavalo e Aperos"].top}%`,
-                left: `${domainPositions["Cavalo e Aperos"].left}%`
-              }} data-domain-container>
-                  <div className="relative">
-                    {/* Círculos orbitais de fundo */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] rounded-full border border-primary/8 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/5 pointer-events-none" />
-                    
-                    <Badge onMouseDown={e => handleMouseDown(e, "Cavalo e Aperos")} onClick={() => handleDomainClick("Cavalo e Aperos")} className="text-2xl font-bold px-6 py-3 hover:scale-110 transition-all cursor-move shadow-xl border-0 relative z-10 text-center" style={{
-                    backgroundColor: "hsl(221, 40%, 25%)",
-                    color: "hsl(221, 85%, 75%)",
-                    boxShadow: "0 0 30px hsla(221, 40%, 25%, 0.3)"
-                  }}>
-                      Cavalo e Aperos
-                    </Badge>
-                    {/* Distribuição orbital */}
-                    {["gateada", "tropa", "arreios", "esporas", "lombo", "ramada", "encilha", "cambona"].map((word, idx) => {
-                      const angle = (idx / 8) * 2 * Math.PI - Math.PI / 2;
-                      const radius = 95;
-                      const x = Math.cos(angle) * radius;
-                      const y = Math.sin(angle) * radius;
-                      const key = `cav-${word}`;
-                      const pos = satellitePositions[key] || { left: x, top: y };
-                      const style: React.CSSProperties = {
-                        backgroundColor: "hsl(221, 40%, 25%, 0.7)",
-                        color: "hsl(221, 85%, 75%)",
-                        left: typeof pos.left === 'number' ? `calc(50% + ${pos.left}px)` : pos.left,
-                        top: typeof pos.top === 'number' ? `calc(50% + ${pos.top}px)` : pos.top,
-                        transform: 'translate(-50%, -50%)'
-                      };
-                      return <Badge key={key} data-satellite-key={key} onMouseDown={e => handleSatelliteMouseDown(e, key, { left: x, top: y })} onClick={() => handleWordClick(word)} className="absolute px-3 py-1.5 shadow-md hover:scale-110 transition-all cursor-move border-0" style={style}>
-                          {word}
-                        </Badge>;
-                    })}
-                  </div>
+                <div className="p-2 rounded bg-muted/30">
+                  <div className="font-semibold mb-1">Órbita 2</div>
+                  <div className="text-muted-foreground">Frequência alta</div>
                 </div>
-
-                {/* Vida no Galpão - Top Right (18.8%) */}
-                <div className="absolute" style={{
-                top: `${domainPositions["Vida no Galpão"].top}%`,
-                right: `${domainPositions["Vida no Galpão"].right}%`
-              }} data-domain-container>
-                  <div className="relative">
-                    {/* Círculos orbitais de fundo */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[180px] h-[180px] rounded-full border border-primary/8 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/5 pointer-events-none" />
-                    
-                    <Badge onMouseDown={e => handleMouseDown(e, "Vida no Galpão")} onClick={() => handleDomainClick("Vida no Galpão")} className="text-xl font-bold px-5 py-3 hover:scale-110 transition-all cursor-move shadow-xl border-0 relative z-10 text-center" style={{
-                    backgroundColor: "hsl(45, 40%, 25%)",
-                    color: "hsl(45, 95%, 75%)",
-                    boxShadow: "0 0 30px hsla(45, 40%, 25%, 0.3)"
-                  }}>
-                      Vida no Galpão
-                    </Badge>
-                    {/* Distribuição orbital */}
-                    {["galpão", "mate", "candeeiro", "fogo", "chão", "cuia", "querência", "bomba"].map((word, idx) => {
-                      const angle = (idx / 8) * 2 * Math.PI - Math.PI / 2;
-                      const radius = 95;
-                      const x = Math.cos(angle) * radius;
-                      const y = Math.sin(angle) * radius;
-                      const key = `gal-${word}`;
-                      const pos = satellitePositions[key] || { left: x, top: y };
-                      const style: React.CSSProperties = {
-                        backgroundColor: "hsl(45, 40%, 25%, 0.7)",
-                        color: "hsl(45, 95%, 75%)",
-                        left: typeof pos.left === 'number' ? `calc(50% + ${pos.left}px)` : pos.left,
-                        top: typeof pos.top === 'number' ? `calc(50% + ${pos.top}px)` : pos.top,
-                        transform: 'translate(-50%, -50%)'
-                      };
-                      return <Badge key={key} data-satellite-key={key} onMouseDown={e => handleSatelliteMouseDown(e, key, { left: x, top: y })} onClick={() => handleWordClick(word)} className="absolute px-3 py-1.5 shadow-md hover:scale-110 transition-all cursor-move border-0" style={style}>
-                          {word}
-                        </Badge>;
-                    })}
-                  </div>
+                <div className="p-2 rounded bg-muted/30">
+                  <div className="font-semibold mb-1">Órbita 3</div>
+                  <div className="text-muted-foreground">Frequência média</div>
                 </div>
-
-                {/* Sentimentos e Poesia - Bottom Left (16.5%) */}
-                <div className="absolute" style={{
-                bottom: `${domainPositions["Sentimentos e Poesia"].bottom}%`,
-                left: `${domainPositions["Sentimentos e Poesia"].left}%`
-              }} data-domain-container>
-                  <div className="relative">
-                    {/* Círculos orbitais de fundo */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[160px] h-[160px] rounded-full border border-primary/8 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220px] h-[220px] rounded-full border border-primary/5 pointer-events-none" />
-                    
-                    <Badge onMouseDown={e => handleMouseDown(e, "Sentimentos e Poesia")} onClick={() => handleDomainClick("Sentimentos e Poesia")} className="text-xl font-bold px-5 py-2.5 hover:scale-110 transition-all cursor-move shadow-xl border-0 relative z-10 text-center" style={{
-                    backgroundColor: "hsl(291, 35%, 25%)",
-                    color: "hsl(291, 75%, 75%)",
-                    boxShadow: "0 0 28px hsla(291, 35%, 25%, 0.3)"
-                  }}>
-                      Sentimentos e Poesia
-                    </Badge>
-                    {/* Distribuição orbital */}
-                    {["verso", "saudade", "sonhos", "coplas", "mansidão", "calma", "silêncio"].map((word, idx) => {
-                      const angle = (idx / 7) * 2 * Math.PI - Math.PI / 2;
-                      const radius = 90;
-                      const x = Math.cos(angle) * radius;
-                      const y = Math.sin(angle) * radius;
-                      const key = `sent-${word}`;
-                      const pos = satellitePositions[key] || { left: x, top: y };
-                      const style: React.CSSProperties = {
-                        backgroundColor: "hsl(291, 35%, 25%, 0.7)",
-                        color: "hsl(291, 75%, 75%)",
-                        left: typeof pos.left === 'number' ? `calc(50% + ${pos.left}px)` : pos.left,
-                        top: typeof pos.top === 'number' ? `calc(50% + ${pos.top}px)` : pos.top,
-                        transform: 'translate(-50%, -50%)'
-                      };
-                      return <Badge key={key} data-satellite-key={key} onMouseDown={e => handleSatelliteMouseDown(e, key, { left: x, top: y })} onClick={() => handleWordClick(word)} className="absolute px-3 py-1.5 shadow-md hover:scale-110 transition-all cursor-move border-0" style={style}>
-                          {word}
-                        </Badge>;
-                    })}
-                  </div>
-                </div>
-
-                {/* Tradição Gaúcha - Bottom Right (14.1%) */}
-                <div className="absolute" style={{
-                bottom: `${domainPositions["Tradição Gaúcha"].bottom}%`,
-                right: `${domainPositions["Tradição Gaúcha"].right}%`
-              }} data-domain-container>
-                  <div className="relative">
-                    {/* Círculos orbitais de fundo */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140px] h-[140px] rounded-full border border-primary/8 pointer-events-none" />
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200px] h-[200px] rounded-full border border-primary/5 pointer-events-none" />
-                    
-                    <Badge onMouseDown={e => handleMouseDown(e, "Tradição Gaúcha")} onClick={() => handleDomainClick("Tradição Gaúcha")} className="text-lg font-bold px-4 py-2 hover:scale-110 transition-all cursor-move shadow-xl border-0 relative z-10 text-center" style={{
-                    backgroundColor: "hsl(0, 35%, 25%)",
-                    color: "hsl(0, 80%, 75%)",
-                    boxShadow: "0 0 25px hsla(0, 35%, 25%, 0.3)"
-                  }}>
-                      Tradição Gaúcha
-                    </Badge>
-                    {/* Distribuição orbital */}
-                    {["maragato", "pañuelo", "mate", "maçanilha", "prenda", "campereada"].map((word, idx) => {
-                      const angle = (idx / 6) * 2 * Math.PI - Math.PI / 2;
-                      const radius = 85;
-                      const x = Math.cos(angle) * radius;
-                      const y = Math.sin(angle) * radius;
-                      const key = `trad-${word}`;
-                      const pos = satellitePositions[key] || { left: x, top: y };
-                      const style: React.CSSProperties = {
-                        backgroundColor: "hsl(0, 35%, 25%, 0.7)",
-                        color: "hsl(0, 80%, 75%)",
-                        left: typeof pos.left === 'number' ? `calc(50% + ${pos.left}px)` : pos.left,
-                        top: typeof pos.top === 'number' ? `calc(50% + ${pos.top}px)` : pos.top,
-                        transform: 'translate(-50%, -50%)'
-                      };
-                      return <Badge key={key} data-satellite-key={key} onMouseDown={e => handleSatelliteMouseDown(e, key, { left: x, top: y })} onClick={() => handleWordClick(word)} className="absolute px-3 py-1.5 shadow-md hover:scale-110 transition-all cursor-move border-0" style={style}>
-                          {word}
-                        </Badge>;
-                    })}
-                  </div>
+                <div className="p-2 rounded bg-muted/30">
+                  <div className="font-semibold mb-1">Órbita 4</div>
+                  <div className="text-muted-foreground">Menos frequentes</div>
                 </div>
               </div>
             </CardContent>
