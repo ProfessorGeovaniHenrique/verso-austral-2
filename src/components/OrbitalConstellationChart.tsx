@@ -497,8 +497,8 @@ export const OrbitalConstellationChart = ({
 
   // Renderiza o gráfico mãe (nível principal com todas as palavras)
   const renderMotherOrbital = () => {
-    const centerX = 600;
-    const centerY = 400;
+    const centerX = 575;
+    const centerY = 380;
     
     // Agrupa todas as palavras com suas informações de sistema
     const allWords = orbitalSystems.flatMap(system =>
@@ -518,24 +518,24 @@ export const OrbitalConstellationChart = ({
     }, {} as Record<number, typeof allWords>);
 
     const motherOrbitRadii = {
-      1: 150,
-      2: 220,
-      3: 290,
-      4: 360
+      1: 135,
+      2: 200,
+      3: 265,
+      4: 330
     };
 
     return (
       <>
-        <div className="flex items-center justify-between mb-4 animate-fade-in">
-          <h3 className="text-lg font-semibold">Constelação Completa - Todas as Auras Semânticas</h3>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 animate-fade-in">
+          <h3 className="text-base font-semibold">Universo Semântico - Todas as Auras</h3>
           <button
             onClick={() => setViewMode('systems')}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
           >
-            Ver sistemas individuais →
+            Ver constelações →
           </button>
         </div>
-        <svg width="1200" height="800" viewBox="0 0 1200 800" className="w-full h-auto animate-fade-in">
+        <svg width="1150" height="760" viewBox="0 0 1150 760" className="w-full h-auto animate-fade-in">
           {/* Órbitas principais */}
           {[1, 2, 3, 4].map(orbit => (
             <circle
@@ -553,20 +553,20 @@ export const OrbitalConstellationChart = ({
 
           {/* Centro - Título da obra */}
           <g>
-            <circle cx={centerX} cy={centerY} r={50} fill="hsl(var(--primary))" opacity="0.9" />
+            <circle cx={centerX} cy={centerY} r={45} fill="hsl(var(--primary))" opacity="0.9" />
             <text
               x={centerX}
-              y={centerY - 5}
+              y={centerY - 4}
               textAnchor="middle"
-              className="fill-primary-foreground font-bold text-sm"
+              className="fill-primary-foreground font-bold text-[13px]"
             >
               {songName}
             </text>
             <text
               x={centerX}
-              y={centerY + 10}
+              y={centerY + 9}
               textAnchor="middle"
-              className="fill-primary-foreground text-xs"
+              className="fill-primary-foreground text-[11px]"
             >
               {artistName}
             </text>
@@ -615,7 +615,7 @@ export const OrbitalConstellationChart = ({
           {/* Legendas dos sistemas ao redor - Botões flutuantes interativos */}
           {orbitalSystems.map((system, index) => {
             const angle = (index / orbitalSystems.length) * 2 * Math.PI;
-            const legendRadius = 420;
+            const legendRadius = 385;
             const x = centerX + legendRadius * Math.cos(angle);
             const y = centerY + legendRadius * Math.sin(angle);
             const buttonId = `legend-${system.centerWord}`;
@@ -642,16 +642,16 @@ export const OrbitalConstellationChart = ({
                 }}
               >
                 {/* Sombra externa (glow) */}
-                <circle cx={x} cy={y} r={35} fill={centerWordColors[system.centerWord]} opacity="0.15" className="animate-pulse" />
+                <circle cx={x} cy={y} r={32} fill={centerWordColors[system.centerWord]} opacity="0.15" className="animate-pulse" />
                 
                 {/* Sombra média */}
-                <circle cx={x} cy={y} r={30} fill={centerWordColors[system.centerWord]} opacity="0.3" />
+                <circle cx={x} cy={y} r={27} fill={centerWordColors[system.centerWord]} opacity="0.3" />
                 
                 {/* Botão principal */}
                 <circle 
                   cx={x} 
                   cy={y} 
-                  r={25} 
+                  r={22} 
                   fill={centerWordColors[system.centerWord]} 
                   opacity="0.95"
                   className="transition-all"
@@ -664,10 +664,10 @@ export const OrbitalConstellationChart = ({
                 <circle 
                   cx={x} 
                   cy={y} 
-                  r={25} 
+                  r={22} 
                   fill="none" 
                   stroke="hsl(var(--background))" 
-                  strokeWidth="2"
+                  strokeWidth="1.5"
                   opacity="0.4"
                 />
                 
@@ -677,7 +677,7 @@ export const OrbitalConstellationChart = ({
                   y={y}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  className="fill-primary-foreground font-bold text-xs pointer-events-none"
+                  className="fill-primary-foreground font-bold text-[11px] pointer-events-none"
                   style={{ textShadow: '0 1px 3px rgba(0, 0, 0, 0.5)' }}
                 >
                   {system.centerWord}
@@ -694,16 +694,16 @@ export const OrbitalConstellationChart = ({
   const renderSystemsGrid = () => {
     return (
       <>
-        <div className="flex items-center justify-between mb-4 animate-fade-in">
-          <h3 className="text-lg font-semibold">Sistemas Orbitais - Prosódia Semântica</h3>
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 animate-fade-in">
+          <h3 className="text-base font-semibold">Constelações Semânticas - Prosódia</h3>
           <button
             onClick={() => setViewMode('mother')}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm text-primary hover:text-primary/80 transition-colors font-medium"
           >
-            ← Voltar ao gráfico completo
+            ← Voltar ao universo
           </button>
         </div>
-        <svg width="1200" height="700" viewBox="0 0 1200 700" className="w-full h-auto animate-fade-in">
+        <svg width="1150" height="680" viewBox="0 0 1150 680" className="w-full h-auto animate-fade-in">
           {orbitalSystems.map((system, index) => {
             const col = index % 3;
             const row = Math.floor(index / 3);
@@ -736,8 +736,8 @@ export const OrbitalConstellationChart = ({
     return (
       <>
         {/* Controles de posição orbital - acima e à esquerda */}
-        <div className="mb-4 p-3 bg-muted/30 rounded-lg w-64 animate-fade-in">
-          <h4 className="font-semibold mb-2 text-sm">Controles de Posição Orbital</h4>
+        <div className="mb-3 p-3 bg-muted/30 rounded-lg w-64 animate-fade-in">
+          <h4 className="font-semibold mb-2.5 text-sm">Controles Orbitais</h4>
           <div className="space-y-2.5">
             {system.words
               .sort((a, b) => b.strength - a.strength)
@@ -781,35 +781,35 @@ export const OrbitalConstellationChart = ({
           </div>
         </div>
 
-        <div className="flex items-center justify-between mb-4 animate-fade-in">
+        <div className="flex items-center justify-between mb-3 animate-fade-in">
           <div>
-            <h3 className="text-lg font-semibold flex items-center gap-2">
+            <h3 className="text-base font-semibold flex items-center gap-2">
               <span
-                className="inline-block w-4 h-4 rounded-full"
+                className="inline-block w-3.5 h-3.5 rounded-full"
                 style={{ backgroundColor: centerWordColors[system.centerWord] }}
               />
-              Sistema Orbital: {system.centerWord}
+              Constelação: {system.centerWord}
             </h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Arraste as palavras para reposicioná-las na órbita
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Arraste as palavras para reposicioná-las
             </p>
           </div>
           <button
             onClick={() => setViewMode('systems')}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm text-sm"
           >
-            ← Voltar aos sistemas
+            ← Voltar
           </button>
         </div>
         <svg
           ref={svgRef}
-          width="800"
-          height="600"
-          viewBox="0 0 800 600"
+          width="900"
+          height="650"
+          viewBox="0 0 900 650"
           className="w-full h-auto animate-scale-in"
           style={{ userSelect: draggedWord ? 'none' : 'auto' }}
         >
-          {renderOrbitalSystem(system, 400, 300, true)}
+          {renderOrbitalSystem(system, 450, 325, true)}
         </svg>
       </>
     );
@@ -829,64 +829,61 @@ export const OrbitalConstellationChart = ({
   const handleResetZoom = () => setZoomLevel(1);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Cabeçalho com navegação */}
-      <div className="bg-background border rounded-lg p-3 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            <button
-              onClick={() => setViewMode('mother')}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
-                viewMode === 'mother'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted hover:bg-muted/80'
-              }`}
-            >
-              Completa
-            </button>
-            <button
-              onClick={() => setViewMode('systems')}
-              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
-                viewMode === 'systems'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'bg-muted hover:bg-muted/80'
-              }`}
-            >
-              Sistemas
-            </button>
-          </div>
-          
-          {/* Controles de Zoom */}
-          <div className="flex gap-2">
-            <button
-              onClick={handleZoomOut}
-              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors border"
-              title="Zoom Out (Ctrl + Scroll Down)"
-            >
-              <span className="text-lg font-bold">−</span>
-            </button>
-            <button
-              onClick={handleResetZoom}
-              className="w-12 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors text-xs border"
-              title="Reset Zoom"
-            >
-              {Math.round(zoomLevel * 100)}%
-            </button>
-            <button
-              onClick={handleZoomIn}
-              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors border"
-              title="Zoom In (Ctrl + Scroll Up)"
-            >
-              <span className="text-lg font-bold">+</span>
-            </button>
-          </div>
+      <div className="bg-background border rounded-lg p-2 shadow-sm">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setViewMode('mother')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
+              viewMode === 'mother'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted hover:bg-muted/80'
+            }`}
+          >
+            Universo Semântico
+          </button>
+          <button
+            onClick={() => setViewMode('systems')}
+            className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
+              viewMode === 'systems'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'bg-muted hover:bg-muted/80'
+            }`}
+          >
+            Constelações Semânticas
+          </button>
         </div>
       </div>
 
       <div
-        className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 overflow-hidden transition-all duration-500"
+        className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border overflow-hidden transition-all duration-500"
         onWheel={handleWheel}
       >
+        {/* Controles de Zoom - Dentro do gráfico */}
+        <div className="absolute top-3 right-3 z-10 flex flex-col gap-1.5 bg-background/90 backdrop-blur-sm border rounded-lg p-1.5 shadow-lg">
+          <button
+            onClick={handleZoomIn}
+            className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
+            title="Zoom In (Ctrl + Scroll Up)"
+          >
+            <span className="text-base font-bold">+</span>
+          </button>
+          <button
+            onClick={handleResetZoom}
+            className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors text-[10px] font-medium"
+            title="Reset Zoom"
+          >
+            {Math.round(zoomLevel * 100)}%
+          </button>
+          <button
+            onClick={handleZoomOut}
+            className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
+            title="Zoom Out (Ctrl + Scroll Down)"
+          >
+            <span className="text-base font-bold">−</span>
+          </button>
+        </div>
 
         <div
           className={`transition-all duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}
