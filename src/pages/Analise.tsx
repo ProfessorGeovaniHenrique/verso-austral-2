@@ -694,38 +694,95 @@ export default function Analise() {
         <TabsContent value="nuvem" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Nuvem de Domínios</CardTitle>
-              <CardDescription>Visualização interativa dos principais termos</CardDescription>
+              <CardTitle>Nuvem de Domínios Semânticos</CardTitle>
+              <CardDescription>Domínios principais com suas palavras-chave satélites</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <p className="text-sm text-muted-foreground text-center">
-                  Domínios semânticos principais identificados na música
-                </p>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
-                  {dominiosData.map((dominio) => (
-                    <div key={dominio.dominio} className="space-y-3 text-center">
-                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        {dominio.dominio}
-                      </h4>
-                      <div className="flex flex-col gap-2 items-center">
-                        {dominio.palavras.slice(0, 4).map((word, idx) => (
-                          <button
-                            key={word}
-                            onClick={() => handleWordClick(word)}
-                            className="transition-all capitalize hover:scale-110 font-bold"
-                            style={{
-                              fontSize: `${2.5 - idx * 0.3}rem`,
-                              color: dominio.cor,
-                              opacity: 1 - idx * 0.15
-                            }}
-                          >
-                            {word}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
+              <div className="relative min-h-[600px] bg-muted/20 rounded-lg p-8">
+                {/* Natureza e Paisagem Campeira - Top Left */}
+                <div className="absolute top-[10%] left-[15%]">
+                  <div className="relative">
+                    <button
+                      onClick={() => handleWordClick("Natureza e Paisagem Campeira")}
+                      className="text-3xl font-bold hover:scale-110 transition-all cursor-pointer"
+                      style={{ color: "hsl(142, 71%, 45%)" }}
+                    >
+                      Natureza Campeira
+                    </button>
+                    <button onClick={() => handleWordClick("tarumã")} className="absolute -top-8 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(142, 71%, 45%)" }}>tarumã</button>
+                    <button onClick={() => handleWordClick("várzea")} className="absolute -right-12 top-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(142, 71%, 45%)" }}>várzea</button>
+                    <button onClick={() => handleWordClick("coxilha")} className="absolute -right-10 bottom-2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(142, 71%, 45%)" }}>coxilha</button>
+                    <button onClick={() => handleWordClick("sombra")} className="absolute -left-10 top-2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(142, 71%, 45%)" }}>sombra</button>
+                  </div>
+                </div>
+
+                {/* Cavalo e Aperos - Top Right */}
+                <div className="absolute top-[15%] right-[15%]">
+                  <div className="relative">
+                    <button
+                      onClick={() => handleWordClick("Cavalo e Aperos")}
+                      className="text-3xl font-bold hover:scale-110 transition-all cursor-pointer"
+                      style={{ color: "hsl(221, 83%, 53%)" }}
+                    >
+                      Cavalo e Aperos
+                    </button>
+                    <button onClick={() => handleWordClick("gateada")} className="absolute -top-8 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(221, 83%, 53%)" }}>gateada</button>
+                    <button onClick={() => handleWordClick("encilha")} className="absolute -right-12 top-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(221, 83%, 53%)" }}>encilha</button>
+                    <button onClick={() => handleWordClick("arreios")} className="absolute -left-10 bottom-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(221, 83%, 53%)" }}>arreios</button>
+                    <button onClick={() => handleWordClick("esporas")} className="absolute -right-10 bottom-2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(221, 83%, 53%)" }}>esporas</button>
+                  </div>
+                </div>
+
+                {/* Vida no Galpão - Center */}
+                <div className="absolute top-[45%] left-[50%] -translate-x-1/2 -translate-y-1/2">
+                  <div className="relative">
+                    <button
+                      onClick={() => handleWordClick("Vida no Galpão")}
+                      className="text-4xl font-bold hover:scale-110 transition-all cursor-pointer"
+                      style={{ color: "hsl(45, 93%, 47%)" }}
+                    >
+                      Vida no Galpão
+                    </button>
+                    <button onClick={() => handleWordClick("galpão")} className="absolute -top-10 left-1/2 -translate-x-1/2 text-base font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>galpão</button>
+                    <button onClick={() => handleWordClick("mate")} className="absolute -right-12 top-2 text-base font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>mate</button>
+                    <button onClick={() => handleWordClick("candeeiro")} className="absolute -right-16 bottom-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>candeeiro</button>
+                    <button onClick={() => handleWordClick("querência")} className="absolute -bottom-10 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>querência</button>
+                    <button onClick={() => handleWordClick("cuia")} className="absolute -left-10 bottom-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>cuia</button>
+                    <button onClick={() => handleWordClick("ramada")} className="absolute -left-12 top-2 text-base font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(45, 93%, 47%)" }}>ramada</button>
+                  </div>
+                </div>
+
+                {/* Sentimentos e Poesia - Bottom Left */}
+                <div className="absolute bottom-[12%] left-[18%]">
+                  <div className="relative">
+                    <button
+                      onClick={() => handleWordClick("Sentimentos e Poesia")}
+                      className="text-3xl font-bold hover:scale-110 transition-all cursor-pointer"
+                      style={{ color: "hsl(291, 64%, 42%)" }}
+                    >
+                      Sentimentos
+                    </button>
+                    <button onClick={() => handleWordClick("verso")} className="absolute -top-8 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(291, 64%, 42%)" }}>verso</button>
+                    <button onClick={() => handleWordClick("saudade")} className="absolute -right-12 top-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(291, 64%, 42%)" }}>saudade</button>
+                    <button onClick={() => handleWordClick("sonhos")} className="absolute -left-10 top-2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(291, 64%, 42%)" }}>sonhos</button>
+                    <button onClick={() => handleWordClick("calma")} className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(291, 64%, 42%)" }}>calma</button>
+                  </div>
+                </div>
+
+                {/* Tradição Gaúcha - Bottom Right */}
+                <div className="absolute bottom-[15%] right-[20%]">
+                  <div className="relative">
+                    <button
+                      onClick={() => handleWordClick("Tradição Gaúcha")}
+                      className="text-3xl font-bold hover:scale-110 transition-all cursor-pointer"
+                      style={{ color: "hsl(0, 72%, 51%)" }}
+                    >
+                      Tradição Gaúcha
+                    </button>
+                    <button onClick={() => handleWordClick("maragato")} className="absolute -top-8 left-1/2 -translate-x-1/2 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(0, 72%, 51%)" }}>maragato</button>
+                    <button onClick={() => handleWordClick("prenda")} className="absolute -right-10 top-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(0, 72%, 51%)" }}>prenda</button>
+                    <button onClick={() => handleWordClick("campereada")} className="absolute -left-14 bottom-0 text-sm font-medium opacity-80 hover:opacity-100 hover:scale-110 transition-all" style={{ color: "hsl(0, 72%, 51%)" }}>campereada</button>
+                  </div>
                 </div>
               </div>
             </CardContent>
