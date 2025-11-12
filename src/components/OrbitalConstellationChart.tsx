@@ -27,6 +27,8 @@ export const OrbitalConstellationChart = ({
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [customPositions, setCustomPositions] = useState<Record<string, { angle: number }>>({});
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const svgRef = useState<SVGSVGElement | null>(null)[0];
   // Cores da análise de prosódia semântica e mapeamento de cores por palavra central
   const centerWordColors: Record<string, string> = {
     "verso": "hsl(var(--primary))", // Protagonista Personificado
@@ -149,12 +151,18 @@ export const OrbitalConstellationChart = ({
     const handleWordDrag = (word: WordData, event: React.MouseEvent<SVGGElement>) => {
       if (!isZoomed) return; // Só permite drag no modo zoom
       
+      event.preventDefault();
+      event.stopPropagation();
+      
       const wordKey = `${system.centerWord}-${word.word}`;
       setDraggedWord(wordKey);
       
+      // Captura a referência do SVG antes de criar os listeners
+      const svg = event.currentTarget.closest('svg');
+      if (!svg) return;
+      
       const handleMouseMove = (e: MouseEvent) => {
-        const svg = (event.currentTarget as SVGGElement).closest('svg');
-        if (!svg) return;
+        e.preventDefault();
         
         const rect = svg.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -256,9 +264,16 @@ export const OrbitalConstellationChart = ({
             return (
               <g 
                 key={`word-${system.centerWord}-${word.word}-${index}`}
-                className={isZoomed ? "cursor-move" : ""}
-                onMouseDown={(e) => isZoomed && handleWordDrag(word, e)}
-                style={{ opacity: isDragging ? 0.6 : 1 }}
+                className={isZoomed ? "cursor-grab active:cursor-grabbing" : ""}
+                onMouseDown={(e) => {
+                  if (isZoomed) {
+                    handleWordDrag(word, e);
+                  }
+                }}
+                style={{ 
+                  opacity: isDragging ? 0.6 : 1,
+                  transition: isDragging ? 'none' : 'all 0.2s'
+                }}
               >
                 {/* Glow effect */}
                 <circle
@@ -267,6 +282,7 @@ export const OrbitalConstellationChart = ({
                   r={6 * scale}
                   fill={word.color}
                   opacity="0.2"
+                  className="pointer-events-none"
                 />
                 <circle
                   cx={pos.x}
@@ -276,6 +292,7 @@ export const OrbitalConstellationChart = ({
                   opacity="1"
                   stroke="hsl(var(--background))"
                   strokeWidth={0.5 * scale}
+                  className="pointer-events-none"
                 />
                 <text
                   x={pos.x}
@@ -571,16 +588,74 @@ export const OrbitalConstellationChart = ({
     );
   };
 
+  // Handler para zoom com Ctrl + scroll
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoomLevel(prev => Math.max(0.5, Math.min(2, prev + delta)));
+    }
+  };
+
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(2, prev + 0.2));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(0.5, prev - 0.2));
+  };
+
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 overflow-hidden transition-all duration-500">
-        <div className={`transition-opacity duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}>
+      <div 
+        className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 overflow-hidden transition-all duration-500"
+        onWheel={handleWheel}
+      >
+        {/* Controles de Zoom */}
+        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
+          <button
+            onClick={handleZoomIn}
+            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+            title="Zoom In (Ctrl + Scroll Up)"
+          >
+            <span className="text-lg font-bold">+</span>
+          </button>
+          <button
+            onClick={handleResetZoom}
+            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors text-xs"
+            title="Reset Zoom"
+          >
+            {Math.round(zoomLevel * 100)}%
+          </button>
+          <button
+            onClick={handleZoomOut}
+            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+            title="Zoom Out (Ctrl + Scroll Down)"
+          >
+            <span className="text-lg font-bold">−</span>
+          </button>
+        </div>
+
+        <div 
+          className={`transition-all duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
+        >
           {viewMode === 'mother' && renderMotherOrbital()}
         </div>
-        <div className={`transition-opacity duration-300 ${viewMode === 'systems' ? 'opacity-100' : 'opacity-0 hidden'}`}>
+        <div 
+          className={`transition-all duration-300 ${viewMode === 'systems' ? 'opacity-100' : 'opacity-0 hidden'}`}
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
+        >
           {viewMode === 'systems' && renderSystemsGrid()}
         </div>
-        <div className={`transition-opacity duration-300 ${viewMode === 'zoomed' ? 'opacity-100' : 'opacity-0 hidden'}`}>
+        <div 
+          className={`transition-all duration-300 ${viewMode === 'zoomed' ? 'opacity-100' : 'opacity-0 hidden'}`}
+          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
+        >
           {viewMode === 'zoomed' && renderZoomedSystem()}
         </div>
       </div>
