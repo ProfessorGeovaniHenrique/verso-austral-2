@@ -276,7 +276,7 @@ export const OrbitalConstellationChart = ({
                 cy={centerY}
                 r={radius}
                 fill="none"
-                stroke="hsl(var(--primary))"
+                stroke={centerWordColors[system.centerWord] || "hsl(var(--primary))"}
                 strokeWidth={isZoomed ? "2" : "1"}
                 strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`}
                 opacity={0.4}
@@ -735,6 +735,52 @@ export const OrbitalConstellationChart = ({
 
     return (
       <>
+        {/* Controles de posição orbital - acima e à esquerda */}
+        <div className="mb-4 p-3 bg-muted/30 rounded-lg w-64 animate-fade-in">
+          <h4 className="font-semibold mb-2 text-sm">Controles de Posição Orbital</h4>
+          <div className="space-y-2.5">
+            {system.words
+              .sort((a, b) => b.strength - a.strength)
+              .map((word, index) => {
+                const wordKey = `${system.centerWord}-${word.word}`;
+                const currentProgress = orbitProgress[wordKey] ?? (index / system.words.length * 100);
+                
+                return (
+                  <div key={word.word} className="space-y-1 animate-fade-in">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-medium">{word.word}</span>
+                      <span 
+                        className="text-xs font-semibold px-1.5 py-0.5 rounded"
+                        style={{ 
+                          backgroundColor: `${word.color}20`,
+                          color: word.color
+                        }}
+                      >
+                        {word.strength}%
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={currentProgress}
+                        onChange={(e) => handleOrbitProgressChange(wordKey, parseFloat(e.target.value))}
+                        className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer slider-orbit"
+                        style={{
+                          background: `linear-gradient(to right, ${word.color} 0%, ${word.color} ${currentProgress}%, hsl(var(--muted)) ${currentProgress}%, hsl(var(--muted)) 100%)`
+                        }}
+                      />
+                      <span className="text-xs text-muted-foreground w-10 text-right">
+                        {Math.round(currentProgress)}°
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-4 animate-fade-in">
           <div>
             <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -750,7 +796,7 @@ export const OrbitalConstellationChart = ({
           </div>
           <button
             onClick={() => setViewMode('systems')}
-            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm"
           >
             ← Voltar aos sistemas
           </button>
@@ -765,52 +811,6 @@ export const OrbitalConstellationChart = ({
         >
           {renderOrbitalSystem(system, 400, 300, true)}
         </svg>
-        <div className="mt-4 p-4 bg-muted/30 rounded-lg space-y-4">
-          <h4 className="font-semibold mb-2">Controles de Posição Orbital</h4>
-          <div className="space-y-3">
-            {system.words
-              .sort((a, b) => b.strength - a.strength)
-              .map((word, index) => {
-                const wordKey = `${system.centerWord}-${word.word}`;
-                const currentProgress = orbitProgress[wordKey] ?? (index / system.words.length * 100);
-                
-                return (
-                  <div key={word.word} className="space-y-1.5 animate-fade-in">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{word.word}</span>
-                      <div className="flex items-center gap-2">
-                        <span 
-                          className="text-xs font-semibold px-2 py-0.5 rounded"
-                          style={{ 
-                            backgroundColor: `${word.color}20`,
-                            color: word.color
-                          }}
-                        >
-                          {word.strength}%
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={currentProgress}
-                        onChange={(e) => handleOrbitProgressChange(wordKey, parseFloat(e.target.value))}
-                        className="flex-1 h-2 rounded-lg appearance-none cursor-pointer slider-orbit"
-                        style={{
-                          background: `linear-gradient(to right, ${word.color} 0%, ${word.color} ${currentProgress}%, hsl(var(--muted)) ${currentProgress}%, hsl(var(--muted)) 100%)`
-                        }}
-                      />
-                      <span className="text-xs text-muted-foreground w-12 text-right">
-                        {Math.round(currentProgress)}°
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-          </div>
-        </div>
       </>
     );
   };
@@ -830,58 +830,63 @@ export const OrbitalConstellationChart = ({
 
   return (
     <div className="space-y-4">
+      {/* Cabeçalho com navegação */}
+      <div className="bg-background border rounded-lg p-3 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setViewMode('mother')}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
+                viewMode === 'mother'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted hover:bg-muted/80'
+              }`}
+            >
+              Completa
+            </button>
+            <button
+              onClick={() => setViewMode('systems')}
+              className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${
+                viewMode === 'systems'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted hover:bg-muted/80'
+              }`}
+            >
+              Sistemas
+            </button>
+          </div>
+          
+          {/* Controles de Zoom */}
+          <div className="flex gap-2">
+            <button
+              onClick={handleZoomOut}
+              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors border"
+              title="Zoom Out (Ctrl + Scroll Down)"
+            >
+              <span className="text-lg font-bold">−</span>
+            </button>
+            <button
+              onClick={handleResetZoom}
+              className="w-12 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors text-xs border"
+              title="Reset Zoom"
+            >
+              {Math.round(zoomLevel * 100)}%
+            </button>
+            <button
+              onClick={handleZoomIn}
+              className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded-lg transition-colors border"
+              title="Zoom In (Ctrl + Scroll Up)"
+            >
+              <span className="text-lg font-bold">+</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div
         className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 overflow-hidden transition-all duration-500"
         onWheel={handleWheel}
       >
-        {/* Controles de Zoom */}
-        <div className="absolute top-4 right-4 z-10 flex flex-col gap-2 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
-          <button
-            onClick={handleZoomIn}
-            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-            title="Zoom In (Ctrl + Scroll Up)"
-          >
-            <span className="text-lg font-bold">+</span>
-          </button>
-          <button
-            onClick={handleResetZoom}
-            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors text-xs"
-            title="Reset Zoom"
-          >
-            {Math.round(zoomLevel * 100)}%
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-            title="Zoom Out (Ctrl + Scroll Down)"
-          >
-            <span className="text-lg font-bold">−</span>
-          </button>
-        </div>
-
-        {/* Navegação entre modos */}
-        <div className="absolute top-4 left-4 z-10 flex gap-2 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
-          <button
-            onClick={() => setViewMode('mother')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${
-              viewMode === 'mother'
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-muted'
-            }`}
-          >
-            Completa
-          </button>
-          <button
-            onClick={() => setViewMode('systems')}
-            className={`px-3 py-1 text-xs rounded transition-colors ${
-              viewMode === 'systems'
-                ? 'bg-primary text-primary-foreground'
-                : 'hover:bg-muted'
-            }`}
-          >
-            Sistemas
-          </button>
-        </div>
 
         <div
           className={`transition-all duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}
