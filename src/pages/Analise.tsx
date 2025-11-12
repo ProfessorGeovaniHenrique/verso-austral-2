@@ -1454,7 +1454,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         </TableCell>
                         <TableCell className="text-right">{item.mi.toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant="secondary" className={item.significancia === "Alta" ? "bg-destructive/10 text-destructive" : item.significancia === "Média" ? "bg-accent/10 text-accent" : "bg-success/10 text-success"}>
+                          <Badge variant="secondary" className={item.significancia === "Alta" ? "bg-success/10 text-success" : item.significancia === "Média" ? "bg-destructive/10 text-destructive" : "bg-[hsl(45,93%,47%)]/10 text-[hsl(45,93%,47%)]"}>
                             {item.significancia}
                           </Badge>
                         </TableCell>
