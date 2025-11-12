@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface NetworkNode {
   id: string;
@@ -189,6 +191,10 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
 
   const [dragging, setDragging] = useState<string | null>(null);
   const [hasDragged, setHasDragged] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef({ dragging: null as string | null, nodes, hasDragged: false });
 
@@ -202,6 +208,37 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
 
     setDragging(nodeId);
     setHasDragged(false);
+  };
+
+  const handleCanvasMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).tagName !== "circle") {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    }
+  };
+
+  const handleCanvasPanMove = useCallback(
+    (e: MouseEvent) => {
+      if (isPanning) {
+        setPanOffset({
+          x: e.clientX - panStart.x,
+          y: e.clientY - panStart.y,
+        });
+      }
+    },
+    [isPanning, panStart]
+  );
+
+  const handleCanvasPanEnd = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.shiftKey) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoomLevel((prev) => Math.max(0.3, Math.min(3, prev + delta)));
+    }
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -247,72 +284,129 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
     }
   }, [dragging, handleMouseMove, handleMouseUp]);
 
+  useEffect(() => {
+    if (isPanning) {
+      window.addEventListener("mousemove", handleCanvasPanMove);
+      window.addEventListener("mouseup", handleCanvasPanEnd);
+
+      return () => {
+        window.removeEventListener("mousemove", handleCanvasPanMove);
+        window.removeEventListener("mouseup", handleCanvasPanEnd);
+      };
+    }
+  }, [isPanning, handleCanvasPanMove, handleCanvasPanEnd]);
+
   const centerNode = nodes.find((n) => n.distance === 0);
 
   return (
     <div className="space-y-4">
       <div className="text-sm text-muted-foreground text-center">
-        💡 Arraste as palavras para reorganizar. A distância reflete a força de associação.
+        💡 Arraste as palavras para reorganizar. Segure Shift + roda do mouse para zoom. Arraste o fundo para navegar.
       </div>
 
       <div
         ref={containerRef}
-        className="border border-border rounded-lg bg-background/50 overflow-hidden"
-        style={{ width: "100%", height: "500px", position: "relative" }}
+        className="border border-border rounded-lg bg-background/50 overflow-hidden relative"
+        style={{ width: "100%", height: "500px" }}
+        onWheel={handleWheel}
       >
-        <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0 }}>
-          {centerNode &&
-            nodes.map((node) => {
-              if (node.distance === 0) return null;
+        <div className="absolute top-4 right-4 z-10 flex gap-2">
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={() => setZoomLevel((prev) => Math.min(3, prev + 0.2))}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={() => setZoomLevel((prev) => Math.max(0.3, prev - 0.2))}
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="secondary"
+            onClick={() => {
+              setZoomLevel(1);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+          >
+            <Minimize2 className="h-4 w-4" />
+          </Button>
+        </div>
 
-              return (
-                <line
-                  key={`line-${node.id}`}
-                  x1={centerNode.x}
-                  y1={centerNode.y}
-                  x2={node.x}
-                  y2={node.y}
-                  stroke={prosodyColors[node.prosody]}
-                  strokeWidth="2"
-                  opacity="0.3"
-                  pointerEvents="none"
-                />
-              );
-            })}
+        <div
+          className={`w-full h-full ${isPanning ? "cursor-grabbing" : "cursor-grab"}`}
+          onMouseDown={handleCanvasMouseDown}
+        >
+          <svg
+            width="100%"
+            height="100%"
+            style={{ position: "absolute", top: 0, left: 0 }}
+          >
+            <g
+              transform={`translate(${panOffset.x}, ${panOffset.y}) scale(${zoomLevel})`}
+              style={{
+                transition: isPanning ? "none" : "transform 150ms ease-out",
+                willChange: "transform",
+              }}
+            >
+              {centerNode &&
+                nodes.map((node) => {
+                  if (node.distance === 0) return null;
 
-          {nodes.map((node) => (
-            <g key={node.id}>
-              <circle
-                cx={node.x}
-                cy={node.y}
-                r="25"
-                fill={prosodyColors[node.prosody]}
-                stroke={prosodyTextColors[node.prosody]}
-                strokeWidth="2"
-                style={{
-                  cursor: node.distance === 0 ? "default" : "grab",
-                  opacity: dragging && dragging !== node.id ? 0.5 : 1,
-                  transition: dragging === node.id ? "none" : "opacity 0.2s",
-                }}
-                onMouseDown={() => handleMouseDown(node.id)}
-                onClick={() => handleClick(node.label)}
-              />
-              <text
-                x={node.x}
-                y={node.y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill={prosodyTextColors[node.prosody]}
-                fontSize="12"
-                fontWeight="bold"
-                pointerEvents="none"
-                style={{ userSelect: "none" }}
-              >
-                {node.label}
-              </text>
+                  return (
+                    <line
+                      key={`line-${node.id}`}
+                      x1={centerNode.x}
+                      y1={centerNode.y}
+                      x2={node.x}
+                      y2={node.y}
+                      stroke={prosodyColors[node.prosody]}
+                      strokeWidth="2"
+                      opacity="0.3"
+                      pointerEvents="none"
+                    />
+                  );
+                })}
+
+              {nodes.map((node) => (
+                <g key={node.id}>
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r="25"
+                    fill={prosodyColors[node.prosody]}
+                    stroke={prosodyTextColors[node.prosody]}
+                    strokeWidth="2"
+                    style={{
+                      cursor: node.distance === 0 ? "default" : "grab",
+                      opacity: dragging && dragging !== node.id ? 0.5 : 1,
+                      transition: dragging === node.id ? "none" : "opacity 0.2s",
+                    }}
+                    onMouseDown={() => handleMouseDown(node.id)}
+                    onClick={() => handleClick(node.label)}
+                  />
+                  <text
+                    x={node.x}
+                    y={node.y}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={prosodyTextColors[node.prosody]}
+                    fontSize="12"
+                    fontWeight="bold"
+                    pointerEvents="none"
+                    style={{ userSelect: "none" }}
+                  >
+                    {node.label}
+                  </text>
+                </g>
+              ))}
             </g>
-          ))}
-        </svg>
+          </svg>
+        </div>
       </div>
     </div>
   );
