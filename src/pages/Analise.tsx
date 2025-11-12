@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { KWICModal } from "@/components/KWICModal";
 import { InteractiveSemanticNetwork } from "@/components/InteractiveSemanticNetwork";
+import { OrbitalConstellationChart } from "@/components/OrbitalConstellationChart";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
@@ -690,40 +691,19 @@ export default function Analise() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-6">
                 <div className="space-y-4">
                   <div className="p-4 bg-muted/30 rounded-lg border">
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      Como interpretar esta rede
+                      Constelação Orbital - Prosódia Semântica
                     </h4>
                     <p className="text-sm text-muted-foreground mb-3">
                       A palavra central <span className="font-semibold text-foreground">"verso"</span> é o protagonista personificado do poema. 
                       As demais palavras orbitam em diferentes distâncias, refletindo sua força de associação semântica no corpus.
                     </p>
-                    <div className="space-y-2 text-xs">
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-primary" />
-                        <span><strong>Órbita Interna:</strong> Associação muito forte (90-100%)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-primary/70" />
-                        <span><strong>Órbita Intermediária:</strong> Associação forte (70-89%)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-primary/40" />
-                        <span><strong>Órbita Externa:</strong> Associação moderada (50-69%)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-primary/20" />
-                        <span><strong>Órbita Periférica:</strong> Associação fraca (&lt;50%)</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-3 italic">
-                      💡 Arraste as palavras para reorganizar. A distância reflete a força de associação.
-                    </p>
                   </div>
-                  
+                  <OrbitalConstellationChart />
                 </div>
 
                 <div className="space-y-4">
