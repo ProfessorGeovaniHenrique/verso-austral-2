@@ -1,10 +1,16 @@
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 interface WordData {
   word: string;
   strength: number;
   category: string;
+}
+
+interface Constellation {
+  name: string;
   color: string;
+  words: WordData[];
 }
 
 interface OrbitalConstellationChartProps {
@@ -14,227 +20,236 @@ interface OrbitalConstellationChartProps {
 export const OrbitalConstellationChart = ({ 
   centerWord = "verso" 
 }: OrbitalConstellationChartProps) => {
-  // Dados de prosódia semântica com palavras organizadas por força
-  const words: WordData[] = [
-    // Órbita Interna: 90-100%
-    { word: "açoite", strength: 95, category: "Dor e Nostalgia", color: "hsl(var(--destructive))" },
-    { word: "desgarrou", strength: 94, category: "Solidão e Abandono", color: "hsl(var(--chart-1))" },
-    { word: "redomona", strength: 93, category: "Dor e Nostalgia", color: "hsl(var(--destructive))" },
-    { word: "suados", strength: 93, category: "Extensão de Identidade", color: "hsl(var(--chart-2))" },
-    { word: "campereada", strength: 92, category: "Protagonista Personificado", color: "hsl(var(--primary))" },
-    { word: "caindo", strength: 91, category: "Fim de Ciclo", color: "hsl(var(--chart-3))" },
-    { word: "esporas", strength: 90, category: "Solidão e Abandono", color: "hsl(var(--chart-1))" },
-    
-    // Órbita Intermediária: 70-89%
-    { word: "várzea", strength: 89, category: "Refúgio e Frustração", color: "hsl(var(--chart-4))" },
-    { word: "desencilhou", strength: 88, category: "Protagonista Personificado", color: "hsl(var(--primary))" },
-    { word: "lonjuras", strength: 88, category: "Fim de Ciclo", color: "hsl(var(--chart-3))" },
-    { word: "gateada", strength: 88, category: "Extensão de Identidade", color: "hsl(var(--chart-2))" },
-    { word: "galpão", strength: 87, category: "Dor e Nostalgia", color: "hsl(var(--destructive))" },
-    { word: "prenda", strength: 86, category: "Refúgio e Frustração", color: "hsl(var(--chart-4))" },
-    { word: "encostada", strength: 86, category: "Solidão e Abandono", color: "hsl(var(--chart-1))" },
-    { word: "sonhos", strength: 85, category: "Protagonista Personificado", color: "hsl(var(--primary))" },
-    { word: "tarde", strength: 85, category: "Fim de Ciclo", color: "hsl(var(--chart-3))" },
-    { word: "respeito", strength: 85, category: "Extensão de Identidade", color: "hsl(var(--chart-2))" },
-    { word: "gateado", strength: 84, category: "Refúgio e Frustração", color: "hsl(var(--chart-4))" },
-    { word: "campeira", strength: 82, category: "Protagonista Personificado", color: "hsl(var(--primary))" },
-    { word: "recostada", strength: 82, category: "Solidão e Abandono", color: "hsl(var(--chart-1))" },
-    { word: "olhos negros", strength: 81, category: "Dor e Nostalgia", color: "hsl(var(--destructive))" },
-    { word: "querência", strength: 79, category: "Extensão de Identidade", color: "hsl(var(--chart-2))" },
-    { word: "desgarrou", strength: 78, category: "Refúgio e Frustração", color: "hsl(var(--chart-4))" },
+  const [selectedConstellation, setSelectedConstellation] = useState<string | null>(null);
+
+  // Cores temáticas para cada categoria semântica
+  const categoryColors = {
+    "Protagonista Personificado": "#ef4444", // vermelho
+    "Fim de Ciclo": "#eab308", // amarelo
+    "Dor e Nostalgia": "#8b5cf6", // roxo
+    "Refúgio e Frustração": "#f97316", // laranja
+    "Solidão e Abandono": "#06b6d4", // ciano
+    "Extensão de Identidade": "#22c55e", // verde
+  };
+
+  // Dados organizados por constelação (categoria semântica)
+  const constellations: Constellation[] = [
+    {
+      name: "Protagonista Personificado",
+      color: categoryColors["Protagonista Personificado"],
+      words: [
+        { word: "campereada", strength: 92, category: "Protagonista Personificado" },
+        { word: "desencilhou", strength: 88, category: "Protagonista Personificado" },
+        { word: "sonhou", strength: 85, category: "Protagonista Personificado" },
+        { word: "campeira", strength: 82, category: "Protagonista Personificado" },
+      ]
+    },
+    {
+      name: "Fim de Ciclo",
+      color: categoryColors["Fim de Ciclo"],
+      words: [
+        { word: "caindo", strength: 91, category: "Fim de Ciclo" },
+        { word: "lonjuras", strength: 88, category: "Fim de Ciclo" },
+        { word: "tarde", strength: 85, category: "Fim de Ciclo" },
+        { word: "cansado", strength: 78, category: "Fim de Ciclo" },
+      ]
+    },
+    {
+      name: "Dor e Nostalgia",
+      color: categoryColors["Dor e Nostalgia"],
+      words: [
+        { word: "açoite", strength: 95, category: "Dor e Nostalgia" },
+        { word: "redomona", strength: 93, category: "Dor e Nostalgia" },
+        { word: "galpão", strength: 87, category: "Dor e Nostalgia" },
+        { word: "olhos negros", strength: 81, category: "Dor e Nostalgia" },
+      ]
+    },
+    {
+      name: "Refúgio e Frustração",
+      color: categoryColors["Refúgio e Frustração"],
+      words: [
+        { word: "várzea", strength: 89, category: "Refúgio e Frustração" },
+        { word: "prenda", strength: 86, category: "Refúgio e Frustração" },
+        { word: "gateado", strength: 84, category: "Refúgio e Frustração" },
+        { word: "desgarrou", strength: 78, category: "Refúgio e Frustração" },
+      ]
+    },
+    {
+      name: "Solidão e Abandono",
+      color: categoryColors["Solidão e Abandono"],
+      words: [
+        { word: "desgarrou", strength: 94, category: "Solidão e Abandono" },
+        { word: "esporas", strength: 90, category: "Solidão e Abandono" },
+        { word: "encostada", strength: 86, category: "Solidão e Abandono" },
+        { word: "recostada", strength: 82, category: "Solidão e Abandono" },
+      ]
+    },
+    {
+      name: "Extensão de Identidade",
+      color: categoryColors["Extensão de Identidade"],
+      words: [
+        { word: "suados", strength: 93, category: "Extensão de Identidade" },
+        { word: "gateada", strength: 88, category: "Extensão de Identidade" },
+        { word: "respeito", strength: 85, category: "Extensão de Identidade" },
+        { word: "querência", strength: 79, category: "Extensão de Identidade" },
+      ]
+    },
   ];
 
-  // Calcula a órbita baseado na força (90-100% = órbita 1, 80-89% = órbita 2, etc)
-  const getOrbit = (strength: number) => {
-    if (strength >= 90) return 1;
-    if (strength >= 80) return 2;
-    if (strength >= 70) return 3;
-    return 4;
-  };
-
-  // Organiza palavras por órbita
-  const wordsByOrbit = words.reduce((acc, word) => {
-    const orbit = getOrbit(word.strength);
-    if (!acc[orbit]) acc[orbit] = [];
-    acc[orbit].push(word);
-    return acc;
-  }, {} as Record<number, WordData[]>);
-
-  const centerX = 400;
-  const centerY = 300;
-  const orbitRadii = {
-    1: 80,
-    2: 140,
-    3: 200,
-    4: 260,
-  };
-
-  // Calcula posição de cada palavra em sua órbita
-  const getWordPosition = (word: WordData, index: number, totalInOrbit: number) => {
-    const orbit = getOrbit(word.strength);
-    const radius = orbitRadii[orbit as keyof typeof orbitRadii];
-    const angle = (index / totalInOrbit) * 2 * Math.PI - Math.PI / 2; // Start at top
+  // Renderiza uma única constelação
+  const renderConstellation = (constellation: Constellation, centerX: number, centerY: number, scale: number = 1) => {
+    const baseRadius = 60 * scale;
+    const maxRadius = 120 * scale;
     
-    return {
-      x: centerX + radius * Math.cos(angle),
-      y: centerY + radius * Math.sin(angle),
-      orbit,
-      radius,
-    };
+    return (
+      <g key={constellation.name}>
+        {/* Núcleo da constelação */}
+        <circle
+          cx={centerX}
+          cy={centerY}
+          r={15 * scale}
+          fill={constellation.color}
+          opacity="0.8"
+          className="cursor-pointer transition-all hover:opacity-100"
+          onClick={() => setSelectedConstellation(constellation.name)}
+        />
+        <text
+          x={centerX}
+          y={centerY + 30 * scale}
+          textAnchor="middle"
+          className="fill-foreground font-semibold text-xs cursor-pointer"
+          onClick={() => setSelectedConstellation(constellation.name)}
+        >
+          {constellation.name}
+        </text>
+
+        {/* Palavras orbitando */}
+        {constellation.words.map((word, index) => {
+          const angle = (index / constellation.words.length) * 2 * Math.PI - Math.PI / 2;
+          const radius = baseRadius + (maxRadius - baseRadius) * ((100 - word.strength) / 20);
+          const x = centerX + radius * Math.cos(angle);
+          const y = centerY + radius * Math.sin(angle);
+
+          return (
+            <g key={`${constellation.name}-${word.word}-${index}`}>
+              {/* Linha conectando ao centro */}
+              <line
+                x1={centerX}
+                y1={centerY}
+                x2={x}
+                y2={y}
+                stroke={constellation.color}
+                strokeWidth={scale}
+                opacity="0.3"
+              />
+              {/* Glow effect */}
+              <circle
+                cx={x}
+                cy={y}
+                r={8 * scale}
+                fill={constellation.color}
+                opacity="0.2"
+              />
+              {/* Palavra */}
+              <circle
+                cx={x}
+                cy={y}
+                r={5 * scale}
+                fill={constellation.color}
+                opacity="1"
+                stroke="hsl(var(--background))"
+                strokeWidth={scale}
+              />
+              <text
+                x={x}
+                y={y - 10 * scale}
+                textAnchor="middle"
+                className="fill-foreground text-xs font-medium"
+                style={{ fontSize: `${10 * scale}px` }}
+              >
+                {word.word}
+              </text>
+              <text
+                x={x}
+                y={y + 18 * scale}
+                textAnchor="middle"
+                className="fill-muted-foreground text-xs"
+                style={{ fontSize: `${8 * scale}px` }}
+              >
+                {word.strength}%
+              </text>
+            </g>
+          );
+        })}
+      </g>
+    );
   };
+
+  if (selectedConstellation) {
+    const constellation = constellations.find(c => c.name === selectedConstellation);
+    if (!constellation) return null;
+
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Constelação: {constellation.name}</h3>
+          <button
+            onClick={() => setSelectedConstellation(null)}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Voltar ao sistema estelar
+          </button>
+        </div>
+        <div className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-8 overflow-hidden">
+          <svg width="800" height="600" viewBox="0 0 800 600" className="w-full h-auto">
+            {renderConstellation(constellation, 400, 300, 2.5)}
+          </svg>
+        </div>
+        <div className="p-4 bg-muted/30 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            Esta constelação representa o domínio semântico "<strong>{constellation.name}</strong>". 
+            Palavras mais próximas do centro têm maior força de associação com o tema central.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
       <div className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border p-4 overflow-hidden">
-        <svg width="800" height="600" viewBox="0 0 800 600" className="w-full h-auto">
-          {/* Órbitas (círculos concêntricos) */}
-          {[1, 2, 3, 4].map((orbit) => (
-            <circle
-              key={orbit}
-              cx={centerX}
-              cy={centerY}
-              r={orbitRadii[orbit as keyof typeof orbitRadii]}
-              fill="none"
-              stroke="hsl(var(--border))"
-              strokeWidth="1"
-              strokeDasharray={orbit === 1 ? "0" : "4 4"}
-              opacity={0.3}
-            />
-          ))}
-
-          {/* Linhas conectando palavras ao centro */}
-          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
-            wordsInOrbit.map((word, index) => {
-              const pos = getWordPosition(word, index, wordsInOrbit.length);
-              return (
-                <line
-                  key={`line-${word.word}-${index}`}
-                  x1={centerX}
-                  y1={centerY}
-                  x2={pos.x}
-                  y2={pos.y}
-                  stroke={word.color}
-                  strokeWidth="1"
-                  opacity="0.2"
-                />
-              );
-            })
-          )}
-
-          {/* Palavra central */}
-          <g>
-            <circle
-              cx={centerX}
-              cy={centerY}
-              r="35"
-              fill="hsl(var(--primary))"
-              opacity="0.9"
-            />
-            <text
-              x={centerX}
-              y={centerY}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              className="fill-primary-foreground font-bold text-xl"
-            >
-              {centerWord}
-            </text>
-          </g>
-
-          {/* Palavras orbitando */}
-          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
-            wordsInOrbit.map((word, index) => {
-              const pos = getWordPosition(word, index, wordsInOrbit.length);
-              return (
-                <g key={`word-${word.word}-${index}`}>
-                  {/* Glow effect */}
-                  <circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    r="10"
-                    fill={word.color}
-                    opacity="0.2"
-                  />
-                  <circle
-                    cx={pos.x}
-                    cy={pos.y}
-                    r="7"
-                    fill={word.color}
-                    opacity="1"
-                    stroke="hsl(var(--background))"
-                    strokeWidth="1"
-                  />
-                  <text
-                    x={pos.x}
-                    y={pos.y - 14}
-                    textAnchor="middle"
-                    className="fill-foreground text-xs font-medium"
-                    style={{ fontSize: '11px' }}
-                  >
-                    {word.word}
-                  </text>
-                  <text
-                    x={pos.x}
-                    y={pos.y + 20}
-                    textAnchor="middle"
-                    className="fill-muted-foreground text-xs"
-                    style={{ fontSize: '9px' }}
-                  >
-                    {word.strength}%
-                  </text>
-                </g>
-              );
-            })
-          )}
+        <svg width="1200" height="800" viewBox="0 0 1200 800" className="w-full h-auto">
+          {/* Sistema estelar - grid de constelações */}
+          {constellations.map((constellation, index) => {
+            const col = index % 3;
+            const row = Math.floor(index / 3);
+            const x = 200 + col * 400;
+            const y = 200 + row * 400;
+            
+            return renderConstellation(constellation, x, y, 0.8);
+          })}
         </svg>
       </div>
-
-      {/* Legenda */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--primary))" }} />
-          <span>Protagonista Personificado</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--destructive))" }} />
-          <span>Dor e Nostalgia</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-4))" }} />
-          <span>Refúgio e Frustração</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-3))" }} />
-          <span>Fim de Ciclo</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-1))" }} />
-          <span>Solidão e Abandono</span>
-        </div>
-        <div className="flex items-center gap-2 p-2 rounded bg-muted/30">
-          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "hsl(var(--chart-2))" }} />
-          <span>Extensão de Identidade</span>
-        </div>
+      
+      <div className="p-4 bg-muted/30 rounded-lg">
+        <p className="text-sm text-muted-foreground">
+          <strong>Sistema Estelar de Prosódia Semântica:</strong> Cada constelação representa um domínio emocional. 
+          Clique em uma constelação para explorar suas palavras em detalhe.
+        </p>
       </div>
 
-      {/* Explicação das órbitas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
-        <div className="p-2 rounded bg-muted/30">
-          <div className="font-semibold mb-1">Órbita Interna</div>
-          <div className="text-muted-foreground">90-100%</div>
-        </div>
-        <div className="p-2 rounded bg-muted/30">
-          <div className="font-semibold mb-1">Órbita Intermediária</div>
-          <div className="text-muted-foreground">80-89%</div>
-        </div>
-        <div className="p-2 rounded bg-muted/30">
-          <div className="font-semibold mb-1">Órbita Externa</div>
-          <div className="text-muted-foreground">70-79%</div>
-        </div>
-        <div className="p-2 rounded bg-muted/30">
-          <div className="font-semibold mb-1">Órbita Periférica</div>
-          <div className="text-muted-foreground">&lt;70%</div>
-        </div>
+      {/* Legenda das Constelações */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+        {constellations.map((constellation) => (
+          <div 
+            key={constellation.name}
+            className="flex items-center gap-2 p-2 rounded bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={() => setSelectedConstellation(constellation.name)}
+          >
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: constellation.color }} />
+            <span>{constellation.name}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
