@@ -45,77 +45,84 @@ const kwicData = [
 
 const dominiosData = [
   { 
-    dominio: "Cultura e Tradição Gaúcha", 
-    ocorrencias: 145, 
-    percentual: 27.0,
-    palavras: ["gaúcho", "tradição", "cultura", "pilcha", "galpão", "raiz"],
-    cor: "hsl(var(--primary))"
+    dominio: "Natureza e Paisagem Campeira", 
+    ocorrencias: 48, 
+    percentual: 28.2,
+    palavras: ["tarumã", "várzea", "coxilha", "campo", "campanha", "horizonte", "sombra", "sol"],
+    cor: "hsl(142, 71%, 45%)"
   },
   { 
-    dominio: "Paisagem do Pampa", 
-    ocorrencias: 132, 
-    percentual: 24.5,
-    palavras: ["pampa", "campo", "coxilha", "querência", "horizonte", "verde"],
-    cor: "hsl(var(--success))"
+    dominio: "Cavalo e Aperos", 
+    ocorrencias: 38, 
+    percentual: 22.4,
+    palavras: ["gateada", "encilha", "arreios", "esporas", "tropa", "lombo", "ramada", "cambona"],
+    cor: "hsl(221, 83%, 53%)"
   },
   { 
-    dominio: "Lida Campeira", 
-    ocorrencias: 98, 
-    percentual: 18.2,
-    palavras: ["cavalo", "laço", "lida", "peão", "rodeio", "domado"],
-    cor: "hsl(var(--accent))"
+    dominio: "Vida no Galpão", 
+    ocorrencias: 32, 
+    percentual: 18.8,
+    palavras: ["galpão", "ramada", "candeeiro", "mate", "querência", "fogo", "chão", "cuia", "bomba"],
+    cor: "hsl(45, 93%, 47%)"
   },
   { 
-    dominio: "Música e Dança", 
-    ocorrencias: 87, 
-    percentual: 16.1,
-    palavras: ["vanera", "milonga", "gaita", "viola", "bailanta", "cantoria"],
-    cor: "#ef4444"
+    dominio: "Sentimentos e Poesia", 
+    ocorrencias: 28, 
+    percentual: 16.5,
+    palavras: ["verso", "saudade", "sonhos", "coplas", "mansidão", "calma", "silêncio"],
+    cor: "hsl(291, 64%, 42%)"
   },
   { 
-    dominio: "Costumes e Alimentação", 
-    ocorrencias: 76, 
-    percentual: 14.2,
-    palavras: ["chimarrão", "churrasco", "mate", "carreteiro", "costela", "cevada"],
-    cor: "#06b6d4"
+    dominio: "Tradição Gaúcha", 
+    ocorrencias: 24, 
+    percentual: 14.1,
+    palavras: ["maragato", "pañuelo", "mate", "maçanilha", "prenda", "campereada"],
+    cor: "hsl(0, 72%, 51%)"
   },
 ];
 
 const lematizacaoData = [
-  { original: "empresas", lema: "empresa", classe: "NOUN" },
-  { original: "investem", lema: "investir", classe: "VERB" },
-  { original: "desenvolvendo", lema: "desenvolver", classe: "VERB" },
-  { original: "digitais", lema: "digital", classe: "ADJ" },
-  { original: "rapidamente", lema: "rápido", classe: "ADV" },
+  { original: "sonhos", lema: "sonho", classe: "NOUN" },
+  { original: "adormecidos", lema: "adormecer", classe: "VERB" },
+  { original: "coplas", lema: "copla", classe: "NOUN" },
+  { original: "suados", lema: "suado", classe: "ADJ" },
+  { original: "vestidos", lema: "vestir", classe: "VERB" },
+  { original: "arreios", lema: "arreio", classe: "NOUN" },
 ];
 
 const logLikelihoodData = [
-  { palavra: "tecnologia", valor: 48.50, cor: "#ef4444" },
-  { palavra: "digital", valor: 42.30, cor: "#ef4444" },
-  { palavra: "inovação", valor: 38.70, cor: "#ef4444" },
-  { palavra: "desenvolvimento", valor: 28.40, cor: "#f59e0b" },
-  { palavra: "dados", valor: 24.10, cor: "#f59e0b" },
-  { palavra: "sistema", valor: 8.30, cor: "#10b981" },
+  { palavra: "verso", valor: 52.8, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "tarumã", valor: 48.3, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "galpão", valor: 45.2, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "saudade", valor: 38.7, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "várzea", valor: 32.4, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "coxilha", valor: 28.9, cor: "hsl(45, 93%, 47%)" },
+  { palavra: "gateada", valor: 24.1, cor: "hsl(45, 93%, 47%)" },
+  { palavra: "campanha", valor: 18.5, cor: "hsl(45, 93%, 47%)" },
+  { palavra: "horizonte", valor: 8.3, cor: "hsl(142, 71%, 45%)" },
 ];
 
 const miScoreData = [
-  { palavra: "tecnologia", valor: 7.20, cor: "#3b82f6" },
-  { palavra: "digital", valor: 6.80, cor: "#3b82f6" },
-  { palavra: "inovação", valor: 6.50, cor: "#8b5cf6" },
-  { palavra: "desenvolvimento", valor: 5.20, cor: "#8b5cf6" },
-  { palavra: "dados", valor: 4.80, cor: "#8b5cf6" },
-  { palavra: "sistema", valor: 2.10, cor: "#6b7280" },
+  { palavra: "verso", valor: 9.2, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "tarumã", valor: 8.8, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "saudade", valor: 8.5, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "galpão", valor: 7.9, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "várzea", valor: 7.2, cor: "hsl(0, 72%, 51%)" },
+  { palavra: "sonhos", valor: 5.8, cor: "hsl(45, 93%, 47%)" },
+  { palavra: "mate", valor: 4.9, cor: "hsl(45, 93%, 47%)" },
+  { palavra: "horizonte", valor: 3.2, cor: "hsl(142, 71%, 45%)" },
 ];
 
 const palavrasChaveData = [
-  { palavra: "tecnologia", ll: 48.50, mi: 7.20, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "digital", ll: 42.30, mi: 6.80, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "inovação", ll: 38.70, mi: 6.50, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "desenvolvimento", ll: 28.40, mi: 5.20, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "dados", ll: 24.10, mi: 4.80, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "sistema", ll: 8.30, mi: 2.10, significancia: "Baixa", efeito: "Normal", efeitoIcon: TrendingUp },
-  { palavra: "mercado", ll: -8.20, mi: 1.80, significancia: "Baixa", efeito: "Sub-uso", efeitoIcon: TrendingDown },
-  { palavra: "empresa", ll: -12.50, mi: 1.50, significancia: "Média", efeito: "Sub-uso", efeitoIcon: TrendingDown },
+  { palavra: "verso", ll: 52.8, mi: 9.2, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "tarumã", ll: 48.3, mi: 8.8, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "saudade", ll: 38.7, mi: 8.5, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "galpão", ll: 45.2, mi: 7.9, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "várzea", ll: 32.4, mi: 7.2, significancia: "Alta", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "coxilha", ll: 28.9, mi: 5.8, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "gateada", ll: 24.1, mi: 4.9, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "sonhos", ll: 18.5, mi: 3.8, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "campanha", ll: 15.2, mi: 3.2, significancia: "Baixa", efeito: "Normal", efeitoIcon: TrendingUp },
 ];
 
 export default function Analise() {
@@ -189,7 +196,7 @@ export default function Analise() {
                     <div>
                       <CardTitle>Domínios Semânticos Identificados</CardTitle>
                       <CardDescription>
-                        Análise baseada em IA - 5 domínios detectados em 185 palavras
+                        Análise baseada em IA - 5 domínios detectados em 170 palavras
                       </CardDescription>
                     </div>
                   </div>
@@ -253,7 +260,7 @@ export default function Analise() {
                           <div 
                             className="h-8 rounded-full transition-all" 
                             style={{ 
-                              width: `${(item.ocorrencias / 185) * 100}%`, 
+                              width: `${(item.ocorrencias / 170) * 100}%`, 
                               backgroundColor: item.cor 
                             }}
                           />
@@ -369,34 +376,46 @@ export default function Analise() {
                 <div className="flex items-center justify-center bg-muted/20 rounded-lg p-8 min-h-[400px]">
                   <div className="relative w-full h-full flex items-center justify-center">
                     <button
-                      onClick={() => handleWordClick("gaúcho")}
+                      onClick={() => handleWordClick("verso")}
                       className="absolute top-1/4 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full border-2 border-primary text-primary font-semibold hover:scale-110 transition-transform cursor-pointer"
                     >
-                      gaúcho
+                      verso
                     </button>
                     <button
-                      onClick={() => handleWordClick("pilcha")}
+                      onClick={() => handleWordClick("tarumã")}
                       className="absolute top-1/2 left-1/4 px-4 py-2 rounded-full border-2 border-primary/60 text-foreground hover:scale-110 transition-transform cursor-pointer"
                     >
-                      pilcha
+                      tarumã
                     </button>
                     <button
-                      onClick={() => handleWordClick("tradição")}
+                      onClick={() => handleWordClick("saudade")}
                       className="absolute top-1/2 right-1/4 px-4 py-2 rounded-full border-2 border-primary/60 text-foreground hover:scale-110 transition-transform cursor-pointer"
                     >
-                      tradição
-                    </button>
-                    <button
-                      onClick={() => handleWordClick("cultura")}
-                      className="absolute bottom-1/4 left-1/3 px-4 py-2 rounded-full border-2 border-primary/40 text-muted-foreground hover:scale-110 transition-transform cursor-pointer"
-                    >
-                      cultura
+                      saudade
                     </button>
                     <button
                       onClick={() => handleWordClick("galpão")}
-                      className="absolute bottom-1/4 right-1/3 px-4 py-2 rounded-full border-2 border-primary/40 text-muted-foreground hover:scale-110 transition-transform cursor-pointer"
+                      className="absolute bottom-1/4 left-1/3 px-4 py-2 rounded-full border-2 border-primary/40 text-muted-foreground hover:scale-110 transition-transform cursor-pointer"
                     >
                       galpão
+                    </button>
+                    <button
+                      onClick={() => handleWordClick("várzea")}
+                      className="absolute bottom-1/4 right-1/3 px-4 py-2 rounded-full border-2 border-primary/40 text-muted-foreground hover:scale-110 transition-transform cursor-pointer"
+                    >
+                      várzea
+                    </button>
+                    <button
+                      onClick={() => handleWordClick("sonhos")}
+                      className="absolute top-1/3 left-1/5 px-3 py-2 rounded-full border border-primary/30 text-muted-foreground hover:scale-110 transition-transform cursor-pointer text-sm"
+                    >
+                      sonhos
+                    </button>
+                    <button
+                      onClick={() => handleWordClick("gateada")}
+                      className="absolute top-2/3 right-1/5 px-3 py-2 rounded-full border border-primary/30 text-muted-foreground hover:scale-110 transition-transform cursor-pointer text-sm"
+                    >
+                      gateada
                     </button>
                   </div>
                 </div>
@@ -407,40 +426,54 @@ export default function Analise() {
                     <div className="space-y-3">
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-success/10 text-success">Positiva</Badge>
-                          <span className="font-semibold">tecnologia</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 85%</span>
+                          <Badge className="bg-green-500/10 text-green-500">Positiva</Badge>
+                          <span className="font-semibold">calma</span>
+                          <span className="text-sm text-muted-foreground ml-auto">Força: 88%</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-success/5">inovação</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">digital</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">sistema</Badge>
+                          <Badge variant="outline" className="text-xs bg-green-500/5">copada</Badge>
+                          <Badge variant="outline" className="text-xs bg-green-500/5">lindo</Badge>
+                          <Badge variant="outline" className="text-xs bg-green-500/5">primavera</Badge>
                         </div>
                       </div>
 
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-success/10 text-success">Positiva</Badge>
-                          <span className="font-semibold">inovação</span>
+                          <Badge className="bg-blue-500/10 text-blue-500">Neutro</Badge>
+                          <span className="font-semibold">tarumã</span>
+                          <span className="text-sm text-muted-foreground ml-auto">Força: 72%</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge variant="outline" className="text-xs bg-blue-500/5">várzea</Badge>
+                          <Badge variant="outline" className="text-xs bg-blue-500/5">galpão</Badge>
+                          <Badge variant="outline" className="text-xs bg-blue-500/5">mate</Badge>
+                          <Badge variant="outline" className="text-xs bg-blue-500/5">arreios</Badge>
+                        </div>
+                      </div>
+
+                      <div className="p-3 border rounded-lg">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-amber-500/10 text-amber-500">Melancólico</Badge>
+                          <span className="font-semibold">saudade</span>
                           <span className="text-sm text-muted-foreground ml-auto">Força: 92%</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-success/5">tecnologia</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">desenvolvimento</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">digital</Badge>
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">cansado</Badge>
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">silêncio</Badge>
+                          <Badge variant="outline" className="text-xs bg-amber-500/5">redomona</Badge>
                         </div>
                       </div>
 
                       <div className="p-3 border rounded-lg">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-success/10 text-success">Positiva</Badge>
-                          <span className="font-semibold">digital</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 78%</span>
+                          <Badge className="bg-purple-500/10 text-purple-500">Contemplativo</Badge>
+                          <span className="font-semibold">sonhos</span>
+                          <span className="text-sm text-muted-foreground ml-auto">Força: 85%</span>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-success/5">tecnologia</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">sistema</Badge>
-                          <Badge variant="outline" className="text-xs bg-success/5">comunicação</Badge>
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">mansidão</Badge>
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">querência</Badge>
+                          <Badge variant="outline" className="text-xs bg-purple-500/5">adormecidos</Badge>
                         </div>
                       </div>
                     </div>
@@ -509,16 +542,16 @@ export default function Analise() {
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#ef4444]" />
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(0, 72%, 51%)" }} />
                     <span>LL {'>'} 15.13 = p {'<'} 0.0001 (extremamente significativo)</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#f59e0b]" />
-                    <span>LL {'>'} 6.63 = p {'<'} 0.01 (muito significativo)</span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(45, 93%, 47%)" }} />
+                    <span>LL {'>'} 6.63 = p {'<'} 0.01 (significativo)</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#10b981]" />
-                    <span>LL {'>'} 3.84 = p {'<'} 0.05 (significativo)</span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(142, 71%, 45%)" }} />
+                    <span>LL {'>'} 3.84 = p {'<'} 0.05 (pouco significativo)</span>
                   </div>
                 </div>
               </CardContent>
@@ -579,16 +612,16 @@ export default function Analise() {
                 </ResponsiveContainer>
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#3b82f6]" />
-                    <span>MI {'>'} 6 = Associação muito forte</span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(0, 72%, 51%)" }} />
+                    <span>MI {'>'} 6 = Associação forte</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#8b5cf6]" />
-                    <span>MI 4-6 = Associação forte</span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(45, 93%, 47%)" }} />
+                    <span>MI 4-6 = Associação moderada</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
-                    <div className="w-3 h-3 rounded bg-[#6b7280]" />
-                    <span>MI {'<'} 4 = Associação moderada/fraca</span>
+                    <div className="w-3 h-3 rounded" style={{ backgroundColor: "hsl(142, 71%, 45%)" }} />
+                    <span>MI {'<'} 4 = Associação fraca</span>
                   </div>
                 </div>
               </CardContent>
@@ -665,37 +698,35 @@ export default function Analise() {
               <CardDescription>Visualização interativa dos principais termos</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap items-center justify-center gap-8 py-12 min-h-[300px]">
-                <button
-                  onClick={() => handleWordClick("verso")}
-                  className="text-5xl font-bold text-primary hover:scale-110 transition-transform cursor-pointer"
-                >
-                  VERSO
-                </button>
-                <button
-                  onClick={() => handleWordClick("campo")}
-                  className="text-4xl font-bold text-success hover:scale-110 transition-transform cursor-pointer"
-                >
-                  CAMPO
-                </button>
-                <button
-                  onClick={() => handleWordClick("saudade")}
-                  className="text-3xl font-bold text-accent hover:scale-110 transition-transform cursor-pointer"
-                >
-                  SAUDADE
-                </button>
-                <button
-                  onClick={() => handleWordClick("galpão")}
-                  className="text-4xl font-bold text-success hover:scale-110 transition-transform cursor-pointer"
-                >
-                  GALPÃO
-                </button>
-                <button
-                  onClick={() => handleWordClick("tarumã")}
-                  className="text-3xl font-bold text-primary hover:scale-110 transition-transform cursor-pointer"
-                >
-                  TARUMÃ
-                </button>
+              <div className="space-y-6">
+                <p className="text-sm text-muted-foreground text-center">
+                  Domínios semânticos principais identificados na música
+                </p>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
+                  {dominiosData.map((dominio) => (
+                    <div key={dominio.dominio} className="space-y-3 text-center">
+                      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {dominio.dominio}
+                      </h4>
+                      <div className="flex flex-col gap-2 items-center">
+                        {dominio.palavras.slice(0, 4).map((word, idx) => (
+                          <button
+                            key={word}
+                            onClick={() => handleWordClick(word)}
+                            className="transition-all capitalize hover:scale-110 font-bold"
+                            style={{
+                              fontSize: `${2.5 - idx * 0.3}rem`,
+                              color: dominio.cor,
+                              opacity: 1 - idx * 0.15
+                            }}
+                          >
+                            {word}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>
