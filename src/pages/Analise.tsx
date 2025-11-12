@@ -264,72 +264,72 @@ const lematizacaoData = [{
 const logLikelihoodData = [{
   palavra: "verso",
   valor: 52.8,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "tarumã",
   valor: 48.3,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "galpão",
   valor: 45.2,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "saudade",
   valor: 38.7,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "várzea",
   valor: 32.4,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "coxilha",
   valor: 28.9,
-  cor: "hsl(45, 93%, 47%)"
+  cor: "hsl(0, 72%, 51%)"
 }, {
   palavra: "gateada",
   valor: 24.1,
-  cor: "hsl(45, 93%, 47%)"
+  cor: "hsl(0, 72%, 51%)"
 }, {
   palavra: "campanha",
   valor: 18.5,
-  cor: "hsl(45, 93%, 47%)"
+  cor: "hsl(0, 72%, 51%)"
 }, {
   palavra: "horizonte",
   valor: 8.3,
-  cor: "hsl(142, 71%, 45%)"
+  cor: "hsl(45, 93%, 47%)"
 }];
 const miScoreData = [{
   palavra: "verso",
   valor: 9.2,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "tarumã",
   valor: 8.8,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "saudade",
   valor: 8.5,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "galpão",
   valor: 7.9,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "várzea",
   valor: 7.2,
-  cor: "hsl(0, 72%, 51%)"
+  cor: "hsl(142, 71%, 45%)"
 }, {
   palavra: "sonhos",
   valor: 5.8,
-  cor: "hsl(45, 93%, 47%)"
+  cor: "hsl(0, 72%, 51%)"
 }, {
   palavra: "mate",
   valor: 4.9,
-  cor: "hsl(45, 93%, 47%)"
+  cor: "hsl(0, 72%, 51%)"
 }, {
   palavra: "horizonte",
   valor: 3.2,
-  cor: "hsl(142, 71%, 45%)"
+  cor: "hsl(45, 93%, 47%)"
 }];
 const palavrasChaveData = [{
   palavra: "verso",
@@ -696,14 +696,17 @@ export default function Analise() {
                   <div className="p-4 bg-muted/30 rounded-lg border">
                     <h4 className="font-semibold mb-2 flex items-center gap-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      Constelação Orbital - Prosódia Semântica
+                      Sistema Orbital Hierárquico - Prosódia Semântica
                     </h4>
                     <p className="text-sm text-muted-foreground mb-3">
-                      A palavra central <span className="font-semibold text-foreground">"verso"</span> é o protagonista personificado do poema. 
-                      As demais palavras orbitam em diferentes distâncias, refletindo sua força de associação semântica no corpus.
+                      Visualização hierárquica em 3 níveis: <strong>(1)</strong> Clique em "Canção Analisada" para ver os sistemas orbitais, 
+                      <strong>(2)</strong> clique em um sistema (verso, saudade, sonhos, etc.) para ver em detalhe suas palavras e força de associação semântica.
                     </p>
                   </div>
-                  <OrbitalConstellationChart />
+                  <OrbitalConstellationChart 
+                    songName="Quando o verso vem pras casa"
+                    artistName="Luiz Marenco"
+                  />
                 </div>
 
                 <div className="space-y-4">
@@ -1101,19 +1104,19 @@ export default function Analise() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(0, 72%, 51%)"
+                    backgroundColor: "hsl(142, 71%, 45%)"
                   }} />
                     <span>LL {'>'} 15.13 = p {'<'} 0.0001 (extremamente significativo)</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(45, 93%, 47%)"
+                    backgroundColor: "hsl(0, 72%, 51%)"
                   }} />
                     <span>LL {'>'} 6.63 = p {'<'} 0.01 (significativo)</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(142, 71%, 45%)"
+                    backgroundColor: "hsl(45, 93%, 47%)"
                   }} />
                     <span>LL {'>'} 3.84 = p {'<'} 0.05 (pouco significativo)</span>
                   </div>
@@ -1168,19 +1171,19 @@ export default function Analise() {
                 <div className="mt-4 space-y-2">
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(0, 72%, 51%)"
+                    backgroundColor: "hsl(142, 71%, 45%)"
                   }} />
                     <span>MI {'>'} 6 = Associação forte</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(45, 93%, 47%)"
+                    backgroundColor: "hsl(0, 72%, 51%)"
                   }} />
                     <span>MI 4-6 = Associação moderada</span>
                   </div>
                   <div className="flex items-center gap-2 text-xs">
                     <div className="w-3 h-3 rounded" style={{
-                    backgroundColor: "hsl(142, 71%, 45%)"
+                    backgroundColor: "hsl(45, 93%, 47%)"
                   }} />
                     <span>MI {'<'} 4 = Associação fraca</span>
                   </div>
