@@ -697,7 +697,7 @@ export default function Analise() {
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
   };
-  return <div className="pt-[88px] p-8 space-y-8">
+  return <div className="pt-[150px] px-8 pb-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold mb-2">

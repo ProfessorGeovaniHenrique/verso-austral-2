@@ -12,7 +12,7 @@ const NotFound = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <div className="flex min-h-[calc(100vh-120px)] items-center justify-center pt-[120px]">
+      <div className="flex min-h-[calc(100vh-150px)] items-center justify-center pt-[150px]">
         <div className="text-center">
           <h1 className="mb-4 text-4xl font-bold">404</h1>
           <p className="mb-4 text-xl text-muted-foreground">Página não encontrada</p>
