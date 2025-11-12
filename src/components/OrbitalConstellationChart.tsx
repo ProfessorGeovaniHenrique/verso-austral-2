@@ -31,6 +31,9 @@ export const OrbitalConstellationChart = ({
   const [viewMode, setViewMode] = useState<'mother' | 'systems' | 'zoomed'>('mother');
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [customAngles, setCustomAngles] = useState<Record<string, number>>({});
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const [draggedButton, setDraggedButton] = useState<string | null>(null);
@@ -41,6 +44,7 @@ export const OrbitalConstellationChart = ({
   const [selectedWordForKwic, setSelectedWordForKwic] = useState<string>("");
   const [isDragging, setIsDragging] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Mock KWIC data - será substituído por dados reais
   const getMockKWICData = (word: string) => [
@@ -955,18 +959,67 @@ export const OrbitalConstellationChart = ({
     );
   };
 
-  // Handlers de zoom
-  const handleWheel = (e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? -0.1 : 0.1;
-      setZoomLevel(prev => Math.max(0.5, Math.min(2, prev + delta)));
+  // Handlers de Pan (arrastar canvas)
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'svg' || target.classList.contains('pan-area')) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
     }
-  };
+  }, [panOffset]);
 
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(2, prev + 0.2));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.2));
-  const handleResetZoom = () => setZoomLevel(1);
+  const handleCanvasPanMove = useCallback((e: React.MouseEvent) => {
+    if (!isPanning) return;
+    setPanOffset({
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y
+    });
+  }, [isPanning, panStart]);
+
+  const handleCanvasPanEnd = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Handlers de zoom com foco no cursor
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    // Posição do cursor relativa ao container
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Calcula novo zoom
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newZoom = Math.max(0.5, Math.min(2, zoomLevel + delta));
+    
+    // Ajusta pan para manter o foco no cursor
+    const zoomRatio = newZoom / zoomLevel;
+    const newPanX = mouseX - (mouseX - panOffset.x) * zoomRatio;
+    const newPanY = mouseY - (mouseY - panOffset.y) * zoomRatio;
+    
+    setZoomLevel(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  }, [zoomLevel, panOffset]);
+
+  const handleZoomIn = () => {
+    const newZoom = Math.min(2, zoomLevel + 0.2);
+    setZoomLevel(newZoom);
+  };
+  
+  const handleZoomOut = () => {
+    const newZoom = Math.max(0.5, zoomLevel - 0.2);
+    setZoomLevel(newZoom);
+  };
+  
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
 
   return (
     <div className="space-y-3">
@@ -997,8 +1050,13 @@ export const OrbitalConstellationChart = ({
       </div>
 
       <div
-        className="relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border overflow-hidden transition-all duration-500 p-4"
+        ref={containerRef}
+        className={`relative w-full bg-gradient-to-br from-background to-muted/20 rounded-lg border overflow-hidden transition-all duration-500 p-4 ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
         onWheel={handleWheel}
+        onMouseDown={handleCanvasMouseDown}
+        onMouseMove={handleCanvasPanMove}
+        onMouseUp={handleCanvasPanEnd}
+        onMouseLeave={handleCanvasPanEnd}
       >
         {/* Controles de Zoom - Para visualizações mother e systems */}
         {(viewMode === 'mother' || viewMode === 'systems') && (
@@ -1027,25 +1085,39 @@ export const OrbitalConstellationChart = ({
           </div>
         )}
 
-        <div
-          className={`transition-all duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
-        >
-          {viewMode === 'mother' && renderMotherOrbital()}
-        </div>
+        <div className="pan-area" style={{ pointerEvents: 'none' }}>
+          <div
+            className={`transition-all duration-300 ${viewMode === 'mother' ? 'opacity-100' : 'opacity-0 hidden'}`}
+            style={{ 
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`, 
+              transformOrigin: 'top left',
+              pointerEvents: 'auto'
+            }}
+          >
+            {viewMode === 'mother' && renderMotherOrbital()}
+          </div>
 
-        <div
-          className={`transition-all duration-300 ${viewMode === 'systems' ? 'opacity-100' : 'opacity-0 hidden'}`}
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
-        >
-          {viewMode === 'systems' && renderSystemsGrid()}
-        </div>
+          <div
+            className={`transition-all duration-300 ${viewMode === 'systems' ? 'opacity-100' : 'opacity-0 hidden'}`}
+            style={{ 
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`, 
+              transformOrigin: 'top left',
+              pointerEvents: 'auto'
+            }}
+          >
+            {viewMode === 'systems' && renderSystemsGrid()}
+          </div>
 
-        <div
-          className={`transition-all duration-300 ${viewMode === 'zoomed' ? 'opacity-100' : 'opacity-0 hidden'}`}
-          style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
-        >
-          {viewMode === 'zoomed' && renderZoomedSystem()}
+          <div
+            className={`transition-all duration-300 ${viewMode === 'zoomed' ? 'opacity-100' : 'opacity-0 hidden'}`}
+            style={{ 
+              transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`, 
+              transformOrigin: 'top left',
+              pointerEvents: 'auto'
+            }}
+          >
+            {viewMode === 'zoomed' && renderZoomedSystem()}
+          </div>
         </div>
       </div>
 

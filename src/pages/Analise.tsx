@@ -543,13 +543,17 @@ export default function Analise() {
   const [selectedWord, setSelectedWord] = useState("");
   const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<typeof dominiosData[0] | null>(null);
-  const [zoomLevel, setZoomLevel] = useState<number>(0.85);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [orbitProgress, setOrbitProgress] = useState<Record<string, number>>({});
-  const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingWord, setIsDraggingWord] = useState(false);
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const handleWordClick = (word: string) => {
-    if (isDragging) return;
+    if (isDraggingWord || isPanning) return;
     setSelectedWord(word);
     setModalOpen(true);
   };
@@ -575,7 +579,7 @@ export default function Analise() {
     e.preventDefault();
     e.stopPropagation();
     setDraggedWord(wordKey);
-    setIsDragging(false);
+    setIsDraggingWord(false);
     
     const target = e.currentTarget;
     target.dataset.centerX = centerX.toString();
@@ -585,7 +589,7 @@ export default function Analise() {
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!draggedWord || !svgRef.current) return;
     
-    setIsDragging(true);
+    setIsDraggingWord(true);
     
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
@@ -616,6 +620,7 @@ export default function Analise() {
 
   const handleMouseUp = useCallback(() => {
     setDraggedWord(null);
+    setTimeout(() => setIsDraggingWord(false), 50);
   }, []);
 
   // Efeito para gerenciar eventos de drag
@@ -630,10 +635,68 @@ export default function Analise() {
     }
   }, [draggedWord, handleMouseMove, handleMouseUp]);
 
-  // Handlers de zoom
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(1.5, prev + 0.1));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.1));
-  const handleResetZoom = () => setZoomLevel(0.85);
+  // Handlers de Pan (arrastar canvas)
+  const handleCanvasMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    // Verifica se clicou em área vazia (não em um elemento do gráfico)
+    const target = e.target as HTMLElement;
+    if (target.tagName === 'svg' || target.classList.contains('pan-area')) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+    }
+  }, [panOffset]);
+
+  const handleCanvasPanMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isPanning) return;
+    setPanOffset({
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y
+    });
+  }, [isPanning, panStart]);
+
+  const handleCanvasPanEnd = useCallback(() => {
+    setIsPanning(false);
+  }, []);
+
+  // Handlers de zoom com foco no cursor
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    
+    if (!containerRef.current || !svgRef.current) return;
+    
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    // Posição do cursor relativa ao container
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Calcula novo zoom
+    const delta = e.deltaY > 0 ? -0.1 : 0.1;
+    const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
+    
+    // Ajusta pan para manter o foco no cursor
+    const zoomRatio = newZoom / zoomLevel;
+    const newPanX = mouseX - (mouseX - panOffset.x) * zoomRatio;
+    const newPanY = mouseY - (mouseY - panOffset.y) * zoomRatio;
+    
+    setZoomLevel(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  }, [zoomLevel, panOffset]);
+
+  const handleZoomIn = () => {
+    const newZoom = Math.min(3, zoomLevel + 0.2);
+    setZoomLevel(newZoom);
+  };
+  
+  const handleZoomOut = () => {
+    const newZoom = Math.max(0.5, zoomLevel - 0.2);
+    setZoomLevel(newZoom);
+  };
+  
+  const handleResetZoom = () => {
+    setZoomLevel(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
   return <div className="p-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
@@ -1411,12 +1474,20 @@ E uma saudade redomona pelos cantos do galpão`}
             <CardHeader>
               <CardTitle>Nuvem de Domínios Semânticos - Constelação Orbital</CardTitle>
               <CardDescription>
-                Arraste as palavras para movê-las na órbita. Clique nas palavras para ver concordância (KWIC). Use o zoom e as barras de rolagem para navegar.
+                Clique e arraste para mover o gráfico. Use a roda do mouse para zoom. Arraste as palavras para movê-las na órbita. Clique nas palavras para ver concordância (KWIC).
               </CardDescription>
             </CardHeader>
             <CardContent className="p-2">
               <TooltipProvider>
-                <div className="relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border overflow-auto">
+                <div 
+                  ref={containerRef}
+                  className={`relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border overflow-hidden ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  onMouseDown={handleCanvasMouseDown}
+                  onMouseMove={handleCanvasPanMove}
+                  onMouseUp={handleCanvasPanEnd}
+                  onMouseLeave={handleCanvasPanEnd}
+                  onWheel={handleWheel}
+                >
                   {/* Controles de Zoom - Interno */}
                   <div className="absolute top-4 right-4 z-30 flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg">
                     <button
@@ -1429,7 +1500,7 @@ E uma saudade redomona pelos cantos do galpão`}
                     <button
                       onClick={handleResetZoom}
                       className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                      title="Resetar zoom"
+                      title="Resetar zoom e centralizar"
                     >
                       <Minimize2 className="h-3 w-3" />
                     </button>
@@ -1442,13 +1513,26 @@ E uma saudade redomona pelos cantos do galpão`}
                     </button>
                   </div>
 
-                  <svg
-                    ref={svgRef}
-                    width={1300 * zoomLevel}
-                    height={975 * zoomLevel}
-                    viewBox="0 0 1300 975"
-                    className="w-auto h-auto"
+                  <div 
+                    className="pan-area absolute inset-0"
+                    style={{
+                      transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                      transformOrigin: 'top left',
+                      pointerEvents: 'none'
+                    }}
                   >
+                    <svg
+                      ref={svgRef}
+                      width={1300}
+                      height={975}
+                      viewBox="0 0 1300 975"
+                      className="w-auto h-auto"
+                      style={{ 
+                        transform: `scale(${zoomLevel})`,
+                        transformOrigin: 'top left',
+                        pointerEvents: 'auto'
+                      }}
+                    >
                     {dominiosData.map((dominio, index) => {
                       const positions = [
                         { x: 650, y: 487 },
@@ -1526,7 +1610,7 @@ E uma saudade redomona pelos cantos do galpão`}
                                 <circle cx={x} cy={y} r={7.8 * wordScale} fill={dominio.cor} opacity="0.15" />
                                 <circle cx={x} cy={y} r={5.2 * wordScale} fill={dominio.cor} opacity="0.85" style={{ filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))' }} />
                                 <circle cx={x} cy={y} r={15.6 * wordScale} fill="transparent" style={{ cursor: 'pointer' }}
-                                  onClick={(e) => { e.stopPropagation(); if (!isDragging) handleWordClick(palavra); }}>
+                                  onClick={(e) => { e.stopPropagation(); if (!isDraggingWord) handleWordClick(palavra); }}>
                                   {stats && <title>{`${palavra}\nFreq. Bruta: ${stats.frequenciaBruta}\nFreq. Normalizada: ${stats.frequenciaNormalizada}\nProsódia: ${stats.prosodia === 'positiva' ? 'Positiva ✓' : stats.prosodia === 'negativa' ? 'Negativa ✗' : 'Neutra −'}`}</title>}
                                 </circle>
                                 <text x={x} y={y - 2.6 * wordScale} textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold pointer-events-none"
@@ -1539,7 +1623,8 @@ E uma saudade redomona pelos cantos do galpão`}
                     })}
                   </svg>
                 </div>
-              </TooltipProvider>
+              </div>
+            </TooltipProvider>
               
               <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
                 <div className="p-2.5 rounded-lg bg-muted/40 border"><div className="font-semibold mb-1 text-sm">Órbita 1</div><div className="text-muted-foreground">20-30% de freq.</div></div>
