@@ -494,6 +494,249 @@ const palavrasChaveData = [{
   significancia: "Baixa",
   efeito: "Normal",
   efeitoIcon: TrendingUp
+}, {
+  palavra: "campo",
+  ll: 14.8,
+  mi: 3.1,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "horizonte",
+  ll: 13.5,
+  mi: 2.9,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "sombra",
+  ll: 22.3,
+  mi: 4.2,
+  frequenciaBruta: 2,
+  frequenciaNormalizada: 11.8,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "sol",
+  ll: 21.7,
+  mi: 4.0,
+  frequenciaBruta: 2,
+  frequenciaNormalizada: 11.8,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "encilha",
+  ll: 19.2,
+  mi: 3.6,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "arreios",
+  ll: 17.8,
+  mi: 3.4,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "esporas",
+  ll: 16.9,
+  mi: 3.3,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "tropa",
+  ll: 16.2,
+  mi: 3.2,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "lombo",
+  ll: 15.8,
+  mi: 3.1,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "ramada",
+  ll: 18.4,
+  mi: 3.5,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "cambona",
+  ll: 17.1,
+  mi: 3.3,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "mate",
+  ll: 20.5,
+  mi: 3.9,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "querência",
+  ll: 19.8,
+  mi: 3.7,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "fogo",
+  ll: 14.2,
+  mi: 2.9,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "chão",
+  ll: 13.8,
+  mi: 2.8,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Baixa",
+  efeito: "Normal",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "cuia",
+  ll: 18.9,
+  mi: 3.6,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "bomba",
+  ll: 17.5,
+  mi: 3.4,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "candeeiro",
+  ll: 16.7,
+  mi: 3.2,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "coplas",
+  ll: 19.4,
+  mi: 3.7,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "mansidão",
+  ll: 18.6,
+  mi: 3.5,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "calma",
+  ll: 17.9,
+  mi: 3.4,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "silêncio",
+  ll: 16.4,
+  mi: 3.2,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "maragato",
+  ll: 22.8,
+  mi: 4.3,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "pañuelo",
+  ll: 21.6,
+  mi: 4.1,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "maçanilha",
+  ll: 20.2,
+  mi: 3.9,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "prenda",
+  ll: 19.1,
+  mi: 3.7,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
+}, {
+  palavra: "campereada",
+  ll: 18.3,
+  mi: 3.5,
+  frequenciaBruta: 1,
+  frequenciaNormalizada: 5.9,
+  significancia: "Média",
+  efeito: "Sobre-uso",
+  efeitoIcon: TrendingUp
 }];
 
 // Mock data para estatísticas de palavras (para tooltips)
@@ -917,46 +1160,94 @@ E uma saudade redomona pelos cantos do galpão`}
 
                         {/* Palavras com tooltips individuais */}
                         <div className="flex flex-wrap gap-2">
-                          {item.palavras.map((palavra, idx) => (
-                            <UITooltip key={idx}>
-                              <TooltipTrigger asChild>
-                                <Badge 
-                                  className="cursor-pointer hover:scale-110 transition-all border-0 shadow-sm" 
-                                  style={{
-                                    backgroundColor: item.cor,
-                                    color: item.corTexto
-                                  }}
-                                  onClick={() => handleWordClick(palavra)}
-                                >
-                                  {palavra}
-                                </Badge>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-md">
-                                <div className="space-y-2">
-                                  <p className="font-bold text-base">{palavra}</p>
-                                  <div className="text-xs space-y-1">
-                                    <p className="text-muted-foreground">Contexto na música:</p>
-                                    {kwicDataMap[palavra] && kwicDataMap[palavra].length > 0 && (
-                                      <div className="bg-muted/50 p-2 rounded">
-                                        <p className="italic">
-                                          "{kwicDataMap[palavra][0].leftContext} <strong className="text-primary">{palavra}</strong> {kwicDataMap[palavra][0].rightContext}"
-                                        </p>
+                          {item.palavras.map((palavra, idx) => {
+                            // Buscar dados estatísticos da palavra
+                            const palavraChave = palavrasChaveData.find(p => p.palavra === palavra);
+                            const stats = palavraStats[palavra];
+                            
+                            return (
+                              <UITooltip key={idx}>
+                                <TooltipTrigger asChild>
+                                  <Badge 
+                                    className="cursor-pointer hover:scale-110 transition-all border-0 shadow-sm" 
+                                    style={{
+                                      backgroundColor: item.cor,
+                                      color: item.corTexto
+                                    }}
+                                    onClick={() => handleWordClick(palavra)}
+                                  >
+                                    {palavra}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md">
+                                  <div className="space-y-3">
+                                    <div className="flex items-center justify-between gap-4">
+                                      <p className="font-bold text-lg">{palavra}</p>
+                                      {palavraChave && (
+                                        <Badge variant="secondary" className="text-xs">
+                                          {palavraChave.significancia}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    
+                                    {/* Estatísticas */}
+                                    {(palavraChave || stats) && (
+                                      <div className="grid grid-cols-2 gap-3 py-2 border-y">
+                                        <div>
+                                          <p className="text-xs text-muted-foreground">Frequência no Corpus</p>
+                                          <p className="text-sm font-semibold">
+                                            {palavraChave?.frequenciaBruta || stats?.frequenciaBruta || kwicDataMap[palavra]?.length || 1}x
+                                          </p>
+                                        </div>
+                                        {palavraChave && (
+                                          <>
+                                            <div>
+                                              <p className="text-xs text-muted-foreground">Significância</p>
+                                              <div className="flex items-center gap-1">
+                                                <p className="text-sm font-semibold">{palavraChave.significancia}</p>
+                                                {palavraChave.significancia === "Alta" && (
+                                                  <TrendingUp className="h-3 w-3 text-success" />
+                                                )}
+                                              </div>
+                                            </div>
+                                            <div>
+                                              <p className="text-xs text-muted-foreground">Log-Likelihood</p>
+                                              <p className="text-sm font-semibold">{palavraChave.ll.toFixed(1)}</p>
+                                            </div>
+                                            <div>
+                                              <p className="text-xs text-muted-foreground">Efeito</p>
+                                              <p className="text-sm font-semibold">{palavraChave.efeito}</p>
+                                            </div>
+                                          </>
+                                        )}
                                       </div>
                                     )}
-                                    {!kwicDataMap[palavra] && (
-                                      <p className="italic text-muted-foreground">
-                                        Palavra presente no domínio "{item.dominio}"
-                                      </p>
-                                    )}
-                                    <div className="pt-2 border-t flex justify-between items-center">
-                                      <span>Ocorrências: {kwicDataMap[palavra]?.length || 1}</span>
-                                      <span className="text-primary">Clique para ver concordância</span>
+                                    
+                                    {/* Contexto */}
+                                    <div className="text-xs space-y-1">
+                                      <p className="text-muted-foreground font-medium">Contexto na música:</p>
+                                      {kwicDataMap[palavra] && kwicDataMap[palavra].length > 0 && (
+                                        <div className="bg-muted/50 p-2 rounded">
+                                          <p className="italic">
+                                            "{kwicDataMap[palavra][0].leftContext} <strong className="text-primary">{palavra}</strong> {kwicDataMap[palavra][0].rightContext}"
+                                          </p>
+                                        </div>
+                                      )}
+                                      {!kwicDataMap[palavra] && (
+                                        <p className="italic text-muted-foreground">
+                                          Palavra presente no domínio "{item.dominio}"
+                                        </p>
+                                      )}
+                                      <div className="pt-2 flex justify-between items-center text-xs">
+                                        <span>Total de ocorrências: {kwicDataMap[palavra]?.length || 1}</span>
+                                        <span className="text-primary font-medium">Clique para KWIC</span>
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              </TooltipContent>
-                            </UITooltip>
-                          ))}
+                                </TooltipContent>
+                              </UITooltip>
+                            );
+                          })}
                         </div>
 
                         {/* Exemplos contextuais do domínio */}
@@ -1034,7 +1325,8 @@ E uma saudade redomona pelos cantos do galpão`}
                           backgroundColor: 'hsl(var(--background))', 
                           border: '1px solid hsl(var(--border))',
                           borderRadius: '8px',
-                          padding: '12px'
+                          padding: '12px',
+                          color: 'hsl(var(--foreground))'
                         }}
                         formatter={(value: number, name: string, props: any) => {
                           return [
