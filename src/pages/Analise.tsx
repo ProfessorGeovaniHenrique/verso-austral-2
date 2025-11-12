@@ -488,58 +488,173 @@ export default function Analise() {
 
                 <div className="space-y-4">
                   <div>
-                    <h3 className="text-lg font-semibold mb-3">Análise de Prosódia Semântica</h3>
+                    <h3 className="text-lg font-semibold mb-2">Prosódia Semântica</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Conotação revelada por padrões de coocorrência no corpus
+                    </p>
                     <div className="space-y-3">
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-amber-500/10 text-amber-500">Melancólico</Badge>
-                          <span className="font-semibold">saudade</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 92%</span>
+                      <div className="p-4 border rounded-lg bg-card">
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="font-bold text-2xl">saudade</span>
+                          <Badge className="bg-amber-500/10 text-amber-500">Tom Melancólico</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">cansado</Badge>
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">silêncio</Badge>
-                          <Badge variant="outline" className="text-xs bg-amber-500/5">redomona</Badge>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Coocorre frequentemente com palavras de nostalgia e quietude
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">cansado</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500" style={{ width: '85%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">85%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">silêncio</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500" style={{ width: '78%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">78%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">redomona</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-amber-500" style={{ width: '72%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">72%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-green-500/10 text-green-500">Positiva</Badge>
-                          <span className="font-semibold">calma</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 88%</span>
+                      <div className="p-4 border rounded-lg bg-card">
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="font-bold text-2xl">calma</span>
+                          <Badge className="bg-green-500/10 text-green-500">Tom Positivo</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-green-500/5">copada</Badge>
-                          <Badge variant="outline" className="text-xs bg-green-500/5">lindo</Badge>
-                          <Badge variant="outline" className="text-xs bg-green-500/5">primavera</Badge>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Coocorre com palavras que evocam beleza e serenidade
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">copada</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500" style={{ width: '82%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">82%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">lindo</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500" style={{ width: '76%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">76%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">primavera</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500" style={{ width: '68%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">68%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-purple-500/10 text-purple-500">Contemplativo</Badge>
-                          <span className="font-semibold">sonhos</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 85%</span>
+                      <div className="p-4 border rounded-lg bg-card">
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="font-bold text-2xl">sonhos</span>
+                          <Badge className="bg-purple-500/10 text-purple-500">Tom Contemplativo</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">mansidão</Badge>
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">querência</Badge>
-                          <Badge variant="outline" className="text-xs bg-purple-500/5">adormecidos</Badge>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Coocorre com palavras de introspecção e pertencimento
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">mansidão</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{ width: '79%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">79%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">querência</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{ width: '74%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">74%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">adormecidos</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{ width: '65%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">65%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-blue-500/10 text-blue-500">Neutro</Badge>
-                          <span className="font-semibold">tarumã</span>
-                          <span className="text-sm text-muted-foreground ml-auto">Força: 72%</span>
+                      <div className="p-4 border rounded-lg bg-card">
+                        <div className="flex items-start gap-3 mb-3">
+                          <span className="font-bold text-2xl">tarumã</span>
+                          <Badge className="bg-blue-500/10 text-blue-500">Tom Descritivo</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge variant="outline" className="text-xs bg-blue-500/5">várzea</Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-500/5">galpão</Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-500/5">mate</Badge>
-                          <Badge variant="outline" className="text-xs bg-blue-500/5">arreios</Badge>
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Coocorre com palavras concretas do ambiente campeiro
+                        </p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">várzea</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{ width: '88%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">88%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">galpão</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{ width: '71%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">71%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">mate</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{ width: '64%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">64%</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="font-medium">arreios</span>
+                            <div className="flex items-center gap-2">
+                              <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{ width: '58%' }} />
+                              </div>
+                              <span className="text-xs text-muted-foreground">58%</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
