@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Card } from "@/components/ui/card";
+import { useNavigate } from "react-router-dom";
 
 const EmailCaptureSection = () => {
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const validateEmail = (email: string) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,6 +89,20 @@ const EmailCaptureSection = () => {
                   {isLoading ? "Enviando..." : "Me Avise do Lançamento!"}
                 </Button>
               </form>
+              
+              <div className="mt-6 pt-6 border-t border-border">
+                <p className="text-center text-muted-foreground mb-4">
+                  Ou experimente a plataforma agora
+                </p>
+                <Button
+                  onClick={() => navigate("/dashboard")}
+                  variant="outline"
+                  size="lg"
+                  className="w-full h-12 text-lg font-semibold"
+                >
+                  Quero testar a Demo
+                </Button>
+              </div>
             </>
           ) : (
             <div className="text-center py-8">
