@@ -25,6 +25,8 @@ export const OrbitalConstellationChart = ({
 }: OrbitalConstellationChartProps) => {
   const [viewMode, setViewMode] = useState<'mother' | 'systems' | 'zoomed'>('mother');
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
+  const [draggedWord, setDraggedWord] = useState<string | null>(null);
+  const [customPositions, setCustomPositions] = useState<Record<string, { angle: number }>>({});
   // Cores da análise de prosódia semântica e mapeamento de cores por palavra central
   const centerWordColors: Record<string, string> = {
     "verso": "hsl(var(--primary))", // Protagonista Personificado
@@ -108,7 +110,7 @@ export const OrbitalConstellationChart = ({
     4: 95,
   };
 
-  // Renderiza um sistema orbital individual (com suporte a zoom)
+  // Renderiza um sistema orbital individual (com suporte a zoom e drag)
   const renderOrbitalSystem = (system: OrbitalSystem, centerX: number, centerY: number, isZoomed: boolean = false) => {
     const scale = isZoomed ? 2.5 : 1;
     const orbitRadiiScaled = {
@@ -126,16 +128,65 @@ export const OrbitalConstellationChart = ({
       return acc;
     }, {} as Record<number, WordData[]>);
 
-    // Calcula posição de cada palavra em sua órbita
+    // Calcula posição de cada palavra em sua órbita (considerando posições customizadas)
     const getWordPosition = (word: WordData, index: number, totalInOrbit: number) => {
       const orbit = getOrbit(word.strength);
       const radius = orbitRadiiScaled[orbit as keyof typeof orbitRadiiScaled];
-      const angle = (index / totalInOrbit) * 2 * Math.PI - Math.PI / 2;
+      const wordKey = `${system.centerWord}-${word.word}`;
+      
+      // Usa ângulo customizado se existir, senão usa distribuição uniforme
+      const angle = customPositions[wordKey]?.angle ?? ((index / totalInOrbit) * 2 * Math.PI - Math.PI / 2);
       
       return {
         x: centerX + radius * Math.cos(angle),
         y: centerY + radius * Math.sin(angle),
+        angle,
+        radius,
       };
+    };
+
+    // Handler para drag de palavras
+    const handleWordDrag = (word: WordData, event: React.MouseEvent<SVGGElement>) => {
+      if (!isZoomed) return; // Só permite drag no modo zoom
+      
+      const wordKey = `${system.centerWord}-${word.word}`;
+      setDraggedWord(wordKey);
+      
+      const handleMouseMove = (e: MouseEvent) => {
+        const svg = (event.currentTarget as SVGGElement).closest('svg');
+        if (!svg) return;
+        
+        const rect = svg.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        
+        // Converte coordenadas do mouse para viewBox
+        const viewBox = svg.viewBox.baseVal;
+        const scaleX = viewBox.width / rect.width;
+        const scaleY = viewBox.height / rect.height;
+        const x = mouseX * scaleX;
+        const y = mouseY * scaleY;
+        
+        // Calcula o ângulo relativo ao centro do sistema
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const newAngle = Math.atan2(dy, dx);
+        
+        // Atualiza a posição customizada
+        setCustomPositions(prev => ({
+          ...prev,
+          [wordKey]: { angle: newAngle }
+        }));
+      };
+      
+      const handleMouseUp = () => {
+        setDraggedWord(null);
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+      
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
     };
 
     return (
@@ -199,8 +250,16 @@ export const OrbitalConstellationChart = ({
         {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
           wordsInOrbit.map((word, index) => {
             const pos = getWordPosition(word, index, wordsInOrbit.length);
+            const wordKey = `${system.centerWord}-${word.word}`;
+            const isDragging = draggedWord === wordKey;
+            
             return (
-              <g key={`word-${system.centerWord}-${word.word}-${index}`}>
+              <g 
+                key={`word-${system.centerWord}-${word.word}-${index}`}
+                className={isZoomed ? "cursor-move" : ""}
+                onMouseDown={(e) => isZoomed && handleWordDrag(word, e)}
+                style={{ opacity: isDragging ? 0.6 : 1 }}
+              >
                 {/* Glow effect */}
                 <circle
                   cx={pos.x}
@@ -222,7 +281,7 @@ export const OrbitalConstellationChart = ({
                   x={pos.x}
                   y={pos.y - (9 * scale)}
                   textAnchor="middle"
-                  className="fill-foreground font-medium"
+                  className="fill-foreground font-medium pointer-events-none"
                   style={{ fontSize: `${8 * scale}px` }}
                 >
                   {word.word}
@@ -231,7 +290,7 @@ export const OrbitalConstellationChart = ({
                   x={pos.x}
                   y={pos.y + (13 * scale)}
                   textAnchor="middle"
-                  className="fill-muted-foreground"
+                  className="fill-muted-foreground pointer-events-none"
                   style={{ fontSize: `${7 * scale}px` }}
                 >
                   {word.strength}%
@@ -244,7 +303,7 @@ export const OrbitalConstellationChart = ({
     );
   };
 
-  // Renderiza o gráfico orbital "Mãe" com todas as palavras
+  // Renderiza o gráfico orbital "Mãe" com todas as palavras distribuídas em órbitas
   const renderMotherOrbital = () => {
     const centerX = 600;
     const centerY = 400;
@@ -254,33 +313,63 @@ export const OrbitalConstellationChart = ({
       system.words.map(word => ({ ...word, system: system.centerWord }))
     );
     
-    // Calcula a distribuição circular de todas as palavras
-    const totalWords = allWords.length;
-    const radius = 280; // Raio para distribuir todas as palavras
+    // Organiza palavras por órbita baseado na força de associação
+    const wordsByOrbit = allWords.reduce((acc, word) => {
+      const orbit = getOrbit(word.strength);
+      if (!acc[orbit]) acc[orbit] = [];
+      acc[orbit].push(word);
+      return acc;
+    }, {} as Record<number, typeof allWords>);
+    
+    // Define raios das órbitas para o gráfico mãe
+    const motherOrbitRadii = {
+      1: 150,
+      2: 220,
+      3: 290,
+      4: 360,
+    };
     
     return (
       <svg width="1200" height="800" viewBox="0 0 1200 800" className="w-full h-auto">
-        {/* Linhas conectando palavras ao centro */}
-        {allWords.map((word, index) => {
-          const angle = (index / totalWords) * 2 * Math.PI - Math.PI / 2;
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          
-          return (
-            <line
-              key={`line-${word.word}-${index}`}
-              x1={centerX}
-              y1={centerY}
-              x2={x}
-              y2={y}
-              stroke={word.color}
-              strokeWidth="0.5"
-              opacity="0.15"
-            />
-          );
-        })}
+        {/* Desenha as órbitas */}
+        {[1, 2, 3, 4].map((orbit) => (
+          <circle
+            key={`orbit-${orbit}`}
+            cx={centerX}
+            cy={centerY}
+            r={motherOrbitRadii[orbit as keyof typeof motherOrbitRadii]}
+            fill="none"
+            stroke="hsl(var(--border))"
+            strokeWidth="0.5"
+            strokeDasharray="3 3"
+            opacity={0.15}
+          />
+        ))}
 
-        {/* Canção central (clicável) */}
+        {/* Linhas conectando palavras ao centro */}
+        {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
+          wordsInOrbit.map((word, index) => {
+            const radius = motherOrbitRadii[Number(orbit) as keyof typeof motherOrbitRadii];
+            const angle = (index / wordsInOrbit.length) * 2 * Math.PI - Math.PI / 2;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            
+            return (
+              <line
+                key={`line-${word.word}-${index}`}
+                x1={centerX}
+                y1={centerY}
+                x2={x}
+                y2={y}
+                stroke={word.color}
+                strokeWidth="0.5"
+                opacity="0.1"
+              />
+            );
+          })
+        )}
+
+        {/* Centro "Prosódia Semântica" (clicável) */}
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -291,7 +380,7 @@ export const OrbitalConstellationChart = ({
                 <circle
                   cx={centerX}
                   cy={centerY}
-                  r="55"
+                  r="60"
                   fill="hsl(var(--primary))"
                   opacity="0.9"
                 />
@@ -302,7 +391,7 @@ export const OrbitalConstellationChart = ({
                   dominantBaseline="middle"
                   className="fill-primary-foreground font-bold text-base"
                 >
-                  Canção
+                  Prosódia
                 </text>
                 <text
                   x={centerX}
@@ -311,7 +400,7 @@ export const OrbitalConstellationChart = ({
                   dominantBaseline="middle"
                   className="fill-primary-foreground font-bold text-base"
                 >
-                  Analisada
+                  Semântica
                 </text>
               </g>
             </TooltipTrigger>
@@ -319,64 +408,68 @@ export const OrbitalConstellationChart = ({
               <div className="text-center">
                 <p className="font-semibold">{songName}</p>
                 <p className="text-xs text-muted-foreground">{artistName}</p>
+                <p className="text-xs text-muted-foreground mt-1">Clique para ver os sistemas</p>
               </div>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
-        {/* Todas as palavras distribuídas ao redor */}
-        {allWords.map((word, index) => {
-          const angle = (index / totalWords) * 2 * Math.PI - Math.PI / 2;
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          
-          // Tamanho do ponto baseado na força de associação
-          const dotSize = 3 + (word.strength / 100) * 4;
-          
-          return (
-            <g 
-              key={`word-${word.word}-${index}`}
-              className="cursor-pointer transition-all duration-200 hover:opacity-100"
-              style={{ opacity: 0.8 }}
-            >
-              {/* Glow effect */}
-              <circle
-                cx={x}
-                cy={y}
-                r={dotSize * 1.5}
-                fill={word.color}
-                opacity="0.2"
-              />
-              <circle
-                cx={x}
-                cy={y}
-                r={dotSize}
-                fill={word.color}
-                opacity="1"
-                stroke="hsl(var(--background))"
-                strokeWidth="0.5"
-              />
-              <text
-                x={x}
-                y={y - (dotSize + 6)}
-                textAnchor="middle"
-                className="fill-foreground font-medium pointer-events-none"
-                style={{ fontSize: '9px' }}
+        {/* Todas as palavras distribuídas em órbitas */}
+        {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
+          wordsInOrbit.map((word, index) => {
+            const radius = motherOrbitRadii[Number(orbit) as keyof typeof motherOrbitRadii];
+            const angle = (index / wordsInOrbit.length) * 2 * Math.PI - Math.PI / 2;
+            const x = centerX + radius * Math.cos(angle);
+            const y = centerY + radius * Math.sin(angle);
+            
+            // Tamanho do ponto baseado na força de associação
+            const dotSize = 3 + (word.strength / 100) * 4;
+            
+            return (
+              <g 
+                key={`word-${word.word}-${index}`}
+                className="cursor-pointer transition-all duration-200 hover:opacity-100"
+                style={{ opacity: 0.85 }}
               >
-                {word.word}
-              </text>
-              <text
-                x={x}
-                y={y + (dotSize + 12)}
-                textAnchor="middle"
-                className="fill-muted-foreground pointer-events-none"
-                style={{ fontSize: '8px' }}
-              >
-                {word.strength}%
-              </text>
-            </g>
-          );
-        })}
+                {/* Glow effect */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={dotSize * 1.5}
+                  fill={word.color}
+                  opacity="0.2"
+                />
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={dotSize}
+                  fill={word.color}
+                  opacity="1"
+                  stroke="hsl(var(--background))"
+                  strokeWidth="0.5"
+                />
+                <text
+                  x={x}
+                  y={y - (dotSize + 6)}
+                  textAnchor="middle"
+                  className="fill-foreground font-medium pointer-events-none"
+                  style={{ fontSize: '9px' }}
+                >
+                  {word.word}
+                </text>
+                <text
+                  x={x}
+                  y={y + (dotSize + 12)}
+                  textAnchor="middle"
+                  className="fill-muted-foreground pointer-events-none"
+                  style={{ fontSize: '8px' }}
+                >
+                  {word.strength}%
+                </text>
+              </g>
+            );
+          })
+        )}
       </svg>
     );
   };
@@ -437,7 +530,7 @@ export const OrbitalConstellationChart = ({
               Sistema Orbital: {system.centerWord}
             </h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Análise detalhada das associações semânticas
+              Análise detalhada das associações semânticas • Arraste as palavras para reorganizar
             </p>
           </div>
           <button
