@@ -8,7 +8,8 @@ import { KWICModal } from "@/components/KWICModal";
 import { InteractiveSemanticNetwork } from "@/components/InteractiveSemanticNetwork";
 import { OrbitalConstellationChart } from "@/components/OrbitalConstellationChart";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown } from "lucide-react";
+import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown, ZoomIn, ZoomOut, Minimize2 } from "lucide-react";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // Mock data KWIC completo baseado na letra da música
@@ -493,6 +494,50 @@ const palavrasChaveData = [{
   efeito: "Normal",
   efeitoIcon: TrendingUp
 }];
+
+// Mock data para estatísticas de palavras (para tooltips)
+const palavraStats: Record<string, {
+  frequenciaBruta: number;
+  frequenciaNormalizada: number;
+  prosodia: "positiva" | "negativa" | "neutra";
+}> = {
+  "verso": { frequenciaBruta: 4, frequenciaNormalizada: 23.5, prosodia: "positiva" },
+  "tarumã": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
+  "saudade": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "negativa" },
+  "galpão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "várzea": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
+  "sonhos": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
+  "gateada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "mate": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "coxilha": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "neutra" },
+  "sombra": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
+  "arreios": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "esporas": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "prenda": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "ramada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "candeeiro": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "querência": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "cuia": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "maragato": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "campereada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "calma": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "encilha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "campo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "campanha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "horizonte": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "sol": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
+  "tropa": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "lombo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "cambona": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "fogo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "chão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "bomba": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "coplas": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "mansidão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
+  "silêncio": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "negativa" },
+  "pañuelo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
+  "maçanilha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" }
+};
 export default function Analise() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
@@ -1431,207 +1476,248 @@ E uma saudade redomona pelos cantos do galpão`}
         <TabsContent value="nuvem" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Nuvem de Domínios Semânticos - Visualização Orbital</CardTitle>
+              <CardTitle>Nuvem de Domínios Semânticos - Constelação Orbital</CardTitle>
               <CardDescription>
-                Clique nas palavras para ver concordância (KWIC). Arraste os domínios para reorganizar. As palavras estão organizadas em 4 órbitas por frequência.
+                Clique nas palavras para ver concordância (KWIC). Arraste domínios e palavras para reorganizar. 
+                Passe o mouse sobre as palavras para ver estatísticas. As palavras estão em 4 órbitas por frequência.
               </CardDescription>
             </CardHeader>
-            <CardContent className="relative">
-              {/* Controles de Zoom */}
-              <div className="absolute top-4 right-4 z-20 flex flex-col gap-1.5 bg-background/90 backdrop-blur-sm border rounded-lg p-1.5 shadow-lg">
-                <button
-                  onClick={handleZoomIn}
-                  className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                  title="Zoom In"
+            <CardContent className="p-2">
+              <TooltipProvider>
+                <div 
+                  ref={containerRef} 
+                  className="relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg cursor-default select-none border overflow-hidden" 
+                  onMouseMove={handleMouseMove} 
+                  onMouseUp={handleMouseUp} 
+                  onMouseLeave={handleMouseUp}
                 >
-                  <span className="text-base font-bold">+</span>
-                </button>
-                <button
-                  onClick={handleResetZoom}
-                  className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors text-[10px] font-medium"
-                  title="Reset Zoom"
-                >
-                  {Math.round(zoomLevel * 100)}%
-                </button>
-                <button
-                  onClick={handleZoomOut}
-                  className="w-7 h-7 flex items-center justify-center hover:bg-muted rounded transition-colors"
-                  title="Zoom Out"
-                >
-                  <span className="text-base font-bold">−</span>
-                </button>
-              </div>
-              
-              <div 
-                ref={containerRef} 
-                className="relative h-[900px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg cursor-default select-none border overflow-hidden transition-transform duration-300" 
-                onMouseMove={handleMouseMove} 
-                onMouseUp={handleMouseUp} 
-                onMouseLeave={handleMouseUp}
-                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
-              >
-                {dominiosData.map((dominio, index) => {
-                  // Posições centrais para cada domínio baseado no seu tamanho/relevância
-                  const positions = [
-                    { top: 450, left: 500 },  // Centro - Natureza (maior)
-                    { top: 200, left: 250 },  // Topo esquerda
-                    { top: 200, left: 750 },  // Topo direita
-                    { top: 650, left: 300 },  // Baixo esquerda
-                    { top: 650, left: 700 }   // Baixo direita
-                  ];
-                  
-                  const position = positions[index];
-                  const posKey = dominio.dominio as keyof typeof domainPositions;
-                  const customPos = domainPositions[posKey];
-                  
-                  // Converte posição customizada para pixels se existir
-                  let centerX = position.left;
-                  let centerY = position.top;
-                  
-                  if (customPos) {
-                    const containerWidth = 1000;
-                    const containerHeight = 900;
-                    if ('left' in customPos) {
-                      centerX = (customPos.left / 100) * containerWidth;
-                    } else if ('right' in customPos) {
-                      centerX = containerWidth - (customPos.right / 100) * containerWidth;
-                    }
-                    if ('top' in customPos) {
-                      centerY = (customPos.top / 100) * containerHeight;
-                    } else if ('bottom' in customPos) {
-                      centerY = containerHeight - (customPos.bottom / 100) * containerHeight;
-                    }
-                  }
-                  
-                  // Calcula tamanho do badge baseado na relevância
-                  const sizeScale = 0.5 + (dominio.percentual / 28.2) * 0.5; // 28.2% é o maior
-                  const fontSize = `${1 + sizeScale * 0.5}rem`;
-                  const padding = `${0.5 + sizeScale * 0.3}rem ${0.8 + sizeScale * 0.5}rem`;
-                  
-                  // Define 4 órbitas baseadas em frequência
-                  const orbitRadii = [
-                    60 * sizeScale,   // Órbita 1 (palavras mais frequentes)
-                    95 * sizeScale,   // Órbita 2
-                    130 * sizeScale,  // Órbita 3
-                    165 * sizeScale   // Órbita 4 (palavras menos frequentes)
-                  ];
-                  
-                  // Distribui palavras nas órbitas
-                  const totalWords = dominio.palavras.length;
-                  const wordsPerOrbit = Math.ceil(totalWords / 4);
-                  
-                  return (
-                    <div
-                      key={dominio.dominio}
-                      className="absolute"
-                      style={{
-                        left: `${centerX}px`,
-                        top: `${centerY}px`,
-                        transform: 'translate(-50%, -50%)'
-                      }}
+                  {/* Controles de Zoom - Interno */}
+                  <div className="absolute top-4 right-4 z-30 flex flex-col gap-1 bg-background/95 backdrop-blur-sm border rounded-lg p-1 shadow-lg">
+                    <button
+                      onClick={handleZoomIn}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+                      title="Aumentar zoom"
                     >
-                      {/* Círculos de órbita */}
-                      {orbitRadii.map((radius, orbitIndex) => (
+                      <ZoomIn className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={handleResetZoom}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors text-xs font-medium"
+                      title="Resetar zoom"
+                    >
+                      <Minimize2 className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={handleZoomOut}
+                      className="w-8 h-8 flex items-center justify-center hover:bg-muted rounded transition-colors"
+                      title="Reduzir zoom"
+                    >
+                      <ZoomOut className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  {/* Container com zoom aplicado */}
+                  <div 
+                    className="absolute inset-0 transition-transform duration-300"
+                    style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center' }}
+                  >
+                    {dominiosData.map((dominio, index) => {
+                      // Posições mais próximas para reduzir espaço vazio
+                      const positions = [
+                        { top: 375, left: 500 },  // Centro - Natureza
+                        { top: 150, left: 300 },  // Topo esquerda - Cavalo
+                        { top: 150, left: 700 },  // Topo direita - Vida
+                        { top: 580, left: 280 },  // Baixo esquerda - Sentimentos
+                        { top: 580, left: 720 }   // Baixo direita - Tradição
+                      ];
+                      
+                      const position = positions[index];
+                      const posKey = dominio.dominio as keyof typeof domainPositions;
+                      const customPos = domainPositions[posKey];
+                      
+                      let centerX = position.left;
+                      let centerY = position.top;
+                      
+                      if (customPos) {
+                        const containerWidth = 1000;
+                        const containerHeight = 750;
+                        if ('left' in customPos) {
+                          centerX = (customPos.left / 100) * containerWidth;
+                        } else if ('right' in customPos) {
+                          centerX = containerWidth - (customPos.right / 100) * containerWidth;
+                        }
+                        if ('top' in customPos) {
+                          centerY = (customPos.top / 100) * containerHeight;
+                        } else if ('bottom' in customPos) {
+                          centerY = containerHeight - (customPos.bottom / 100) * containerHeight;
+                        }
+                      }
+                      
+                      // Tamanho baseado na relevância (percentual)
+                      const sizeScale = 0.6 + (dominio.percentual / 28.2) * 0.8;
+                      const fontSize = `${0.85 + sizeScale * 0.4}rem`;
+                      const padding = `${0.5 + sizeScale * 0.3}rem ${0.7 + sizeScale * 0.5}rem`;
+                      
+                      // 4 órbitas com raios diferentes
+                      const orbitRadii = [
+                        70 * sizeScale,   // Órbita 1: 20-30%
+                        110 * sizeScale,  // Órbita 2: 15-20%
+                        150 * sizeScale,  // Órbita 3: 10-15%
+                        190 * sizeScale   // Órbita 4: <10%
+                      ];
+                      
+                      const totalWords = dominio.palavras.length;
+                      const wordsPerOrbit = Math.ceil(totalWords / 4);
+                      
+                      return (
                         <div
-                          key={`orbit-${orbitIndex}`}
-                          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none"
+                          key={dominio.dominio}
+                          className="absolute"
+                          data-domain-container
                           style={{
-                            width: `${radius * 2}px`,
-                            height: `${radius * 2}px`,
-                            borderColor: dominio.cor,
-                            opacity: 0.15 - orbitIndex * 0.03,
-                            borderWidth: '1px'
+                            left: `${centerX}px`,
+                            top: `${centerY}px`,
+                            transform: 'translate(-50%, -50%)'
                           }}
-                        />
-                      ))}
-                      
-                      {/* Domínio central */}
-                      <Badge
-                        onMouseDown={(e) => handleMouseDown(e, dominio.dominio)}
-                        onClick={() => handleDomainClick(dominio.dominio)}
-                        className="relative z-10 hover:scale-105 transition-all cursor-move shadow-2xl border-0 text-center font-bold"
-                        style={{
-                          backgroundColor: dominio.cor,
-                          color: dominio.corTexto,
-                          fontSize,
-                          padding,
-                          boxShadow: `0 0 ${30 * sizeScale}px ${dominio.cor}40`
-                        }}
-                      >
-                        {dominio.dominio}
-                      </Badge>
-                      
-                      {/* Palavras orbitando */}
-                      {dominio.palavras.map((palavra, wordIndex) => {
-                        // Determina a órbita baseada no índice
-                        const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
-                        const orbit = Math.min(orbitLevel, 3);
-                        const radius = orbitRadii[orbit];
-                        
-                        // Calcula ângulo para distribuição uniforme na órbita
-                        const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
-                        const indexInOrbit = wordIndex % wordsPerOrbit;
-                        const angle = (indexInOrbit / wordsInThisOrbit) * 2 * Math.PI - Math.PI / 2;
-                        
-                        // Posição calculada
-                        const x = Math.cos(angle) * radius;
-                        const y = Math.sin(angle) * radius;
-                        
-                        const satelliteKey = `${dominio.dominio}-${palavra}`;
-                        const customSatPos = satellitePositions[satelliteKey];
-                        
-                        // Usa posição customizada se existir
-                        const finalX = customSatPos?.left ?? x;
-                        const finalY = customSatPos?.top ?? y;
-                        
-                        // Tamanho da palavra baseado na órbita (mais próximo = maior)
-                        const wordScale = 1 - (orbit * 0.15);
-                        
-                        return (
+                        >
+                          {/* Círculos de órbita animados */}
+                          {orbitRadii.map((radius, orbitIndex) => (
+                            <div
+                              key={`orbit-${orbitIndex}`}
+                              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border pointer-events-none animate-[spin_60s_linear_infinite]"
+                              style={{
+                                width: `${radius * 2}px`,
+                                height: `${radius * 2}px`,
+                                borderColor: dominio.cor,
+                                opacity: 0.25 - orbitIndex * 0.05,
+                                borderWidth: `${3 - orbitIndex * 0.5}px`,
+                                animationDuration: `${60 + orbitIndex * 20}s`
+                              }}
+                            />
+                          ))}
+                          
+                          {/* Domínio central */}
                           <Badge
-                            key={satelliteKey}
-                            data-satellite-key={satelliteKey}
-                            onMouseDown={(e) => handleSatelliteMouseDown(e, satelliteKey, { left: x, top: y })}
-                            onClick={() => handleWordClick(palavra)}
-                            className="absolute shadow-md hover:scale-110 transition-all cursor-move border-0"
+                            onMouseDown={(e) => handleMouseDown(e, dominio.dominio)}
+                            onClick={() => handleDomainClick(dominio.dominio)}
+                            className="relative z-10 hover:scale-110 transition-all cursor-move shadow-2xl border-0 text-center font-bold whitespace-nowrap"
                             style={{
-                              backgroundColor: `${dominio.cor}B3`,
+                              backgroundColor: dominio.cor,
                               color: dominio.corTexto,
-                              left: `calc(50% + ${finalX}px)`,
-                              top: `calc(50% + ${finalY}px)`,
-                              transform: `translate(-50%, -50%) scale(${wordScale})`,
-                              padding: '0.25rem 0.5rem',
-                              fontSize: '0.875rem',
-                              fontWeight: orbit === 0 ? 600 : 500,
-                              opacity: 0.95 - orbit * 0.1
+                              fontSize,
+                              padding,
+                              boxShadow: `0 0 ${35 * sizeScale}px ${dominio.cor}50`
                             }}
                           >
-                            {palavra}
+                            {dominio.dominio}
                           </Badge>
-                        );
-                      })}
-                    </div>
-                  );
-                })}
-              </div>
+                          
+                          {/* Palavras orbitando */}
+                          {dominio.palavras.map((palavra, wordIndex) => {
+                            const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
+                            const orbit = Math.min(orbitLevel, 3);
+                            const radius = orbitRadii[orbit];
+                            
+                            const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
+                            const indexInOrbit = wordIndex % wordsPerOrbit;
+                            
+                            // Desalinhamento: adiciona variação no ângulo
+                            const baseAngle = (indexInOrbit / wordsInThisOrbit) * 2 * Math.PI - Math.PI / 2;
+                            const angleOffset = (Math.sin(wordIndex * 2.5) * 0.3); // Variação de ±0.3 rad
+                            const angle = baseAngle + angleOffset;
+                            
+                            // Variação no raio para efeito "planetário"
+                            const radiusVariation = 1 + (Math.cos(wordIndex * 3.7) * 0.12);
+                            const finalRadius = radius * radiusVariation;
+                            
+                            const x = Math.cos(angle) * finalRadius;
+                            const y = Math.sin(angle) * finalRadius;
+                            
+                            const satelliteKey = `${dominio.dominio}-${palavra}`;
+                            const customSatPos = satellitePositions[satelliteKey];
+                            
+                            const finalX = customSatPos?.left ?? x;
+                            const finalY = customSatPos?.top ?? y;
+                            
+                            const wordScale = 1 - (orbit * 0.12);
+                            const stats = palavraStats[palavra];
+                            
+                            const prosodiaLabel = stats?.prosodia === "positiva" ? "Positiva ✓" : 
+                                                  stats?.prosodia === "negativa" ? "Negativa ✗" : 
+                                                  "Neutra −";
+                            
+                            return (
+                              <UITooltip key={satelliteKey} delayDuration={200}>
+                                <TooltipTrigger asChild>
+                                  <Badge
+                                    data-satellite-key={satelliteKey}
+                                    onMouseDown={(e) => handleSatelliteMouseDown(e, satelliteKey, { left: x, top: y })}
+                                    onClick={() => handleWordClick(palavra)}
+                                    className="absolute shadow-lg hover:scale-125 hover:z-20 transition-all cursor-move border-0"
+                                    style={{
+                                      backgroundColor: dominio.cor,
+                                      color: dominio.corTexto,
+                                      left: `calc(50% + ${finalX}px)`,
+                                      top: `calc(50% + ${finalY}px)`,
+                                      transform: `translate(-50%, -50%) scale(${wordScale})`,
+                                      padding: '0.3rem 0.6rem',
+                                      fontSize: '0.875rem',
+                                      fontWeight: orbit === 0 ? 600 : orbit === 1 ? 550 : 500,
+                                      opacity: 0.98 - orbit * 0.08
+                                    }}
+                                  >
+                                    {palavra}
+                                  </Badge>
+                                </TooltipTrigger>
+                                {stats && (
+                                  <TooltipContent side="top" className="bg-card border-border">
+                                    <div className="space-y-1.5">
+                                      <p className="font-semibold text-sm">{palavra}</p>
+                                      <div className="space-y-0.5 text-xs">
+                                        <p className="text-muted-foreground">
+                                          Freq. Bruta: <span className="font-medium text-foreground">{stats.frequenciaBruta}</span>
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                          Freq. Normalizada: <span className="font-medium text-foreground">{stats.frequenciaNormalizada}</span>
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                          Prosódia: <span className={`font-medium ${
+                                            stats.prosodia === 'positiva' ? 'text-success' : 
+                                            stats.prosodia === 'negativa' ? 'text-destructive' : 
+                                            'text-muted-foreground'
+                                          }`}>{prosodiaLabel}</span>
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </TooltipContent>
+                                )}
+                              </UITooltip>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </TooltipProvider>
               
-              {/* Legenda das órbitas */}
+              {/* Legenda das órbitas com porcentagens */}
               <div className="mt-4 grid grid-cols-4 gap-2 text-xs">
-                <div className="p-2 rounded bg-muted/30">
-                  <div className="font-semibold mb-1">Órbita 1</div>
-                  <div className="text-muted-foreground">Mais frequentes</div>
+                <div className="p-2.5 rounded-lg bg-muted/40 border">
+                  <div className="font-semibold mb-1 text-sm">Órbita 1</div>
+                  <div className="text-muted-foreground">20-30% de freq.</div>
                 </div>
-                <div className="p-2 rounded bg-muted/30">
-                  <div className="font-semibold mb-1">Órbita 2</div>
-                  <div className="text-muted-foreground">Frequência alta</div>
+                <div className="p-2.5 rounded-lg bg-muted/40 border">
+                  <div className="font-semibold mb-1 text-sm">Órbita 2</div>
+                  <div className="text-muted-foreground">15-20% de freq.</div>
                 </div>
-                <div className="p-2 rounded bg-muted/30">
-                  <div className="font-semibold mb-1">Órbita 3</div>
-                  <div className="text-muted-foreground">Frequência média</div>
+                <div className="p-2.5 rounded-lg bg-muted/40 border">
+                  <div className="font-semibold mb-1 text-sm">Órbita 3</div>
+                  <div className="text-muted-foreground">10-15% de freq.</div>
                 </div>
-                <div className="p-2 rounded bg-muted/30">
-                  <div className="font-semibold mb-1">Órbita 4</div>
-                  <div className="text-muted-foreground">Menos frequentes</div>
+                <div className="p-2.5 rounded-lg bg-muted/40 border">
+                  <div className="font-semibold mb-1 text-sm">Órbita 4</div>
+                  <div className="text-muted-foreground">{'<'}10% de freq.</div>
                 </div>
               </div>
             </CardContent>
