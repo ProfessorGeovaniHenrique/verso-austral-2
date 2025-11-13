@@ -22,8 +22,8 @@ export const OrbitalConstellationChart = ({
   songName = "Quando o verso vem pras casa",
   artistName = "Luiz Marenco"
 }: OrbitalConstellationChartProps) => {
-  // View modes: overview -> universe -> constellations -> zoomed
-  const [viewMode, setViewMode] = useState<'overview' | 'universe' | 'constellations' | 'zoomed'>('overview');
+  // View modes: overview -> universe -> galaxy -> constellation (individual)
+  const [viewMode, setViewMode] = useState<'overview' | 'universe' | 'galaxy' | 'constellation'>('overview');
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState({
@@ -843,8 +843,8 @@ export const OrbitalConstellationChart = ({
     };
     return <div className="relative">
         {/* Botão flutuante no canto superior esquerdo */}
-        <Button onClick={() => setViewMode('constellations')} className="absolute top-4 left-4 z-10 shadow-lg" variant="default">
-          Explorar Constelações Semânticas →
+        <Button onClick={() => setViewMode('galaxy')} className="absolute top-4 left-4 z-10 shadow-lg" variant="default">
+          Explorar Galáxia de Constelações →
         </Button>
 
         <svg width="1150" height="800" viewBox="0 0 1150 800" className="w-full h-auto animate-fade-in">
@@ -915,8 +915,130 @@ export const OrbitalConstellationChart = ({
       </div>;
   };
 
-  // NÍVEL 3: Constellations - Grid de sistemas (refatorado)
-  const renderConstellationsGrid = () => {
+  // NÍVEL 3: Galaxy - Grade de todas as constelações
+  const renderGalaxyView = () => {
+    const renderMiniConstellation = (system: OrbitalSystem, centerX: number, centerY: number, scale: number = 1) => {
+      const orbitRadii = {
+        1: 25 * scale,
+        2: 40 * scale,
+        3: 55 * scale,
+        4: 70 * scale
+      };
+
+      const wordsByOrbit = system.words.reduce((acc, word) => {
+        const orbit = getOrbit(word.strength);
+        if (!acc[orbit]) acc[orbit] = [];
+        acc[orbit].push(word);
+        return acc;
+      }, {} as Record<number, WordData[]>);
+
+      return (
+        <g 
+          className="cursor-pointer transition-all duration-200 hover:opacity-80"
+          onClick={() => {
+            setSelectedSystem(system.centerWord);
+            setViewMode('constellation');
+          }}
+        >
+          {/* Órbitas */}
+          {[1, 2, 3, 4].map(orbit => {
+            const radius = orbitRadii[orbit as keyof typeof orbitRadii];
+            return (
+              <circle 
+                key={`orbit-${orbit}`} 
+                cx={centerX} 
+                cy={centerY} 
+                r={radius} 
+                fill="none" 
+                stroke="hsl(var(--border))" 
+                strokeWidth="1" 
+                opacity="0.15" 
+              />
+            );
+          })}
+
+          {/* Centro */}
+          <circle cx={centerX} cy={centerY} r={20 * scale} fill={systemColors[system.category]} opacity="0.1" className="animate-pulse" />
+          <circle cx={centerX} cy={centerY} r={16 * scale} fill={systemColors[system.category]} opacity="0.2" />
+          <circle cx={centerX} cy={centerY} r={13 * scale} fill={systemColors[system.category]} opacity="0.85" style={{
+            filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
+          }} />
+          <circle cx={centerX} cy={centerY} r={13 * scale} fill="none" stroke="hsl(var(--background))" strokeWidth="1.5" opacity="0.5" />
+          
+          {/* Nome da categoria */}
+          <text 
+            x={centerX} 
+            y={centerY - 4} 
+            textAnchor="middle" 
+            dominantBaseline="middle" 
+            className="fill-primary-foreground font-bold text-[9px]"
+          >
+            {system.category}
+          </text>
+          <text 
+            x={centerX} 
+            y={centerY + 6} 
+            textAnchor="middle" 
+            dominantBaseline="middle" 
+            className="fill-primary-foreground/70 text-[7px] italic"
+          >
+            {system.centerWord}
+          </text>
+
+          {/* Palavras */}
+          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
+            wordsInOrbit.map((word, index) => {
+              const radius = orbitRadii[parseInt(orbit) as keyof typeof orbitRadii];
+              const angle = (index / wordsInOrbit.length) * 2 * Math.PI - Math.PI / 2;
+              const x = centerX + radius * Math.cos(angle);
+              const y = centerY + radius * Math.sin(angle);
+              
+              return (
+                <g key={`word-${word.word}`}>
+                  <line x1={centerX} y1={centerY} x2={x} y2={y} stroke={word.color} strokeWidth="0.5" opacity="0.15" />
+                  <circle cx={x} cy={y} r={5 * scale} fill={word.color} opacity="0.08" className="animate-pulse" />
+                  <circle cx={x} cy={y} r={3.5 * scale} fill={word.color} opacity="0.85" style={{
+                    filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
+                  }} />
+                </g>
+              );
+            })
+          )}
+        </g>
+      );
+    };
+
+    return (
+      <div className="relative">
+        {/* Botão de voltar fixo no topo */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border p-4 mb-4 flex items-center justify-between">
+          <button 
+            onClick={() => setViewMode('universe')} 
+            className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors font-medium flex items-center gap-2"
+          >
+            ← Voltar ao Universo
+          </button>
+          <h3 className="text-xl font-bold text-foreground">Galáxia de Constelações Semânticas</h3>
+          <div className="w-40"></div> {/* Espaçador para centralizar título */}
+        </div>
+
+        <div className="px-4">
+          <svg width="1150" height="680" viewBox="0 0 1150 680" className="w-full h-auto animate-fade-in">
+            {orbitalSystems.map((system, index) => {
+              const col = index % 3;
+              const row = Math.floor(index / 3);
+              const x = 200 + col * 320;
+              const y = 180 + row * 280;
+              return renderMiniConstellation(system, x, y, 1.5);
+            })}
+          </svg>
+        </div>
+      </div>
+    );
+  };
+
+  // NÍVEL 4: Constellation - Sistema individual ampliado
+  const renderConstellationView = () => {
     const centerX = 575;
     const centerY = 400;
     const scale = 2.2;
@@ -965,76 +1087,81 @@ export const OrbitalConstellationChart = ({
       };
     };
 
-    return <>
-      {/* Cabeçalho com navegação de sistemas */}
-      <div className="flex items-center justify-between mb-4 px-4 pt-4 animate-fade-in">
-        <button 
-          onClick={() => setViewMode('universe')} 
-          className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors font-medium"
-        >
-          ← Voltar ao universo
-        </button>
-        
-        <div className="flex items-center gap-3">
-          <span className="inline-block w-4 h-4 rounded-full" style={{
-            backgroundColor: systemColors[system.category]
-          }} />
-          <div className="text-center">
-            <h3 className="text-xl font-bold text-foreground">
-              {system.category}
-            </h3>
-            <p className="text-sm text-muted-foreground italic">
-              {system.centerWord}
-            </p>
+    return (
+      <div className="relative">
+        {/* Barra fixa no topo com navegação */}
+        <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border p-3 mb-4">
+          <div className="flex items-center justify-between gap-4">
+            {/* Botão Voltar */}
+            <button 
+              onClick={() => setViewMode('galaxy')} 
+              className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors font-medium whitespace-nowrap"
+            >
+              ← Voltar
+            </button>
+            
+            {/* Título da Constelação */}
+            <div className="flex items-center gap-3 flex-1 justify-center">
+              <span className="inline-block w-4 h-4 rounded-full flex-shrink-0" style={{
+                backgroundColor: systemColors[system.category]
+              }} />
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-foreground leading-tight">
+                  {system.category}
+                </h3>
+                <p className="text-sm text-muted-foreground italic">
+                  {system.centerWord}
+                </p>
+              </div>
+            </div>
+
+            {/* Navegação entre sistemas */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => {
+                  const prevIndex = (currentSystemIndex - 1 + orbitalSystems.length) % orbitalSystems.length;
+                  setSelectedSystem(orbitalSystems[prevIndex].centerWord);
+                  setZoomLevel(1);
+                  setPanOffset({ x: 0, y: 0 });
+                }}
+                className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
+                title="Sistema anterior"
+              >
+                ←
+              </button>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                {currentSystemIndex + 1} / {orbitalSystems.length}
+              </span>
+              <button
+                onClick={() => {
+                  const nextIndex = (currentSystemIndex + 1) % orbitalSystems.length;
+                  setSelectedSystem(orbitalSystems[nextIndex].centerWord);
+                  setZoomLevel(1);
+                  setPanOffset({ x: 0, y: 0 });
+                }}
+                className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
+                title="Próximo sistema"
+              >
+                →
+              </button>
+            </div>
           </div>
+          
+          {/* Dica */}
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            💡 Arraste as palavras para reposicioná-las | Clique para ver concordância (KWIC)
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              const prevIndex = (currentSystemIndex - 1 + orbitalSystems.length) % orbitalSystems.length;
-              setSelectedSystem(orbitalSystems[prevIndex].centerWord);
-              setZoomLevel(1);
-              setPanOffset({ x: 0, y: 0 });
-            }}
-            className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
-            title="Sistema anterior"
+        <div className="px-4">
+          <svg 
+            ref={svgRef} 
+            width="1150" 
+            height="800" 
+            viewBox="0 0 1150 800" 
+            className="w-full h-auto animate-scale-in"
+            style={{ userSelect: isPanning ? 'none' : 'auto' }}
           >
-            ←
-          </button>
-          <span className="text-sm text-muted-foreground">
-            {currentSystemIndex + 1} / {orbitalSystems.length}
-          </span>
-          <button
-            onClick={() => {
-              const nextIndex = (currentSystemIndex + 1) % orbitalSystems.length;
-              setSelectedSystem(orbitalSystems[nextIndex].centerWord);
-              setZoomLevel(1);
-              setPanOffset({ x: 0, y: 0 });
-            }}
-            className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
-            title="Próximo sistema"
-          >
-            →
-          </button>
-        </div>
-      </div>
-
-      <div className="mb-4 px-4">
-        <p className="text-sm text-muted-foreground">
-          💡 Dica: Arraste as palavras para reposicioná-las na órbita. Clique em uma palavra para ver sua concordância (KWIC).
-        </p>
-      </div>
-
-      <div className="px-4">
-        <svg 
-          ref={svgRef} 
-          width="1150" 
-          height="800" 
-          viewBox="0 0 1150 800" 
-          className="w-full h-auto animate-scale-in"
-          style={{ userSelect: isPanning ? 'none' : 'auto' }}
-        >
           {/* Órbitas */}
           {[1, 2, 3, 4].map(orbit => {
             const radius = orbitRadii[orbit as keyof typeof orbitRadii];
@@ -1222,168 +1349,12 @@ export const OrbitalConstellationChart = ({
               );
             })
           )}
-        </svg>
-      </div>
-    </>;
-  };
-
-  // NÍVEL 4: Zoomed - Sistema individual ampliado
-  const renderZoomedSystem = () => {
-    const system = orbitalSystems.find(s => s.centerWord === selectedSystem);
-    if (!system) return null;
-    const centerX = 450;
-    const centerY = 300;
-    const scale = 2.5;
-    const orbitRadii = {
-      1: 35 * scale,
-      2: 55 * scale,
-      3: 75 * scale,
-      4: 95 * scale
-    };
-    const wordsByOrbit = system.words.reduce((acc, word) => {
-      const orbit = getOrbit(word.strength);
-      if (!acc[orbit]) acc[orbit] = [];
-      acc[orbit].push(word);
-      return acc;
-    }, {} as Record<number, WordData[]>);
-    const getWordPosition = (word: WordData, index: number, totalInOrbit: number) => {
-      const orbit = getOrbit(word.strength);
-      const radius = orbitRadii[orbit as keyof typeof orbitRadii];
-      const wordKey = `${system.centerWord}-${word.word}`;
-      let angle: number;
-      if (orbitProgress[wordKey] !== undefined) {
-        angle = orbitProgress[wordKey] / 100 * 2 * Math.PI - Math.PI / 2;
-      } else if (customAngles[wordKey] !== undefined) {
-        angle = customAngles[wordKey];
-      } else {
-        angle = index / totalInOrbit * 2 * Math.PI - Math.PI / 2;
-      }
-      return {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle),
-        radius,
-        angle
-      };
-    };
-    return <>
-        <div className="flex items-center justify-between mb-4 px-4 pt-4 animate-fade-in">
-          <div className="flex-1"></div>
-          <div className="flex items-center gap-3">
-            <span className="inline-block w-4 h-4 rounded-full" style={{
-            backgroundColor: systemColors[system.category]
-          }} />
-            <h3 className="text-xl font-bold px-6 py-2.5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-lg border-2 border-primary/20">
-              Constelação: {system.centerWord}
-            </h3>
-          </div>
-          <div className="flex-1 flex justify-start">
-            <button onClick={() => setViewMode('constellations')} className="px-5 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors font-medium shadow-sm">
-              ← Voltar
-            </button>
-          </div>
-        </div>
-
-        <div className="mb-4 px-4">
-          <p className="text-sm text-muted-foreground">
-            💡 Dica: Arraste as palavras no gráfico para reposicioná-las. Passe o mouse sobre uma palavra para ver dados estatísticos. Clique na palavra para vê-la no contexto de ocorrência.                
-          </p>
-        </div>
-
-        <div className="px-4">
-          <svg ref={svgRef} width="900" height="600" viewBox="0 0 900 600" className="w-full h-auto animate-scale-in" style={{
-          userSelect: isPanning ? 'none' : 'auto'
-        }}>
-            {/* Órbitas */}
-            {[1, 2, 3, 4].map(orbit => {
-            const radius = orbitRadii[orbit as keyof typeof orbitRadii];
-            const circumference = 2 * Math.PI * radius;
-            return <g key={`orbit-${orbit}`}>
-                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke="hsl(var(--border))" strokeWidth="2" opacity={0.15} />
-                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke={systemColors[system.category]} strokeWidth="2" strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`} opacity={0.4} style={{
-                animation: 'orbit-slide 8s linear infinite',
-                transformOrigin: `${centerX}px ${centerY}px`
-              }} />
-                </g>;
-          })}
-
-            {/* Linhas conectando ao centro */}
-            {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) => wordsInOrbit.map((word, index) => {
-            const pos = getWordPosition(word, index, wordsInOrbit.length);
-            return <line key={`line-${system.centerWord}-${word.word}`} x1={centerX} y1={centerY} x2={pos.x} y2={pos.y} stroke={word.color} strokeWidth="1" opacity="0.15" />;
-          }))}
-
-            {/* Centro */}
-            <g>
-              <circle cx={centerX} cy={centerY} r={28 * scale} fill={systemColors[system.category]} opacity="0.1" className="animate-pulse" />
-              <circle cx={centerX} cy={centerY} r={23 * scale} fill={systemColors[system.category]} opacity="0.2" />
-              <circle cx={centerX} cy={centerY} r={18 * scale} fill={systemColors[system.category]} opacity="0.85" style={{
-              filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
-            }} />
-              <circle cx={centerX} cy={centerY} r={18 * scale} fill="none" stroke="hsl(var(--background))" strokeWidth={1.5 * scale} opacity="0.5" />
-              <text x={centerX} y={centerY} textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground font-bold" style={{
-              fontSize: `${14 * scale}px`,
-              pointerEvents: 'none'
-            }}>
-                {system.centerWord}
-              </text>
-            </g>
-
-            {/* Palavras */}
-            {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) => wordsInOrbit.map((word, index) => {
-            const pos = getWordPosition(word, index, wordsInOrbit.length);
-            const wordKey = `${system.centerWord}-${word.word}`;
-            const isBeingDragged = draggedWord === wordKey;
-            return <g key={`word-${wordKey}`} data-word-key={wordKey} data-center-x={centerX} data-center-y={centerY} style={{
-              cursor: isBeingDragged ? 'grabbing' : 'grab'
-            }} onMouseDown={e => handleMouseDown(e, wordKey, centerX, centerY)}>
-                    <circle cx={pos.x} cy={pos.y} r={8 * scale} fill={word.color} opacity="0.08" className="animate-pulse" style={{
-                pointerEvents: 'none'
-              }} />
-                    <circle cx={pos.x} cy={pos.y} r={6 * scale} fill={word.color} opacity="0.15" style={{
-                pointerEvents: 'none'
-              }} />
-                    <circle cx={pos.x} cy={pos.y} r={4 * scale} fill={word.color} opacity="0.85" style={{
-                pointerEvents: 'none',
-                filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
-              }} />
-                    <circle cx={pos.x} cy={pos.y} r={4 * scale} fill="none" stroke="hsl(var(--background))" strokeWidth={0.5 * scale} opacity="0.5" style={{
-                pointerEvents: 'none'
-              }} />
-                    <circle cx={pos.x} cy={pos.y} r={12 * scale} fill="transparent" style={{
-                cursor: 'pointer'
-              }} onMouseEnter={() => setHoveredWord(word.word)} onMouseLeave={() => setHoveredWord(null)} onClick={e => {
-                e.stopPropagation();
-                if (!isDragging) {
-                  setSelectedWordForKwic(word.word);
-                  setKwicModalOpen(true);
-                }
-              }}>
-                      {palavraStats[word.word] && <title>
-                          {`${word.word}\nFreq. Bruta: ${palavraStats[word.word].frequenciaBruta}\nFreq. Normalizada: ${palavraStats[word.word].frequenciaNormalizada}\nProsódia: ${palavraStats[word.word].prosodia === 'positiva' ? 'Positiva ✓' : palavraStats[word.word].prosodia === 'negativa' ? 'Negativa ✗' : 'Neutra −'}`}
-                        </title>}
-                    </circle>
-                    <text x={pos.x} y={pos.y - 2 * scale} textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold" style={{
-                fontSize: `${7 * scale}px`,
-                pointerEvents: 'none',
-                userSelect: 'none'
-              }}>
-                      {word.word}
-                    </text>
-                    <text x={pos.x} y={pos.y + 6 * scale} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground font-semibold" style={{
-                fontSize: `${6 * scale}px`,
-                pointerEvents: 'none',
-                userSelect: 'none'
-              }}>
-                      {word.strength}%
-                    </text>
-
-                    {/* Tooltip KWIC removido - apenas clique para abrir modal */}
-                  </g>;
-          }))}
           </svg>
         </div>
-      </>;
+      </div>
+    );
   };
+
   return <div className={`space-y-3 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4' : ''}`}>
       {/* Cabeçalho com navegação - visível em todos os níveis */}
       <div className="bg-background border rounded-lg p-2 shadow-sm">
@@ -1394,9 +1365,14 @@ export const OrbitalConstellationChart = ({
           <button onClick={() => setViewMode('universe')} className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${viewMode === 'universe' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted hover:bg-muted/80'}`}>
             Universo Semântico
           </button>
-          <button onClick={() => setViewMode('constellations')} className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${viewMode === 'constellations' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted hover:bg-muted/80'}`}>
-            Constelações Semânticas
+          <button onClick={() => setViewMode('galaxy')} className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${viewMode === 'galaxy' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted hover:bg-muted/80'}`}>
+            Galáxia de Constelações
           </button>
+          {selectedSystem && (
+            <button onClick={() => setViewMode('constellation')} className={`px-4 py-2 text-sm rounded-lg transition-colors font-medium ${viewMode === 'constellation' ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-muted hover:bg-muted/80'}`}>
+              Constelação: {selectedSystem}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1432,19 +1408,19 @@ export const OrbitalConstellationChart = ({
             {viewMode === 'universe' && renderUniverseView()}
           </div>
 
-          <div className={`transition-all duration-300 ${viewMode === 'constellations' ? 'opacity-100' : 'opacity-0 hidden'}`} style={{
-          transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
-          transformOrigin: 'top left',
-          pointerEvents: 'auto'
-        }}>
-            {viewMode === 'constellations' && renderConstellationsGrid()}
+          <div className={`transition-all duration-300 ${viewMode === 'galaxy' ? 'opacity-100' : 'opacity-0 hidden'}`} style={{
+            transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoomLevel})`,
+            transformOrigin: 'top left',
+            pointerEvents: 'auto'
+          }}>
+            {viewMode === 'galaxy' && renderGalaxyView()}
           </div>
 
-          {viewMode === 'zoomed' && <div style={{
-          pointerEvents: 'auto'
-        }}>
-              {renderZoomedSystem()}
-            </div>}
+          {viewMode === 'constellation' && (
+            <div style={{ pointerEvents: 'auto' }}>
+              {renderConstellationView()}
+            </div>
+          )}
         </div>
       </div>
 
