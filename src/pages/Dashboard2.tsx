@@ -285,7 +285,6 @@ const kwicDataMap: Record<string, Array<{
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }]
 };
-
 const dominiosData = [{
   dominio: "Natureza e Paisagem Campeira",
   ocorrencias: 48,
@@ -322,7 +321,6 @@ const dominiosData = [{
   cor: "hsl(0, 35%, 25%)",
   corTexto: "hsl(0, 80%, 75%)"
 }];
-
 const lematizacaoData = [{
   original: "sonhos",
   lema: "sonho",
@@ -348,7 +346,6 @@ const lematizacaoData = [{
   lema: "arreio",
   classe: "NOUN"
 }];
-
 const logLikelihoodData = [{
   palavra: "verso",
   valor: 52.8,
@@ -386,7 +383,6 @@ const logLikelihoodData = [{
   valor: 8.3,
   cor: "hsl(45, 93%, 47%)"
 }];
-
 const miScoreData = [{
   palavra: "verso",
   valor: 9.2,
@@ -420,7 +416,6 @@ const miScoreData = [{
   valor: 3.2,
   cor: "hsl(45, 93%, 47%)"
 }];
-
 const palavrasChaveData = [{
   palavra: "verso",
   ll: 52.8,
@@ -753,66 +748,213 @@ const palavraStats: Record<string, {
   frequenciaNormalizada: number;
   prosodia: "positiva" | "negativa" | "neutra";
 }> = {
-  "verso": { frequenciaBruta: 4, frequenciaNormalizada: 23.5, prosodia: "positiva" },
-  "tarumã": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
-  "saudade": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "negativa" },
-  "galpão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "várzea": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
-  "sonhos": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
-  "gateada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "mate": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "coxilha": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "neutra" },
-  "sombra": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
-  "arreios": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "esporas": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "prenda": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "ramada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "candeeiro": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "querência": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "cuia": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "maragato": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "campereada": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "calma": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "encilha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "campo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "campanha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "horizonte": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "sol": { frequenciaBruta: 2, frequenciaNormalizada: 11.8, prosodia: "positiva" },
-  "tropa": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "lombo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "cambona": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "fogo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "chão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "bomba": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "coplas": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "mansidão": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" },
-  "silêncio": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "negativa" },
-  "pañuelo": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "neutra" },
-  "maçanilha": { frequenciaBruta: 1, frequenciaNormalizada: 5.9, prosodia: "positiva" }
+  "verso": {
+    frequenciaBruta: 4,
+    frequenciaNormalizada: 23.5,
+    prosodia: "positiva"
+  },
+  "tarumã": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "positiva"
+  },
+  "saudade": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "negativa"
+  },
+  "galpão": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "várzea": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "positiva"
+  },
+  "sonhos": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "positiva"
+  },
+  "gateada": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "mate": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "coxilha": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "neutra"
+  },
+  "sombra": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "positiva"
+  },
+  "arreios": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "esporas": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "prenda": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "ramada": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "candeeiro": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "querência": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "cuia": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "maragato": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "campereada": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "calma": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "encilha": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "campo": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "campanha": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "horizonte": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "sol": {
+    frequenciaBruta: 2,
+    frequenciaNormalizada: 11.8,
+    prosodia: "positiva"
+  },
+  "tropa": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "lombo": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "cambona": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "fogo": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "chão": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "bomba": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "coplas": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "mansidão": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  },
+  "silêncio": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "negativa"
+  },
+  "pañuelo": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "neutra"
+  },
+  "maçanilha": {
+    frequenciaBruta: 1,
+    frequenciaNormalizada: 5.9,
+    prosodia: "positiva"
+  }
 };
-
 export default function Dashboard2() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<typeof dominiosData[0] | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({
+    x: 0,
+    y: 0
+  });
   const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [panStart, setPanStart] = useState({
+    x: 0,
+    y: 0
+  });
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [orbitProgress, setOrbitProgress] = useState<Record<string, number>>({});
   const [isDraggingWord, setIsDraggingWord] = useState(false);
   const [draggedWord, setDraggedWord] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
   const handleWordClick = (word: string) => {
     if (isDraggingWord || isPanning) return;
     setSelectedWord(word);
     setModalOpen(true);
   };
-  
   const handleDomainClick = (domainName: string) => {
     const domain = dominiosData.find(d => d.dominio === domainName);
     if (domain) {
@@ -835,44 +977,35 @@ export default function Dashboard2() {
     e.stopPropagation();
     setDraggedWord(wordKey);
     setIsDraggingWord(false);
-    
     const target = e.currentTarget;
     target.dataset.centerX = centerX.toString();
     target.dataset.centerY = centerY.toString();
   }, []);
-
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!draggedWord || !svgRef.current) return;
-    
     setIsDraggingWord(true);
-    
     const svg = svgRef.current;
     const rect = svg.getBoundingClientRect();
     const pt = svg.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
     const svgP = pt.matrixTransform(svg.getScreenCTM()?.inverse());
-
     const draggedElement = svg.querySelector(`[data-word-key="${draggedWord}"]`);
     if (!draggedElement) return;
-    
     const centerX = parseFloat(draggedElement.getAttribute('data-center-x') || '0');
     const centerY = parseFloat(draggedElement.getAttribute('data-center-y') || '0');
-
     const dx = svgP.x - centerX;
     const dy = svgP.y - centerY;
     const angle = Math.atan2(dy, dx);
-    
+
     // Converte o ângulo para progresso (0-100)
     const normalizedAngle = ((angle + Math.PI / 2) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-    const progress = (normalizedAngle / (2 * Math.PI)) * 100;
-    
+    const progress = normalizedAngle / (2 * Math.PI) * 100;
     setOrbitProgress(prev => ({
       ...prev,
       [draggedWord]: progress
     }));
   }, [draggedWord]);
-
   const handleMouseUp = useCallback(() => {
     setDraggedWord(null);
     setTimeout(() => setIsDraggingWord(false), 50);
@@ -896,10 +1029,12 @@ export default function Dashboard2() {
     const target = e.target as HTMLElement;
     if (target.tagName === 'svg' || target.classList.contains('pan-area')) {
       setIsPanning(true);
-      setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+      setPanStart({
+        x: e.clientX - panOffset.x,
+        y: e.clientY - panOffset.y
+      });
     }
   }, [panOffset]);
-
   const handleCanvasPanMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isPanning) return;
     setPanOffset({
@@ -907,7 +1042,6 @@ export default function Dashboard2() {
       y: e.clientY - panStart.y
     });
   }, [isPanning, panStart]);
-
   const handleCanvasPanEnd = useCallback(() => {
     setIsPanning(false);
   }, []);
@@ -916,57 +1050,58 @@ export default function Dashboard2() {
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
     if (!containerRef.current || !svgRef.current) return;
-    
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
-    
+
     // Posição do cursor relativa ao container
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
+
     // Calcula novo zoom
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
-    
+
     // Ajusta pan para manter o foco no cursor
     const zoomRatio = newZoom / zoomLevel;
     const newPanX = mouseX - (mouseX - panOffset.x) * zoomRatio;
     const newPanY = mouseY - (mouseY - panOffset.y) * zoomRatio;
-    
     setZoomLevel(newZoom);
-    setPanOffset({ x: newPanX, y: newPanY });
+    setPanOffset({
+      x: newPanX,
+      y: newPanY
+    });
   }, [zoomLevel, panOffset]);
-
   const handleZoomIn = () => {
     const newZoom = Math.min(3, zoomLevel + 0.2);
     setZoomLevel(newZoom);
   };
-  
   const handleZoomOut = () => {
     const newZoom = Math.max(0.5, zoomLevel - 0.2);
     setZoomLevel(newZoom);
   };
-  
   const handleResetZoom = () => {
     setZoomLevel(1);
-    setPanOffset({ x: 0, y: 0 });
+    setPanOffset({
+      x: 0,
+      y: 0
+    });
   };
-
   const handleFitToView = () => {
     setZoomLevel(1);
-    setPanOffset({ x: 0, y: 0 });
+    setPanOffset({
+      x: 0,
+      y: 0
+    });
   };
-
   const handleToggleFullscreen = () => {
     setIsFullscreen(!isFullscreen);
   };
-
   const handleExportPDF = async () => {
     try {
-      toast.info("Gerando PDF...", { description: "Por favor, aguarde enquanto capturamos todos os dados." });
-      
+      toast.info("Gerando PDF...", {
+        description: "Por favor, aguarde enquanto capturamos todos os dados."
+      });
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
@@ -976,15 +1111,21 @@ export default function Dashboard2() {
       // Página 1: Capa
       pdf.setFontSize(24);
       pdf.setFont(undefined, 'bold');
-      pdf.text("Análise de Estilística de Corpus", pageWidth / 2, 40, { align: 'center' });
-      
+      pdf.text("Análise de Estilística de Corpus", pageWidth / 2, 40, {
+        align: 'center'
+      });
       pdf.setFontSize(16);
       pdf.setFont(undefined, 'normal');
-      pdf.text("'Quando o verso vem pras casa'", pageWidth / 2, 55, { align: 'center' });
-      pdf.text("Luiz Marenco", pageWidth / 2, 65, { align: 'center' });
-      
+      pdf.text("'Quando o verso vem pras casa'", pageWidth / 2, 55, {
+        align: 'center'
+      });
+      pdf.text("Luiz Marenco", pageWidth / 2, 65, {
+        align: 'center'
+      });
       pdf.setFontSize(10);
-      pdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 80, { align: 'center' });
+      pdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 80, {
+        align: 'center'
+      });
 
       // Página 2: Domínios Semânticos
       pdf.addPage();
@@ -993,18 +1134,15 @@ export default function Dashboard2() {
       pdf.setFont(undefined, 'bold');
       pdf.text("Domínios Semânticos", margin, yPosition);
       yPosition += 10;
-
-      dominiosData.forEach((dominio) => {
+      dominiosData.forEach(dominio => {
         if (yPosition > pageHeight - 40) {
           pdf.addPage();
           yPosition = margin;
         }
-        
         pdf.setFontSize(12);
         pdf.setFont(undefined, 'bold');
         pdf.text(`${dominio.dominio} (${dominio.percentual}%)`, margin, yPosition);
         yPosition += 6;
-        
         pdf.setFontSize(10);
         pdf.setFont(undefined, 'normal');
         const palavras = `Palavras: ${dominio.palavras.join(', ')}`;
@@ -1020,13 +1158,11 @@ export default function Dashboard2() {
       pdf.setFont(undefined, 'bold');
       pdf.text("Palavras-Chave por Frequência", margin, yPosition);
       yPosition += 12;
-
       palavrasChaveData.slice(0, 15).forEach((palavra, index) => {
         if (yPosition > pageHeight - 20) {
           pdf.addPage();
           yPosition = margin;
         }
-        
         pdf.setFontSize(10);
         pdf.setFont(undefined, 'normal');
         pdf.text(`${index + 1}. ${palavra.palavra} - ${palavra.frequenciaBruta} ocorrências (${palavra.frequenciaNormalizada.toFixed(1)} norm.)`, margin, yPosition);
@@ -1040,25 +1176,21 @@ export default function Dashboard2() {
       pdf.setFont(undefined, 'bold');
       pdf.text("Prosódia Semântica", margin, yPosition);
       yPosition += 12;
-
       const prosodiaGroups = {
         positiva: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "positiva"),
         negativa: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "negativa"),
         neutra: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "neutra")
       };
-
       Object.entries(prosodiaGroups).forEach(([tipo, palavras]) => {
         if (palavras.length > 0) {
           if (yPosition > pageHeight - 30) {
             pdf.addPage();
             yPosition = margin;
           }
-          
           pdf.setFontSize(12);
           pdf.setFont(undefined, 'bold');
           pdf.text(`${tipo.charAt(0).toUpperCase() + tipo.slice(1)} (${palavras.length})`, margin, yPosition);
           yPosition += 7;
-          
           pdf.setFontSize(9);
           pdf.setFont(undefined, 'normal');
           const listaPalavras = palavras.map(([palavra]) => palavra).join(", ");
@@ -1076,12 +1208,10 @@ export default function Dashboard2() {
             scale: 2,
             backgroundColor: '#1a1a1a'
           });
-          
           pdf.addPage();
           const imgData = canvas.toDataURL('image/png');
           const imgWidth = pageWidth - 2 * margin;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          
+          const imgHeight = canvas.height * imgWidth / canvas.width;
           pdf.setFontSize(14);
           pdf.setFont(undefined, 'bold');
           pdf.text(`Gráfico ${i + 1}`, margin, margin);
@@ -1093,15 +1223,17 @@ export default function Dashboard2() {
 
       // Salvar PDF
       pdf.save(`Analise_Estilistica_Corpus_${new Date().getTime()}.pdf`);
-      toast.success("PDF gerado com sucesso!", { description: "O arquivo foi baixado para seu computador." });
+      toast.success("PDF gerado com sucesso!", {
+        description: "O arquivo foi baixado para seu computador."
+      });
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      toast.error("Erro ao gerar PDF", { description: "Tente novamente ou contate o suporte." });
+      toast.error("Erro ao gerar PDF", {
+        description: "Tente novamente ou contate o suporte."
+      });
     }
   };
-
-  return (
-    <div className={`pt-[150px] px-8 pb-12 space-y-10 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4 pt-20' : ''}`}>
+  return <div className={`pt-[150px] px-8 pb-12 space-y-10 ${isFullscreen ? 'fixed inset-0 z-50 bg-background p-4 pt-20' : ''}`}>
       {/* Badge verde com título */}
       <div className="mb-8">
         <div className="inline-block bg-green-500/20 border-2 border-green-500/40 rounded-full px-6 py-3">
@@ -1188,7 +1320,7 @@ export default function Dashboard2() {
                 <CardContent>
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <div className="whitespace-pre-line text-foreground leading-relaxed">
-{`A calma do tarumã, ganhou sombra mais copada
+                    {`A calma do tarumã, ganhou sombra mais copada
 Pela várzea espichada com o sol da tarde caindo
 Um pañuelo maragato se abriu no horizonte
 Trazendo um novo reponte, prá um fim de tarde bem lindo
@@ -1226,16 +1358,7 @@ E uma saudade redomona pelos cantos do galpão`}
                 </CardHeader>
                 <CardContent>
                   <div className="aspect-video rounded-lg overflow-hidden border shadow-sm">
-                    <iframe 
-                      width="100%" 
-                      height="100%" 
-                      src="https://www.youtube.com/embed/uaRc4k-Rxpo" 
-                      title="Quando o verso vem pras casa - Luiz Marenco"
-                      frameBorder="0" 
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                      allowFullScreen
-                      className="w-full h-full"
-                    />
+                    <iframe width="100%" height="100%" src="https://www.youtube.com/embed/uaRc4k-Rxpo" title="Quando o verso vem pras casa - Luiz Marenco" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="w-full h-full" />
                   </div>
                 </CardContent>
               </Card>
@@ -1267,21 +1390,17 @@ E uma saudade redomona pelos cantos do galpão`}
                       </div>
                       <div>
                         <CardTitle>Domínios Semânticos Identificados</CardTitle>
-                        <CardDescription>
-                          Análise baseada em IA - 5 domínios detectados em 170 palavras
-                        </CardDescription>
+                        
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-8 p-6">
-                    {dominiosData.map((item, index) => (
-                      <div key={index} className="space-y-4 p-6 rounded-lg border-2 border-border/40 bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                    {dominiosData.map((item, index) => <div key={index} className="space-y-4 p-6 rounded-lg border-2 border-border/40 bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-4">
-                            <div 
-                              className="w-5 h-5 rounded-full shadow-md" 
-                              style={{ backgroundColor: item.cor }} 
-                            />
+                            <div className="w-5 h-5 rounded-full shadow-md" style={{
+                          backgroundColor: item.cor
+                        }} />
                             <div>
                               <h3 className="font-bold text-xl text-foreground">{item.dominio}</h3>
                               <p className="text-sm text-muted-foreground/80 mt-1.5">
@@ -1298,7 +1417,9 @@ E uma saudade redomona pelos cantos do galpão`}
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-2 cursor-help">
                                   <HelpCircle className="h-5 w-5 text-muted-foreground/70" />
-                                  <span className="text-3xl font-bold" style={{ color: item.cor }}>
+                                  <span className="text-3xl font-bold" style={{
+                                color: item.cor
+                              }}>
                                     {item.percentual}%
                                   </span>
                                 </div>
@@ -1327,37 +1448,26 @@ E uma saudade redomona pelos cantos do galpão`}
                         
                         {/* Barra de progresso animada com mais espaço */}
                         <div className="relative w-full bg-muted/30 rounded-full h-4 overflow-hidden mt-2">
-                          <div 
-                            className="h-4 rounded-full transition-all duration-500 relative"
-                            style={{
-                              width: `${item.percentual}%`,
-                              backgroundColor: item.cor,
-                              boxShadow: `0 0 10px ${item.cor}40`
-                            }}
-                          >
-                            <div 
-                              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"
-                            />
+                          <div className="h-4 rounded-full transition-all duration-500 relative" style={{
+                        width: `${item.percentual}%`,
+                        backgroundColor: item.cor,
+                        boxShadow: `0 0 10px ${item.cor}40`
+                      }}>
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
                           </div>
                         </div>
 
                         {/* Palavras com tooltips individuais e mais espaço */}
                         <div className="flex flex-wrap gap-2.5 mt-1">
                           {item.palavras.map((palavra, idx) => {
-                            const palavraChave = palavrasChaveData.find(p => p.palavra === palavra);
-                            const kwicEntries = kwicDataMap[palavra];
-                            
-                            return (
-                              <UITooltip key={idx}>
+                        const palavraChave = palavrasChaveData.find(p => p.palavra === palavra);
+                        const kwicEntries = kwicDataMap[palavra];
+                        return <UITooltip key={idx}>
                                 <TooltipTrigger asChild>
-                                  <Badge 
-                                    className="cursor-pointer hover:scale-110 transition-all border-0 shadow-sm text-sm px-3 py-1.5" 
-                                    style={{
-                                      backgroundColor: item.cor,
-                                      color: item.corTexto
-                                    }}
-                                    onClick={() => handleWordClick(palavra)}
-                                  >
+                                  <Badge className="cursor-pointer hover:scale-110 transition-all border-0 shadow-sm text-sm px-3 py-1.5" style={{
+                              backgroundColor: item.cor,
+                              color: item.corTexto
+                            }} onClick={() => handleWordClick(palavra)}>
                                     {palavra}
                                   </Badge>
                                 </TooltipTrigger>
@@ -1365,14 +1475,9 @@ E uma saudade redomona pelos cantos do galpão`}
                                   <div className="space-y-3">
                                     <div className="flex items-center justify-between gap-4">
                                       <p className="font-bold text-lg text-foreground">{palavra}</p>
-                                      {palavraChave && (
-                                        <Badge 
-                                          variant={palavraChave.significancia === "Alta" ? "default" : "secondary"} 
-                                          className="text-xs"
-                                        >
+                                      {palavraChave && <Badge variant={palavraChave.significancia === "Alta" ? "default" : "secondary"} className="text-xs">
                                           {palavraChave.significancia}
-                                        </Badge>
-                                      )}
+                                        </Badge>}
                                     </div>
                                     
                                     {/* Estatísticas detalhadas */}
@@ -1383,15 +1488,12 @@ E uma saudade redomona pelos cantos do galpão`}
                                           {palavraChave?.frequenciaBruta || kwicEntries?.length || 1}x
                                         </p>
                                       </div>
-                                      {palavraChave && (
-                                        <>
+                                      {palavraChave && <>
                                           <div>
                                             <p className="text-xs text-muted-foreground">Significância</p>
                                             <div className="flex items-center gap-1">
                                               <p className="text-sm font-semibold text-foreground">{palavraChave.significancia}</p>
-                                              {palavraChave.significancia === "Alta" && (
-                                                <TrendingUp className="h-3 w-3 text-success" />
-                                              )}
+                                              {palavraChave.significancia === "Alta" && <TrendingUp className="h-3 w-3 text-success" />}
                                             </div>
                                           </div>
                                           <div>
@@ -1402,38 +1504,29 @@ E uma saudade redomona pelos cantos do galpão`}
                                             <p className="text-xs text-muted-foreground">Efeito</p>
                                             <div className="flex items-center gap-1">
                                               <p className="text-sm font-semibold text-foreground">{palavraChave.efeito}</p>
-                                              {palavraChave.efeito === "Sobre-uso" && (
-                                                <TrendingUp className="h-3 w-3 text-success" />
-                                              )}
+                                              {palavraChave.efeito === "Sobre-uso" && <TrendingUp className="h-3 w-3 text-success" />}
                                             </div>
                                           </div>
-                                        </>
-                                      )}
+                                        </>}
                                     </div>
                                     
                                     {/* Contexto KWIC */}
                                     <div className="text-xs space-y-1">
                                       <p className="text-muted-foreground font-medium">Contexto na música:</p>
-                                      {kwicEntries && kwicEntries.length > 0 ? (
-                                        <div className="bg-muted/50 p-2 rounded">
+                                      {kwicEntries && kwicEntries.length > 0 ? <div className="bg-muted/50 p-2 rounded">
                                           <p className="italic text-foreground">
                                             "{kwicEntries[0].leftContext}{" "}
                                             <strong className="text-primary">{kwicEntries[0].keyword}</strong>
                                             {" "}{kwicEntries[0].rightContext}"
                                           </p>
-                                        </div>
-                                      ) : (
-                                        <p className="text-muted-foreground italic">Clique para ver concordância completa</p>
-                                      )}
+                                        </div> : <p className="text-muted-foreground italic">Clique para ver concordância completa</p>}
                                     </div>
                                   </div>
                                 </TooltipContent>
-                              </UITooltip>
-                            );
-                          })}
+                              </UITooltip>;
+                      })}
                         </div>
-                      </div>
-                    ))}
+                      </div>)}
                   </CardContent>
                 </Card>
 
@@ -1447,29 +1540,18 @@ E uma saudade redomona pelos cantos do galpão`}
                     <ResponsiveContainer width="100%" height={300}>
                       <BarChart data={dominiosData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis 
-                          dataKey="dominio" 
-                          angle={-20} 
-                          textAnchor="end" 
-                          height={120}
-                          stroke="hsl(var(--muted-foreground))"
-                          tick={{ fontSize: 12 }}
-                        />
+                        <XAxis dataKey="dominio" angle={-20} textAnchor="end" height={120} stroke="hsl(var(--muted-foreground))" tick={{
+                        fontSize: 12
+                      }} />
                         <YAxis stroke="hsl(var(--muted-foreground))" />
-                        <Tooltip 
-                          contentStyle={{
-                            backgroundColor: 'hsl(var(--card))',
-                            border: '1px solid hsl(var(--border))',
-                            borderRadius: '6px',
-                            color: 'hsl(var(--foreground))'
-                          }}
-                          formatter={(value: any) => [`${value} ocorrências`, 'Total']}
-                          labelFormatter={(label) => `${label}`}
-                        />
+                        <Tooltip contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '6px',
+                        color: 'hsl(var(--foreground))'
+                      }} formatter={(value: any) => [`${value} ocorrências`, 'Total']} labelFormatter={label => `${label}`} />
                         <Bar dataKey="ocorrencias" radius={[6, 6, 0, 0]}>
-                          {dominiosData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.cor} />
-                          ))}
+                          {dominiosData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -1515,8 +1597,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-foreground">Densidade Lexical</p>
                           <p className="text-xs text-muted-foreground/80 leading-relaxed mt-1">
-                            Média de {(dominiosData.reduce((acc, d) => acc + d.ocorrencias, 0) / 
-                            dominiosData.reduce((acc, d) => acc + d.palavras.length, 0)).toFixed(1)} 
+                            Média de {(dominiosData.reduce((acc, d) => acc + d.ocorrencias, 0) / dominiosData.reduce((acc, d) => acc + d.palavras.length, 0)).toFixed(1)} 
                             ocorrências por palavra-chave no corpus
                           </p>
                         </div>
@@ -1590,10 +1671,7 @@ E uma saudade redomona pelos cantos do galpão`}
                       <strong>(2)</strong> clique em um sistema (verso, saudade, sonhos, etc.) para ver em detalhe suas palavras e força de associação semântica.
                     </p>
                   </div>
-                  <OrbitalConstellationChart 
-                    songName="Quando o verso vem pras casa"
-                    artistName="Luiz Marenco"
-                  />
+                  <OrbitalConstellationChart songName="Quando o verso vem pras casa" artistName="Luiz Marenco" />
                 </div>
               </div>
             </CardContent>
@@ -1615,15 +1693,13 @@ E uma saudade redomona pelos cantos do galpão`}
                     <XAxis dataKey="palavra" angle={-45} textAnchor="end" height={80} stroke="hsl(var(--muted-foreground))" />
                     <YAxis stroke="hsl(var(--muted-foreground))" />
                     <Tooltip contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px',
-                      color: 'hsl(var(--foreground))'
-                    }} />
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    color: 'hsl(var(--foreground))'
+                  }} />
                     <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                      {logLikelihoodData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.cor} />
-                      ))}
+                      {logLikelihoodData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1642,15 +1718,13 @@ E uma saudade redomona pelos cantos do galpão`}
                     <XAxis dataKey="palavra" angle={-45} textAnchor="end" height={80} stroke="hsl(var(--muted-foreground))" />
                     <YAxis stroke="hsl(var(--muted-foreground))" />
                     <Tooltip contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px',
-                      color: 'hsl(var(--foreground))'
-                    }} />
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '6px',
+                    color: 'hsl(var(--foreground))'
+                  }} />
                     <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
-                      {miScoreData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.cor} />
-                      ))}
+                      {miScoreData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1696,12 +1770,7 @@ E uma saudade redomona pelos cantos do galpão`}
                 <TableBody>
                   {palavrasChaveData.map((item, index) => {
                     const EfeitoIcon = item.efeitoIcon;
-                    return (
-                      <TableRow 
-                        key={index} 
-                        className="cursor-pointer hover:bg-muted/50 transition-colors border-b border-border/30" 
-                        onClick={() => handleWordClick(item.palavra)}
-                      >
+                    return <TableRow key={index} className="cursor-pointer hover:bg-muted/50 transition-colors border-b border-border/30" onClick={() => handleWordClick(item.palavra)}>
                         <TableCell className="font-mono font-semibold">{item.palavra}</TableCell>
                         <TableCell className="text-right">{item.frequenciaBruta}</TableCell>
                         <TableCell className="text-right">{item.frequenciaNormalizada.toFixed(1)}</TableCell>
@@ -1710,35 +1779,17 @@ E uma saudade redomona pelos cantos do galpão`}
                         </TableCell>
                         <TableCell className="text-right">{item.mi.toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant="secondary" 
-                            className={
-                              item.significancia === "Alta" 
-                                ? "bg-success/10 text-success" 
-                                : item.significancia === "Média" 
-                                ? "bg-destructive/10 text-destructive" 
-                                : "bg-[hsl(45,93%,47%)]/10 text-[hsl(45,93%,47%)]"
-                            }
-                          >
+                          <Badge variant="secondary" className={item.significancia === "Alta" ? "bg-success/10 text-success" : item.significancia === "Média" ? "bg-destructive/10 text-destructive" : "bg-[hsl(45,93%,47%)]/10 text-[hsl(45,93%,47%)]"}>
                             {item.significancia}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <EfeitoIcon 
-                              className={`h-4 w-4 ${
-                                item.efeito === 'Sobre-uso' 
-                                  ? 'text-destructive' 
-                                  : item.efeito === 'Sub-uso' 
-                                  ? 'text-primary' 
-                                  : 'text-success'
-                              }`} 
-                            />
+                            <EfeitoIcon className={`h-4 w-4 ${item.efeito === 'Sobre-uso' ? 'text-destructive' : item.efeito === 'Sub-uso' ? 'text-primary' : 'text-success'}`} />
                             <span className="text-sm">{item.efeito}</span>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    );
+                      </TableRow>;
                   })}
                  </TableBody>
               </Table>
@@ -1769,233 +1820,121 @@ E uma saudade redomona pelos cantos do galpão`}
             </CardHeader>
             <CardContent className="p-6">
               <TooltipProvider>
-                <div 
-                  ref={containerRef}
-                  className={`relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border-2 border-border/40 overflow-hidden ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
-                  style={{ height: isFullscreen ? 'calc(100vh - 200px)' : '750px' }}
-                  onMouseDown={handleCanvasMouseDown}
-                  onMouseMove={handleCanvasPanMove}
-                  onMouseUp={handleCanvasPanEnd}
-                  onMouseLeave={handleCanvasPanEnd}
-                  onWheel={handleWheel}
-                >
+                <div ref={containerRef} className={`relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border-2 border-border/40 overflow-hidden ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`} style={{
+                height: isFullscreen ? 'calc(100vh - 200px)' : '750px'
+              }} onMouseDown={handleCanvasMouseDown} onMouseMove={handleCanvasPanMove} onMouseUp={handleCanvasPanEnd} onMouseLeave={handleCanvasPanEnd} onWheel={handleWheel}>
                   {/* Controles de Zoom - Interno */}
-                  <NavigationToolbar
-                    onZoomIn={handleZoomIn}
-                    onZoomOut={handleZoomOut}
-                    onReset={handleResetZoom}
-                    onFitToView={handleFitToView}
-                    onToggleFullscreen={handleToggleFullscreen}
-                    isFullscreen={isFullscreen}
-                    className="absolute top-4 right-4 z-30"
-                  />
+                  <NavigationToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={handleResetZoom} onFitToView={handleFitToView} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} className="absolute top-4 right-4 z-30" />
 
-                  <div 
-                    className="pan-area absolute inset-0"
-                    style={{
-                      transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-                      transformOrigin: 'top left',
-                      pointerEvents: 'none'
-                    }}
-                  >
-                    <svg
-                      ref={svgRef}
-                      width={1300}
-                      height={975}
-                      viewBox="0 0 1300 975"
-                      className="w-auto h-auto"
-                      style={{ 
-                        transform: `scale(${zoomLevel})`,
-                        transformOrigin: 'top left',
-                        pointerEvents: 'auto'
-                      }}
-                    >
+                  <div className="pan-area absolute inset-0" style={{
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                  transformOrigin: 'top left',
+                  pointerEvents: 'none'
+                }}>
+                    <svg ref={svgRef} width={1300} height={975} viewBox="0 0 1300 975" className="w-auto h-auto" style={{
+                    transform: `scale(${zoomLevel})`,
+                    transformOrigin: 'top left',
+                    pointerEvents: 'auto'
+                  }}>
                       {dominiosData.map((dominio, index) => {
-                        const positions = [
-                          { x: 650, y: 487 },
-                          { x: 390, y: 195 },
-                          { x: 910, y: 195 },
-                          { x: 364, y: 754 },
-                          { x: 936, y: 754 }
-                        ];
-                        
-                        const position = positions[index];
-                        const centerX = position.x;
-                        const centerY = position.y;
-                        
-                        const sizeScale = (0.6 + (dominio.percentual / 28.2) * 0.8) * 1.3;
-                        
-                        const orbitRadii = [
-                          91 * sizeScale,
-                          143 * sizeScale,
-                          195 * sizeScale,
-                          247 * sizeScale
-                        ];
-                        
-                        const totalWords = dominio.palavras.length;
-                        const wordsPerOrbit = Math.ceil(totalWords / 4);
-                        
-                        return (
-                          <g key={dominio.dominio}>
+                      const positions = [{
+                        x: 650,
+                        y: 487
+                      }, {
+                        x: 390,
+                        y: 195
+                      }, {
+                        x: 910,
+                        y: 195
+                      }, {
+                        x: 364,
+                        y: 754
+                      }, {
+                        x: 936,
+                        y: 754
+                      }];
+                      const position = positions[index];
+                      const centerX = position.x;
+                      const centerY = position.y;
+                      const sizeScale = (0.6 + dominio.percentual / 28.2 * 0.8) * 1.3;
+                      const orbitRadii = [91 * sizeScale, 143 * sizeScale, 195 * sizeScale, 247 * sizeScale];
+                      const totalWords = dominio.palavras.length;
+                      const wordsPerOrbit = Math.ceil(totalWords / 4);
+                      return <g key={dominio.dominio}>
                             {orbitRadii.map((radius, orbitIndex) => {
-                              const circumference = 2 * Math.PI * radius;
-                              return (
-                                <g key={`orbit-${orbitIndex}`}>
-                                  <circle 
-                                    cx={centerX} 
-                                    cy={centerY} 
-                                    r={radius} 
-                                    fill="none" 
-                                    stroke={dominio.cor} 
-                                    strokeWidth={3.9 - orbitIndex * 0.65} 
-                                    opacity={0.25 - orbitIndex * 0.05} 
-                                  />
-                                  <circle 
-                                    cx={centerX} 
-                                    cy={centerY} 
-                                    r={radius} 
-                                    fill="none" 
-                                    stroke={dominio.cor} 
-                                    strokeWidth={3.9 - orbitIndex * 0.65} 
-                                    strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`} 
-                                    opacity={0.4}
-                                    style={{ 
-                                      animation: 'spin 60s linear infinite', 
-                                      transformOrigin: `${centerX}px ${centerY}px` 
-                                    }} 
-                                  />
-                                </g>
-                              );
-                            })}
+                          const circumference = 2 * Math.PI * radius;
+                          return <g key={`orbit-${orbitIndex}`}>
+                                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke={dominio.cor} strokeWidth={3.9 - orbitIndex * 0.65} opacity={0.25 - orbitIndex * 0.05} />
+                                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke={dominio.cor} strokeWidth={3.9 - orbitIndex * 0.65} strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`} opacity={0.4} style={{
+                              animation: 'spin 60s linear infinite',
+                              transformOrigin: `${centerX}px ${centerY}px`
+                            }} />
+                                </g>;
+                        })}
 
-                            <g 
-                              style={{ cursor: 'pointer' }} 
-                              onClick={() => handleDomainClick(dominio.dominio)}
-                            >
-                              <circle 
-                                cx={centerX} 
-                                cy={centerY} 
-                                r={36.4 * sizeScale} 
-                                fill={dominio.cor} 
-                                opacity="0.1" 
-                                className="animate-pulse" 
-                              />
-                              <circle 
-                                cx={centerX} 
-                                cy={centerY} 
-                                r={29.9 * sizeScale} 
-                                fill={dominio.cor} 
-                                opacity="0.2" 
-                              />
-                              <circle 
-                                cx={centerX} 
-                                cy={centerY} 
-                                r={23.4 * sizeScale} 
-                                fill={dominio.cor} 
-                                opacity="0.85" 
-                                style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))' }} 
-                              />
-                              <text 
-                                x={centerX} 
-                                y={centerY} 
-                                textAnchor="middle" 
-                                dominantBaseline="middle" 
-                                className="fill-primary-foreground font-bold pointer-events-none"
-                                style={{ fontSize: `${18.2 * sizeScale}px` }}
-                              >
+                            <g style={{
+                          cursor: 'pointer'
+                        }} onClick={() => handleDomainClick(dominio.dominio)}>
+                              <circle cx={centerX} cy={centerY} r={36.4 * sizeScale} fill={dominio.cor} opacity="0.1" className="animate-pulse" />
+                              <circle cx={centerX} cy={centerY} r={29.9 * sizeScale} fill={dominio.cor} opacity="0.2" />
+                              <circle cx={centerX} cy={centerY} r={23.4 * sizeScale} fill={dominio.cor} opacity="0.85" style={{
+                            filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
+                          }} />
+                              <text x={centerX} y={centerY} textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground font-bold pointer-events-none" style={{
+                            fontSize: `${18.2 * sizeScale}px`
+                          }}>
                                 {dominio.dominio.split(' ')[0]}
                               </text>
                             </g>
 
                             {dominio.palavras.map((palavra, wordIndex) => {
-                              const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
-                              const orbit = Math.min(orbitLevel, 3);
-                              const radius = orbitRadii[orbit];
-                              const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
-                              const indexInOrbit = wordIndex % wordsPerOrbit;
-                              const wordKey = `${dominio.dominio}-${palavra}`;
-                              
-                              let angle: number;
-                              if (orbitProgress[wordKey] !== undefined) {
-                                angle = (orbitProgress[wordKey] / 100) * 2 * Math.PI - Math.PI / 2;
-                              } else {
-                                const baseAngle = (indexInOrbit / wordsInThisOrbit) * 2 * Math.PI - Math.PI / 2;
-                                const angleOffset = (Math.sin(wordIndex * 2.5) * 0.3);
-                                angle = baseAngle + angleOffset;
-                              }
-                              
-                              const radiusVariation = 1 + (Math.cos(wordIndex * 3.7) * 0.12);
-                              const finalRadius = radius * radiusVariation;
-                              const x = centerX + Math.cos(angle) * finalRadius;
-                              const y = centerY + Math.sin(angle) * finalRadius;
-                              const wordScale = (1 - (orbit * 0.12)) * 1.3;
-                              const stats = palavraStats[palavra];
-                              
-                              return (
-                                <g 
-                                  key={wordKey} 
-                                  data-word-key={wordKey} 
-                                  data-center-x={centerX} 
-                                  data-center-y={centerY} 
-                                  style={{ cursor: 'grab' }}
-                                  onMouseDown={(e) => handleMouseDown(e, wordKey, centerX, centerY)}
-                                >
-                                  <circle 
-                                    cx={x} 
-                                    cy={y} 
-                                    r={10.4 * wordScale} 
-                                    fill={dominio.cor} 
-                                    opacity="0.08" 
-                                    className="animate-pulse" 
-                                  />
-                                  <circle 
-                                    cx={x} 
-                                    cy={y} 
-                                    r={7.8 * wordScale} 
-                                    fill={dominio.cor} 
-                                    opacity="0.15" 
-                                  />
-                                  <circle 
-                                    cx={x} 
-                                    cy={y} 
-                                    r={5.2 * wordScale} 
-                                    fill={dominio.cor} 
-                                    opacity="0.85" 
-                                    style={{ filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))' }} 
-                                  />
-                                  <circle 
-                                    cx={x} 
-                                    cy={y} 
-                                    r={15.6 * wordScale} 
-                                    fill="transparent" 
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={(e) => { 
-                                      e.stopPropagation(); 
-                                      if (!isDraggingWord) handleWordClick(palavra); 
-                                    }}
-                                  >
-                                    {stats && (
-                                      <title>
+                          const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
+                          const orbit = Math.min(orbitLevel, 3);
+                          const radius = orbitRadii[orbit];
+                          const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
+                          const indexInOrbit = wordIndex % wordsPerOrbit;
+                          const wordKey = `${dominio.dominio}-${palavra}`;
+                          let angle: number;
+                          if (orbitProgress[wordKey] !== undefined) {
+                            angle = orbitProgress[wordKey] / 100 * 2 * Math.PI - Math.PI / 2;
+                          } else {
+                            const baseAngle = indexInOrbit / wordsInThisOrbit * 2 * Math.PI - Math.PI / 2;
+                            const angleOffset = Math.sin(wordIndex * 2.5) * 0.3;
+                            angle = baseAngle + angleOffset;
+                          }
+                          const radiusVariation = 1 + Math.cos(wordIndex * 3.7) * 0.12;
+                          const finalRadius = radius * radiusVariation;
+                          const x = centerX + Math.cos(angle) * finalRadius;
+                          const y = centerY + Math.sin(angle) * finalRadius;
+                          const wordScale = (1 - orbit * 0.12) * 1.3;
+                          const stats = palavraStats[palavra];
+                          return <g key={wordKey} data-word-key={wordKey} data-center-x={centerX} data-center-y={centerY} style={{
+                            cursor: 'grab'
+                          }} onMouseDown={e => handleMouseDown(e, wordKey, centerX, centerY)}>
+                                  <circle cx={x} cy={y} r={10.4 * wordScale} fill={dominio.cor} opacity="0.08" className="animate-pulse" />
+                                  <circle cx={x} cy={y} r={7.8 * wordScale} fill={dominio.cor} opacity="0.15" />
+                                  <circle cx={x} cy={y} r={5.2 * wordScale} fill={dominio.cor} opacity="0.85" style={{
+                              filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
+                            }} />
+                                  <circle cx={x} cy={y} r={15.6 * wordScale} fill="transparent" style={{
+                              cursor: 'pointer'
+                            }} onClick={e => {
+                              e.stopPropagation();
+                              if (!isDraggingWord) handleWordClick(palavra);
+                            }}>
+                                    {stats && <title>
                                         {`${palavra}\nFreq. Bruta: ${stats.frequenciaBruta}\nFreq. Normalizada: ${stats.frequenciaNormalizada}\nProsódia: ${stats.prosodia === 'positiva' ? 'Positiva ✓' : stats.prosodia === 'negativa' ? 'Negativa ✗' : 'Neutra −'}`}
-                                      </title>
-                                    )}
+                                      </title>}
                                   </circle>
-                                  <text 
-                                    x={x} 
-                                    y={y - 2.6 * wordScale} 
-                                    textAnchor="middle" 
-                                    dominantBaseline="middle" 
-                                    className="fill-foreground font-bold pointer-events-none"
-                                    style={{ fontSize: `${9.1 * wordScale}px` }}
-                                  >
+                                  <text x={x} y={y - 2.6 * wordScale} textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold pointer-events-none" style={{
+                              fontSize: `${9.1 * wordScale}px`
+                            }}>
                                     {palavra}
                                   </text>
-                                </g>
-                              );
-                            })}
-                          </g>
-                        );
-                      })}
+                                </g>;
+                        })}
+                          </g>;
+                    })}
                     </svg>
                   </div>
                 </div>
@@ -2025,34 +1964,25 @@ E uma saudade redomona pelos cantos do galpão`}
       </Tabs>
 
       {/* Modal KWIC */}
-      <KWICModal 
-        open={modalOpen} 
-        onOpenChange={setModalOpen} 
-        word={selectedWord} 
-        data={kwicDataMap[selectedWord] || []} 
-      />
+      <KWICModal open={modalOpen} onOpenChange={setModalOpen} word={selectedWord} data={kwicDataMap[selectedWord] || []} />
 
       {/* Modal de Domínio Semântico */}
       <Dialog open={domainModalOpen} onOpenChange={setDomainModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-3">
-              {selectedDomain && (
-                <>
-                  <div 
-                    className="w-4 h-4 rounded-full" 
-                    style={{ backgroundColor: selectedDomain.cor }} 
-                  />
+              {selectedDomain && <>
+                  <div className="w-4 h-4 rounded-full" style={{
+                backgroundColor: selectedDomain.cor
+              }} />
                   {selectedDomain.dominio}
-                </>
-              )}
+                </>}
             </DialogTitle>
             <DialogDescription>
               Dados estatísticos do domínio semântico
             </DialogDescription>
           </DialogHeader>
-          {selectedDomain && (
-            <div className="space-y-6">
+          {selectedDomain && <div className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <Card>
                   <CardContent className="pt-6">
@@ -2071,22 +2001,15 @@ E uma saudade redomona pelos cantos do galpão`}
               <div>
                 <h4 className="font-semibold mb-3">Palavras-chave do domínio</h4>
                 <div className="flex flex-wrap gap-2">
-                  {selectedDomain.palavras.map((palavra, idx) => (
-                    <Badge 
-                      key={idx} 
-                      className="cursor-pointer hover:scale-105 transition-all text-base px-4 py-2 border-0" 
-                      style={{
-                        backgroundColor: selectedDomain.cor,
-                        color: selectedDomain.corTexto
-                      }} 
-                      onClick={() => {
-                        setDomainModalOpen(false);
-                        handleWordClick(palavra);
-                      }}
-                    >
+                  {selectedDomain.palavras.map((palavra, idx) => <Badge key={idx} className="cursor-pointer hover:scale-105 transition-all text-base px-4 py-2 border-0" style={{
+                backgroundColor: selectedDomain.cor,
+                color: selectedDomain.corTexto
+              }} onClick={() => {
+                setDomainModalOpen(false);
+                handleWordClick(palavra);
+              }}>
                       {palavra}
-                    </Badge>
-                  ))}
+                    </Badge>)}
                 </div>
               </div>
 
@@ -2095,19 +2018,14 @@ E uma saudade redomona pelos cantos do galpão`}
                   <span className="font-semibold">Distribuição no corpus</span>
                 </div>
                 <div className="w-full bg-background rounded-full h-4">
-                  <div 
-                    className="h-4 rounded-full transition-all" 
-                    style={{
-                      width: `${selectedDomain.percentual}%`,
-                      backgroundColor: selectedDomain.cor
-                    }} 
-                  />
+                  <div className="h-4 rounded-full transition-all" style={{
+                width: `${selectedDomain.percentual}%`,
+                backgroundColor: selectedDomain.cor
+              }} />
                 </div>
               </div>
-            </div>
-          )}
+            </div>}
         </DialogContent>
       </Dialog>
-    </div>
-  );
+    </div>;
 }
