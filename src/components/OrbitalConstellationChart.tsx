@@ -651,20 +651,70 @@ export const OrbitalConstellationChart = ({
     setIsPanning(false);
   }, []);
 
-  // Handlers de zoom
+  // Handlers de zoom melhorados
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    // Posição do cursor relativa ao container
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    
+    // Calcula novo zoom
     const delta = e.deltaY > 0 ? -0.1 : 0.1;
-    setZoomLevel(prev => Math.max(0.5, Math.min(2, prev + delta)));
-  }, []);
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(2, prev + 0.2));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(0.5, prev - 0.2));
+    const newZoom = Math.max(0.5, Math.min(3, zoomLevel + delta));
+    
+    // Ajusta pan para manter o foco no cursor
+    const zoomRatio = newZoom / zoomLevel;
+    const newPanX = mouseX - (mouseX - panOffset.x) * zoomRatio;
+    const newPanY = mouseY - (mouseY - panOffset.y) * zoomRatio;
+    
+    setZoomLevel(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  }, [zoomLevel, panOffset]);
+
+  const handleZoomIn = () => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const newZoom = Math.min(3, zoomLevel + 0.2);
+    const zoomRatio = newZoom / zoomLevel;
+    
+    const newPanX = centerX - (centerX - panOffset.x) * zoomRatio;
+    const newPanY = centerY - (centerY - panOffset.y) * zoomRatio;
+    
+    setZoomLevel(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  };
+
+  const handleZoomOut = () => {
+    if (!containerRef.current) return;
+    const container = containerRef.current;
+    const rect = container.getBoundingClientRect();
+    
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+    
+    const newZoom = Math.max(0.5, zoomLevel - 0.2);
+    const zoomRatio = newZoom / zoomLevel;
+    
+    const newPanX = centerX - (centerX - panOffset.x) * zoomRatio;
+    const newPanY = centerY - (centerY - panOffset.y) * zoomRatio;
+    
+    setZoomLevel(newZoom);
+    setPanOffset({ x: newPanX, y: newPanY });
+  };
+
   const handleResetZoom = () => {
     setZoomLevel(1);
-    setPanOffset({
-      x: 0,
-      y: 0
-    });
+    setPanOffset({ x: 0, y: 0 });
   };
 
   // NÍVEL 1: Overview - Sistemas orbitando o título da música
@@ -865,85 +915,316 @@ export const OrbitalConstellationChart = ({
       </div>;
   };
 
-  // NÍVEL 3: Constellations - Grid de sistemas
+  // NÍVEL 3: Constellations - Grid de sistemas (refatorado)
   const renderConstellationsGrid = () => {
-    const renderOrbitalSystem = (system: OrbitalSystem, centerX: number, centerY: number) => {
-      const orbitRadii = {
-        1: 35,
-        2: 55,
-        3: 75,
-        4: 95
-      };
-      const wordsByOrbit = system.words.reduce((acc, word) => {
-        const orbit = getOrbit(word.strength);
-        if (!acc[orbit]) acc[orbit] = [];
-        acc[orbit].push(word);
-        return acc;
-      }, {} as Record<number, WordData[]>);
-      return <g>
-          {/* Órbitas */}
-          {[1, 2, 3, 4].map(orbit => {
-          const radius = orbitRadii[orbit as keyof typeof orbitRadii];
-          return <circle key={`orbit-${orbit}`} cx={centerX} cy={centerY} r={radius} fill="none" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.15" />;
-        })}
-
-          {/* Centro */}
-          <circle cx={centerX} cy={centerY} r={35} fill={systemColors[system.category]} opacity="0.1" className="animate-pulse" />
-          <circle cx={centerX} cy={centerY} r={28} fill={systemColors[system.category]} opacity="0.2" />
-          <circle cx={centerX} cy={centerY} r={22} fill={systemColors[system.category]} opacity="0.85" style={{
-          filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
-        }} />
-          <circle cx={centerX} cy={centerY} r={22} fill="none" stroke="hsl(var(--background))" strokeWidth="1.5" opacity="0.5" />
-          <text x={centerX} y={centerY} textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground font-bold text-[16px]">
-            {system.centerWord}
-          </text>
-
-          {/* Palavras */}
-          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) => wordsInOrbit.map((word, index) => {
-          const radius = orbitRadii[parseInt(orbit) as keyof typeof orbitRadii];
-          const angle = index / wordsInOrbit.length * 2 * Math.PI - Math.PI / 2;
-          const x = centerX + radius * Math.cos(angle);
-          const y = centerY + radius * Math.sin(angle);
-          return <g key={`word-${word.word}`}>
-                  <line x1={centerX} y1={centerY} x2={x} y2={y} stroke={word.color} strokeWidth="0.5" opacity="0.15" />
-                  <circle cx={x} cy={y} r={10} fill={word.color} opacity="0.08" className="animate-pulse" />
-                  <circle cx={x} cy={y} r={7.5} fill={word.color} opacity="0.15" />
-                  <circle cx={x} cy={y} r={5} fill={word.color} opacity="0.85" style={{
-              filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
-            }} />
-                  <circle cx={x} cy={y} r={5} fill="none" stroke="hsl(var(--background))" strokeWidth="0.5" opacity="0.5" />
-                  <text x={x} y={y - 2} textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold text-[8.5px] pointer-events-none">
-                    {word.word}
-                  </text>
-                  <text x={x} y={y + 7} textAnchor="middle" dominantBaseline="middle" className="fill-muted-foreground font-semibold text-[7px] pointer-events-none">
-                    {word.strength}%
-                  </text>
-                </g>;
-        }))}
-        </g>;
+    const centerX = 575;
+    const centerY = 400;
+    const scale = 2.2;
+    const orbitRadii = {
+      1: 45 * scale,
+      2: 70 * scale,
+      3: 95 * scale,
+      4: 120 * scale
     };
+
+    // Sistema atualmente selecionado para visualização
+    const currentSystemIndex = orbitalSystems.findIndex(s => s.centerWord === selectedSystem);
+    const system = currentSystemIndex >= 0 ? orbitalSystems[currentSystemIndex] : orbitalSystems[0];
+    
+    // Se não houver sistema selecionado, seleciona o primeiro
+    if (!selectedSystem) {
+      setSelectedSystem(orbitalSystems[0].centerWord);
+    }
+
+    const wordsByOrbit = system.words.reduce((acc, word) => {
+      const orbit = getOrbit(word.strength);
+      if (!acc[orbit]) acc[orbit] = [];
+      acc[orbit].push(word);
+      return acc;
+    }, {} as Record<number, WordData[]>);
+
+    const getWordPosition = (word: WordData, index: number, totalInOrbit: number) => {
+      const orbit = getOrbit(word.strength);
+      const radius = orbitRadii[orbit as keyof typeof orbitRadii];
+      const wordKey = `${system.centerWord}-${word.word}`;
+      
+      let angle: number;
+      if (orbitProgress[wordKey] !== undefined) {
+        angle = (orbitProgress[wordKey] / 100) * 2 * Math.PI - Math.PI / 2;
+      } else if (customAngles[wordKey] !== undefined) {
+        angle = customAngles[wordKey];
+      } else {
+        angle = (index / totalInOrbit) * 2 * Math.PI - Math.PI / 2;
+      }
+      
+      return {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle),
+        radius,
+        angle
+      };
+    };
+
     return <>
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 animate-fade-in">
-          <h3 className="text-base font-semibold">Constelações Semânticas - Prosódia</h3>
-          <button onClick={() => setViewMode('universe')} className="text-sm text-primary hover:text-primary/80 transition-colors font-medium">
-            ← Voltar ao universo
+      {/* Cabeçalho com navegação de sistemas */}
+      <div className="flex items-center justify-between mb-4 px-4 pt-4 animate-fade-in">
+        <button 
+          onClick={() => setViewMode('universe')} 
+          className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground rounded-lg transition-colors font-medium"
+        >
+          ← Voltar ao universo
+        </button>
+        
+        <div className="flex items-center gap-3">
+          <span className="inline-block w-4 h-4 rounded-full" style={{
+            backgroundColor: systemColors[system.category]
+          }} />
+          <div className="text-center">
+            <h3 className="text-xl font-bold text-foreground">
+              {system.category}
+            </h3>
+            <p className="text-sm text-muted-foreground italic">
+              {system.centerWord}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const prevIndex = (currentSystemIndex - 1 + orbitalSystems.length) % orbitalSystems.length;
+              setSelectedSystem(orbitalSystems[prevIndex].centerWord);
+              setZoomLevel(1);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+            className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
+            title="Sistema anterior"
+          >
+            ←
+          </button>
+          <span className="text-sm text-muted-foreground">
+            {currentSystemIndex + 1} / {orbitalSystems.length}
+          </span>
+          <button
+            onClick={() => {
+              const nextIndex = (currentSystemIndex + 1) % orbitalSystems.length;
+              setSelectedSystem(orbitalSystems[nextIndex].centerWord);
+              setZoomLevel(1);
+              setPanOffset({ x: 0, y: 0 });
+            }}
+            className="px-3 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors font-medium"
+            title="Próximo sistema"
+          >
+            →
           </button>
         </div>
-        <svg width="1150" height="680" viewBox="0 0 1150 680" className="w-full h-auto animate-fade-in">
-          {orbitalSystems.map((system, index) => {
-          const col = index % 3;
-          const row = Math.floor(index / 3);
-          const x = 200 + col * 320;
-          const y = 180 + row * 280;
-          return <g key={system.centerWord} className="cursor-pointer transition-all duration-200 hover:opacity-80" onClick={() => {
-            setSelectedSystem(system.centerWord);
-            setViewMode('zoomed');
-          }}>
-                {renderOrbitalSystem(system, x, y)}
-              </g>;
-        })}
+      </div>
+
+      <div className="mb-4 px-4">
+        <p className="text-sm text-muted-foreground">
+          💡 Dica: Arraste as palavras para reposicioná-las na órbita. Clique em uma palavra para ver sua concordância (KWIC).
+        </p>
+      </div>
+
+      <div className="px-4">
+        <svg 
+          ref={svgRef} 
+          width="1150" 
+          height="800" 
+          viewBox="0 0 1150 800" 
+          className="w-full h-auto animate-scale-in"
+          style={{ userSelect: isPanning ? 'none' : 'auto' }}
+        >
+          {/* Órbitas */}
+          {[1, 2, 3, 4].map(orbit => {
+            const radius = orbitRadii[orbit as keyof typeof orbitRadii];
+            const circumference = 2 * Math.PI * radius;
+            return (
+              <g key={`orbit-${orbit}`}>
+                <circle 
+                  cx={centerX} 
+                  cy={centerY} 
+                  r={radius} 
+                  fill="none" 
+                  stroke="hsl(var(--border))" 
+                  strokeWidth="2" 
+                  opacity={0.15} 
+                />
+                <circle 
+                  cx={centerX} 
+                  cy={centerY} 
+                  r={radius} 
+                  fill="none" 
+                  stroke={systemColors[system.category]} 
+                  strokeWidth="2" 
+                  strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`} 
+                  opacity={0.4}
+                  style={{
+                    animation: 'orbit-slide 8s linear infinite',
+                    transformOrigin: `${centerX}px ${centerY}px`
+                  }}
+                />
+              </g>
+            );
+          })}
+
+          {/* Linhas conectando ao centro */}
+          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
+            wordsInOrbit.map((word, index) => {
+              const pos = getWordPosition(word, index, wordsInOrbit.length);
+              return (
+                <line
+                  key={`line-${system.centerWord}-${word.word}`}
+                  x1={centerX}
+                  y1={centerY}
+                  x2={pos.x}
+                  y2={pos.y}
+                  stroke={word.color}
+                  strokeWidth="1.5"
+                  opacity="0.15"
+                />
+              );
+            })
+          )}
+
+          {/* Centro */}
+          <g>
+            <circle cx={centerX} cy={centerY} r={32 * scale} fill={systemColors[system.category]} opacity="0.1" className="animate-pulse" />
+            <circle cx={centerX} cy={centerY} r={26 * scale} fill={systemColors[system.category]} opacity="0.2" />
+            <circle cx={centerX} cy={centerY} r={20 * scale} fill={systemColors[system.category]} opacity="0.85" style={{
+              filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
+            }} />
+            <circle cx={centerX} cy={centerY} r={20 * scale} fill="none" stroke="hsl(var(--background))" strokeWidth={1.5 * scale} opacity="0.5" />
+            <text 
+              x={centerX} 
+              y={centerY} 
+              textAnchor="middle" 
+              dominantBaseline="middle" 
+              className="fill-primary-foreground font-bold"
+              style={{
+                fontSize: `${16 * scale}px`,
+                pointerEvents: 'none'
+              }}
+            >
+              {system.centerWord}
+            </text>
+          </g>
+
+          {/* Palavras */}
+          {Object.entries(wordsByOrbit).map(([orbit, wordsInOrbit]) =>
+            wordsInOrbit.map((word, index) => {
+              const pos = getWordPosition(word, index, wordsInOrbit.length);
+              const wordKey = `${system.centerWord}-${word.word}`;
+              const isBeingDragged = draggedWord === wordKey;
+              const stats = palavraStats[word.word];
+
+              return (
+                <g
+                  key={`word-${wordKey}`}
+                  data-word-key={wordKey}
+                  data-center-x={centerX}
+                  data-center-y={centerY}
+                  style={{ cursor: isBeingDragged ? 'grabbing' : 'grab' }}
+                  onMouseDown={(e) => handleMouseDown(e, wordKey, centerX, centerY)}
+                >
+                  <circle 
+                    cx={pos.x} 
+                    cy={pos.y} 
+                    r={10 * scale} 
+                    fill={word.color} 
+                    opacity="0.08" 
+                    className="animate-pulse"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <circle 
+                    cx={pos.x} 
+                    cy={pos.y} 
+                    r={7 * scale} 
+                    fill={word.color} 
+                    opacity="0.15"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  <circle 
+                    cx={pos.x} 
+                    cy={pos.y} 
+                    r={5 * scale} 
+                    fill={word.color} 
+                    opacity="0.85"
+                    style={{
+                      pointerEvents: 'none',
+                      filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
+                    }}
+                  />
+                  <circle 
+                    cx={pos.x} 
+                    cy={pos.y} 
+                    r={5 * scale} 
+                    fill="none" 
+                    stroke="hsl(var(--background))" 
+                    strokeWidth={0.5 * scale} 
+                    opacity="0.5"
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  
+                  {/* Área clicável com tooltip nativo (apenas dados estatísticos) */}
+                  <circle 
+                    cx={pos.x} 
+                    cy={pos.y} 
+                    r={15 * scale} 
+                    fill="transparent"
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={() => setHoveredWord(word.word)}
+                    onMouseLeave={() => setHoveredWord(null)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isDragging) {
+                        setSelectedWordForKwic(word.word);
+                        setKwicModalOpen(true);
+                      }
+                    }}
+                  >
+                    {stats && (
+                      <title>
+                        {`${word.word}\nForça: ${word.strength}%\nFreq. Bruta: ${stats.frequenciaBruta}\nFreq. Normalizada: ${stats.frequenciaNormalizada}\nProsódia: ${stats.prosodia === 'positiva' ? 'Positiva ✓' : stats.prosodia === 'negativa' ? 'Negativa ✗' : 'Neutra −'}\n\nClique para ver concordância (KWIC)`}
+                      </title>
+                    )}
+                  </circle>
+                  
+                  <text 
+                    x={pos.x} 
+                    y={pos.y - 2 * scale} 
+                    textAnchor="middle" 
+                    dominantBaseline="middle" 
+                    className="fill-foreground font-bold"
+                    style={{
+                      fontSize: `${8 * scale}px`,
+                      pointerEvents: 'none',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {word.word}
+                  </text>
+                  <text 
+                    x={pos.x} 
+                    y={pos.y + 7 * scale} 
+                    textAnchor="middle" 
+                    dominantBaseline="middle" 
+                    className="fill-muted-foreground font-semibold"
+                    style={{
+                      fontSize: `${6.5 * scale}px`,
+                      pointerEvents: 'none',
+                      userSelect: 'none'
+                    }}
+                  >
+                    {word.strength}%
+                  </text>
+                </g>
+              );
+            })
+          )}
         </svg>
-      </>;
+      </div>
+    </>;
   };
 
   // NÍVEL 4: Zoomed - Sistema individual ampliado
@@ -1096,33 +1377,7 @@ export const OrbitalConstellationChart = ({
                       {word.strength}%
                     </text>
 
-                    {/* Tooltip KWIC ao passar o mouse */}
-                    {hoveredWord === word.word && <g>
-                        <rect x={pos.x + 15} y={pos.y - 35} width="200" height="70" rx="6" fill="hsl(var(--popover))" stroke="hsl(var(--border))" strokeWidth="1" opacity="0.98" style={{
-                  filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.15))'
-                }} />
-                        <text x={pos.x + 25} y={pos.y - 20} className="fill-foreground font-semibold" style={{
-                  fontSize: '10px'
-                }}>
-                          {word.word}
-                        </text>
-                        <text x={pos.x + 25} y={pos.y - 5} className="fill-muted-foreground" style={{
-                  fontSize: '8px'
-                }}>
-                          "quando o {word.word} vem..."
-                        </text>
-                        <text x={pos.x + 25} y={pos.y + 8} className="fill-muted-foreground" style={{
-                  fontSize: '8px'
-                }}>
-                          "e o {word.word} se faz canção"
-                        </text>
-                        <text x={pos.x + 25} y={pos.y + 20} className="fill-primary" style={{
-                  fontSize: '7px',
-                  fontStyle: 'italic'
-                }}>
-                          Clique para ver mais →
-                        </text>
-                      </g>}
+                    {/* Tooltip KWIC removido - apenas clique para abrir modal */}
                   </g>;
           }))}
           </svg>
