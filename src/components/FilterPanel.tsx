@@ -62,14 +62,14 @@ export const FilterPanel = ({
       {/* Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className="absolute inset-0 bg-black/20 backdrop-blur-sm z-40 transition-opacity duration-300"
           onClick={onToggle}
         />
       )}
       
       {/* Panel */}
       <div 
-        className="fixed left-0 top-0 h-full z-50 transition-transform duration-300 ease-in-out"
+        className="absolute left-0 top-0 h-full z-50 transition-transform duration-300 ease-in-out"
         style={{
           width: '320px',
           transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
