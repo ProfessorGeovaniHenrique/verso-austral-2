@@ -28,8 +28,9 @@ export const SpaceNavigationConsole = ({
   onReset
 }: SpaceNavigationConsoleProps) => {
   return (
-    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex gap-6 items-center px-6 py-4 rounded-2xl border-2 backdrop-blur-xl"
+    <div className="absolute left-1/2 -translate-x-1/2 z-50 flex gap-6 items-center px-6 py-4 rounded-2xl border-2 backdrop-blur-xl"
          style={{
+           top: '10px',
            background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.85))',
            borderColor: '#00E5FF',
            boxShadow: '0 0 30px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1)'
