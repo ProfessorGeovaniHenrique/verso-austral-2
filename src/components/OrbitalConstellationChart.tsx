@@ -68,6 +68,9 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
 
   // Constrói visualização do universo (palavras orbitando o centro) - DADOS REAIS
   const buildUniverseView = useCallback(() => {
+    console.log('🚀 Building Universe View');
+    console.log('📊 palavrasChaveData:', palavrasChaveData.length, 'palavras');
+    
     const graph: any = new Graph();
     graph.addNode('center', { x: 0.5, y: 0.5, size: 0, label: '', color: '#000', hidden: true });
     
@@ -206,6 +209,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       });
     });
     
+    console.log('✅ Graph created with', graph.order, 'nodes');
     return graph;
   }, [dominiosData, palavrasChaveData]);
 
@@ -260,9 +264,11 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     }, 300);
   }, [buildUniverseView, buildGalaxyView, buildStellarView]);
 
-  // Inicializar Sigma.js
+  // Inicializar Sigma.js (executa UMA VEZ)
   useEffect(() => {
     if (!containerRef.current) return;
+    
+    console.log('🎯 Initializing Sigma.js...');
     
     // Store container dimensions
     setContainerRect(containerRef.current.getBoundingClientRect());
@@ -288,8 +294,25 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     // Set initial camera position
     sigma.getCamera().setState({ x: 0.5, y: 0.5, ratio: 0.8 });
     
+    console.log('✅ Sigma.js initialized successfully');
+    
+    return () => {
+      console.log('🧹 Cleaning up Sigma.js');
+      sigma.kill();
+    };
+  }, []); // SEM DEPENDÊNCIAS - executa apenas uma vez
+
+  // Event handlers (atualiza quando dependências mudam)
+  useEffect(() => {
+    if (!sigmaRef.current || !graphRef.current) return;
+    
+    const sigma = sigmaRef.current;
+    const graph = graphRef.current;
+    
+    console.log('🔗 Setting up event handlers');
+    
     // Event handlers (FASE 1: usar refs para evitar stale closure)
-    sigma.on('enterNode', ({ node, event }) => {
+    const enterNodeHandler = ({ node, event }: any) => {
       const currentLevel = levelRef.current;
       const nodeAttrs = graph.getNodeAttributes(node);
       const displayPoint = { x: event.x, y: event.y };
@@ -302,17 +325,17 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       if (currentLevel === 'stellar' && node !== 'center') {
         sigma.getContainer().style.cursor = 'grab';
       }
-    });
+    };
     
-    sigma.on('leaveNode', () => {
+    const leaveNodeHandler = () => {
       setHoveredNode(null);
       setTimeout(() => setIsPaused(false), 2000);
       if (!isDragging) {
         sigma.getContainer().style.cursor = 'default';
       }
-    });
+    };
     
-    sigma.on('clickNode', ({ node }) => {
+    const clickNodeHandler = ({ node }: any) => {
       const currentLevel = levelRef.current;
       
       console.log('Node clicked:', node, 'Current level:', currentLevel);
@@ -346,10 +369,10 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         navigateToLevel('galaxy');
         return;
       }
-    });
+    };
     
     // FASE 2: Implementar drag circular
-    sigma.on('downNode', ({ node, event }) => {
+    const downNodeHandler = ({ node, event }: any) => {
       const currentLevel = levelRef.current;
       if (currentLevel !== 'stellar') return;
       if (node === 'center') return;
@@ -358,7 +381,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       setDraggedNode(node);
       sigma.getContainer().style.cursor = 'grabbing';
       event.preventSigmaDefault();
-    });
+    };
 
     const handleMouseMove = (event: MouseEvent) => {
       if (!isDragging || !draggedNode || !sigmaRef.current || !graphRef.current) return;
@@ -406,15 +429,23 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       }
     };
 
+    sigma.on('enterNode', enterNodeHandler);
+    sigma.on('leaveNode', leaveNodeHandler);
+    sigma.on('clickNode', clickNodeHandler);
+    sigma.on('downNode', downNodeHandler);
+    
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
     
     return () => {
+      sigma.off('enterNode', enterNodeHandler);
+      sigma.off('leaveNode', leaveNodeHandler);
+      sigma.off('clickNode', clickNodeHandler);
+      sigma.off('downNode', downNodeHandler);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
-      sigma.kill();
     };
-  }, [buildUniverseView, navigateToLevel, isDragging, draggedNode, onWordClick, kwicDataMap]);
+  }, [navigateToLevel, isDragging, draggedNode, onWordClick, kwicDataMap]);
 
   const handleZoomIn = () => {
     if (sigmaRef.current) {
@@ -437,7 +468,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   };
   
   return (
-    <div className="relative w-full h-full bg-gradient-to-b from-black via-slate-900 to-black overflow-hidden">
+    <div className="relative w-full h-[800px] bg-gradient-to-b from-black via-slate-900 to-black overflow-hidden">
       {/* Starry background effect */}
       <div className="absolute inset-0 opacity-30">
         {Array.from({ length: 100 }).map((_, i) => (
