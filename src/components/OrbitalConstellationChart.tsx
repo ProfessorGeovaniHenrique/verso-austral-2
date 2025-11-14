@@ -43,7 +43,6 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [isPaused, setIsPaused] = useState(false);
   
   const [filters, setFilters] = useState({
@@ -59,11 +58,11 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     { id: 'verso', label: 'verso', size: 18, color: '#1B5E20', freq: 8, normalized: 12.3, orbit: 150, logLikelihood: 15.2, prosody: 'Neutra', sentiment: 'Contemplativo' },
     { id: 'campo', label: 'campo', size: 17, color: '#1B5E20', freq: 7, normalized: 10.8, orbit: 150, logLikelihood: 14.1, prosody: 'Positiva', sentiment: 'Serenidade' },
     { id: 'casa', label: 'casa', size: 16, color: '#F57F17', freq: 6, normalized: 9.2, orbit: 150, logLikelihood: 12.8, prosody: 'Positiva', sentiment: 'Acolhimento' },
+    { id: 'galpão', label: 'galpão', size: 15, color: '#C62828', freq: 5, normalized: 7.7, orbit: 150, logLikelihood: 11.2, prosody: 'Neutra', sentiment: 'Tradição' },
     
     // Órbita média (média frequência)
-    { id: 'galpão', label: 'galpão', size: 14, color: '#C62828', freq: 4, normalized: 6.1, orbit: 220, logLikelihood: 9.5, prosody: 'Neutra', sentiment: 'Tradição' },
     { id: 'saudade', label: 'saudade', size: 13, color: '#C62828', freq: 3, normalized: 4.6, orbit: 220, logLikelihood: 8.2, prosody: 'Negativa', sentiment: 'Nostalgia' },
-    { id: 'mate', label: 'mate', size: 13, color: '#1B5E20', freq: 3, normalized: 4.6, orbit: 220, logLikelihood: 7.9, prosody: 'Positiva', sentiment: 'Pertencimento' },
+    { id: 'mate', label: 'mate', size: 13, color: '#F57F17', freq: 3, normalized: 4.6, orbit: 220, logLikelihood: 7.9, prosody: 'Positiva', sentiment: 'Pertencimento' },
     { id: 'noite', label: 'noite', size: 12, color: '#00E5FF', freq: 3, normalized: 4.6, orbit: 220, logLikelihood: 7.5, prosody: 'Neutra', sentiment: 'Mistério' },
     
     // Órbita externa (baixa frequência)
@@ -238,7 +237,9 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       labelColor: { color: '#FFFFFF' },
       defaultNodeColor: '#F57F17',
       labelWeight: 'bold',
-      allowInvalidContainer: true
+      allowInvalidContainer: true,
+      minCameraRatio: 0.1,
+      maxCameraRatio: 4
     });
     
     sigmaRef.current = sigma;
@@ -292,9 +293,44 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     return 'Navegando...';
   };
 
+  const handleZoomIn = () => {
+    if (sigmaRef.current) {
+      const camera = sigmaRef.current.getCamera();
+      const currentRatio = camera.getState().ratio;
+      const newRatio = Math.max(currentRatio * 0.7, 0.1);
+      camera.animate({ ratio: newRatio }, { duration: 300 });
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (sigmaRef.current) {
+      const camera = sigmaRef.current.getCamera();
+      const currentRatio = camera.getState().ratio;
+      const newRatio = Math.min(currentRatio * 1.4, 4);
+      camera.animate({ ratio: newRatio }, { duration: 300 });
+    }
+  };
+
   const handleZoomChange = (value: number) => {
-    setZoomLevel(value);
     sigmaRef.current?.getCamera().animate({ ratio: 1 / value }, { duration: 300 });
+  };
+
+  const handleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      containerRef.current?.parentElement?.requestFullscreen().then(() => {
+        setTimeout(() => {
+          sigmaRef.current?.refresh();
+          sigmaRef.current?.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1.2 });
+        }, 100);
+      });
+    } else {
+      document.exitFullscreen().then(() => {
+        setTimeout(() => {
+          sigmaRef.current?.refresh();
+          sigmaRef.current?.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1.2 });
+        }, 100);
+      });
+    }
   };
 
   return (
@@ -315,7 +351,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       <SpaceNavigationConsole
         level={level}
         currentSystem={getCurrentSystemName()}
-        currentCoords={`X: ${zoomLevel.toFixed(2)} Y: ${level.substring(0, 3).toUpperCase()}`}
+        currentCoords={`LVL: ${level.toUpperCase()} | SYS: ${selectedSystem || 'NONE'}`}
         filters={filters}
         onNavigate={navigateToLevel}
         onFilterChange={setFilters}
@@ -327,23 +363,16 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       
       {/* Controles de Zoom */}
       <VerticalZoomControls
-        zoomLevel={zoomLevel}
-        onZoomIn={() => handleZoomChange(Math.min(zoomLevel + 0.2, 3))}
-        onZoomOut={() => handleZoomChange(Math.max(zoomLevel - 0.2, 0.5))}
+        zoomLevel={1}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
         onZoomChange={handleZoomChange}
         onReset={() => {
-          handleZoomChange(1);
-          sigmaRef.current?.getCamera().animate({ x: 0.5, y: 0.5 }, { duration: 500 });
+          sigmaRef.current?.getCamera().animate({ x: 0.5, y: 0.5, ratio: 1.2 }, { duration: 500 });
         }}
         onFit={() => sigmaRef.current?.getCamera().animate({ ratio: 1 }, { duration: 800 })}
         onRefresh={() => navigateToLevel(level, selectedSystem || undefined)}
-        onFullscreen={() => {
-          if (!document.fullscreenElement) {
-            containerRef.current?.requestFullscreen();
-          } else {
-            document.exitFullscreen();
-          }
-        }}
+        onFullscreen={handleFullscreen}
       />
       
       {/* Botão de Pause separado */}
@@ -358,7 +387,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
           fontSize: '18px',
           cursor: 'pointer'
         }}
-        title={isPaused ? 'Resume Animations' : 'Pause Animations'}
+        title={isPaused ? 'Retomar Animações' : 'Pausar Animações'}
       >
         {isPaused ? '▶' : '⏸'}
       </button>
@@ -425,6 +454,16 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
         .space-nav-btn:hover {
           box-shadow: 0 0 15px rgba(0, 229, 255, 0.5);
           transform: scale(1.05);
+        }
+        
+        .network-page-container:fullscreen {
+          background: #0A0E27 !important;
+        }
+        
+        .network-page-container:fullscreen .space-console,
+        .network-page-container:fullscreen .zoom-controls {
+          display: block !important;
+          z-index: 2000 !important;
         }
       `}</style>
     </div>
