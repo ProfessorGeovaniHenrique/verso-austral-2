@@ -24,19 +24,21 @@ export const OrbitalRings = ({ level, isPaused, containerWidth, containerHeight 
   const centerX = containerWidth / 2;
   const centerY = containerHeight / 2;
   
-  // Define orbits based on level
+  // Define orbits based on level (proportional to container size)
   const getOrbits = () => {
+    const baseRadius = Math.min(containerWidth, containerHeight) * 0.12; // Base 12% do menor lado
+    
     switch (level) {
       case 'universe':
         return [
-          { radius: 150, speed: 1, dashArray: '10 5' },
-          { radius: 220, speed: 0.7, dashArray: '12 6' },
-          { radius: 290, speed: 0.5, dashArray: '15 8' }
+          { radius: baseRadius * 1.0, speed: 1, dashArray: '10 5' },    // Órbita interna
+          { radius: baseRadius * 1.67, speed: 0.7, dashArray: '12 6' }, // Órbita média
+          { radius: baseRadius * 2.33, speed: 0.5, dashArray: '15 8' }  // Órbita externa
         ];
       case 'stellar':
         return [
-          { radius: 150, speed: 1.2, dashArray: '8 4' },
-          { radius: 220, speed: 0.8, dashArray: '10 5' }
+          { radius: baseRadius * 1.25, speed: 1.2, dashArray: '8 4' },  // Órbita interna
+          { radius: baseRadius * 2.08, speed: 0.8, dashArray: '10 5' }  // Órbita externa
         ];
       default:
         return [];

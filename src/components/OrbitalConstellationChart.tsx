@@ -6,7 +6,6 @@ import { SpaceHUDTooltip } from './SpaceHUDTooltip';
 import { VerticalZoomControls } from './VerticalZoomControls';
 import { OrbitalRings } from './OrbitalRings';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
-import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
 
 type NavigationLevel = 'universe' | 'galaxy' | 'stellar';
 
@@ -120,33 +119,51 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     // Nó central (canção)
     graph.addNode('song-center', {
       label: 'Quando o Verso Vem\nPras Casa',
-      x: 0,
-      y: 0,
-      size: 40,
+      x: 0.5,
+      y: 0.5,
+      size: 45,
       color: '#F57F17'
     });
 
-    // Adicionar palavras em órbitas
-    universeWords
+    // Órbitas proporcionais (raios normalizados 0-1)
+    const orbits = [0.12, 0.20, 0.28]; // Raios pequenos e proporcionais
+    
+    // Distribuir palavras nas órbitas
+    const filteredWords = universeWords
       .filter(word => word.freq >= filters.minFrequency)
-      .filter(word => filters.prosody === 'all' || word.prosody?.toLowerCase() === filters.prosody)
-      .forEach((word, index) => {
-        const angle = (index / universeWords.length) * 2 * Math.PI;
-        const radius = word.orbit || 200;
-        
-        graph.addNode(word.id, {
-          label: word.label,
-          x: Math.cos(angle) * radius,
-          y: Math.sin(angle) * radius,
-          size: word.size,
-          color: word.color
-        });
-        
-        graph.addEdge('song-center', word.id, {
-          color: word.color + '40',
-          size: 1
-        });
+      .filter(word => filters.prosody === 'all' || word.prosody?.toLowerCase() === filters.prosody);
+    
+    filteredWords.forEach((word, index) => {
+      // Determinar órbita baseado na frequência
+      const orbitIndex = word.freq >= 6 ? 0 : word.freq >= 3 ? 1 : 2;
+      const radius = orbits[orbitIndex];
+      
+      // Distribuir palavras uniformemente na órbita
+      const wordsInOrbit = filteredWords.filter(w => {
+        const oi = w.freq >= 6 ? 0 : w.freq >= 3 ? 1 : 2;
+        return oi === orbitIndex;
+      }).length;
+      
+      const indexInOrbit = filteredWords.filter((w, i) => {
+        const oi = w.freq >= 6 ? 0 : w.freq >= 3 ? 1 : 2;
+        return i < index && oi === orbitIndex;
+      }).length;
+      
+      const angle = (indexInOrbit / wordsInOrbit) * 2 * Math.PI;
+      
+      graph.addNode(word.id, {
+        label: word.label,
+        x: 0.5 + radius * Math.cos(angle),
+        y: 0.5 + radius * Math.sin(angle),
+        size: word.size * 2.5, // Aumentar tamanho significativamente
+        color: word.color
       });
+      
+      graph.addEdge('song-center', word.id, {
+        color: word.color + '40',
+        size: 1
+      });
+    });
   }, [filters]);
 
   // Construir visualização da Galáxia
@@ -156,13 +173,13 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     // Adicionar domínios
     galaxyDomains.forEach((domain, index) => {
       const angle = (index / galaxyDomains.length) * 2 * Math.PI;
-      const radius = 250;
+      const radius = 0.25; // Raio normalizado
       
       graph.addNode(domain.id, {
         label: domain.label,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-        size: domain.size,
+        x: 0.5 + Math.cos(angle) * radius,
+        y: 0.5 + Math.sin(angle) * radius,
+        size: domain.size * 2,
         color: domain.color
       });
     });
@@ -178,25 +195,32 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     // Centro do sistema (Estrela do domínio)
     graph.addNode('system-center', {
       label: domain.label,
-      x: 0,
-      y: 0,
-      size: 50,
+      x: 0.5,
+      y: 0.5,
+      size: 60,
       color: domain.color
     });
     
     // Planetas (palavras do domínio) orbitando em diferentes níveis
     const domainWords = universeWords.filter(w => domain.words.includes(w.id));
     
+    // Órbitas proporcionais para o stellar view
+    const orbits = [0.15, 0.25]; // Duas órbitas compactas
+    
     domainWords.forEach((word, index) => {
       // Distribuir em 2 órbitas baseado na frequência
-      const orbitRadius = word.freq >= 4 ? 150 : 220;
-      const angle = (index / domainWords.length) * 2 * Math.PI;
+      const orbitIndex = word.freq >= 4 ? 0 : 1;
+      const radius = orbits[orbitIndex];
+      
+      const wordsInOrbit = domainWords.filter(w => (w.freq >= 4 ? 0 : 1) === orbitIndex).length;
+      const indexInOrbit = domainWords.filter((w, i) => i < index && (w.freq >= 4 ? 0 : 1) === orbitIndex).length;
+      const angle = (indexInOrbit / wordsInOrbit) * 2 * Math.PI;
       
       graph.addNode(word.id, {
         label: word.label,
-        x: Math.cos(angle) * orbitRadius,
-        y: Math.sin(angle) * orbitRadius,
-        size: word.size + 5,
+        x: 0.5 + Math.cos(angle) * radius,
+        y: 0.5 + Math.sin(angle) * radius,
+        size: (word.size + 5) * 2,
         color: word.color,
         freq: word.freq,
         normalized: word.normalized,
@@ -245,7 +269,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       if (sigmaRef.current) {
         const container = sigmaRef.current.getContainer();
         container.style.opacity = '1';
-        sigmaRef.current.getCamera().animate({ ratio: 1.2 }, { duration: 800 });
+        sigmaRef.current.getCamera().animate({ x: 0.5, y: 0.5, ratio: 0.8 }, { duration: 800 });
       }
     }, 300);
   }, [buildUniverseView, buildGalaxyView, buildStellarView]);
@@ -262,43 +286,22 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     buildUniverseView(graph);
     
     const sigma = new Sigma(graph, containerRef.current, {
-      renderLabels: false, // We'll draw custom labels
+      renderLabels: true,
+      labelRenderedSizeThreshold: 0,
+      labelFont: 'Courier New, monospace',
+      labelSize: 12,
+      labelWeight: 'bold',
+      labelColor: { color: '#00E5FF' },
       defaultNodeColor: '#F57F17',
       allowInvalidContainer: true,
-      minCameraRatio: 0.1,
-      maxCameraRatio: 4
+      minCameraRatio: 0.3,
+      maxCameraRatio: 2.5
     });
     
     sigmaRef.current = sigma;
     
-    // Custom planet renderer using afterRender hook
-    sigma.on('afterRender', () => {
-      const camera = sigma.getCamera();
-      const context = sigma.getCanvases().nodes.getContext('2d');
-      if (!context) return;
-      
-      // Draw custom planets for each node
-      graphRef.current.forEachNode((node: string) => {
-        const attributes = graphRef.current.getNodeAttributes(node);
-        const viewportPos = sigma.graphToViewport({ x: attributes.x, y: attributes.y });
-        const size = attributes.size * camera.getState().ratio * 2; // Adjust size based on zoom
-        
-        const nodeData = {
-          x: viewportPos.x,
-          y: viewportPos.y,
-          size: size,
-          label: attributes.label,
-          color: attributes.color
-        };
-        
-        // Check if node is hovered
-        if (hoveredNode && hoveredNode.id === node) {
-          drawPlanetNodeHover(context, nodeData, {});
-        } else {
-          drawPlanetNode(context, nodeData, {});
-        }
-      });
-    });
+    // Set initial camera position
+    sigma.getCamera().setState({ x: 0.5, y: 0.5, ratio: 0.8 });
     
     // Event handlers
     sigma.on('enterNode', ({ node, event }) => {
