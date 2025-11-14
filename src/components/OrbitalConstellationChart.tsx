@@ -449,9 +449,8 @@ export const OrbitalConstellationChart = ({
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onReset={handleFitToView}
-            onFitToView={handleFitToView}
-            onToggleFullscreen={handleToggleFullscreen}
-            isFullscreen={isFullscreen}
+            zoomLevel={zoomLevel}
+            onZoomChange={setZoomLevel}
           />
 
           <svg
@@ -800,9 +799,8 @@ export const OrbitalConstellationChart = ({
             onZoomIn={handleZoomIn}
             onZoomOut={handleZoomOut}
             onReset={handleFitToView}
-            onFitToView={handleFitToView}
-            onToggleFullscreen={handleToggleFullscreen}
-            isFullscreen={isFullscreen}
+            zoomLevel={zoomLevel}
+            onZoomChange={setZoomLevel}
           />
 
           <svg

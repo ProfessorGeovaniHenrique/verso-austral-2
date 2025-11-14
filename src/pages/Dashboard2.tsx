@@ -1851,7 +1851,14 @@ E uma saudade redomona pelos cantos do galpão`}
                 height: isFullscreen ? 'calc(100vh - 200px)' : '750px'
               }} onMouseDown={handleCanvasMouseDown} onMouseMove={handleCanvasPanMove} onMouseUp={handleCanvasPanEnd} onMouseLeave={handleCanvasPanEnd} onWheel={handleWheel}>
                   {/* Controles de Zoom - Interno */}
-                  <NavigationToolbar onZoomIn={handleZoomIn} onZoomOut={handleZoomOut} onReset={handleResetZoom} onFitToView={handleFitToView} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} className="absolute top-4 right-4 z-30" />
+                  <NavigationToolbar 
+                    onZoomIn={handleZoomIn} 
+                    onZoomOut={handleZoomOut} 
+                    onReset={handleResetZoom} 
+                    onFitToView={handleFitToView} 
+                    zoomLevel={zoomLevel}
+                    onZoomChange={setZoomLevel}
+                  />
 
                   <div className="pan-area absolute inset-0" style={{
                   transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,

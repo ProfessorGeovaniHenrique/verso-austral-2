@@ -378,9 +378,8 @@ export function InteractiveSemanticNetwork({ onWordClick }: InteractiveSemanticN
             setPanOffset({ x: 0, y: 0 });
           }}
           onFitToView={handleFitToView}
-          onToggleFullscreen={handleToggleFullscreen}
-          isFullscreen={isFullscreen}
-          className="absolute top-4 right-4 z-10"
+          zoomLevel={zoomLevel}
+          onZoomChange={setZoomLevel}
         />
 
         <div
