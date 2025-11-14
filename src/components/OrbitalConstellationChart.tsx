@@ -4,7 +4,9 @@ import Graph from 'graphology';
 import { SpaceNavigationConsole } from './SpaceNavigationConsole';
 import { SpaceHUDTooltip } from './SpaceHUDTooltip';
 import { VerticalZoomControls } from './VerticalZoomControls';
+import { OrbitalRings } from './OrbitalRings';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
+import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
 
 type NavigationLevel = 'universe' | 'galaxy' | 'stellar';
 
@@ -45,6 +47,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isPaused, setIsPaused] = useState(false);
+  const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   
   const [filters, setFilters] = useState({
     minFrequency: 1,
@@ -251,22 +254,51 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
   useEffect(() => {
     if (!containerRef.current) return;
     
+    // Store container dimensions
+    setContainerRect(containerRef.current.getBoundingClientRect());
+    
     const graph = new Graph();
     graphRef.current = graph;
     buildUniverseView(graph);
     
     const sigma = new Sigma(graph, containerRef.current, {
-      renderLabels: true,
-      labelSize: 14,
-      labelColor: { color: '#FFFFFF' },
+      renderLabels: false, // We'll draw custom labels
       defaultNodeColor: '#F57F17',
-      labelWeight: 'bold',
       allowInvalidContainer: true,
       minCameraRatio: 0.1,
       maxCameraRatio: 4
     });
     
     sigmaRef.current = sigma;
+    
+    // Custom planet renderer using afterRender hook
+    sigma.on('afterRender', () => {
+      const camera = sigma.getCamera();
+      const context = sigma.getCanvases().nodes.getContext('2d');
+      if (!context) return;
+      
+      // Draw custom planets for each node
+      graphRef.current.forEachNode((node: string) => {
+        const attributes = graphRef.current.getNodeAttributes(node);
+        const viewportPos = sigma.graphToViewport({ x: attributes.x, y: attributes.y });
+        const size = attributes.size * camera.getState().ratio * 2; // Adjust size based on zoom
+        
+        const nodeData = {
+          x: viewportPos.x,
+          y: viewportPos.y,
+          size: size,
+          label: attributes.label,
+          color: attributes.color
+        };
+        
+        // Check if node is hovered
+        if (hoveredNode && hoveredNode.id === node) {
+          drawPlanetNodeHover(context, nodeData, {});
+        } else {
+          drawPlanetNode(context, nodeData, {});
+        }
+      });
+    });
     
     // Event handlers
     sigma.on('enterNode', ({ node, event }) => {
@@ -428,30 +460,14 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
         </Tooltip>
       </TooltipProvider>
       
-      {/* Órbitas SVG (apenas no nível Universe e Stellar) */}
-      {(level === 'universe' || level === 'stellar') && (
-        <svg className="absolute inset-0 pointer-events-none w-full h-full" style={{ zIndex: 1 }}>
-          <defs>
-            <filter id="orbit-glow">
-              <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-              <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
-              </feMerge>
-            </filter>
-          </defs>
-          <g transform="translate(50%, 50%)">
-            <circle r="150" fill="none" stroke="rgba(0, 229, 255, 0.3)" 
-                    strokeWidth="1" strokeDasharray="5,10" filter="url(#orbit-glow)"
-                    style={{ animation: isPaused ? 'none' : 'rotate-orbit 90s linear infinite', transformOrigin: 'center' }} />
-            <circle r="220" fill="none" stroke="rgba(245, 127, 23, 0.25)" 
-                    strokeWidth="1" strokeDasharray="8,15" filter="url(#orbit-glow)"
-                    style={{ animation: isPaused ? 'none' : 'rotate-orbit 150s linear reverse infinite', transformOrigin: 'center' }} />
-            <circle r="290" fill="none" stroke="rgba(27, 94, 32, 0.2)" 
-                    strokeWidth="1" strokeDasharray="12,20" filter="url(#orbit-glow)"
-                    style={{ animation: isPaused ? 'none' : 'rotate-orbit 200s linear infinite', transformOrigin: 'center' }} />
-          </g>
-        </svg>
+      {/* Órbitas animadas usando OrbitalRings component */}
+      {containerRect && (
+        <OrbitalRings 
+          level={level}
+          isPaused={isPaused}
+          containerWidth={containerRect.width}
+          containerHeight={containerRect.height}
+        />
       )}
       
       {/* Container Sigma */}
@@ -470,6 +486,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
         word={hoveredNode}
         position={tooltipPos}
         visible={!!hoveredNode}
+        containerRect={containerRect || undefined}
       />
       
       <style>{`

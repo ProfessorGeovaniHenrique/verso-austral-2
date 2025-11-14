@@ -11,11 +11,48 @@ interface SpaceHUDTooltipProps {
   } | null;
   position: { x: number; y: number };
   visible: boolean;
+  containerRect?: DOMRect;
 }
 
-export const SpaceHUDTooltip = ({ word, position, visible }: SpaceHUDTooltipProps) => {
+export const SpaceHUDTooltip = ({ word, position, visible, containerRect }: SpaceHUDTooltipProps) => {
   if (!visible || !word) return null;
 
+  // Smart positioning to avoid UI collision
+  const calculateSmartPosition = () => {
+    const tooltipWidth = 300;
+    const tooltipHeight = 250;
+    const offset = 20;
+    
+    let x = position.x + offset;
+    let y = position.y - 140;
+    
+    if (containerRect) {
+      // Detect collision with top navigation console (first 120px)
+      if (y < 120) {
+        y = position.y + offset; // Move below cursor
+      }
+      
+      // Detect collision with right zoom controls (last 100px)
+      if (x + tooltipWidth > containerRect.width - 100) {
+        x = position.x - tooltipWidth - offset; // Move to left of cursor
+      }
+      
+      // Detect collision with bottom edge
+      if (y + tooltipHeight > containerRect.height) {
+        y = containerRect.height - tooltipHeight - 20;
+      }
+      
+      // Detect collision with left edge
+      if (x < 20) {
+        x = 20;
+      }
+    }
+    
+    return { x, y };
+  };
+
+  const smartPos = calculateSmartPosition();
+  
   const getProsodyColor = (prosody?: string) => {
     switch (prosody?.toLowerCase()) {
       case 'positiva':
@@ -33,9 +70,9 @@ export const SpaceHUDTooltip = ({ word, position, visible }: SpaceHUDTooltipProp
     <div
       className="fixed pointer-events-none z-[100] animate-fade-in"
       style={{
-        left: position.x + 20,
-        top: position.y - 140,
-        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
+        left: smartPos.x,
+        top: smartPos.y,
+        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.2))',
         border: '2px solid #00E5FF',
         borderRadius: '12px',
         padding: '16px',
