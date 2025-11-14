@@ -36,8 +36,13 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
 }) => {
   return (
     <TooltipProvider>
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-20">
-        <div className="flex flex-col gap-2 bg-[#2d2d2d]/90 backdrop-blur-md border border-border/50 rounded-xl p-2 shadow-2xl">
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20">
+        <div className="flex flex-col gap-2 backdrop-blur-xl border-2 rounded-xl p-2 shadow-2xl"
+             style={{
+               background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.7))',
+               borderColor: '#00E5FF',
+               boxShadow: '0 0 30px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1)'
+             }}>
           {/* Home/Reset */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -45,12 +50,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onReset}
-                className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
               >
                 <Home className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
               <p>Resetar visualização</p>
             </TooltipContent>
           </Tooltip>
@@ -62,12 +67,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onZoomIn}
-                className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
               >
                 <ZoomIn className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
               <p>Aumentar zoom</p>
             </TooltipContent>
           </Tooltip>
@@ -84,7 +89,7 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 step={5}
                 className="h-24"
               />
-              <div className="text-xs text-center text-muted-foreground mt-2">
+              <div className="text-xs text-center mt-2" style={{ color: '#00E5FF' }}>
                 {zoomLevel}%
               </div>
             </div>
@@ -97,17 +102,17 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onZoomOut}
-                className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
               >
                 <ZoomOut className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
               <p>Diminuir zoom</p>
             </TooltipContent>
           </Tooltip>
 
-          <div className="w-full h-px bg-border/50 my-1" />
+          <div className="w-full h-px my-1" style={{ background: 'rgba(0, 229, 255, 0.3)' }} />
 
           {/* Fit to Screen */}
           <Tooltip>
@@ -116,12 +121,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onFit}
-                className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
               >
                 <Maximize className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
               <p>Ajustar à tela</p>
             </TooltipContent>
           </Tooltip>
@@ -133,12 +138,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                 variant="ghost"
                 size="icon"
                 onClick={onRefresh}
-                className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
               >
                 <RotateCcw className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent side="left">
+            <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
               <p>Recarregar</p>
             </TooltipContent>
           </Tooltip>
@@ -146,14 +151,14 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
           {/* Pause/Play Animation */}
           {onPauseToggle && (
             <>
-              <div className="w-full h-px bg-border/50 my-1" />
+              <div className="w-full h-px my-1" style={{ background: 'rgba(0, 229, 255, 0.3)' }} />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
                     onClick={onPauseToggle}
-                    className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                    className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
                   >
                     {isPaused ? (
                       <Play className="h-5 w-5" />
@@ -162,7 +167,7 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="left">
+                <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
                   <p>{isPaused ? 'Retomar animação' : 'Pausar animação'}</p>
                 </TooltipContent>
               </Tooltip>
@@ -177,12 +182,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
                   variant="ghost"
                   size="icon"
                   onClick={onFullscreen}
-                  className="h-10 w-10 hover:bg-primary/20 hover:text-primary"
+                  className="h-10 w-10 text-white hover:bg-[#00E5FF]/20 hover:text-[#00E5FF] transition-all"
                 >
                   <Maximize className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="left">
+              <TooltipContent side="left" className="bg-card border-[#00E5FF] text-foreground">
                 <p>Tela cheia</p>
               </TooltipContent>
             </Tooltip>
@@ -191,7 +196,12 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
 
         {/* Pause Indicator */}
         {isPaused && onPauseToggle && (
-          <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-primary/20 text-primary px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm border border-primary/30">
+          <div className="absolute -top-12 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-xs font-medium backdrop-blur-sm border-2"
+               style={{
+                 background: 'rgba(0, 229, 255, 0.2)',
+                 color: '#00E5FF',
+                 borderColor: '#00E5FF'
+               }}>
             ⏸️ Pausado
           </div>
         )}
