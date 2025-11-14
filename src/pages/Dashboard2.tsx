@@ -290,7 +290,7 @@ const dominiosData = [{
   riquezaLexical: 22,
   ocorrencias: 95,
   percentual: 44.81,
-  palavras: ["de", "um", "e", "o", "em", "para", "com", "se", "bem", "mais", "por", "que", "daí", "ele", "entre", "já", "mas", "mesmo", "onde", "ou", "seu"],
+  palavras: ["de", "um", "e", "o", "da", "na", "uma", "com", "do", "prá", "se", "bem", "mais", "no", "os", "que", "daí", "das", "em", "é", "ela", "entre", "já", "mas", "mesmo", "onde", "ou", "pela", "pelos", "prás", "seu", "feito", "frente", "novo"],
   cor: "hsl(0, 0%, 50%)",
   corTexto: "hsl(0, 0%, 85%)"
 }, {
@@ -298,7 +298,7 @@ const dominiosData = [{
   riquezaLexical: 27,
   ocorrencias: 28,
   percentual: 13.21,
-  palavras: ["gateado", "arreio", "bomba", "brasa", "cambona", "campereada", "cancela", "candeeiro", "caseiro", "copla", "cuia", "espora", "galpão", "galponeiro", "jujado", "lombo", "lonjura", "maragato", "mate", "pañuelo", "prenda", "pura-folha", "quarto", "querência", "ramada", "templado", "tropa"],
+  palavras: ["gateada", "gateado", "arreios", "bomba", "brasa", "cambona", "campereada", "cancela", "candeeiro", "caseiro", "coplas", "cuia", "esporas", "galpão", "galponeira", "jujado", "lombo", "lonjuras", "maragato", "mate", "pañuelo", "prenda", "pura-folha", "quarto", "querência", "ramada", "templado", "tropa"],
   cor: "hsl(25, 75%, 45%)",
   corTexto: "hsl(25, 90%, 80%)"
 }, {
@@ -306,7 +306,7 @@ const dominiosData = [{
   riquezaLexical: 20,
   ocorrencias: 26,
   percentual: 12.26,
-  palavras: ["coxilha", "sol", "sombra", "tarde", "tarumã", "várzea", "asa", "aurora", "campo", "campanha", "chão", "fogo", "horizonte", "madrugada", "manhã", "maçanilha", "noite", "primavera", "reponte", "ventito"],
+  palavras: ["coxilha", "sol", "sombra", "tarde", "tarumã", "várzea", "asas", "aurora", "campo", "campanha", "chão", "fogo", "horizonte", "madrugada", "manhãs", "maçanilha", "noite", "primavera", "reponte", "ventito"],
   cor: "hsl(142, 60%, 40%)",
   corTexto: "hsl(142, 80%, 75%)"
 }, {
@@ -314,7 +314,7 @@ const dominiosData = [{
   riquezaLexical: 19,
   ocorrencias: 24,
   percentual: 11.32,
-  palavras: ["trazer", "ser", "sonhar", "abrir", "aquerenciar", "cair", "cevar", "chegar", "deixar", "desencilhar", "desgarrar", "encilhar", "estampar", "ficar", "ganhar", "pontear", "queimar", "rondar", "ter"],
+  palavras: ["traz", "trazendo", "trouxe", "ser", "é", "sonhou", "abriu", "aquerenciou", "caindo", "cevou", "chegou", "deixou", "desencilhou", "desgarrou", "encilha", "estampando", "ficaram", "ganhou", "pontear", "queimando", "rondar", "tinha"],
   cor: "hsl(200, 60%, 45%)",
   corTexto: "hsl(200, 85%, 80%)"
 }, {
@@ -322,7 +322,7 @@ const dominiosData = [{
   riquezaLexical: 16,
   ocorrencias: 20,
   percentual: 9.43,
-  palavras: ["verso", "saudade", "sonho", "açoite", "calma", "canto", "cerne", "cor", "espera", "figura", "fim", "jeito", "luz", "mansidão", "respeito", "silencio"],
+  palavras: ["verso", "saudade", "saudades", "sonhos", "açoite", "calma", "cantos", "cerne", "cor", "espera", "figura", "fim", "jeito", "luz", "mansidão", "respeito", "silencio"],
   cor: "hsl(291, 60%, 45%)",
   corTexto: "hsl(291, 80%, 80%)"
 }, {
@@ -330,7 +330,7 @@ const dominiosData = [{
   riquezaLexical: 16,
   ocorrencias: 16,
   percentual: 7.55,
-  palavras: ["aberto", "adormecido", "campeiro", "cansado", "copado", "encostado", "espichado", "feito", "gordo", "lindo", "negro", "novo", "recostado", "redomona", "suado", "vestido"],
+  palavras: ["aberta", "adormecidos", "campeira", "cansado", "copada", "encostada", "espichada", "feito", "gordo", "lindo", "negros", "novo", "recostada", "redomona", "suados", "vestidos"],
   cor: "hsl(45, 75%, 45%)",
   corTexto: "hsl(45, 90%, 80%)"
 }, {
@@ -338,7 +338,7 @@ const dominiosData = [{
   riquezaLexical: 2,
   ocorrencias: 3,
   percentual: 1.42,
-  palavras: ["olho", "galo"],
+  palavras: ["olhos", "galo"],
   cor: "hsl(340, 60%, 45%)",
   corTexto: "hsl(340, 85%, 80%)"
 }];
@@ -1603,6 +1603,11 @@ E uma saudade redomona pelos cantos do galpão`}
                           const y = centerY + Math.sin(angle) * finalRadius;
                           const wordScale = (1 - orbit * 0.12) * 1.3;
                           const stats = palavraStats[palavra];
+                          // Verificação de segurança: se não houver stats, não renderizar a palavra
+                          if (!stats) {
+                            console.warn(`Stats não encontrado para palavra: "${palavra}"`);
+                            return null;
+                          }
                           return <g key={wordKey} data-word-key={wordKey} data-center-x={centerX} data-center-y={centerY} style={{
                             cursor: 'grab'
                           }} onMouseDown={e => handleMouseDown(e, wordKey, centerX, centerY)}>
