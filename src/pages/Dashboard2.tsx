@@ -1547,6 +1547,12 @@ E uma saudade redomona pelos cantos do galpão`}
                       }, {
                         x: 936,
                         y: 754
+                      }, {
+                        x: 260,
+                        y: 487
+                      }, {
+                        x: 1040,
+                        y: 487
                       }];
                       const position = positions[index];
                       const centerX = position.x;
