@@ -72,49 +72,96 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     console.log('📊 palavrasChaveData:', palavrasChaveData.length, 'palavras');
     
     const graph: any = new Graph();
-    graph.addNode('center', { x: 0.5, y: 0.5, size: 0, label: '', color: '#000', hidden: true });
     
-    // Seleciona top 12 palavras por Log-Likelihood
-    const topWords = [...palavrasChaveData]
-      .sort((a, b) => b.ll - a.ll)
-      .slice(0, 12);
+    // NOÉ CENTRAL VISÍVEL com nome da canção e autor
+    graph.addNode('center', { 
+      x: 0.5, 
+      y: 0.5, 
+      size: 40,
+      label: 'Quando o verso\nvem pras casa\nLuiz Marenco',
+      color: '#FFD700',
+      type: 'center',
+      hidden: false
+    });
     
-    // Define 3 órbitas com raios normalizados (0-1)
-    const orbits = [0.12, 0.20, 0.28];
+    // TODAS as palavras do corpus ordenadas por Log-Likelihood
+    const allWords = [...palavrasChaveData].sort((a, b) => b.ll - a.ll);
     
-    topWords.forEach((wordData, idx) => {
-      const orbitIdx = Math.floor(idx / 4); // 4 palavras por órbita
-      const orbit = orbits[orbitIdx] || 0.28;
-      const angle = (idx % 4) * (Math.PI / 2) + (Math.PI / 4); // Distribui 4 palavras por órbita
+    // Calcular min/max LL para normalização
+    const minLL = Math.min(...allWords.map(w => w.ll));
+    const maxLL = Math.max(...allWords.map(w => w.ll));
+    
+    // Agrupar palavras por faixa de relevância (0-20%, 20-40%, 40-60%, 60-80%, 80-100%)
+    const orbitGroups: { [key: number]: Array<typeof allWords[0]> } = {
+      0: [], // 80-100% (mais interna)
+      1: [], // 60-80%
+      2: [], // 40-60%
+      3: [], // 20-40%
+      4: []  // 0-20% (mais externa)
+    };
+    
+    allWords.forEach(wordData => {
+      const relevancePercent = ((wordData.ll - minLL) / (maxLL - minLL)) * 100;
       
-      const x = 0.5 + Math.cos(angle) * orbit;
-      const y = 0.5 + Math.sin(angle) * orbit;
+      if (relevancePercent >= 80) orbitGroups[0].push(wordData);
+      else if (relevancePercent >= 60) orbitGroups[1].push(wordData);
+      else if (relevancePercent >= 40) orbitGroups[2].push(wordData);
+      else if (relevancePercent >= 20) orbitGroups[3].push(wordData);
+      else orbitGroups[4].push(wordData);
+    });
+    
+    // Raios das 5 órbitas (normalizados 0-1)
+    const orbitRadii = [0.12, 0.18, 0.24, 0.30, 0.36];
+    
+    // Processar cada órbita
+    Object.keys(orbitGroups).forEach(orbitKey => {
+      const orbitIdx = parseInt(orbitKey);
+      const wordsInOrbit = orbitGroups[orbitIdx];
+      const orbitRadius = orbitRadii[orbitIdx];
       
-      // Tamanho baseado em LL (normalizado entre 15-30)
-      const minLL = Math.min(...topWords.map(w => w.ll));
-      const maxLL = Math.max(...topWords.map(w => w.ll));
-      const normalizedSize = 15 + ((wordData.ll - minLL) / (maxLL - minLL)) * 15;
+      if (wordsInOrbit.length === 0) return;
       
-      // Busca cor do domínio
-      const { cor } = getWordDomain(wordData.palavra);
+      // Distribuir palavras uniformemente na órbita
+      const angleStep = (2 * Math.PI) / wordsInOrbit.length;
       
-      graph.addNode(wordData.palavra, {
-        x,
-        y,
-        size: normalizedSize,
-        label: wordData.palavra,
-        color: cor,
-        freq: wordData.frequenciaBruta,
-        normalized: wordData.frequenciaNormalizada,
-        logLikelihood: wordData.ll,
-        miScore: wordData.mi,
-        orbit,
-        associationStrength: Math.round((wordData.mi / 10) * 100), // MI normalizado para %
+      wordsInOrbit.forEach((wordData, idx) => {
+        const angle = angleStep * idx;
+        const x = 0.5 + Math.cos(angle) * orbitRadius;
+        const y = 0.5 + Math.sin(angle) * orbitRadius;
+        
+        // Tamanho baseado em LL (normalizado entre 15-30)
+        const normalizedSize = 15 + ((wordData.ll - minLL) / (maxLL - minLL)) * 15;
+        
+        // Calcular percentual de relevância
+        const relevancePercent = ((wordData.ll - minLL) / (maxLL - minLL)) * 100;
+        
+        // Busca cor do domínio
+        const { cor } = getWordDomain(wordData.palavra);
+        
+        graph.addNode(wordData.palavra, {
+          x,
+          y,
+          size: normalizedSize,
+          label: wordData.palavra,
+          color: cor,
+          ll: wordData.ll,
+          mi: wordData.mi,
+          frequenciaBruta: wordData.frequenciaBruta,
+          frequenciaNormalizada: wordData.frequenciaNormalizada,
+          significancia: wordData.significancia,
+          hasKWIC: kwicDataMap[wordData.palavra]?.length > 0,
+          orbitRadius,
+          orbitAngle: angle,
+          relevancePercent,
+          orbitGroup: orbitIdx,
+          associationStrength: Math.round((wordData.mi / 10) * 100),
+        });
       });
     });
     
+    console.log('✅ Graph created with', graph.order, 'nodes');
     return graph;
-  }, [palavrasChaveData, getWordDomain]);
+  }, [palavrasChaveData, getWordDomain, kwicDataMap]);
 
   // Constrói visualização de galáxia (domínios orbitando) - DADOS REAIS
   const buildGalaxyView = useCallback(() => {
