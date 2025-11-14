@@ -82,7 +82,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       size: 35,
       color: '#1B5E20',
       emotion: 'Serenidade',
-      words: ['tarumã', 'coxilha', 'campo', 'sombra']
+      words: ['tarumã', 'coxilha', 'campo', 'sombra', 'casa']
     },
     {
       id: 'cultura-gaúcha',
@@ -90,7 +90,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       size: 32,
       color: '#F57F17',
       emotion: 'Tradição',
-      words: ['mate', 'galpão', 'casa']
+      words: ['mate', 'galpão']
     },
     {
       id: 'sentimentos',
@@ -106,7 +106,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       size: 28,
       color: '#00E5FF',
       emotion: 'Contemplação',
-      words: ['noite', 'silêncio']
+      words: ['noite', 'silêncio', 'verso']
     }
   ];
 
@@ -172,35 +172,43 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     const domain = galaxyDomains.find(d => d.id === systemId);
     if (!domain) return;
     
-    // Centro do sistema
+    // Centro do sistema (Estrela do domínio)
     graph.addNode('system-center', {
       label: domain.label,
       x: 0,
       y: 0,
-      size: 45,
+      size: 50,
       color: domain.color
     });
     
-    // Planetas (palavras do domínio)
+    // Planetas (palavras do domínio) orbitando em diferentes níveis
     const domainWords = universeWords.filter(w => domain.words.includes(w.id));
+    
     domainWords.forEach((word, index) => {
+      // Distribuir em 2 órbitas baseado na frequência
+      const orbitRadius = word.freq >= 4 ? 150 : 220;
       const angle = (index / domainWords.length) * 2 * Math.PI;
-      const radius = 180;
       
       graph.addNode(word.id, {
         label: word.label,
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-        size: word.size + 3,
-        color: word.color
+        x: Math.cos(angle) * orbitRadius,
+        y: Math.sin(angle) * orbitRadius,
+        size: word.size + 5,
+        color: word.color,
+        freq: word.freq,
+        normalized: word.normalized,
+        logLikelihood: word.logLikelihood,
+        prosody: word.prosody,
+        sentiment: word.sentiment
       });
       
+      // Conexões gravitacionais
       graph.addEdge('system-center', word.id, {
         color: word.color + '60',
-        size: 2
+        size: 2.5
       });
     });
-  }, []);
+  }, [universeWords, galaxyDomains]);
 
   // Navegação entre níveis
   const navigateToLevel = useCallback((newLevel: NavigationLevel, systemId?: string) => {
@@ -209,19 +217,34 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     
     if (!graphRef.current) return;
     
-    switch (newLevel) {
-      case 'universe':
-        buildUniverseView(graphRef.current);
-        break;
-      case 'galaxy':
-        buildGalaxyView(graphRef.current);
-        break;
-      case 'stellar':
-        if (systemId) buildStellarView(graphRef.current, systemId);
-        break;
+    // Animação de fade out
+    if (sigmaRef.current) {
+      const container = sigmaRef.current.getContainer();
+      container.style.transition = 'opacity 0.3s ease-out';
+      container.style.opacity = '0';
     }
     
-    sigmaRef.current?.getCamera().animate({ ratio: 1.2 }, { duration: 1000 });
+    // Após fade out, reconstruir o grafo
+    setTimeout(() => {
+      switch (newLevel) {
+        case 'universe':
+          buildUniverseView(graphRef.current);
+          break;
+        case 'galaxy':
+          buildGalaxyView(graphRef.current);
+          break;
+        case 'stellar':
+          if (systemId) buildStellarView(graphRef.current, systemId);
+          break;
+      }
+      
+      // Animação de fade in + zoom
+      if (sigmaRef.current) {
+        const container = sigmaRef.current.getContainer();
+        container.style.opacity = '1';
+        sigmaRef.current.getCamera().animate({ ratio: 1.2 }, { duration: 800 });
+      }
+    }, 300);
   }, [buildUniverseView, buildGalaxyView, buildStellarView]);
 
   // Inicializar Sigma.js
@@ -267,6 +290,9 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
         navigateToLevel('stellar', node);
       } else if (level === 'stellar' && node !== 'system-center') {
         onWordClick?.(node);
+      } else if (level === 'stellar' && node === 'system-center') {
+        // Clicar na estrela central volta para galaxy
+        navigateToLevel('galaxy');
       }
     });
     
@@ -289,7 +315,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
     if (level === 'galaxy') return 'Galáxia de Auras';
     if (level === 'stellar' && selectedSystem) {
       const domain = galaxyDomains.find(d => d.id === selectedSystem);
-      return domain?.label || 'Sistema Estelar';
+      return `Sistema: ${domain?.label || 'Desconhecido'}`;
     }
     return 'Navegando...';
   };
