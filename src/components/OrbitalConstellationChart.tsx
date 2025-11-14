@@ -4,6 +4,7 @@ import Graph from 'graphology';
 import { SpaceNavigationConsole } from './SpaceNavigationConsole';
 import { SpaceHUDTooltip } from './SpaceHUDTooltip';
 import { VerticalZoomControls } from './VerticalZoomControls';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 
 type NavigationLevel = 'universe' | 'galaxy' | 'stellar';
 
@@ -375,22 +376,31 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
         onFullscreen={handleFullscreen}
       />
       
-      {/* Botão de Pause separado */}
-      <button 
-        onClick={() => setIsPaused(!isPaused)}
-        className="fixed right-6 top-32 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
-        style={{
-          background: isPaused ? 'linear-gradient(135deg, #00E5FF, #1B5E20)' : 'rgba(10, 14, 39, 0.9)',
-          border: '2px solid #00E5FF',
-          boxShadow: '0 0 20px rgba(0, 229, 255, 0.4)',
-          color: '#FFFFFF',
-          fontSize: '18px',
-          cursor: 'pointer'
-        }}
-        title={isPaused ? 'Retomar Animações' : 'Pausar Animações'}
-      >
-        {isPaused ? '▶' : '⏸'}
-      </button>
+      {/* Botão de Pause ao lado esquerdo do console */}
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button 
+              onClick={() => setIsPaused(!isPaused)}
+              className="absolute left-6 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+              style={{
+                top: '10px',
+                background: isPaused ? 'linear-gradient(135deg, #00E5FF, #1B5E20)' : 'rgba(10, 14, 39, 0.9)',
+                border: '2px solid #00E5FF',
+                boxShadow: '0 0 20px rgba(0, 229, 255, 0.4)',
+                color: '#FFFFFF',
+                fontSize: '18px',
+                cursor: 'pointer'
+              }}
+            >
+              {isPaused ? '▶' : '⏸'}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right" className="bg-card border-[#00E5FF] text-foreground">
+            <p className="text-sm font-medium">{isPaused ? 'Retomar animações das órbitas' : 'Pausar animações das órbitas'}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
       
       {/* Órbitas SVG (apenas no nível Universe e Stellar) */}
       {(level === 'universe' || level === 'stellar') && (
