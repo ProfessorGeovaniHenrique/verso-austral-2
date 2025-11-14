@@ -1,9 +1,12 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import Graph from 'graphology';
 import Sigma from 'sigma';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Home, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { KWICModal } from './KWICModal';
+import { FilterToolbar, FilterState } from './FilterToolbar';
+import { StatisticalTooltip } from './StatisticalTooltip';
+import { VerticalZoomControls } from './VerticalZoomControls';
 
 // Types
 type ViewLevel = 'universe' | 'galaxy' | 'constellation';
@@ -16,6 +19,8 @@ interface SemanticDomain {
     word: string;
     frequency: number;
     strength: number;
+    prosody: 'Positiva' | 'Neutra' | 'Negativa';
+    significance: 'Alta' | 'Média' | 'Baixa';
   }>;
 }
 
@@ -32,15 +37,15 @@ const SEMANTIC_DOMAINS: SemanticDomain[] = [
     name: 'Natureza',
     color: '#228B22',
     words: [
-      { word: 'tarumã', frequency: 15, strength: 0.95 },
-      { word: 'sombra', frequency: 13, strength: 0.92 },
-      { word: 'várzea', frequency: 12, strength: 0.90 },
-      { word: 'horizonte', frequency: 10, strength: 0.85 },
-      { word: 'campo', frequency: 14, strength: 0.93 },
-      { word: 'coxilha', frequency: 11, strength: 0.87 },
-      { word: 'campanha', frequency: 9, strength: 0.82 },
-      { word: 'sol', frequency: 10, strength: 0.84 },
-      { word: 'primavera', frequency: 8, strength: 0.78 }
+      { word: 'campo', frequency: 45, strength: 0.95, prosody: 'Positiva', significance: 'Alta' },
+      { word: 'sombra', frequency: 32, strength: 0.92, prosody: 'Neutra', significance: 'Alta' },
+      { word: 'várzea', frequency: 18, strength: 0.90, prosody: 'Positiva', significance: 'Média' },
+      { word: 'horizonte', frequency: 12, strength: 0.85, prosody: 'Positiva', significance: 'Média' },
+      { word: 'tarumã', frequency: 18, strength: 0.93, prosody: 'Positiva', significance: 'Média' },
+      { word: 'coxilha', frequency: 11, strength: 0.87, prosody: 'Positiva', significance: 'Média' },
+      { word: 'campanha', frequency: 15, strength: 0.82, prosody: 'Positiva', significance: 'Média' },
+      { word: 'sol', frequency: 12, strength: 0.84, prosody: 'Positiva', significance: 'Média' },
+      { word: 'primavera', frequency: 8, strength: 0.78, prosody: 'Positiva', significance: 'Baixa' }
     ]
   },
   {
@@ -48,17 +53,17 @@ const SEMANTIC_DOMAINS: SemanticDomain[] = [
     name: 'Cultura Gaúcha',
     color: '#8B4513',
     words: [
-      { word: 'campereada', frequency: 11, strength: 0.88 },
-      { word: 'gateada', frequency: 10, strength: 0.86 },
-      { word: 'ramada', frequency: 9, strength: 0.82 },
-      { word: 'querência', frequency: 12, strength: 0.90 },
-      { word: 'galpão', frequency: 11, strength: 0.87 },
-      { word: 'mate', frequency: 10, strength: 0.85 },
-      { word: 'arreios', frequency: 8, strength: 0.80 },
-      { word: 'esporas', frequency: 8, strength: 0.79 },
-      { word: 'cuia', frequency: 9, strength: 0.83 },
-      { word: 'bomba', frequency: 8, strength: 0.78 },
-      { word: 'tropa', frequency: 9, strength: 0.81 }
+      { word: 'galpão', frequency: 25, strength: 0.88, prosody: 'Positiva', significance: 'Alta' },
+      { word: 'campereada', frequency: 15, strength: 0.86, prosody: 'Neutra', significance: 'Média' },
+      { word: 'gateada', frequency: 12, strength: 0.82, prosody: 'Neutra', significance: 'Média' },
+      { word: 'ramada', frequency: 11, strength: 0.90, prosody: 'Positiva', significance: 'Média' },
+      { word: 'querência', frequency: 12, strength: 0.87, prosody: 'Positiva', significance: 'Média' },
+      { word: 'mate', frequency: 15, strength: 0.85, prosody: 'Positiva', significance: 'Média' },
+      { word: 'arreios', frequency: 6, strength: 0.80, prosody: 'Neutra', significance: 'Baixa' },
+      { word: 'esporas', frequency: 4, strength: 0.79, prosody: 'Neutra', significance: 'Baixa' },
+      { word: 'cuia', frequency: 3, strength: 0.83, prosody: 'Positiva', significance: 'Baixa' },
+      { word: 'bomba', frequency: 6, strength: 0.78, prosody: 'Neutra', significance: 'Baixa' },
+      { word: 'tropa', frequency: 9, strength: 0.81, prosody: 'Neutra', significance: 'Baixa' }
     ]
   },
   {
@@ -66,11 +71,11 @@ const SEMANTIC_DOMAINS: SemanticDomain[] = [
     name: 'Tempo',
     color: '#4682B4',
     words: [
-      { word: 'madrugada', frequency: 10, strength: 0.86 },
-      { word: 'manhãs', frequency: 9, strength: 0.83 },
-      { word: 'noite', frequency: 10, strength: 0.85 },
-      { word: 'tarde', frequency: 11, strength: 0.88 },
-      { word: 'aurora', frequency: 8, strength: 0.80 }
+      { word: 'noite', frequency: 28, strength: 0.86, prosody: 'Neutra', significance: 'Alta' },
+      { word: 'manhãs', frequency: 12, strength: 0.83, prosody: 'Positiva', significance: 'Média' },
+      { word: 'madrugada', frequency: 11, strength: 0.85, prosody: 'Neutra', significance: 'Média' },
+      { word: 'tarde', frequency: 15, strength: 0.88, prosody: 'Neutra', significance: 'Média' },
+      { word: 'aurora', frequency: 8, strength: 0.80, prosody: 'Positiva', significance: 'Baixa' }
     ]
   },
   {
@@ -78,11 +83,11 @@ const SEMANTIC_DOMAINS: SemanticDomain[] = [
     name: 'Emoção',
     color: '#CD853F',
     words: [
-      { word: 'saudades', frequency: 12, strength: 0.91 },
-      { word: 'silêncio', frequency: 9, strength: 0.84 },
-      { word: 'sonhos', frequency: 11, strength: 0.88 },
-      { word: 'prenda', frequency: 10, strength: 0.86 },
-      { word: 'verso', frequency: 13, strength: 0.92 }
+      { word: 'saudades', frequency: 32, strength: 0.91, prosody: 'Negativa', significance: 'Alta' },
+      { word: 'sonhos', frequency: 11, strength: 0.88, prosody: 'Positiva', significance: 'Média' },
+      { word: 'prenda', frequency: 12, strength: 0.86, prosody: 'Positiva', significance: 'Média' },
+      { word: 'verso', frequency: 18, strength: 0.92, prosody: 'Positiva', significance: 'Média' },
+      { word: 'silêncio', frequency: 2, strength: 0.84, prosody: 'Negativa', significance: 'Baixa' }
     ]
   }
 ];
@@ -169,6 +174,8 @@ export const SigmaSemanticNetwork: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<any>(null);
+  const animationRef = useRef<number | null>(null);
+  const pauseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [viewLevel, setViewLevel] = useState<ViewLevel>('universe');
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
@@ -177,45 +184,90 @@ export const SigmaSemanticNetwork: React.FC = () => {
   ]);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [kwicModalOpen, setKwicModalOpen] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  
+  const allCategories = SEMANTIC_DOMAINS.map(d => d.name);
+  const [filters, setFilters] = useState<FilterState>({
+    minFrequency: 1,
+    prosody: ['positive', 'neutral', 'negative'],
+    categories: allCategories,
+    searchQuery: '',
+  });
+
+  // Filter words based on active filters
+  const shouldShowWord = useCallback((wordData: any, domainName: string) => {
+    // Frequency filter
+    if (wordData.frequency < filters.minFrequency) return false;
+    
+    // Category filter
+    if (!filters.categories.includes(domainName)) return false;
+    
+    // Prosody filter
+    const prosodyMap = { 'Positiva': 'positive', 'Neutra': 'neutral', 'Negativa': 'negative' };
+    if (!filters.prosody.includes(prosodyMap[wordData.prosody] as any)) return false;
+    
+    // Search filter
+    if (filters.searchQuery && !wordData.word.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  }, [filters]);
 
   // Build Universe view
   const buildUniverseView = (graph: any) => {
     console.log('🌌 Construindo visualização Universo...');
     graph.clear();
 
-    // Central song node (dourado)
+    // Central song node (dourado com glow)
     graph.addNode('song', {
       label: SONG_DATA.title,
       x: 0,
       y: 0,
-      size: 25,
-      color: '#DAA520',
+      size: 30,
+      color: '#f0b500',
     });
 
     // Add all words from all domains in orbit (SEM EDGES)
     let wordIndex = 0;
-    const totalWords = SEMANTIC_DOMAINS.reduce((acc, d) => acc + d.words.length, 0);
+    let visibleWords = 0;
     
     SEMANTIC_DOMAINS.forEach((domain) => {
       domain.words.forEach((wordData) => {
-        const angle = (wordIndex / totalWords) * Math.PI * 2;
+        if (!shouldShowWord(wordData, domain.name)) {
+          wordIndex++;
+          return;
+        }
+
+        const totalVisibleWords = SEMANTIC_DOMAINS.reduce((acc, d) => {
+          return acc + d.words.filter(w => shouldShowWord(w, d.name)).length;
+        }, 0);
+        
+        const angle = (visibleWords / totalVisibleWords) * Math.PI * 2;
         const radius = 180 + (Math.random() * 60 - 30);
         
         graph.addNode(wordData.word, {
           label: wordData.word,
           x: Math.cos(angle) * radius,
           y: Math.sin(angle) * radius,
-          size: 8 + wordData.frequency / 2,
+          size: 8 + wordData.frequency / 3,
           color: domain.color,
           domain: domain.id,
+          domainName: domain.name,
           frequency: wordData.frequency,
+          prosody: wordData.prosody,
+          significance: wordData.significance,
+          strength: wordData.strength,
         });
 
+        visibleWords++;
         wordIndex++;
       });
     });
 
-    console.log(`✅ Universo construído com ${graph.order} nós`);
+    console.log(`✅ Universo construído com ${graph.order} nós (${visibleWords} visíveis)`);
   };
 
   // Build Galaxy view
@@ -258,12 +310,14 @@ export const SigmaSemanticNetwork: React.FC = () => {
       label: domain.name,
       x: 0,
       y: 0,
-      size: 35,
+      size: 40,
       color: domain.color,
     });
 
-    domain.words.forEach((wordData, index) => {
-      const angle = (index / domain.words.length) * Math.PI * 2;
+    const visibleWords = domain.words.filter(w => shouldShowWord(w, domain.name));
+    
+    visibleWords.forEach((wordData, index) => {
+      const angle = (index / visibleWords.length) * Math.PI * 2;
       const radius = 80 + wordData.strength * 100;
 
       graph.addNode(wordData.word, {
@@ -272,8 +326,11 @@ export const SigmaSemanticNetwork: React.FC = () => {
         y: Math.sin(angle) * radius,
         size: 12 + wordData.frequency / 5,
         color: domain.color,
+        domainName: domain.name,
         frequency: wordData.frequency,
         strength: wordData.strength,
+        prosody: wordData.prosody,
+        significance: wordData.significance,
       });
 
       graph.addEdge(domain.id, wordData.word, {
@@ -316,6 +373,25 @@ export const SigmaSemanticNetwork: React.FC = () => {
       });
 
       sigmaRef.current = sigma;
+
+      // Hover handlers
+      sigma.on('enterNode', ({ node }) => {
+        setHoveredNode(node);
+        setIsPaused(true);
+        if (pauseTimeoutRef.current) {
+          clearTimeout(pauseTimeoutRef.current);
+        }
+      });
+
+      sigma.on('leaveNode', () => {
+        setHoveredNode(null);
+        if (pauseTimeoutRef.current) {
+          clearTimeout(pauseTimeoutRef.current);
+        }
+        pauseTimeoutRef.current = setTimeout(() => {
+          setIsPaused(false);
+        }, 2000);
+      });
 
       // Event handlers
       sigma.on('clickNode', ({ node }) => {
@@ -406,31 +482,85 @@ export const SigmaSemanticNetwork: React.FC = () => {
     }
   };
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     const camera = sigmaRef.current?.getCamera();
     if (camera) {
       camera.animatedZoom({ duration: 300 });
+      setZoomLevel(prev => Math.min(200, prev + 10));
     }
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     const camera = sigmaRef.current?.getCamera();
     if (camera) {
       camera.animatedUnzoom({ duration: 300 });
+      setZoomLevel(prev => Math.max(50, prev - 10));
     }
-  };
+  }, []);
 
-  const handleResetView = () => {
+  const handleResetView = useCallback(() => {
     const camera = sigmaRef.current?.getCamera();
     if (camera) {
       camera.animatedReset({ duration: 500 });
+      setZoomLevel(100);
     }
-  };
+  }, []);
+
+  const handleFitToScreen = useCallback(() => {
+    const camera = sigmaRef.current?.getCamera();
+    if (camera) {
+      camera.animatedReset({ duration: 500 });
+      setZoomLevel(100);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    const graph = graphRef.current;
+    const sigma = sigmaRef.current;
+    if (!graph || !sigma) return;
+
+    switch (viewLevel) {
+      case 'universe':
+        buildUniverseView(graph);
+        break;
+      case 'galaxy':
+        buildGalaxyView(graph);
+        break;
+      case 'constellation':
+        if (selectedDomain) {
+          buildConstellationView(graph, selectedDomain);
+        }
+        break;
+    }
+    sigma.refresh();
+  }, [viewLevel, selectedDomain]);
+
+  const handleZoomChange = useCallback((value: number) => {
+    const camera = sigmaRef.current?.getCamera();
+    if (camera) {
+      const ratio = value / zoomLevel;
+      camera.animatedZoom({ factor: ratio, duration: 300 });
+      setZoomLevel(value);
+    }
+  }, [zoomLevel]);
+
+  const togglePause = useCallback(() => {
+    setIsPaused(prev => !prev);
+  }, []);
+
+  const handleFullscreen = useCallback(() => {
+    const container = containerRef.current?.parentElement;
+    if (!document.fullscreenElement && container) {
+      container.requestFullscreen();
+    } else if (document.fullscreenElement) {
+      document.exitFullscreen();
+    }
+  }, []);
 
   return (
-    <div className="relative w-full h-[800px] rounded-xl overflow-hidden border border-border" style={{ background: '#0F0F23', minHeight: '800px' }}>
+    <div className="relative w-full h-[800px] rounded-xl overflow-hidden border border-border" style={{ background: 'radial-gradient(circle at center, #161622 0%, #0a0a15 100%)', minHeight: '800px' }}>
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-background/80 backdrop-blur-md border-b border-border p-4">
+      <div className="absolute top-0 left-0 right-0 z-10 bg-[#2d2d2d]/80 backdrop-blur-md border-b border-border/50 p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             {breadcrumbs.length > 1 && (
@@ -471,43 +601,37 @@ export const SigmaSemanticNetwork: React.FC = () => {
         </div>
       </div>
 
-      {/* Sigma Container */}
+      {/* Filter Toolbar */}
+      <FilterToolbar
+        filters={filters}
+        onFilterChange={setFilters}
+        categories={allCategories}
+      />
+
+      {/* Sigma Container with Glow Effect */}
       <div 
         ref={containerRef} 
         className="w-full h-full"
-        style={{ width: '100%', height: '100%' }}
+        style={{ 
+          width: '100%', 
+          height: '100%',
+          filter: 'drop-shadow(0 0 40px rgba(240, 181, 0, 0.2))'
+        }}
       />
 
-      {/* Zoom Controls */}
-      <div className="absolute bottom-5 right-5 z-10 flex flex-col gap-2 bg-background/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleResetView}
-          className="h-8 w-8"
-          title="Resetar visualização"
-        >
-          <Home className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleZoomIn}
-          className="h-8 w-8"
-          title="Aumentar zoom"
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleZoomOut}
-          className="h-8 w-8"
-          title="Diminuir zoom"
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-      </div>
+      {/* Vertical Zoom Controls */}
+      <VerticalZoomControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onReset={handleResetView}
+        onFit={handleFitToScreen}
+        onRefresh={handleRefresh}
+        onFullscreen={handleFullscreen}
+        onPauseToggle={togglePause}
+        isPaused={isPaused}
+        zoomLevel={zoomLevel}
+        onZoomChange={handleZoomChange}
+      />
 
       {/* KWIC Modal */}
       {selectedWord && (
@@ -518,6 +642,36 @@ export const SigmaSemanticNetwork: React.FC = () => {
           data={getMockKWICData(selectedWord)}
         />
       )}
+
+      {/* CSS for glowing central node */}
+      <style>{`
+        @keyframes pulse-glow {
+          0%, 100% {
+            filter: drop-shadow(0 0 20px #f0b500) drop-shadow(0 0 40px #f0b500);
+            transform: scale(1);
+          }
+          50% {
+            filter: drop-shadow(0 0 30px #f0b500) drop-shadow(0 0 60px #f0b500);
+            transform: scale(1.05);
+          }
+        }
+
+        @keyframes shimmer {
+          0% {
+            opacity: 0.5;
+          }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.5;
+          }
+        }
+
+        canvas {
+          animation: ${isPaused ? 'none' : 'shimmer 3s ease-in-out infinite'};
+        }
+      `}</style>
     </div>
   );
 };
