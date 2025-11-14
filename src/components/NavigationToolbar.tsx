@@ -40,8 +40,11 @@ export function NavigationToolbar({
         className={`absolute right-5 top-1/2 -translate-y-1/2 z-50 transition-opacity duration-300 ${
           isHovered ? 'opacity-100' : 'opacity-30 hover:opacity-100'
         } ${className}`}
+        style={{ cursor: 'default' }}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
+        onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex flex-col gap-2 bg-background/90 backdrop-blur-md border border-border rounded-xl p-2 shadow-lg">
           {/* Reset/Home button at top */}
@@ -51,7 +54,8 @@ export function NavigationToolbar({
                 size="icon"
                 variant="ghost"
                 onClick={onReset}
-                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg"
+                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg cursor-pointer"
+                style={{ cursor: 'pointer' }}
               >
                 <Home className="h-4 w-4" />
               </Button>
@@ -71,7 +75,8 @@ export function NavigationToolbar({
                 size="icon"
                 variant="ghost"
                 onClick={onZoomIn}
-                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg"
+                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg cursor-pointer"
+                style={{ cursor: 'pointer' }}
               >
                 <ZoomIn className="h-3.5 w-3.5" />
               </Button>
@@ -82,7 +87,10 @@ export function NavigationToolbar({
           </Tooltip>
 
           {/* Vertical Slider */}
-          <div className="py-2 px-1 flex items-center justify-center">
+          <div 
+            className="py-2 px-1 flex items-center justify-center cursor-pointer"
+            style={{ cursor: 'pointer' }}
+          >
             <Slider
               orientation="vertical"
               value={[zoomPercent]}
@@ -90,7 +98,7 @@ export function NavigationToolbar({
               min={50}
               max={300}
               step={10}
-              className="h-24"
+              className="h-24 cursor-pointer"
             />
           </div>
 
@@ -101,7 +109,8 @@ export function NavigationToolbar({
                 size="icon"
                 variant="ghost"
                 onClick={onZoomOut}
-                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg"
+                className="h-8 w-8 hover:bg-muted transition-colors rounded-lg cursor-pointer"
+                style={{ cursor: 'pointer' }}
               >
                 <ZoomOut className="h-3.5 w-3.5" />
               </Button>
