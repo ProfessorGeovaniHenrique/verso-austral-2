@@ -577,193 +577,23 @@ const palavrasChaveData = [
   { palavra: "vestidos", ll: 14.1, mi: 5.5, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Média", efeito: "Sobre-uso", efeitoIcon: TrendingUp }
 ];
 
-// Mock data para estatísticas de palavras (para tooltips)
+// Mock data para estatísticas de palavras (para tooltips) - gerado automaticamente
 const palavraStats: Record<string, {
   frequenciaBruta: number;
   frequenciaNormalizada: number;
   prosodia: "positiva" | "negativa" | "neutra";
-}> = {
-  "verso": {
-    frequenciaBruta: 4,
-    frequenciaNormalizada: 23.5,
-    prosodia: "positiva"
-  },
-  "tarumã": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "positiva"
-  },
-  "saudade": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "negativa"
-  },
-  "galpão": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "várzea": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "positiva"
-  },
-  "sonhos": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "positiva"
-  },
-  "gateada": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "mate": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "coxilha": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "neutra"
-  },
-  "sombra": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "positiva"
-  },
-  "arreios": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "esporas": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "prenda": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "ramada": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "candeeiro": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "querência": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "cuia": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "maragato": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "campereada": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "calma": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "encilha": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "campo": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "campanha": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "horizonte": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "sol": {
-    frequenciaBruta: 2,
-    frequenciaNormalizada: 11.8,
-    prosodia: "positiva"
-  },
-  "tropa": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "lombo": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "cambona": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "fogo": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "chão": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "bomba": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "coplas": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "mansidão": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  },
-  "silêncio": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "negativa"
-  },
-  "pañuelo": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "neutra"
-  },
-  "maçanilha": {
-    frequenciaBruta: 1,
-    frequenciaNormalizada: 5.9,
-    prosodia: "positiva"
-  }
-};
+}> = Object.fromEntries(
+  palavrasChaveData.map(p => [
+    p.palavra,
+    {
+      frequenciaBruta: p.frequenciaBruta,
+      frequenciaNormalizada: p.frequenciaNormalizada,
+      prosodia: (p.significancia === "Funcional" ? "neutra" : 
+                p.palavra.match(/(saudade|açoite|silencio|negros|noite|cansado)/) ? "negativa" :
+                "positiva") as "positiva" | "negativa" | "neutra"
+    }
+  ])
+);
 export default function Dashboard2() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
