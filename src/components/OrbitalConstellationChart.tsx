@@ -220,7 +220,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         graph.clear();
         graph.import(newGraph.export());
       } else {
-        const newGraph = buildUniverseView();
+        const newGraph = buildGalaxyView();
         graph.clear();
         graph.import(newGraph.export());
       }
