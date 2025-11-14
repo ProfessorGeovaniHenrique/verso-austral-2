@@ -158,12 +158,14 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       if (words.length === 0) return;
       
       words.forEach((wordData, idx) => {
-        // Distribuição espiral com golden angle
-        const angle = goldenAngle * idx + (orbitIdx * Math.PI / 2.5);
+        // Distribuição espiral com golden angle + variação angular extra
+        const angleVariation = (idx % 7) * 0.3; // Variação extra para criar dispersão
+        const angle = goldenAngle * idx + (orbitIdx * Math.PI / 2.5) + angleVariation;
         
-        // Variação radial para criar "braços" da galáxia
-        const armVariation = Math.sin(angle * 3) * 0.015; // 3 braços principais
-        const finalRadius = baseOrbitRadius + armVariation;
+        // Variação radial para criar "braços" da galáxia (amplificada)
+        const armVariation = Math.sin(angle * 3) * 0.05; // 3 braços galácticos pronunciados
+        const secondaryArm = Math.cos(angle * 5) * 0.025; // Braços secundários
+        const finalRadius = baseOrbitRadius + armVariation + secondaryArm;
         
         const x = 0.5 + Math.cos(angle) * finalRadius;
         const y = 0.5 + Math.sin(angle) * finalRadius;
