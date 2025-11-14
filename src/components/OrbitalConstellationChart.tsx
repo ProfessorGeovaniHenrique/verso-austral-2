@@ -73,14 +73,13 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     
     const graph: any = new Graph();
     
-    // NOÉ CENTRAL VISÍVEL com nome da canção e autor
+    // NÓ CENTRAL VISÍVEL com nome da canção e autor
     graph.addNode('center', { 
       x: 0.5, 
       y: 0.5, 
       size: 40,
       label: 'Quando o verso\nvem pras casa\nLuiz Marenco',
       color: '#FFD700',
-      type: 'center',
       hidden: false
     });
     
