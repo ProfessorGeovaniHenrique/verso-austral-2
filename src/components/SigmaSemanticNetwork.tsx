@@ -190,7 +190,6 @@ export const SigmaSemanticNetwork: React.FC = () => {
       y: 0,
       size: 25,
       color: '#DAA520',
-      type: 'song',
     });
 
     // Add all words from all domains in orbit (SEM EDGES)
@@ -208,7 +207,6 @@ export const SigmaSemanticNetwork: React.FC = () => {
           y: Math.sin(angle) * radius,
           size: 8 + wordData.frequency / 2,
           color: domain.color,
-          type: 'word',
           domain: domain.id,
           frequency: wordData.frequency,
         });
@@ -235,7 +233,6 @@ export const SigmaSemanticNetwork: React.FC = () => {
         y: Math.sin(angle) * radius,
         size: 25 + domain.words.length,
         color: domain.color,
-        type: 'domain',
       });
     });
 
@@ -263,7 +260,6 @@ export const SigmaSemanticNetwork: React.FC = () => {
       y: 0,
       size: 35,
       color: domain.color,
-      type: 'domain-center',
     });
 
     domain.words.forEach((wordData, index) => {
@@ -276,7 +272,6 @@ export const SigmaSemanticNetwork: React.FC = () => {
         y: Math.sin(angle) * radius,
         size: 12 + wordData.frequency / 5,
         color: domain.color,
-        type: 'word',
         frequency: wordData.frequency,
         strength: wordData.strength,
       });
@@ -309,6 +304,7 @@ export const SigmaSemanticNetwork: React.FC = () => {
     // Create Sigma instance
     try {
       const sigma = new Sigma(graph, containerRef.current, {
+        allowInvalidContainer: true,
         renderEdgeLabels: false,
         defaultNodeColor: '#999',
         defaultEdgeColor: '#333',
@@ -323,26 +319,30 @@ export const SigmaSemanticNetwork: React.FC = () => {
 
       // Event handlers
       sigma.on('clickNode', ({ node }) => {
-        const nodeType = graph.getNodeAttribute(node, 'type');
-        
-        if (viewLevel === 'universe' && nodeType === 'song') {
+        if (viewLevel === 'universe' && node === 'song') {
           console.log('🔄 Navegando para Galáxia - Domínios Semânticos');
           setViewLevel('galaxy');
           setBreadcrumbs([
             { level: 'universe', label: 'Universo' },
             { level: 'galaxy', label: 'Galáxia' }
           ]);
-        } else if (viewLevel === 'galaxy' && nodeType === 'domain') {
-          console.log(`🔄 Navegando para Constelação: ${node}`);
-          setSelectedDomain(node);
-          setViewLevel('constellation');
+        } else if (viewLevel === 'galaxy') {
           const domain = SEMANTIC_DOMAINS.find(d => d.id === node);
-          setBreadcrumbs([
-            { level: 'universe', label: 'Universo' },
-            { level: 'galaxy', label: 'Galáxia' },
-            { level: 'constellation', label: domain?.name || 'Constelação', domainId: node }
-          ]);
-        } else if (nodeType === 'word') {
+          if (domain) {
+            console.log(`🔄 Navegando para Constelação: ${node}`);
+            setSelectedDomain(node);
+            setViewLevel('constellation');
+            setBreadcrumbs([
+              { level: 'universe', label: 'Universo' },
+              { level: 'galaxy', label: 'Galáxia' },
+              { level: 'constellation', label: domain.name, domainId: node }
+            ]);
+          }
+        } else if (viewLevel === 'constellation' && node !== selectedDomain) {
+          console.log(`📝 Palavra selecionada: ${node}`);
+          setSelectedWord(node);
+          setKwicModalOpen(true);
+        } else if (viewLevel === 'universe' && node !== 'song') {
           console.log(`📝 Palavra selecionada: ${node}`);
           setSelectedWord(node);
           setKwicModalOpen(true);
@@ -428,7 +428,7 @@ export const SigmaSemanticNetwork: React.FC = () => {
   };
 
   return (
-    <div className="relative w-full h-[800px] rounded-xl overflow-hidden border border-border" style={{ background: '#0F0F23' }}>
+    <div className="relative w-full h-[800px] rounded-xl overflow-hidden border border-border" style={{ background: '#0F0F23', minHeight: '800px' }}>
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-background/80 backdrop-blur-md border-b border-border p-4">
         <div className="flex items-center justify-between">
