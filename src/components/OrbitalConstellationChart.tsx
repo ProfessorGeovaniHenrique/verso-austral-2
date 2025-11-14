@@ -237,18 +237,18 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       labelSize: 14,
       labelColor: { color: '#FFFFFF' },
       defaultNodeColor: '#F57F17',
-      labelWeight: 'bold'
+      labelWeight: 'bold',
+      allowInvalidContainer: true
     });
     
     sigmaRef.current = sigma;
     
     // Event handlers
-    sigma.on('enterNode', ({ node }) => {
-      const nodeData = graph.getNodeAttributes(node);
+    sigma.on('enterNode', ({ node, event }) => {
       const wordData = universeWords.find(w => w.id === node);
-      const displayPoint = sigma.graphToViewport({ x: nodeData.x, y: nodeData.y });
+      const displayPoint = { x: event.x, y: event.y };
       
-      setHoveredNode(wordData || { ...nodeData, id: node });
+      setHoveredNode(wordData || { id: node, label: node, freq: 0, normalized: 0 });
       setTooltipPos(displayPoint);
       setIsPaused(true);
     });
@@ -335,6 +335,7 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
           handleZoomChange(1);
           sigmaRef.current?.getCamera().animate({ x: 0.5, y: 0.5 }, { duration: 500 });
         }}
+        onFit={() => sigmaRef.current?.getCamera().animate({ ratio: 1 }, { duration: 800 })}
         onRefresh={() => navigateToLevel(level, selectedSystem || undefined)}
         onFullscreen={() => {
           if (!document.fullscreenElement) {
@@ -343,9 +344,24 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
             document.exitFullscreen();
           }
         }}
-        isPaused={isPaused}
-        onTogglePause={() => setIsPaused(!isPaused)}
       />
+      
+      {/* Botão de Pause separado */}
+      <button 
+        onClick={() => setIsPaused(!isPaused)}
+        className="fixed right-6 top-32 z-50 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110"
+        style={{
+          background: isPaused ? 'linear-gradient(135deg, #00E5FF, #1B5E20)' : 'rgba(10, 14, 39, 0.9)',
+          border: '2px solid #00E5FF',
+          boxShadow: '0 0 20px rgba(0, 229, 255, 0.4)',
+          color: '#FFFFFF',
+          fontSize: '18px',
+          cursor: 'pointer'
+        }}
+        title={isPaused ? 'Resume Animations' : 'Pause Animations'}
+      >
+        {isPaused ? '▶' : '⏸'}
+      </button>
       
       {/* Órbitas SVG (apenas no nível Universe e Stellar) */}
       {(level === 'universe' || level === 'stellar') && (
@@ -376,10 +392,11 @@ export const OrbitalConstellationChart = ({ onWordClick }: OrbitalConstellationC
       {/* Container Sigma */}
       <div 
         ref={containerRef} 
-        className="w-full h-full"
+        className="w-full h-full absolute inset-0"
         style={{ 
           filter: 'drop-shadow(0 0 30px rgba(245, 127, 23, 0.3))',
-          zIndex: 10
+          zIndex: 10,
+          minHeight: '800px'
         }}
       />
       
