@@ -1691,7 +1691,12 @@ E uma saudade redomona pelos cantos do galpão`}
               </div>
             </CardHeader>
             <CardContent className="p-0" style={{ minHeight: '800px' }}>
-              <OrbitalConstellationChart onWordClick={handleWordClick} />
+              <OrbitalConstellationChart 
+                onWordClick={handleWordClick}
+                dominiosData={dominiosData}
+                palavrasChaveData={palavrasChaveData}
+                kwicDataMap={kwicDataMap}
+              />
             </CardContent>
           </Card>
         </TabsContent>
