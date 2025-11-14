@@ -198,14 +198,14 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     const system = dominiosData.find(d => d.dominio === systemId);
     if (!system) return graph;
     
-    // Nó central (o domínio)
+    // Nó central (o domínio) - SEM TYPE para evitar erro Sigma
     graph.addNode('center', {
       x: 0.5,
       y: 0.5,
       size: 40,
       label: system.dominio.toUpperCase(),
       color: system.cor,
-      type: 'domain'
+      hidden: false
     });
     
     // Filtrar palavras deste domínio que estão em palavrasChaveData
@@ -213,49 +213,84 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       system.palavras.includes(word.palavra)
     );
     
-    // Distribuir palavras em 3 órbitas baseado no MI Score
+    // Ordenar por MI Score
     const sortedWords = [...domainWords].sort((a, b) => b.mi - a.mi);
-    const orbits = [0.10, 0.17, 0.24];
     
-    sortedWords.forEach((wordData, idx) => {
-      const orbitIdx = Math.floor(idx / Math.ceil(sortedWords.length / 3));
-      const orbit = orbits[Math.min(orbitIdx, 2)];
-      const wordsInOrbit = sortedWords.filter((_, i) => Math.floor(i / Math.ceil(sortedWords.length / 3)) === orbitIdx);
+    // Calcular min/max MI para normalização
+    const minMI = Math.min(...sortedWords.map(w => w.mi));
+    const maxMI = Math.max(...sortedWords.map(w => w.mi));
+    
+    // Agrupar palavras por faixa de relevância MI (0-20%, 20-40%, 40-60%, 60-80%, 80-100%)
+    const orbitGroups: { [key: number]: Array<typeof sortedWords[0]> } = {
+      0: [], // 80-100% (mais interna)
+      1: [], // 60-80%
+      2: [], // 40-60%
+      3: [], // 20-40%
+      4: []  // 0-20% (mais externa)
+    };
+    
+    sortedWords.forEach(wordData => {
+      const relevancePercent = ((wordData.mi - minMI) / (maxMI - minMI || 1)) * 100;
+      
+      if (relevancePercent >= 80) orbitGroups[0].push(wordData);
+      else if (relevancePercent >= 60) orbitGroups[1].push(wordData);
+      else if (relevancePercent >= 40) orbitGroups[2].push(wordData);
+      else if (relevancePercent >= 20) orbitGroups[3].push(wordData);
+      else orbitGroups[4].push(wordData);
+    });
+    
+    // Definir raios das 5 órbitas (proporcional ao container)
+    const orbitRadii = [0.10, 0.16, 0.22, 0.28, 0.34];
+    const orbitLabels = ['80-100%', '60-80%', '40-60%', '20-40%', '0-20%'];
+    
+    // Adicionar palavras em suas respectivas órbitas
+    Object.keys(orbitGroups).forEach(groupKey => {
+      const groupIdx = parseInt(groupKey);
+      const wordsInOrbit = orbitGroups[groupIdx];
+      const orbitRadius = orbitRadii[groupIdx];
+      const orbitLabel = orbitLabels[groupIdx];
+      
+      if (wordsInOrbit.length === 0) return;
+      
       const angleStep = (2 * Math.PI) / wordsInOrbit.length;
-      const localIdx = wordsInOrbit.indexOf(wordData);
-      const angle = localIdx * angleStep;
       
-      const x = 0.5 + Math.cos(angle) * orbit;
-      const y = 0.5 + Math.sin(angle) * orbit;
-      
-      // Tamanho baseado em frequência bruta (normalizado entre 18-28)
-      const minFreq = Math.min(...sortedWords.map(w => w.frequenciaBruta));
-      const maxFreq = Math.max(...sortedWords.map(w => w.frequenciaBruta));
-      const normalizedSize = 18 + ((wordData.frequenciaBruta - minFreq) / (maxFreq - minFreq || 1)) * 10;
-      
-      // Association strength baseado em MI Score (normalizado para %)
-      const minMI = Math.min(...sortedWords.map(w => w.mi));
-      const maxMI = Math.max(...sortedWords.map(w => w.mi));
-      const associationStrength = Math.round(50 + ((wordData.mi - minMI) / (maxMI - minMI || 1)) * 50);
-      
-      graph.addNode(wordData.palavra, {
-        x,
-        y,
-        size: normalizedSize,
-        label: wordData.palavra,
-        color: system.corTexto,
-        freq: wordData.frequenciaBruta,
-        normalized: wordData.frequenciaNormalizada,
-        logLikelihood: wordData.ll,
-        miScore: wordData.mi,
-        orbit,
-        angle,
-        associationStrength,
-        type: 'word'
+      wordsInOrbit.forEach((wordData, idx) => {
+        const angle = idx * angleStep;
+        const x = 0.5 + Math.cos(angle) * orbitRadius;
+        const y = 0.5 + Math.sin(angle) * orbitRadius;
+        
+        // Tamanho baseado em frequência bruta (normalizado entre 18-28)
+        const minFreq = Math.min(...sortedWords.map(w => w.frequenciaBruta));
+        const maxFreq = Math.max(...sortedWords.map(w => w.frequenciaBruta));
+        const normalizedSize = 18 + ((wordData.frequenciaBruta - minFreq) / (maxFreq - minFreq || 1)) * 10;
+        
+        // Relevância em porcentagem
+        const relevancePercent = ((wordData.mi - minMI) / (maxMI - minMI || 1)) * 100;
+        
+        // Association strength baseado em MI Score (normalizado para %)
+        const associationStrength = Math.round(50 + ((wordData.mi - minMI) / (maxMI - minMI || 1)) * 50);
+        
+        graph.addNode(wordData.palavra, {
+          x,
+          y,
+          size: normalizedSize,
+          label: wordData.palavra,
+          color: system.corTexto,
+          freq: wordData.frequenciaBruta,
+          normalized: wordData.frequenciaNormalizada,
+          logLikelihood: wordData.ll,
+          miScore: wordData.mi,
+          orbitRadius,
+          orbitAngle: angle,
+          relevancePercent,
+          orbitGroup: orbitLabel,
+          associationStrength
+        });
       });
     });
     
-    console.log('✅ Graph created with', graph.order, 'nodes');
+    console.log('✅ Stellar graph created with', graph.order, 'nodes');
+    console.log('📊 Orbit distribution:', Object.entries(orbitGroups).map(([k, v]) => `${orbitLabels[parseInt(k)]}: ${v.length}`));
     return graph;
   }, [dominiosData, palavrasChaveData]);
 

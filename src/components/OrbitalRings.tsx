@@ -39,8 +39,11 @@ export const OrbitalRings = ({ level, isPaused, containerWidth, containerHeight 
         ];
       case 'stellar':
         return [
-          { radius: baseRadius * 1.25, speed: 1.2, dashArray: '8 4' },  // Órbita interna
-          { radius: baseRadius * 2.08, speed: 0.8, dashArray: '10 5' }  // Órbita externa
+          { radius: baseRadius * 0.83, speed: 1.0, dashArray: '10 5', label: '80-100%' },  // Órbita mais interna
+          { radius: baseRadius * 1.33, speed: 0.8, dashArray: '12 6', label: '60-80%' },
+          { radius: baseRadius * 1.83, speed: 0.6, dashArray: '15 8', label: '40-60%' },
+          { radius: baseRadius * 2.33, speed: 0.4, dashArray: '18 10', label: '20-40%' },
+          { radius: baseRadius * 2.83, speed: 0.3, dashArray: '20 12', label: '0-20%' }    // Órbita mais externa
         ];
       default:
         return [];
@@ -145,8 +148,8 @@ export const OrbitalRings = ({ level, isPaused, containerWidth, containerHeight 
         </g>
       ))}
       
-      {/* Orbit labels (only for universe level) */}
-      {level === 'universe' && orbits.map((orbit, index) => {
+      {/* Orbit labels (for universe and stellar levels) */}
+      {(level === 'universe' || level === 'stellar') && orbits.map((orbit, index) => {
         if (!orbit.label) return null;
         const labelY = centerY - orbit.radius - 15;
         return (
@@ -165,34 +168,6 @@ export const OrbitalRings = ({ level, isPaused, containerWidth, containerHeight 
           </text>
         );
       })}
-      
-      {/* Center indicator for stellar level */}
-      {level === 'stellar' && (
-        <g>
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r="8"
-            fill="#FFD700"
-            opacity="0.3"
-            filter="url(#orbitGlow)"
-          >
-            <animate
-              attributeName="r"
-              values="8;12;8"
-              dur="3s"
-              repeatCount="indefinite"
-            />
-          </circle>
-          <circle
-            cx={centerX}
-            cy={centerY}
-            r="4"
-            fill="#FFD700"
-            opacity="0.8"
-          />
-        </g>
-      )}
     </svg>
   );
 };
