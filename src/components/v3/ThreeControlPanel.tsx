@@ -2,7 +2,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { RotateCw, Zap, Orbit } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
+import { RotateCw, Zap, Network, TrendingUp, Filter, Eye, Layers } from 'lucide-react';
+import { ViewMode } from '@/hooks/useThreeSemanticData';
 
 interface ThreeControlPanelProps {
   font: string;
@@ -11,114 +16,103 @@ interface ThreeControlPanelProps {
   onAutoRotateChange: (value: boolean) => void;
   bloomEnabled: boolean;
   onBloomToggle: (value: boolean) => void;
+  showConnections: boolean;
+  onConnectionsToggle: (value: boolean) => void;
   onResetCamera: () => void;
-  stats: {
-    nodeCount: number;
-    domainCount: number;
-    wordCount: number;
-  };
+  stats: { fps: number; triangles: number; nodes: number; domains: number; words: number };
+  minFrequency: number;
+  onMinFrequencyChange: (value: number) => void;
+  prosodyFilter: 'all' | 'Positiva' | 'Negativa' | 'Neutra';
+  onProsodyFilterChange: (value: 'all' | 'Positiva' | 'Negativa' | 'Neutra') => void;
+  selectedDomains: string[];
+  onSelectedDomainsChange: (domains: string[]) => void;
+  availableDomains: Array<{ name: string; color: string }>;
+  showOnlyKeywords: boolean;
+  onShowOnlyKeywordsChange: (value: boolean) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
 }
 
 export function ThreeControlPanel(props: ThreeControlPanelProps) {
   return (
-    <div className="w-72 bg-slate-900/95 border-l border-cyan-500/30 backdrop-blur-lg p-4 space-y-6">
-      <div className="text-lg font-bold text-cyan-400 border-b border-cyan-500/30 pb-2">
-        Controles 3D
-      </div>
+    <div className="w-80 bg-slate-900/95 border-l border-cyan-500/30 backdrop-blur-lg p-4 space-y-4 overflow-y-auto">
+      <div className="text-lg font-bold text-cyan-400 border-b border-cyan-500/30 pb-2">Controles 3D</div>
       
-      {/* Câmera */}
       <div className="space-y-2">
-        <Label className="text-cyan-400 font-semibold">Câmera</Label>
-        <Button
-          onClick={props.onResetCamera}
-          variant="outline"
-          className="w-full border-cyan-500/50 hover:bg-cyan-500/10"
-        >
-          <RotateCw className="w-4 h-4 mr-2" />
-          Resetar Posição
-        </Button>
-        
-        <div className="flex items-center justify-between mt-3 bg-slate-950/50 p-2 rounded">
+        <Label className="text-cyan-400 flex items-center gap-2"><Layers className="w-4 h-4" />Modo</Label>
+        <RadioGroup value={props.viewMode} onValueChange={(v) => props.onViewModeChange(v as ViewMode)}>
           <div className="flex items-center gap-2">
-            <Orbit className="w-4 h-4 text-cyan-400" />
-            <Label className="text-sm text-slate-300">Rotação Auto</Label>
+            <RadioGroupItem value="constellation" id="c" />
+            <Label htmlFor="c" className="text-sm cursor-pointer">Constelação</Label>
           </div>
-          <Switch
-            checked={props.autoRotate}
-            onCheckedChange={props.onAutoRotateChange}
-          />
-        </div>
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="orbital" id="o" />
+            <Label htmlFor="o" className="text-sm cursor-pointer">Orbital</Label>
+          </div>
+        </RadioGroup>
       </div>
       
-      {/* Fonte */}
+      <Separator />
+      
+      <Button onClick={props.onResetCamera} variant="outline" className="w-full" size="sm">
+        <RotateCw className="w-4 h-4 mr-2" />Resetar
+      </Button>
+      
+      <div className="flex items-center justify-between">
+        <Label className="text-sm">Auto-Rotação</Label>
+        <Switch checked={props.autoRotate} onCheckedChange={props.onAutoRotateChange} />
+      </div>
+      
+      <Separator />
+      
+      <Select value={props.font} onValueChange={props.onFontChange}>
+        <SelectTrigger><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="Orbitron">Orbitron</SelectItem>
+          <SelectItem value="Audiowide">Audiowide</SelectItem>
+          <SelectItem value="Rajdhani">Rajdhani</SelectItem>
+        </SelectContent>
+      </Select>
+      
+      <div className="flex items-center justify-between">
+        <Label className="text-sm flex items-center gap-2"><Zap className="w-4 h-4" />Bloom</Label>
+        <Switch checked={props.bloomEnabled} onCheckedChange={props.onBloomToggle} />
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <Label className="text-sm flex items-center gap-2"><Network className="w-4 h-4" />Conexões</Label>
+        <Switch checked={props.showConnections} onCheckedChange={props.onConnectionsToggle} />
+      </div>
+      
+      <Separator />
+      
       <div className="space-y-2">
-        <Label className="text-cyan-400 font-semibold">Fonte</Label>
-        <Select value={props.font} onValueChange={props.onFontChange}>
-          <SelectTrigger className="border-cyan-500/50">
-            <SelectValue />
-          </SelectTrigger>
+        <Label className="text-cyan-400 flex items-center gap-2"><Filter className="w-4 h-4" />Filtros</Label>
+        <div className="flex justify-between"><Label className="text-xs">Freq. Min:</Label><span className="text-xs font-mono">{props.minFrequency}</span></div>
+        <Slider value={[props.minFrequency]} onValueChange={([v]) => props.onMinFrequencyChange(v)} min={0} max={20} step={1} />
+        
+        <Select value={props.prosodyFilter} onValueChange={(v) => props.onProsodyFilterChange(v as any)}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="Orbitron">Orbitron (Sci-Fi)</SelectItem>
-            <SelectItem value="Audiowide">Audiowide (Bold)</SelectItem>
-            <SelectItem value="Rajdhani">Rajdhani (Future)</SelectItem>
-            <SelectItem value="Arial">Arial (Classic)</SelectItem>
+            <SelectItem value="all">Todas</SelectItem>
+            <SelectItem value="Positiva">Positiva</SelectItem>
+            <SelectItem value="Neutra">Neutra</SelectItem>
+            <SelectItem value="Negativa">Negativa</SelectItem>
           </SelectContent>
         </Select>
-      </div>
-      
-      {/* Efeitos Visuais */}
-      <div className="space-y-2">
-        <Label className="text-cyan-400 font-semibold">Efeitos Visuais</Label>
-        <div className="flex items-center justify-between bg-slate-950/50 p-2 rounded">
-          <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-yellow-400" />
-            <Label className="text-sm text-slate-300">Bloom/Glow</Label>
-          </div>
-          <Switch
-            checked={props.bloomEnabled}
-            onCheckedChange={props.onBloomToggle}
-          />
+        
+        <div className="flex items-center gap-2">
+          <Switch checked={props.showOnlyKeywords} onCheckedChange={props.onShowOnlyKeywordsChange} />
+          <Label className="text-xs cursor-pointer">Top 10</Label>
         </div>
       </div>
       
-      {/* Estatísticas */}
-      <div className="space-y-2">
-        <Label className="text-cyan-400 font-semibold">Estatísticas</Label>
-        <div className="text-xs font-mono text-slate-300 space-y-1 bg-slate-950/50 p-3 rounded">
-          <div className="flex justify-between">
-            <span className="text-slate-400">Total Nós:</span>
-            <span className="text-cyan-300">{props.stats.nodeCount}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Domínios:</span>
-            <span className="text-purple-300">{props.stats.domainCount}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-400">Palavras:</span>
-            <span className="text-blue-300">{props.stats.wordCount}</span>
-          </div>
-        </div>
-      </div>
+      <Separator />
       
-      {/* Instruções */}
-      <div className="text-xs text-slate-400 border-t border-slate-700 pt-4 space-y-2">
-        <p className="font-semibold text-cyan-400">Controles:</p>
-        <ul className="space-y-1">
-          <li>• <span className="text-slate-300">Arrastar:</span> Rotacionar câmera</li>
-          <li>• <span className="text-slate-300">Scroll:</span> Zoom in/out</li>
-          <li>• <span className="text-slate-300">Clique:</span> Ver KWIC</li>
-          <li>• <span className="text-slate-300">Botão direito:</span> Pan</li>
-        </ul>
-      </div>
-      
-      {/* Badge experimental */}
-      <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-3">
-        <p className="text-xs text-purple-300 font-medium">
-          ⚡ Versão Experimental
-        </p>
-        <p className="text-xs text-slate-400 mt-1">
-          Renderizado com Three.js + WebGL
-        </p>
+      <div className="text-xs font-mono space-y-1 bg-slate-950/50 p-2 rounded">
+        <div className="flex justify-between"><span>Nós:</span><span>{props.stats.nodes}</span></div>
+        <div className="flex justify-between"><span>Domínios:</span><span>{props.stats.domains}</span></div>
+        <div className="flex justify-between"><span>Palavras:</span><span>{props.stats.words}</span></div>
       </div>
     </div>
   );

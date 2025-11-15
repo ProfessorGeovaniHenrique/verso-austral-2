@@ -1,30 +1,42 @@
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, PerspectiveCamera } from '@react-three/drei';
 import { EffectComposer, Bloom } from '@react-three/postprocessing';
-import { Suspense, useState, useRef } from 'react';
+import { Suspense, useState, useRef, useEffect } from 'react';
 import { Text3DNode } from './Text3DNode';
-import { ThreeCloudNode } from '@/hooks/useThreeSemanticData';
+import { ConnectionLines } from './ConnectionLines';
+import { ThreeCloudNode, DomainConnection } from '@/hooks/useThreeSemanticData';
 import * as THREE from 'three';
+import gsap from 'gsap';
 
 interface ThreeSemanticCloudProps {
   nodes: ThreeCloudNode[];
+  connections: DomainConnection[];
   font: string;
   autoRotate: boolean;
   bloomEnabled: boolean;
+  showConnections: boolean;
   onWordClick: (node: ThreeCloudNode) => void;
   onWordHover: (node: ThreeCloudNode | null) => void;
+  onDomainClick?: (node: ThreeCloudNode) => void;
   cameraRef?: React.MutableRefObject<any>;
+  filteredNodeIds?: Set<string>;
 }
 
 function Scene({ 
   nodes, 
+  connections,
   font, 
-  autoRotate, 
+  autoRotate,
+  showConnections,
   onWordClick, 
-  onWordHover 
+  onWordHover,
+  onDomainClick,
+  filteredNodeIds
 }: Omit<ThreeSemanticCloudProps, 'bloomEnabled' | 'cameraRef'>) {
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [cascadeNodes, setCascadeNodes] = useState<Set<string>>(new Set());
   const groupRef = useRef<THREE.Group>(null);
+  const nodesRef = useRef<Map<string, THREE.Group>>(new Map());
   
   // Rotação automática suave
   useFrame((state, delta) => {
@@ -38,44 +50,123 @@ function Scene({
     setHoveredNodeId(node.id);
     onWordHover(node);
     document.body.style.cursor = 'pointer';
+    
+    // Hover cascade effect
+    if (node.type === 'word') {
+      const sameDomainNodes = nodes
+        .filter(n => n.domain === node.domain && n.id !== node.id)
+        .map(n => n.id);
+      setCascadeNodes(new Set(sameDomainNodes));
+    }
   };
   
   const handlePointerOut = () => {
     setHoveredNodeId(null);
     onWordHover(null);
+    setCascadeNodes(new Set());
     document.body.style.cursor = 'auto';
   };
   
   const handleClick = (node: ThreeCloudNode) => (e: any) => {
     e.stopPropagation();
-    onWordClick(node);
+    
+    if (node.type === 'domain' && onDomainClick) {
+      onDomainClick(node);
+    } else if (node.type === 'word') {
+      onWordClick(node);
+    }
   };
   
+  // Aplicar cascade opacity effect
+  useEffect(() => {
+    if (cascadeNodes.size > 0) {
+      nodes.forEach(node => {
+        const nodeGroup = nodesRef.current.get(node.id);
+        if (!nodeGroup) return;
+        
+        // Navegar até o material do Text mesh
+        const billboard = nodeGroup.children[0];
+        if (billboard && billboard.children[0]) {
+          const textMesh = billboard.children[0] as THREE.Mesh;
+          if (textMesh.material) {
+            const targetOpacity = cascadeNodes.has(node.id) ? 0.8 : 
+                                 hoveredNodeId === node.id ? 1.0 : 0.2;
+            
+            gsap.to(textMesh.material, {
+              opacity: targetOpacity,
+              duration: 0.3
+            });
+          }
+        }
+      });
+    } else if (!hoveredNodeId) {
+      // Reset all opacities
+      nodes.forEach(node => {
+        const nodeGroup = nodesRef.current.get(node.id);
+        if (nodeGroup) {
+          const billboard = nodeGroup.children[0];
+          if (billboard && billboard.children[0]) {
+            const textMesh = billboard.children[0] as THREE.Mesh;
+            if (textMesh.material) {
+              gsap.to(textMesh.material, {
+                opacity: node.baseOpacity,
+                duration: 0.3
+              });
+            }
+          }
+        }
+      });
+    }
+  }, [cascadeNodes, hoveredNodeId, nodes]);
+  
   return (
-    <group ref={groupRef}>
-      {nodes.map(node => (
-        <Text3DNode
-          key={node.id}
-          node={node}
-          font={font}
-          isHovered={hoveredNodeId === node.id}
-          onPointerOver={handlePointerOver(node)}
-          onPointerOut={handlePointerOut}
-          onClick={handleClick(node)}
-        />
-      ))}
-    </group>
+    <>
+      <group ref={groupRef}>
+        {nodes.map(node => {
+          const isFiltered = filteredNodeIds && !filteredNodeIds.has(node.id);
+          const opacity = isFiltered ? 0.05 : node.baseOpacity;
+          
+          return (
+            <group 
+              key={node.id} 
+              ref={(ref) => {
+                if (ref) nodesRef.current.set(node.id, ref);
+              }}
+            >
+              <Text3DNode
+                node={{ ...node, baseOpacity: opacity }}
+                font={font}
+                isHovered={hoveredNodeId === node.id}
+                onPointerOver={handlePointerOver(node)}
+                onPointerOut={handlePointerOut}
+                onClick={handleClick(node)}
+              />
+            </group>
+          );
+        })}
+      </group>
+      
+      <ConnectionLines 
+        connections={connections}
+        nodes={nodes}
+        visible={showConnections}
+      />
+    </>
   );
 }
 
 export function ThreeSemanticCloud({ 
-  nodes, 
+  nodes,
+  connections,
   font, 
   autoRotate, 
   bloomEnabled,
+  showConnections,
   onWordClick, 
   onWordHover,
-  cameraRef
+  onDomainClick,
+  cameraRef,
+  filteredNodeIds
 }: ThreeSemanticCloudProps) {
   return (
     <div className="w-full h-full bg-slate-950">
@@ -118,10 +209,14 @@ export function ThreeSemanticCloud({
         <Suspense fallback={null}>
           <Scene
             nodes={nodes}
+            connections={connections}
             font={font}
             autoRotate={autoRotate}
+            showConnections={showConnections}
             onWordClick={onWordClick}
             onWordHover={onWordHover}
+            onDomainClick={onDomainClick}
+            filteredNodeIds={filteredNodeIds}
           />
         </Suspense>
         

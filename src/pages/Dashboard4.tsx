@@ -1,115 +1,175 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ThreeSemanticCloud } from '@/components/v3/ThreeSemanticCloud';
 import { ThreeControlPanel } from '@/components/v3/ThreeControlPanel';
 import { StatisticalFooter } from '@/components/v3/StatisticalFooter';
-import { KWICModal } from '@/components/KWICModal';
-import { useThreeSemanticData } from '@/hooks/useThreeSemanticData';
-import { Badge } from '@/components/ui/badge';
+import { SmartTooltip3D } from '@/components/v3/SmartTooltip3D';
+import { DetailedAnalysisModal } from '@/components/v3/DetailedAnalysisModal';
+import { useThreeSemanticData, ViewMode, ThreeCloudNode } from '@/hooks/useThreeSemanticData';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Sparkles } from 'lucide-react';
-import { kwicDataMap } from '@/data/mockup/kwic';
+import { ArrowLeft } from 'lucide-react';
+import gsap from 'gsap';
 
 export default function Dashboard4() {
-  const { nodes, stats } = useThreeSemanticData();
-  const cameraRef = useRef<any>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('constellation');
+  const [selectedDomainId, setSelectedDomainId] = useState<string | undefined>(undefined);
   
-  const [selectedWord, setSelectedWord] = useState<string | null>(null);
-  const [hoveredNode, setHoveredNode] = useState<any>(null);
+  const { nodes, stats, connections } = useThreeSemanticData(viewMode, selectedDomainId);
+  
+  const [selectedWord, setSelectedWord] = useState<ThreeCloudNode | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<ThreeCloudNode | null>(null);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
   const [font, setFont] = useState('Orbitron');
   const [autoRotate, setAutoRotate] = useState(false);
   const [bloomEnabled, setBloomEnabled] = useState(true);
+  const [showConnections, setShowConnections] = useState(true);
   
-  const handleWordClick = (node: any) => {
-    if (node.type === 'word') {
-      setSelectedWord(node.label);
+  const [minFrequency, setMinFrequency] = useState(0);
+  const [prosodyFilter, setProsodyFilter] = useState<'all' | 'Positiva' | 'Negativa' | 'Neutra'>('all');
+  const [selectedDomains, setSelectedDomains] = useState<string[]>([]);
+  const [showOnlyKeywords, setShowOnlyKeywords] = useState(false);
+  
+  const cameraRef = useRef<any>(null);
+  
+  const filteredNodeIds = useMemo(() => {
+    const filtered = new Set<string>();
+    nodes.forEach(node => {
+      const passFrequency = node.frequency >= minFrequency;
+      const passProsody = prosodyFilter === 'all' || node.prosody === prosodyFilter;
+      const passDomain = selectedDomains.length === 0 || selectedDomains.includes(node.domain);
+      
+      let passKeyword = true;
+      if (showOnlyKeywords && node.type === 'word') {
+        const domainWords = nodes
+          .filter(n => n.type === 'word' && n.domain === node.domain)
+          .sort((a, b) => b.frequency - a.frequency)
+          .slice(0, 10)
+          .map(n => n.id);
+        passKeyword = domainWords.includes(node.id);
+      }
+      
+      if (passFrequency && passProsody && passDomain && passKeyword) {
+        filtered.add(node.id);
+      }
+    });
+    return filtered;
+  }, [nodes, minFrequency, prosodyFilter, selectedDomains, showOnlyKeywords]);
+  
+  const handleWordClick = useCallback((node: ThreeCloudNode) => {
+    if (node.type === 'word') setSelectedWord(node);
+  }, []);
+  
+  const handleDomainClick = useCallback((node: ThreeCloudNode) => {
+    if (node.type === 'domain' && viewMode === 'constellation') {
+      setSelectedDomainId(node.domain);
+      setViewMode('orbital');
+      if (cameraRef.current) {
+        gsap.to(cameraRef.current.position, {
+          x: node.position[0] + 10,
+          y: node.position[1] + 8,
+          z: node.position[2] + 12,
+          duration: 1.5,
+          ease: "power2.inOut"
+        });
+      }
     }
-  };
+  }, [viewMode]);
   
-  const handleResetCamera = () => {
+  const handleResetCamera = useCallback(() => {
     if (cameraRef.current) {
-      cameraRef.current.position.set(0, 15, 30);
-      cameraRef.current.lookAt(0, 0, 0);
+      gsap.to(cameraRef.current.position, {
+        x: 0, y: 15, z: 30,
+        duration: 1.5,
+        ease: "power2.inOut"
+      });
     }
-  };
+  }, []);
   
-  // Calcular estatísticas
-  const domainCount = nodes.filter(n => n.type === 'domain').length;
-  const wordCount = nodes.filter(n => n.type === 'word').length;
+  const handleBackToConstellation = useCallback(() => {
+    setViewMode('constellation');
+    setSelectedDomainId(undefined);
+    handleResetCamera();
+  }, [handleResetCamera]);
+  
+  const availableDomains = useMemo(() => {
+    const domains = new Map<string, { name: string; color: string }>();
+    nodes.forEach(node => {
+      if (node.type === 'domain') {
+        domains.set(node.domain, { name: node.domain, color: node.color });
+      }
+    });
+    return Array.from(domains.values());
+  }, [nodes]);
   
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-[1800px]">
-      {/* Header com link de volta */}
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-4 mb-2">
             <Link to="/dashboard3">
-              <Button variant="ghost" size="sm" className="hover:bg-cyan-500/10">
+              <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
-                Voltar ao Canvas 2D
+                Canvas 2D
               </Button>
             </Link>
-            <Badge 
-              variant="outline" 
-              className="bg-purple-500/20 text-purple-300 border-purple-500/50 px-3 py-1"
-            >
-              <Sparkles className="w-3 h-3 mr-1" />
-              Experimental - Three.js
+            <Badge variant="outline" className="bg-purple-500/20 text-purple-300 border-purple-500/50">
+              Three.js
+            </Badge>
+            <Badge variant="outline" className={viewMode === 'orbital' ? "bg-cyan-500/20" : ""}>
+              {viewMode === 'constellation' ? 'Constelação' : 'Orbital'}
             </Badge>
           </div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
             Nuvem Semântica 3D
           </h1>
-          <p className="text-slate-400 mt-2">
-            Visualização experimental com Three.js - Compare performance e interatividade com Canvas 2D
-          </p>
         </div>
+        {viewMode === 'orbital' && (
+          <Button onClick={handleBackToConstellation} variant="outline">
+            Voltar à Constelação
+          </Button>
+        )}
       </div>
       
-      {/* Visualização principal */}
-      <Card className="border-purple-500/30">
-        <CardHeader className="border-b border-purple-500/20">
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-400" />
-            Nuvem de Domínios Semânticos 3D
-          </CardTitle>
-          <CardDescription>
-            Arraste para rotacionar • Scroll para zoom • Clique em palavras para KWIC • Rotação orbital livre 360°
-          </CardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>Visualização 3D Completa</CardTitle>
+          <CardDescription>{filteredNodeIds.size} de {nodes.length} nós visíveis</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="flex h-[800px]">
-            {/* Canvas Three.js */}
+          <div className="flex h-[800px]" onMouseMove={(e) => setMousePosition({ x: e.clientX, y: e.clientY })}>
             <div className="flex-1 relative">
               <ThreeSemanticCloud
                 nodes={nodes}
+                connections={connections}
                 font={font}
                 autoRotate={autoRotate}
                 bloomEnabled={bloomEnabled}
+                showConnections={showConnections && viewMode === 'constellation'}
                 onWordClick={handleWordClick}
                 onWordHover={setHoveredNode}
+                onDomainClick={handleDomainClick}
                 cameraRef={cameraRef}
+                filteredNodeIds={filteredNodeIds}
               />
-              
-              {/* Tooltip hover */}
               {hoveredNode && (
-                <div className="absolute top-4 left-4 bg-slate-900/95 border border-cyan-500/50 rounded-lg p-3 backdrop-blur z-10 shadow-lg shadow-cyan-500/20">
-                  <p className="font-bold text-cyan-400">{hoveredNode.label}</p>
-                  <div className="text-xs text-slate-400 mt-1 space-y-0.5">
-                    <p>Tipo: <span className="text-slate-300">{hoveredNode.type === 'domain' ? 'Domínio' : 'Palavra'}</span></p>
-                    <p>Domínio: <span className="text-slate-300">{hoveredNode.domain}</span></p>
-                    <p>Frequência: <span className="text-slate-300">{hoveredNode.frequency}</span></p>
-                    <p>Prosódia: <span className="text-slate-300">{hoveredNode.prosody}</span></p>
-                  </div>
-                </div>
+                <SmartTooltip3D
+                  data={{
+                    title: hoveredNode.label,
+                    domain: { name: hoveredNode.domain, color: hoveredNode.color },
+                    frequency: { raw: hoveredNode.frequency, normalized: (hoveredNode.frequency / 10000) * 100 },
+                    prosody: { type: hoveredNode.prosody },
+                    type: hoveredNode.type,
+                    lexicalRichness: hoveredNode.lexicalRichness,
+                    textualWeight: hoveredNode.textualWeight
+                  }}
+                  position={mousePosition}
+                />
               )}
-              
-              {/* Rodapé estatístico */}
               <StatisticalFooter stats={stats} />
             </div>
-            
-            {/* Painel de controles */}
             <ThreeControlPanel
               font={font}
               onFontChange={setFont}
@@ -117,58 +177,30 @@ export default function Dashboard4() {
               onAutoRotateChange={setAutoRotate}
               bloomEnabled={bloomEnabled}
               onBloomToggle={setBloomEnabled}
+              showConnections={showConnections}
+              onConnectionsToggle={setShowConnections}
               onResetCamera={handleResetCamera}
-              stats={{
-                nodeCount: nodes.length,
-                domainCount,
-                wordCount
-              }}
+              stats={{ fps: 60, triangles: nodes.length * 100, nodes: nodes.length, domains: availableDomains.length, words: nodes.filter(n => n.type === 'word').length }}
+              minFrequency={minFrequency}
+              onMinFrequencyChange={setMinFrequency}
+              prosodyFilter={prosodyFilter}
+              onProsodyFilterChange={setProsodyFilter}
+              selectedDomains={selectedDomains}
+              onSelectedDomainsChange={setSelectedDomains}
+              availableDomains={availableDomains}
+              showOnlyKeywords={showOnlyKeywords}
+              onShowOnlyKeywordsChange={setShowOnlyKeywords}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
             />
           </div>
         </CardContent>
       </Card>
       
-      {/* Seção de comparação */}
-      <Card className="border-cyan-500/30">
-        <CardHeader>
-          <CardTitle>Comparação: Canvas 2D vs Three.js 3D</CardTitle>
-          <CardDescription>
-            Avalie performance, funcionalidade e experiência visual entre as duas abordagens
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-slate-900/50 p-4 rounded-lg border border-cyan-500/30">
-              <h3 className="font-semibold text-cyan-400 mb-3">Canvas 2D (Dashboard3)</h3>
-              <ul className="text-sm text-slate-300 space-y-2">
-                <li>✅ Performance leve e rápida</li>
-                <li>✅ Código simples (~400 linhas)</li>
-                <li>✅ Zoom/Pan 2D tradicional</li>
-                <li>✅ Glow via CSS + Canvas</li>
-                <li>✅ Melhor para MVP e validação</li>
-              </ul>
-            </div>
-            
-            <div className="bg-slate-900/50 p-4 rounded-lg border border-purple-500/30">
-              <h3 className="font-semibold text-purple-400 mb-3">Three.js 3D (Dashboard4)</h3>
-              <ul className="text-sm text-slate-300 space-y-2">
-                <li>✨ Rotação orbital livre 360°</li>
-                <li>✨ Bloom real-time (post-processing)</li>
-                <li>✨ Profundidade 3D real</li>
-                <li>✨ Campo de estrelas animado</li>
-                <li>✨ Impacto visual maior</li>
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      {/* Modal KWIC */}
-      <KWICModal
+      <DetailedAnalysisModal
         open={!!selectedWord}
         onOpenChange={(open) => !open && setSelectedWord(null)}
-        word={selectedWord || ''}
-        data={selectedWord ? (kwicDataMap[selectedWord] || []) : []}
+        node={selectedWord}
       />
     </div>
   );
