@@ -45,7 +45,7 @@ export const SpaceNavigationConsole = ({
           }`}
           disabled={level === 'universe'}
         >
-          🌌 UNIVERSO
+          🌌 DOMÍNIOS
         </button>
         {(level === 'galaxy' || level === 'stellar-system') && (
           <>
@@ -59,7 +59,7 @@ export const SpaceNavigationConsole = ({
               }`}
               disabled={level === 'galaxy'}
             >
-              🌀 GALÁXIA
+              🌀 CONSTELAÇÕES
             </button>
           </>
         )}
@@ -118,7 +118,7 @@ export const SpaceNavigationConsole = ({
             }}
           >
             <Orbit className="w-4 h-4 mr-1" />
-            UNIVERSO
+            DOMÍNIOS
           </Button>
           <Button
             variant={level === 'galaxy' ? 'default' : 'outline'}
@@ -132,25 +132,23 @@ export const SpaceNavigationConsole = ({
             }}
           >
             <Star className="w-4 h-4 mr-1" />
-            GALÁXIA
+            CONSTELAÇÕES
           </Button>
-          {level === 'stellar-system' && selectedDomain && (
-            <Button
-              variant="default"
-              size="sm"
-              disabled
-              className="space-nav-btn cursor-default"
-              style={{
-                background: 'linear-gradient(45deg, #00E5FF, #1B5E20)',
-                borderColor: '#00E5FF',
-                color: '#FFFFFF',
-                opacity: 1
-              }}
-            >
-              <CircleDot className="w-4 h-4 mr-1" />
-              {selectedDomain.toUpperCase()}
-            </Button>
-          )}
+          <Button
+            variant={level === 'stellar-system' ? 'default' : 'outline'}
+            size="sm"
+            disabled={!selectedDomain}
+            className="space-nav-btn"
+            style={{
+              background: level === 'stellar-system' ? 'linear-gradient(45deg, #00E5FF, #1B5E20)' : 'transparent',
+              borderColor: '#00E5FF',
+              color: '#FFFFFF',
+              opacity: !selectedDomain ? 0.5 : 1
+            }}
+          >
+            <CircleDot className="w-4 h-4 mr-1" />
+            {selectedDomain ? selectedDomain.toUpperCase() : 'LEXIS'}
+          </Button>
         </div>
       </div>
       </div>

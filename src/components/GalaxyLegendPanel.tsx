@@ -84,7 +84,7 @@ export const GalaxyLegendPanel = ({ visible, isCodexOpen = false }: GalaxyLegend
           >
             <div className="flex items-center gap-2 text-cyan-400 font-mono text-[10px] uppercase tracking-wider">
               <span className="animate-pulse">📍</span>
-              <span>MAPA DA GALÁXIA (minimizado)</span>
+              <span>MAPA DAS CONSTELAÇÕES (minimizado)</span>
             </div>
           </motion.div>
         )}

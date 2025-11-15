@@ -221,8 +221,8 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
             {/* Header Especial */}
             <div className="text-center pb-3 border-b border-cyan-500/30">
               <div className="text-3xl mb-2">☀️</div>
-              <div className="text-cyan-300 font-bold text-lg">VISÃO GERAL DO UNIVERSO</div>
-              <div className="text-white/60 text-xs font-mono mt-1">Estatísticas Consolidadas</div>
+            <div className="text-cyan-300 font-bold text-lg">VISÃO GERAL DOS DOMÍNIOS</div>
+            <div className="text-white/60 text-xs font-mono mt-1">Corpus Completo</div>
             </div>
             
             {/* Grid de Estatísticas Principais */}

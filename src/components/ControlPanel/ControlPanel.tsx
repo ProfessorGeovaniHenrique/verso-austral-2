@@ -98,7 +98,7 @@ export const ControlPanel = ({
           </div>}
         
         {/* Legend Section */}
-        {openSections.legend && level === 'galaxy' && <PanelSection title="LEGENDA GALÁXIA" icon="🗺️" isOpen={true} hideToggle>
+        {openSections.legend && level === 'galaxy' && <PanelSection title="LEGENDA DAS CONSTELAÇÕES" icon="🗺️" isOpen={true} hideToggle>
             <GalaxyLegendPanel visible={true} isCodexOpen={codexState !== 'closed'} />
           </PanelSection>}
         

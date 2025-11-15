@@ -260,7 +260,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       x: 0.5, 
       y: 0.5, 
       size: 45, 
-      label: '☀️ UNIVERSO\nGAÚCHO', 
+      label: '☀️ CORPUS\nGAÚCHO', 
       color: '#FFD700'
     });
     
@@ -581,7 +581,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         
         setHoveredNode({
           id: 'center',
-          label: 'Universo Gaúcho',
+          label: 'Corpus Gaúcho',
           level: 'galaxy',
           isGalacticCore: true,
           totalDominios,

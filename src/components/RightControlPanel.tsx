@@ -79,7 +79,7 @@ export const RightControlPanel = ({
             >
               <span className="text-cyan-400 font-mono text-sm font-bold flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                LEGENDA GALÁXIA
+                LEGENDA DAS CONSTELAÇÕES
               </span>
               {isLegendCollapsed ? (
                 <ChevronDown className="w-4 h-4 text-cyan-400" />
