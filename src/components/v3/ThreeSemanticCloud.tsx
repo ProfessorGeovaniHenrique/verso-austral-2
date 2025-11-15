@@ -83,10 +83,6 @@ export function ThreeSemanticCloud({
   autoRotate, 
   bloomEnabled,
   showConnections,
-  onWordClick, 
-  onWordHover,
-  onDomainClick,
-  cameraRef,
   filteredNodeIds
 }: ThreeSemanticCloudProps) {
   return (
@@ -95,8 +91,7 @@ export function ThreeSemanticCloud({
         {/* Câmera com posição inicial */}
         <PerspectiveCamera 
           makeDefault 
-          position={[0, 15, 30]} 
-          ref={cameraRef}
+          position={[0, 15, 30]}
         />
         
         {/* Controles orbitais */}
