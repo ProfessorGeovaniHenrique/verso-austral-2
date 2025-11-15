@@ -31,6 +31,10 @@ function Scene({
 }: Omit<ThreeSemanticCloudProps, 'bloomEnabled'>) {
   const groupRef = useRef<THREE.Group>(null);
   
+  console.log('🌌 Scene recebeu nodes:', nodes.length);
+  console.log('🔍 Primeiro node:', nodes[0]);
+  console.log('📊 Tipos de nodes:', nodes.map(n => n.type));
+  
   // Hook de raycasting integrado com Zustand
   useRaycasting({ nodes, enabled: true });
   

@@ -18,18 +18,15 @@ export function InteractiveWord({ node, opacity, font = 'Inter' }: InteractiveWo
   
   const hover = useInteractivityStore(selectHover);
   const isHovered = hover.hoveredNodeId === node.id;
-  const isSameDomain = hover.hoveredType === 'word' && 
-    hover.hoveredNodeId !== node.id && 
-    nodes.find((n: any) => n.id === hover.hoveredNodeId)?.domain === node.domain;
   
   // Calcular opacidade final baseado no hover cascade
   const finalOpacity = useMemo(() => {
     if (isHovered) return 1.0;
     if (hover.hoveredNodeId && hover.hoveredType === 'word') {
-      return isSameDomain ? 0.8 : 0.2;
+      return 0.3; // Reduz opacidade de outras palavras quando uma está em hover
     }
     return opacity;
-  }, [isHovered, hover, isSameDomain, opacity]);
+  }, [isHovered, hover, opacity]);
   
   // Animação de hover com react-spring
   const springProps = useSpring({
@@ -57,7 +54,6 @@ export function InteractiveWord({ node, opacity, font = 'Inter' }: InteractiveWo
           anchorY="middle"
           outlineWidth={0.01}
           outlineColor="#000000"
-          font={`/fonts/${font}.woff`}
         >
           {node.label}
           <animated.meshStandardMaterial
@@ -72,6 +68,3 @@ export function InteractiveWord({ node, opacity, font = 'Inter' }: InteractiveWo
     </Billboard>
   );
 }
-
-// Helper para buscar nós (mock - será removido na integração)
-const nodes: any[] = [];
