@@ -75,6 +75,11 @@ export const ControlPanel = ({
           <h2 className="text-primary font-mono text-lg font-bold flex items-center gap-2">
             <CircuitBoard className="w-5 h-5" />
             CONSOLE DE CONTROLE
+            {codexState === 'pinned' && (
+              <span className="ml-2 text-yellow-400 animate-pulse" title="Codex Travado">
+                📌
+              </span>
+            )}
           </h2>
           
           {/* Botões de controle - apenas no modo docked */}
@@ -115,14 +120,29 @@ export const ControlPanel = ({
             icon="💫"
             isOpen={true}
             hideToggle
+            className={
+              codexState !== 'closed' && level === 'galaxy' 
+                ? "min-h-[600px]" 
+                : codexState !== 'closed' 
+                ? "min-h-[500px]"
+                : ""
+            }
           >
-            {showCodex ? (
-              <CodexDrawer word={hoveredNode} level={level} />
-            ) : (
-              <div className="text-primary/50 text-sm font-mono text-center py-8">
-                Passe o mouse sobre um elemento para visualizar dados
-              </div>
-            )}
+            <div className={
+              level === 'galaxy' && codexState !== 'closed'
+                ? "max-h-[580px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent"
+                : codexState !== 'closed'
+                ? "max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-500/50 scrollbar-track-transparent"
+                : ""
+            }>
+              {showCodex ? (
+                <CodexDrawer word={hoveredNode} level={level} />
+              ) : (
+                <div className="text-primary/50 text-sm font-mono text-center py-8">
+                  Passe o mouse sobre um elemento para visualizar dados
+                </div>
+              )}
+            </div>
           </PanelSection>
         )}
         
