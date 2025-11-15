@@ -26,16 +26,35 @@ export function TabCorpus() {
             <CardContent>
               <div className="prose prose-sm max-w-none">
                 <div className="whitespace-pre-line text-foreground leading-relaxed">
-                  {/* ADICIONE AQUI A LETRA COMPLETA DA MÚSICA */}
-                  {/* Exemplo de como adicionar: */}
-                  <p className="text-muted-foreground/60 italic border-l-4 border-primary/30 pl-4 py-2">
-                    [A letra completa da música deve ser adicionada aqui]
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-4">
-                    💡 <strong>Nota:</strong> Adicione a letra completa da música "Quando o verso vem pras casa" 
-                    substituindo este placeholder. Mantenha o formato <code>whitespace-pre-line</code> para 
-                    preservar as quebras de linha e estrofes do poema.
-                  </p>
+                  {`A calma do tarumã, ganhou sombra mais copada
+Pela várzea espichada com o sol da tarde caindo
+Um pañuelo maragato se abriu no horizonte
+Trazendo um novo reponte, prá um fim de tarde bem lindo
+
+Daí um verso de campo se chegou da campereada
+No lombo de uma gateada frente aberta de respeito
+Desencilhou na ramada, já cansado das lonjuras
+Mas estampando a figura, campeira, bem do seu jeito
+
+Cevou um mate pura-folha, jujado de maçanilha
+E um ventito da coxilha trouxe coplas entre as asas
+Prá querência galponeira, onde o verso é mais caseiro
+Templado a luz de candeeiro e um "quarto gordo nas brasa"
+
+A mansidão da campanha traz saudades feito açoite
+Com os olhos negros de noite que ela mesmo aquerenciou
+E o verso que tinha sonhos prá rondar na madrugada
+Deixou a cancela encostada e a tropa se desgarrou
+
+E o verso sonhou ser várzea com sombra de tarumã
+Ser um galo prás manhãs, ou um gateado prá encilha
+Sonhou com os olhos da prenda vestidos de primavera
+Adormecidos na espera do sol pontear na coxilha
+
+Ficaram arreios suados e o silencio de esporas
+Um cerne com cor de aurora queimando em fogo de chão
+Uma cuia e uma bomba recostada na cambona
+E uma saudade redomona pelos cantos do galpão`}
                 </div>
               </div>
             </CardContent>
