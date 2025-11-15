@@ -5,6 +5,7 @@ import gsap from 'gsap';
 import { AppSidebar } from '@/components/AppSidebar';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { ScannerPlanet } from '@/components/v3/ScannerPlanet';
+import { Starfield8K } from '@/components/v3/Starfield8K';
 import { useScannerData } from '@/hooks/useScannerData';
 import { useNavigationLevel } from '@/hooks/useNavigationLevel';
 import type { ScannerPlanet as ScannerPlanetType, ScannerProbe } from '@/data/types/scannerVisualization.types';
@@ -129,11 +130,8 @@ function Scene() {
         />
       )}
 
-      {/* Starfield background */}
-      <mesh>
-        <sphereGeometry args={[200, 32, 32]} />
-        <meshBasicMaterial color="#000000" side={2} />
-      </mesh>
+      {/* Starfield 8K cinematográfico */}
+      <Starfield8K variant="milkyWay" radius={500} />
     </>
   );
 }
