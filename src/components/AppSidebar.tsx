@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Sparkles, FileText } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Sparkles, FileText, CircuitBoard } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import {
@@ -21,6 +21,7 @@ import { ChevronDown } from "lucide-react";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Console de Controle", action: "toggle-console", icon: CircuitBoard },
 ];
 
 const projectItems = [
@@ -49,16 +50,28 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className="flex items-center gap-2 hover:bg-muted/50"
-                      activeClassName="bg-muted text-primary font-medium"
+                  {item.action === 'toggle-console' ? (
+                    <SidebarMenuButton 
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('toggle-control-console'));
+                      }}
+                      className="flex items-center gap-2 hover:bg-muted/50 cursor-pointer"
                     >
                       <item.icon className="h-4 w-4" />
                       {open && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
+                    </SidebarMenuButton>
+                  ) : (
+                    <SidebarMenuButton asChild>
+                      <NavLink 
+                        to={item.url} 
+                        className="flex items-center gap-2 hover:bg-muted/50"
+                        activeClassName="bg-muted text-primary font-medium"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {open && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
 

@@ -7,7 +7,7 @@ import { ControlToolbar } from './ControlPanel/ControlToolbar';
 import { FloatingControlPanel } from './ControlPanel/FloatingControlPanel';
 import { OrbitalRings } from './OrbitalRings';
 import { FilterPanel } from './FilterPanel';
-import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
+import { drawPlanetNode, drawPlanetNodeHover, drawGalacticCoreNode } from '@/lib/planetRenderer';
 
 type NavigationLevel = 'universe' | 'galaxy';
 type ConsoleMode = 'docked' | 'minimized' | 'floating';
@@ -50,6 +50,8 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const graphRef = useRef<any>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const hoverDelayTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastClickedNodeRef = useRef<string | null>(null);
   
   // Refs para evitar stale closure nos event handlers
   const levelRef = useRef<NavigationLevel>('universe');
@@ -89,6 +91,16 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const [consoleMode, setConsoleMode] = useState<ConsoleMode>('docked');
   const [floatingPosition, setFloatingPosition] = useState({ x: 100, y: 100 });
   const [floatingSize, setFloatingSize] = useState({ width: 420, height: 600 });
+
+  // Listener para evento da sidebar
+  useEffect(() => {
+    const handleToggleConsole = () => {
+      setConsoleMode(prev => prev === 'minimized' ? 'docked' : 'minimized');
+    };
+    
+    window.addEventListener('toggle-control-console', handleToggleConsole);
+    return () => window.removeEventListener('toggle-control-console', handleToggleConsole);
+  }, []);
 
   // Função auxiliar para mapear domínio de uma palavra
   const getWordDomain = useCallback((palavra: string): { cor: string; corTexto: string } => {
@@ -373,20 +385,24 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       minCameraRatio: 0.3,
       maxCameraRatio: 2.5,
       
-      // ✨ NODE REDUCER para aplicar cores dos domínios
+      // ✨ NODE REDUCER para aplicar cores dos domínios e tipo de renderer
       nodeReducer: (node, attrs) => {
-        // Copiar todos os atributos do nó
+        const currentLevel = levelRef.current;
         const result = { ...attrs };
         
-        // Garantir que a cor definida no atributo seja usada
         if (attrs.color) {
           result.color = attrs.color;
         }
         
-        // Destaque especial para nó central
+        // Nó central: aplicar renderer do núcleo galáctico quando em galaxy view
         if (node === 'center') {
           result.color = '#FFD700';
           result.size = 40;
+          
+          // Aplicar renderer customizado no nível galaxy
+          if (currentLevel === 'galaxy') {
+            result.type = 'galactic-core';
+          }
         }
         
         return result;
@@ -395,13 +411,13 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     
     sigmaRef.current = sigma;
     
-      // Set initial camera position
-      sigma.getCamera().setState({ x: 0.5, y: 0.5, ratio: 0.8 });
+    // Set initial camera position
+    sigma.getCamera().setState({ x: 0.5, y: 0.5, ratio: 0.8 });
 
-      // Forçar refresh para aplicar cores
-      sigma.refresh();
+    // Forçar refresh para aplicar cores
+    sigma.refresh();
 
-      console.log('✅ Sigma.js initialized successfully');
+    console.log('✅ Sigma.js initialized successfully');
     
     return () => {
       console.log('🧹 Cleaning up Sigma.js');
@@ -452,6 +468,66 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       const nodeAttrs = graph.getNodeAttributes(node);
       const displayPoint = { x: event.x, y: event.y };
       
+      // 🌌 CASO ESPECIAL: Hover no núcleo galáctico (centro no nível galaxy)
+      if (node === 'center' && currentLevel === 'galaxy') {
+        // Cancela delay anterior
+        if (hoverDelayTimeoutRef.current) {
+          clearTimeout(hoverDelayTimeoutRef.current);
+          hoverDelayTimeoutRef.current = null;
+        }
+        
+        // Calcular estatísticas gerais
+        const totalDominios = dominiosData.filter(d => d.dominio !== "Palavras Funcionais").length;
+        const totalPalavras = dominiosData.reduce((sum, d) => sum + d.riquezaLexical, 0);
+        const totalOcorrencias = dominiosData.reduce((sum, d) => sum + d.ocorrencias, 0);
+        const dominioMaisRico = dominiosData.reduce((max, d) => 
+          d.riquezaLexical > max.riquezaLexical ? d : max
+        );
+        const dominioMaisFrequente = dominiosData.reduce((max, d) => 
+          d.ocorrencias > max.ocorrencias ? d : max
+        );
+        
+        // Top 3 domínios por Peso Temático
+        const top3Dominios = [...dominiosData]
+          .filter(d => d.dominio !== "Palavras Funcionais")
+          .sort((a, b) => b.percentualTematico - a.percentualTematico)
+          .slice(0, 3);
+        
+        setHoveredNode({
+          id: 'center',
+          label: 'Universo Gaúcho',
+          level: 'galaxy',
+          isGalacticCore: true,
+          totalDominios,
+          totalPalavras,
+          totalOcorrencias,
+          dominioMaisRico: dominioMaisRico.dominio,
+          dominioMaisFrequente: dominioMaisFrequente.dominio,
+          top3Dominios: top3Dominios.map(d => ({
+            nome: d.dominio,
+            percentual: d.percentualTematico,
+            cor: d.cor
+          }))
+        });
+        
+        setTooltipPos(displayPoint);
+        setIsPaused(true);
+        setCodexState('auto-open');
+        
+        // Timer de fechamento
+        const timeoutId = setTimeout(() => {
+          if (codexState === 'auto-open') {
+            setCodexState('closed');
+            setHoveredNode(null);
+            setTimeout(() => setIsPaused(false), 2000);
+          }
+        }, 5000);
+        
+        leaveTimeoutRef.current = timeoutId;
+        sigma.getContainer().style.cursor = 'pointer';
+        return;
+      }
+      
       // Proteção anti-hover acidental: se Codex já está aberto, exigir 300ms de hover
       if (codexState === 'auto-open' || codexState === 'pinned') {
         // Cancela delay anterior
@@ -498,70 +574,70 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         return;
       }
       
-      // 📌 Click-to-Pin Logic: Toggle pin no nó atual
-      if (hoveredNode && hoveredNode.id === node && currentLevel !== 'universe' || node === 'center') {
-        if (codexState === 'pinned') {
-          // Despin: voltar para fechado
-          setCodexState('closed');
-          setHoveredNode(null);
-          setIsPaused(false);
-          console.log('🔓 Codex unpinned');
-        } else if (codexState === 'auto-open') {
-          // Pin: travar o Codex
-          setCodexState('pinned');
-          // Cancela timer de fechamento automático
-          if (leaveTimeoutRef.current) {
-            clearTimeout(leaveTimeoutRef.current);
-            leaveTimeoutRef.current = null;
+      // Detectar double-click para pin/unpin
+      if (lastClickedNodeRef.current === node && clickTimeoutRef.current) {
+        // É double-click!
+        clearTimeout(clickTimeoutRef.current);
+        clickTimeoutRef.current = null;
+        lastClickedNodeRef.current = null;
+        
+        console.log('🖱️🖱️ Double click detected!');
+        
+        // Toggle pin no nó atual
+        if (hoveredNode && hoveredNode.id === node) {
+          if (codexState === 'pinned') {
+            setCodexState('closed');
+            setHoveredNode(null);
+            setIsPaused(false);
+            console.log('🔓 Codex unpinned');
+          } else {
+            setCodexState('pinned');
+            if (leaveTimeoutRef.current) {
+              clearTimeout(leaveTimeoutRef.current);
+              leaveTimeoutRef.current = null;
+            }
+            console.log('📌 Codex pinned');
           }
-          console.log('📌 Codex pinned');
+          return;
         }
-        return;
-      }
-      
-      // Se clicar em nó diferente do hoveredNode, pin no novo nó
-      if (currentLevel === 'galaxy' && node !== 'center' && (!hoveredNode || hoveredNode.id !== node)) {
+        
+        // Pin no novo nó
         setHoveredNode({ ...nodeAttrs, id: node, level: currentLevel });
         setTooltipPos({ x: 0, y: 0 });
         setIsPaused(true);
         setCodexState('pinned');
         
-        // Cancela qualquer timer de fechamento
         if (leaveTimeoutRef.current) {
           clearTimeout(leaveTimeoutRef.current);
           leaveTimeoutRef.current = null;
         }
         
-        console.log('📌 Codex pinned to new node:', node);
+        console.log('📌 Codex pinned to:', node);
         return;
       }
       
-      // Clique em domínio no nível galaxy: abrir modal KWIC com primeira palavra do domínio
-      if (currentLevel === 'galaxy' && node !== 'center') {
-        const nodeData = graph.getNodeAttributes(node);
-        const words = nodeData.words || [];
-        if (words.length > 0 && onWordClick) {
-          onWordClick(words[0]);
+      // Primeiro click: aguardar 300ms para double-click
+      lastClickedNodeRef.current = node;
+      clickTimeoutRef.current = setTimeout(() => {
+        lastClickedNodeRef.current = null;
+        clickTimeoutRef.current = null;
+        
+        // Single click normal: abrir modal KWIC
+        if (currentLevel === 'galaxy' && node !== 'center') {
+          const nodeData = graph.getNodeAttributes(node);
+          const words = nodeData.words || [];
+          if (words.length > 0 && onWordClick) {
+            onWordClick(words[0]);
+          }
+        } else if (currentLevel === 'universe' && node !== 'center') {
+          const kwicData = kwicDataMap[node];
+          if (kwicData && kwicData.length > 0) {
+            onWordClick?.(node);
+          }
+        } else if (currentLevel === 'galaxy' && node === 'center') {
+          navigateToLevel('universe');
         }
-        return;
-      }
-      
-      // Clique em palavra no nível universe: abrir modal KWIC
-      if (currentLevel === 'universe' && node !== 'center') {
-        const kwicData = kwicDataMap[node];
-        if (kwicData && kwicData.length > 0) {
-          onWordClick?.(node);
-        } else {
-          console.warn(`Nenhum dado KWIC encontrado para: ${node}`);
-        }
-        return;
-      }
-      
-      // Clique no centro no nível galaxy: voltar para universe
-      if (currentLevel === 'galaxy' && node === 'center') {
-        navigateToLevel('universe');
-        return;
-      }
+      }, 300);
     };
     
     const clickStageHandler = () => {
@@ -596,6 +672,10 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       sigma.off('downNode', downNodeHandler);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
+      
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      if (hoverDelayTimeoutRef.current) clearTimeout(hoverDelayTimeoutRef.current);
+      if (leaveTimeoutRef.current) clearTimeout(leaveTimeoutRef.current);
     };
   }, [navigateToLevel, onWordClick, kwicDataMap]);
 

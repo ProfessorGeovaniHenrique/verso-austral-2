@@ -242,3 +242,94 @@ export function drawPlanetNodeHover(
   
   drawPlanetNode(context, enlargedData, settings);
 }
+
+/**
+ * Galactic Core renderer - Pulsating mass of light with multiple layers
+ * Used for the central "Universo Gaúcho" node in galaxy view
+ */
+export function drawGalacticCoreNode(
+  context: CanvasRenderingContext2D,
+  data: PartialButFor<NodeDisplayData, "x" | "y" | "size" | "label" | "color">,
+  settings: any
+): void {
+  const { x, y, size } = data;
+  const time = Date.now() / 1000;
+  
+  context.save();
+  context.translate(x, y);
+  
+  // LAYER 1: Outer Nebula Glow (multi-layered)
+  for (let i = 6; i >= 1; i--) {
+    const glowRadius = size * (1 + i * 0.2);
+    const gradient = context.createRadialGradient(0, 0, size * 0.3, 0, 0, glowRadius);
+    const pulse = 0.3 + 0.2 * Math.sin(time * 1.5 + i * 0.5);
+    
+    gradient.addColorStop(0, `rgba(255, 215, 0, ${pulse * 0.8})`);
+    gradient.addColorStop(0.3, `rgba(255, 140, 0, ${pulse * 0.5})`);
+    gradient.addColorStop(0.6, `rgba(138, 43, 226, ${pulse * 0.3})`);
+    gradient.addColorStop(1, `rgba(75, 0, 130, 0)`);
+    
+    context.fillStyle = gradient;
+    context.beginPath();
+    context.arc(0, 0, glowRadius, 0, Math.PI * 2);
+    context.fill();
+  }
+  
+  // LAYER 2: Rotating Energy Rings
+  for (let i = 0; i < 4; i++) {
+    const ringRadius = size * (1.5 + i * 0.2);
+    const rotation = time * (0.5 + i * 0.2) + i * Math.PI / 2;
+    const opacity = 0.4 + 0.3 * Math.sin(time * 2 + i);
+    
+    context.save();
+    context.rotate(rotation);
+    context.strokeStyle = `rgba(0, 229, 255, ${opacity})`;
+    context.lineWidth = 2;
+    context.setLineDash([10, 5]);
+    context.beginPath();
+    context.ellipse(0, 0, ringRadius, ringRadius * 0.3, 0, 0, Math.PI * 2);
+    context.stroke();
+    context.restore();
+  }
+  context.setLineDash([]);
+  
+  // LAYER 3: Pulsating Core
+  const coreGradient = context.createRadialGradient(0, 0, 0, 0, 0, size);
+  const corePulse = 0.7 + 0.3 * Math.sin(time * 3);
+  coreGradient.addColorStop(0, `rgba(255, 255, 255, ${corePulse})`);
+  coreGradient.addColorStop(0.2, `rgba(255, 215, 0, ${corePulse * 0.9})`);
+  coreGradient.addColorStop(0.5, `rgba(255, 140, 0, ${corePulse * 0.7})`);
+  coreGradient.addColorStop(1, `rgba(218, 165, 32, ${corePulse * 0.4})`);
+  
+  context.fillStyle = coreGradient;
+  context.beginPath();
+  context.arc(0, 0, size, 0, Math.PI * 2);
+  context.fill();
+  
+  // LAYER 4: Orbiting Particles (matter being absorbed)
+  for (let i = 0; i < 12; i++) {
+    const particleAngle = (time * 0.8 + i * (Math.PI * 2 / 12)) % (Math.PI * 2);
+    const particleRadius = size * (1.8 + 0.3 * Math.sin(time * 2 + i));
+    const px = Math.cos(particleAngle) * particleRadius;
+    const py = Math.sin(particleAngle) * particleRadius;
+    const particleOpacity = 0.5 + 0.5 * Math.sin(time * 3 + i);
+    
+    context.fillStyle = `rgba(255, 215, 0, ${particleOpacity})`;
+    context.beginPath();
+    context.arc(px, py, 2, 0, Math.PI * 2);
+    context.fill();
+  }
+  
+  // LAYER 5: Label with Neon Effect
+  context.font = `bold ${size * 0.22}px "Orbitron", monospace`;
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  
+  context.shadowColor = '#FFD700';
+  context.shadowBlur = 15;
+  context.fillStyle = '#FFFFFF';
+  context.fillText('☀️ UNIVERSO', 0, -size * 0.15);
+  context.fillText('GAÚCHO', 0, size * 0.15);
+  
+  context.restore();
+}

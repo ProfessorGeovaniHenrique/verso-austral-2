@@ -25,6 +25,14 @@ interface CodexDrawerProps {
     percentualCorpusNE?: number;
     palavrasFrequentes?: Array<{ palavra: string; ocorrencias: number }>;
     cor?: string;
+    // Estatísticas do núcleo galáctico
+    isGalacticCore?: boolean;
+    totalDominios?: number;
+    totalPalavras?: number;
+    totalOcorrencias?: number;
+    dominioMaisRico?: string;
+    dominioMaisFrequente?: string;
+    top3Dominios?: Array<{ nome: string; percentual: number; cor: string }>;
   } | null;
   level?: 'universe' | 'galaxy' | string;
 }
@@ -33,6 +41,7 @@ type AnimationState = 'collapsed' | 'sliding-in' | 'expanding' | 'expanded';
 
 export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
   const [animState, setAnimState] = useState<AnimationState>('collapsed');
+  const isGalacticCore = word?.isGalacticCore === true;
 
   useEffect(() => {
     if (word) {
@@ -198,8 +207,92 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
           </div>
         </div>
 
+        {/* 🌌 CASO ESPECIAL: Núcleo Galáctico */}
+        {isGalacticCore && (
+          <div className="space-y-4">
+            {/* Header Especial */}
+            <div className="text-center pb-3 border-b border-cyan-500/30">
+              <div className="text-3xl mb-2">☀️</div>
+              <div className="text-cyan-300 font-bold text-lg">VISÃO GERAL DO UNIVERSO</div>
+              <div className="text-white/60 text-xs font-mono mt-1">Estatísticas Consolidadas</div>
+            </div>
+            
+            {/* Grid de Estatísticas Principais */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-black/40 rounded-lg p-3 border border-yellow-500/30">
+                <div className="text-yellow-400 text-[10px] font-mono mb-1">Total Domínios</div>
+                <div className="text-white font-bold text-2xl">{word?.totalDominios}</div>
+              </div>
+              
+              <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/30">
+                <div className="text-cyan-400 text-[10px] font-mono mb-1">Total Lemas</div>
+                <div className="text-white font-bold text-2xl">{word?.totalPalavras}</div>
+              </div>
+              
+              <div className="bg-black/40 rounded-lg p-3 border border-purple-500/30">
+                <div className="text-purple-400 text-[10px] font-mono mb-1">Ocorrências</div>
+                <div className="text-white font-bold text-2xl">{word?.totalOcorrencias}</div>
+              </div>
+              
+              <div className="bg-black/40 rounded-lg p-3 border border-orange-500/30">
+                <div className="text-orange-400 text-[10px] font-mono mb-1">Riqueza Média</div>
+                <div className="text-white font-bold text-2xl">
+                  {word?.totalDominios && word?.totalPalavras 
+                    ? (word.totalPalavras / word.totalDominios).toFixed(1) 
+                    : '0.0'}
+                </div>
+              </div>
+            </div>
+            
+            {/* Campeões */}
+            <div className="bg-black/40 rounded-lg p-3 border border-green-500/30">
+              <div className="text-green-300 text-[10px] font-mono mb-2">🏆 DOMÍNIOS CAMPEÕES</div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70">Mais Rico:</span>
+                  <span className="text-cyan-400 font-bold">{word?.dominioMaisRico}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-white/70">Mais Frequente:</span>
+                  <span className="text-purple-400 font-bold">{word?.dominioMaisFrequente}</span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Top 3 Domínios */}
+            <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/30">
+              <div className="text-cyan-300 text-[10px] font-mono mb-2">⭐ TOP 3 DOMÍNIOS TEMÁTICOS</div>
+              <div className="space-y-2">
+                {word?.top3Dominios?.map((d: any, i: number) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <div 
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs"
+                      style={{ backgroundColor: d.cor }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-white text-xs font-mono">{d.nome}</div>
+                      <div className="w-full bg-gray-800/50 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ 
+                            width: `${d.percentual}%`,
+                            backgroundColor: d.cor
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-white font-bold text-xs">{d.percentual.toFixed(1)}%</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Métricas - Visão Galáxia V3.0 */}
-        {level === 'galaxy' && (
+        {level === 'galaxy' && !isGalacticCore && (
           <div className="space-y-5">
             
             {/* 1. ESTATÍSTICAS PRINCIPAIS */}
