@@ -45,7 +45,6 @@ export function Text3DNode({ node, font, isHovered, onPointerOver, onPointerOut,
           color={node.color}
           anchorX="center"
           anchorY="middle"
-          font="/fonts/Orbitron-Bold.ttf"
           outlineWidth={isDomain ? 0.05 : 0.02}
           outlineColor="#000000"
           onPointerOver={onPointerOver}
