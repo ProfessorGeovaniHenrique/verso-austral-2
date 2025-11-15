@@ -1,6 +1,7 @@
 export { dominiosNormalizados } from './dominios-normalized';
 export { dominiosSeparated } from './dominios-separated';
 export { prosodiasMap, getProsodiaSemantica } from './prosodias-map';
+export { prosodiasLemasMap, getProsodiaByLema, getProsodiaInfo } from './prosodias-lemas';
 export { kwicDataMap } from './kwic';
 export { dominiosData } from './dominios';
 export { enrichedSemanticData, enrichSemanticWords } from './enrichedSemanticData';

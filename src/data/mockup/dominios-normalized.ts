@@ -214,22 +214,38 @@ export const dominiosNormalizados: DominioSemantico[] = [
     percentualCorpusNE: 6.0
   },
   {
-    dominio: "Partes do Corpo e Seres Vivos",
-    riquezaLexical: 2,
-    ocorrencias: 3,
-    percentual: 1.42,
-    percentualTematico: 2.56,
-    palavras: ["olho", "galo"],
+    dominio: "Partes do Corpo",
+    riquezaLexical: 1,
+    ocorrencias: 2,
+    percentual: 0.94,
+    percentualTematico: 1.71,
+    palavras: ["olho"],
     palavrasComFrequencia: [
-      { palavra: "olho", ocorrencias: 2 },
+      { palavra: "olho", ocorrencias: 2 }
+    ],
+    cor: "hsl(15, 75%, 60%)",
+    corTexto: "hsl(0, 0%, 100%)",
+    frequenciaNormalizada: 1.71,
+    comparacaoCorpus: 'sub-representado' as const,
+    diferencaCorpus: -12.0,
+    percentualCorpusNE: 13.7
+  },
+  {
+    dominio: "Seres Vivos",
+    riquezaLexical: 1,
+    ocorrencias: 1,
+    percentual: 0.47,
+    percentualTematico: 0.85,
+    palavras: ["galo"],
+    palavrasComFrequencia: [
       { palavra: "galo", ocorrencias: 1 }
     ],
-    cor: "hsl(350, 80%, 55%)",
+    cor: "hsl(120, 60%, 55%)",
     corTexto: "hsl(0, 0%, 100%)",
-    frequenciaNormalizada: 2.56,
-    comparacaoCorpus: 'sub-representado',
-    diferencaCorpus: -24.84,
-    percentualCorpusNE: 27.4
+    frequenciaNormalizada: 0.85,
+    comparacaoCorpus: 'sub-representado' as const,
+    diferencaCorpus: -12.85,
+    percentualCorpusNE: 13.7
   },
   {
     dominio: "Palavras Funcionais",
