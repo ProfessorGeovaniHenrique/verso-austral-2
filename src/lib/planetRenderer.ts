@@ -1,6 +1,50 @@
 import { NodeDisplayData, PartialButFor } from 'sigma/types';
 import { planetTextures } from '@/assets/planets';
 
+// ============= COLOR CONVERSION HELPERS =============
+/**
+ * Converts HSL color to RGBA with specified opacity
+ */
+function hslToRgba(hslColor: string, opacity: number): string {
+  // Handle hex colors (fallback)
+  if (hslColor.startsWith('#')) {
+    const hex = hslColor.replace('#', '');
+    const r = parseInt(hex.substring(0, 2), 16);
+    const g = parseInt(hex.substring(2, 4), 16);
+    const b = parseInt(hex.substring(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+  }
+  
+  // Extract h, s, l from hsl(h, s%, l%) format
+  const match = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+  if (!match) return `rgba(0, 229, 255, ${opacity})`; // fallback
+  
+  const h = parseInt(match[1]) / 360;
+  const s = parseInt(match[2]) / 100;
+  const l = parseInt(match[3]) / 100;
+  
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l;
+  } else {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      if (t < 0) t += 1;
+      if (t > 1) t -= 1;
+      if (t < 1/6) return p + (q - p) * 6 * t;
+      if (t < 1/2) return q;
+      if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+      return p;
+    };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+  
+  return `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${opacity})`;
+}
+
 // ============= TEXTURE CACHE SYSTEM =============
 const planetImageCache = new Map<string, HTMLImageElement>();
 let texturesLoaded = false;
@@ -120,10 +164,10 @@ export function drawPlanetNode(
   for (let i = 4; i >= 1; i--) {
     const glowRadius = size * (1 + i * 0.15);
     const gradient = context.createRadialGradient(0, 0, size, 0, 0, glowRadius);
-    const opacity = Math.floor((20 / i) * variant.glowIntensity);
-    gradient.addColorStop(0, `${color}00`);
-    gradient.addColorStop(0.5, `${color}${opacity.toString(16).padStart(2, '0')}`);
-    gradient.addColorStop(1, `${color}00`);
+    const opacity = (20 / i) * variant.glowIntensity / 255; // Convert to 0-1 range
+    gradient.addColorStop(0, hslToRgba(color, 0));
+    gradient.addColorStop(0.5, hslToRgba(color, opacity));
+    gradient.addColorStop(1, hslToRgba(color, 0));
     
     context.fillStyle = gradient;
     context.beginPath();
@@ -282,8 +326,8 @@ export function drawPlanetNode(
             spotX, spotY, 0,
             spotX, spotY, size * 0.4
           );
-          spotGradient.addColorStop(0, `${darkerColor}80`);
-          spotGradient.addColorStop(1, `${darkerColor}00`);
+          spotGradient.addColorStop(0, `rgba(${Math.max(rgb.r - 40, 0)}, ${Math.max(rgb.g - 40, 0)}, ${Math.max(rgb.b - 40, 0)}, 0.5)`);
+          spotGradient.addColorStop(1, `rgba(${Math.max(rgb.r - 40, 0)}, ${Math.max(rgb.g - 40, 0)}, ${Math.max(rgb.b - 40, 0)}, 0)`);
           
           context.fillStyle = spotGradient;
           context.beginPath();
@@ -313,7 +357,7 @@ export function drawPlanetNode(
   context.fill();
   
   // === LAYER 5: Border ===
-  context.strokeStyle = `${color}AA`;
+  context.strokeStyle = hslToRgba(color, 0.67);
   context.lineWidth = 1;
   context.beginPath();
   context.arc(0, 0, size, 0, Math.PI * 2);
