@@ -18,6 +18,7 @@ interface ThreeSemanticCloudProps {
   autoRotate: boolean;
   autoRotateSpeed?: number;
   bloomEnabled: boolean;
+  customShadersEnabled?: boolean;
   showConnections: boolean;
   filteredNodeIds?: Set<string>;
 }
@@ -28,8 +29,9 @@ function Scene({
   font, 
   autoRotate,
   showConnections,
-  filteredNodeIds
-}: Omit<ThreeSemanticCloudProps, 'bloomEnabled'>) {
+  filteredNodeIds,
+  customShadersEnabled
+}: Omit<ThreeSemanticCloudProps, 'bloomEnabled' | 'autoRotateSpeed'>) {
   const groupRef = useRef<THREE.Group>(null);
   
   console.log('🌌 Scene recebeu nodes:', nodes.length);
@@ -59,6 +61,7 @@ function Scene({
                 <InteractiveDomain
                   node={node}
                   opacity={opacity}
+                  useCustomShader={customShadersEnabled}
                 />
               ) : (
                 <InteractiveWord
@@ -88,6 +91,7 @@ export function ThreeSemanticCloud({
   autoRotate,
   autoRotateSpeed = 2.0,
   bloomEnabled,
+  customShadersEnabled = true,
   showConnections,
   filteredNodeIds
 }: ThreeSemanticCloudProps) {
@@ -139,6 +143,7 @@ export function ThreeSemanticCloud({
           autoRotate={autoRotate}
           showConnections={showConnections}
           filteredNodeIds={filteredNodeIds}
+          customShadersEnabled={customShadersEnabled}
         />
         </Suspense>
         

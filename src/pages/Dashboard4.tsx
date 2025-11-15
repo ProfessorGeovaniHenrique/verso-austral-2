@@ -23,6 +23,7 @@ export default function Dashboard4() {
   const [autoRotate, setAutoRotate] = useState(true);
   const [autoRotateSpeed, setAutoRotateSpeed] = useState(2.0);
   const [bloomEnabled, setBloomEnabled] = useState(true);
+  const [customShadersEnabled, setCustomShadersEnabled] = useState(true);
   const [showConnections, setShowConnections] = useState(true);
   
   const [minFrequency, setMinFrequency] = useState(0);
@@ -119,6 +120,7 @@ export default function Dashboard4() {
                 autoRotate={autoRotate}
                 autoRotateSpeed={autoRotateSpeed}
                 bloomEnabled={bloomEnabled}
+                customShadersEnabled={customShadersEnabled}
                 showConnections={showConnections && viewMode === 'constellation'}
                 filteredNodeIds={filteredNodeIds}
               />
@@ -135,6 +137,8 @@ export default function Dashboard4() {
               onAutoRotateSpeedChange={setAutoRotateSpeed}
               bloomEnabled={bloomEnabled}
               onBloomToggle={setBloomEnabled}
+              customShadersEnabled={customShadersEnabled}
+              onCustomShadersToggle={setCustomShadersEnabled}
               showConnections={showConnections}
               onConnectionsToggle={setShowConnections}
               onResetCamera={resetCamera}
