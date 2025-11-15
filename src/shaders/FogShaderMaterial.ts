@@ -96,14 +96,12 @@ export class FogShaderMaterial extends THREE.ShaderMaterial {
         void main() {
           vNormal = normalize(normalMatrix * normal);
           
-          // Pulsação temporal
-          float pulsation = sin(uTime * uPulsationSpeed) * 0.15 + 1.0;
+          // Pulsação temporal simplificada
+          float pulsation = sin(uTime * uPulsationSpeed) * 0.1 + 1.0;
           
-          // Noise displacement (3 octaves para detalhes)
-          vec3 noisePos = position * uNoiseScale + uTime * 0.1;
+          // Noise displacement (1 octave - otimizado)
+          vec3 noisePos = position * uNoiseScale + uTime * 0.08;
           float noise = snoise(noisePos) * 0.5;
-          noise += snoise(noisePos * 2.0) * 0.25;
-          noise += snoise(noisePos * 4.0) * 0.125;
           
           // Aplicar displacement
           vec3 displacedPosition = position + normal * noise * uNoiseIntensity * pulsation;
@@ -167,7 +165,7 @@ export class FogShaderMaterial extends THREE.ShaderMaterial {
       transparent: true,
       depthWrite: false,
       blending: THREE.AdditiveBlending,
-      side: THREE.BackSide
+      side: THREE.DoubleSide
     });
   }
 }

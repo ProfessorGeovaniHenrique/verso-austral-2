@@ -16,6 +16,7 @@ interface PlanetWordProps {
   domainPosition: [number, number, number];
   opacity: number;
   isInSelectedDomain: boolean;
+  preloadedTexture?: THREE.Texture; // Textura pré-carregada (otimização)
 }
 
 export function PlanetWord({ 
@@ -23,7 +24,8 @@ export function PlanetWord({
   domainColor, 
   domainPosition, 
   opacity,
-  isInSelectedDomain 
+  isInSelectedDomain,
+  preloadedTexture 
 }: PlanetWordProps) {
   // Refs
   const meshRef = useRef<THREE.Mesh>(null);
@@ -38,8 +40,9 @@ export function PlanetWord({
   // States
   const isHovered = hover.hoveredNodeId === word.palavra;
   
-  // Carregar textura
-  const texture = useTexture(word.planetTexture);
+  // Usar textura pré-carregada se disponível, caso contrário carregar sob demanda
+  const loadedTexture = useTexture(preloadedTexture ? [] : word.planetTexture);
+  const texture = preloadedTexture || loadedTexture;
   
   // Converter cor HSL para THREE.Color
   const domainColorObj = useMemo(() => new THREE.Color(domainColor), [domainColor]);
