@@ -45,12 +45,12 @@ export function PlanetWord({
   // Converter cor HSL para THREE.Color
   const domainColorObj = useMemo(() => new THREE.Color(domainColor), [domainColor]);
   
-  // Calcular tamanho do planeta baseado na frequência
+  // Calcular tamanho do planeta baseado na frequência (+60% maior)
   const planetRadius = useMemo(() => {
     // Recalibrado para o range REAL do corpus gaúcho (1-28 ocorrências)
-    const baseSize = 0.25;  // Era 0.15 → +67% maior
-    const maxSize = 0.6;    // Era 0.35 → +71% maior
-    const minSize = 0.18;   // Era 0.12 → +50% maior
+    const baseSize = 0.4;   // +60% (era 0.25)
+    const maxSize = 1.0;    // +67% (era 0.6)
+    const minSize = 0.25;   // +39% (era 0.18)
     
     // Normalizar para o range do corpus (max ~30 ocorrências)
     const normalizedFreq = Math.min(word.ocorrencias / 30, 1.0);

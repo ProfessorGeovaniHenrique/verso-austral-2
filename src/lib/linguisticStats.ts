@@ -122,18 +122,51 @@ export function calculateWordMIScore(
 ): number {
   if (wordFreq === 0 || domainTotalFreq === 0) return 0;
   
-  // Probabilidade observada: P(palavra no domínio)
-  const observedProb = wordFreq / domainTotalFreq;
+  // Proporção relativa da palavra no domínio (0-1)
+  const proportionInDomain = wordFreq / domainTotalFreq;
   
-  // Probabilidade esperada: P(palavra no corpus geral)
-  const expectedProb = wordFreq / corpusSize;
+  // Peso absoluto no corpus
+  const absoluteWeight = wordFreq / corpusSize;
   
-  // MI = log2(P(observada) / P(esperada))
-  const mi = Math.log2(observedProb / expectedProb);
+  // Score híbrido (favorece palavras frequentes E concentradas)
+  // Range: 0-10
+  const score = (proportionInDomain * 4) + (absoluteWeight * 600);
   
-  // Normalizar para valores positivos (MI pode ser negativo para palavras sub-representadas)
-  // Retornar entre 0 e ~10
-  return Math.max(0, Math.round(mi * 100) / 100);
+  return Math.min(Math.max(score, 0), 10);
+}
+
+/**
+ * Distribui palavras em camadas orbitais baseado em frequência bruta
+ * ao invés de MI Score (mais intuitivo para corpus pequeno)
+ * 
+ * @param frequency - Frequência bruta da palavra
+ * @returns Objeto com camada, raio base e limites
+ */
+export function frequencyToOrbitalLayer(frequency: number): {
+  layer: number;
+  radius: number;
+  minRadius: number;
+  maxRadius: number;
+} {
+  // Mapear frequência BRUTA para camadas (corpus gaúcho: 1-28)
+  // Camadas bem espaçadas para evitar aglomeração
+  const layers = [
+    { layer: 1, minFreq: 15, radius: 2.5, spread: 1.0 },  // Muito frequente: 2.0-3.0
+    { layer: 2, minFreq: 10, radius: 4.0, spread: 1.0 },  // Frequente: 3.5-4.5
+    { layer: 3, minFreq: 6,  radius: 6.0, spread: 1.2 },  // Médio-alto: 5.4-6.6
+    { layer: 4, minFreq: 4,  radius: 8.0, spread: 1.4 },  // Médio: 7.3-8.7
+    { layer: 5, minFreq: 2,  radius: 10.0, spread: 1.6 }, // Baixo: 9.2-10.8
+    { layer: 6, minFreq: 0,  radius: 12.5, spread: 2.0 }, // Muito baixo: 11.5-13.5
+  ];
+  
+  const layerData = layers.find(l => frequency >= l.minFreq) || layers[5];
+  
+  return {
+    layer: layerData.layer,
+    radius: layerData.radius,
+    minRadius: layerData.radius - layerData.spread / 2,
+    maxRadius: layerData.radius + layerData.spread / 2,
+  };
 }
 
 /**
