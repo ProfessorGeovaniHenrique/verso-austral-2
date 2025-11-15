@@ -36,7 +36,7 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
 }) => {
   return (
     <TooltipProvider>
-      <div className="absolute right-8 top-1/2 -translate-y-1/2 z-20">
+      <div className="absolute right-8 top-1/2 -translate-y-1/2 z-40">
         <div className="flex flex-col gap-2 backdrop-blur-xl border-2 rounded-xl p-2 shadow-2xl"
              style={{
                background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.7))',

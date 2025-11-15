@@ -573,8 +573,8 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       className="relative bg-gradient-to-b from-black via-slate-900 to-black overflow-hidden"
       style={{ 
         height: '100vh',
-        width: 'calc(100vw - 400px)',
-        marginRight: '400px'
+        width: '100vw',
+        paddingRight: '530px'
       }}
     >
       {/* Starry background effect */}

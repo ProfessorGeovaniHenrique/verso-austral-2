@@ -14,9 +14,9 @@ export const RightControlPanel = ({
 }: RightControlPanelProps) => {
   return (
     <div 
-      className="fixed right-0 top-0 h-full w-[400px] z-30 p-4 flex flex-col gap-4"
+      className="fixed right-[110px] top-0 h-full w-[420px] z-30 p-4 flex flex-col gap-4"
       style={{
-        background: 'linear-gradient(270deg, rgba(0, 0, 0, 0.8), transparent)',
+        background: 'linear-gradient(270deg, rgba(0, 0, 0, 0.85), transparent)',
         pointerEvents: 'none'
       }}
     >
@@ -25,10 +25,18 @@ export const RightControlPanel = ({
         <CodexDrawer word={hoveredNode} level={level} />
       </div>
 
+      {/* Separador Holográfico */}
+      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent relative">
+        <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-cyan-400 rounded-full animate-pulse" />
+      </div>
+
       {/* Galaxy Legend Panel */}
       <div style={{ pointerEvents: 'auto' }}>
         <GalaxyLegendPanel visible={showGalaxyLegend} />
       </div>
+
+      {/* Separador Holográfico */}
+      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
 
       {/* Future Features Placeholder */}
       <div 
