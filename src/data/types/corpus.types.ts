@@ -44,7 +44,7 @@ export interface ScoreData {
 
 export interface PalavraStats {
   frequencia: number;
-  prosodia: 'positiva' | 'negativa' | 'neutra';
+  prosodia: ProsodiaType;
 }
 
 export type PalavraStatsMap = Record<string, PalavraStats>;

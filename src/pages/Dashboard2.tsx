@@ -18,20 +18,39 @@ import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import { hslToRgba } from "@/lib/colorUtils";
 import { 
-  dominiosData, 
   kwicDataMap, 
   logLikelihoodData, 
   miScoreData,
   palavrasChaveData,
-  palavraStats,
   lematizacaoData,
   frequenciaNormalizadaData
 } from '@/data/mockup';
+import { dominiosNormalizados } from '@/data/mockup/dominios-normalized';
+import { prosodiasMap, getProsodiaSemantica } from '@/data/mockup/prosodias-map';
+import type { PalavraStatsMap } from '@/data/types/corpus.types';
+
+// Gerar palavraStats a partir dos dados normalizados
+const generatePalavraStats = (): PalavraStatsMap => {
+  const stats: PalavraStatsMap = {};
+  
+  dominiosNormalizados.forEach(dominio => {
+    dominio.palavrasComFrequencia.forEach(({ palavra, ocorrencias }) => {
+      stats[palavra] = {
+        frequencia: ocorrencias,
+        prosodia: getProsodiaSemantica(palavra)
+      };
+    });
+  });
+  
+  return stats;
+};
+
+const palavraStats = generatePalavraStats();
 export default function Dashboard2() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState("");
   const [domainModalOpen, setDomainModalOpen] = useState(false);
-  const [selectedDomain, setSelectedDomain] = useState<typeof dominiosData[0] | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<typeof dominiosNormalizados[0] | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [panOffset, setPanOffset] = useState({
     x: 0,
@@ -54,7 +73,7 @@ export default function Dashboard2() {
     setModalOpen(true);
   };
   const handleDomainClick = (domainName: string) => {
-    const domain = dominiosData.find(d => d.dominio === domainName);
+    const domain = dominiosNormalizados.find(d => d.dominio === domainName);
     if (domain) {
       setSelectedDomain(domain);
       setDomainModalOpen(true);
@@ -259,7 +278,7 @@ export default function Dashboard2() {
       pdf.setFont(undefined, 'bold');
       pdf.text("Domínios Semânticos", margin, yPosition);
       yPosition += 10;
-      dominiosData.forEach(dominio => {
+      dominiosNormalizados.forEach(dominio => {
         if (yPosition > pageHeight - 40) {
           pdf.addPage();
           yPosition = margin;
@@ -302,9 +321,9 @@ export default function Dashboard2() {
       pdf.text("Prosódia Semântica", margin, yPosition);
       yPosition += 12;
       const prosodiaGroups = {
-        positiva: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "positiva"),
-        negativa: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "negativa"),
-        neutra: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "neutra")
+        positiva: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "Positiva"),
+        negativa: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "Negativa"),
+        neutra: Object.entries(palavraStats).filter(([, data]) => data.prosodia === "Neutra")
       };
       Object.entries(prosodiaGroups).forEach(([tipo, palavras]) => {
         if (palavras.length > 0) {
@@ -520,7 +539,7 @@ E uma saudade redomona pelos cantos do galpão`}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-8 p-6">
-                    {dominiosData.map((item, index) => <div key={index} className="space-y-4 p-6 rounded-lg border-2 border-border/40 bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300">
+                    {dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais").map((item, index) => <div key={index} className="space-y-4 p-6 rounded-lg border-2 border-border/40 bg-card hover:shadow-lg hover:border-primary/30 transition-all duration-300">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex items-center gap-4">
                             <div className="w-5 h-5 rounded-full shadow-md" style={{
@@ -663,7 +682,7 @@ E uma saudade redomona pelos cantos do galpão`}
                   </CardHeader>
                   <CardContent className="p-6">
                     <ResponsiveContainer width="100%" height={300}>
-                      <BarChart data={dominiosData}>
+                      <BarChart data={dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais")}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="dominio" angle={-20} textAnchor="end" height={120} stroke="hsl(var(--muted-foreground))" tick={{
                         fontSize: 12
@@ -676,7 +695,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         color: 'hsl(var(--foreground))'
                       }} formatter={(value: any) => [`${value} ocorrências`, 'Total']} labelFormatter={label => `${label}`} />
                         <Bar dataKey="ocorrencias" radius={[6, 6, 0, 0]}>
-                          {dominiosData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
+                          {dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais").map((entry, index) => <Cell key={`cell-${index}`} fill={entry.cor} />)}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -700,7 +719,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-foreground">Domínio Dominante</p>
                           <p className="text-xs text-muted-foreground/80 leading-relaxed mt-1">
-                            "Natureza e Paisagem Campeira" lidera com {dominiosData[0].percentual}%, evidenciando 
+                            "Cultura e Lida Gaúcha" lidera com {dominiosNormalizados[0].percentualTematico.toFixed(2)}%, evidenciando 
                             a centralidade do ambiente pampeano na construção poética
                           </p>
                         </div>
@@ -711,7 +730,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-foreground">Equilíbrio Temático</p>
                           <p className="text-xs text-muted-foreground/80 leading-relaxed mt-1">
-                            Os 5 domínios cobrem {dominiosData.reduce((acc, d) => acc + d.percentual, 0).toFixed(1)}% 
+                            Os 6 domínios temáticos cobrem {dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais").reduce((acc, d) => acc + d.percentualTematico, 0).toFixed(1)}% 
                             do corpus, demonstrando forte coesão semântica
                           </p>
                         </div>
@@ -722,7 +741,7 @@ E uma saudade redomona pelos cantos do galpão`}
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-foreground">Densidade Lexical</p>
                           <p className="text-xs text-muted-foreground/80 leading-relaxed mt-1">
-                            Média de {(dominiosData.reduce((acc, d) => acc + d.ocorrencias, 0) / dominiosData.reduce((acc, d) => acc + d.palavras.length, 0)).toFixed(1)} 
+                            Média de {(dominiosNormalizados.reduce((acc, d) => acc + d.ocorrencias, 0) / dominiosNormalizados.reduce((acc, d) => acc + d.palavras.length, 0)).toFixed(1)} 
                             ocorrências por palavra-chave no corpus
                           </p>
                         </div>
@@ -791,7 +810,7 @@ E uma saudade redomona pelos cantos do galpão`}
             <CardContent className="p-0" style={{ minHeight: '800px' }}>
               <OrbitalConstellationChart 
                 onWordClick={handleWordClick}
-                dominiosData={dominiosData}
+                dominiosData={dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais")}
                 palavrasChaveData={palavrasChaveData}
                 kwicDataMap={kwicDataMap}
                 frequenciaNormalizadaData={frequenciaNormalizadaData}
@@ -942,7 +961,7 @@ E uma saudade redomona pelos cantos do galpão`}
             </CardHeader>
             <CardContent className="p-6">
               <OrbitalDomainConstellation
-                dominiosData={dominiosData}
+                dominiosData={dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais")}
                 onWordClick={handleWordClick}
                 palavraStats={palavraStats}
               />

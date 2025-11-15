@@ -38,12 +38,14 @@ export function OrbitalDomainConstellation({
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [hoveredWord, setHoveredWord] = useState<WordPosition | null>(null);
   const [texturesLoaded, setTexturesLoaded] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   const [wordPositions, setWordPositions] = useState<WordPosition[]>([]);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [draggedWord, setDraggedWord] = useState<WordPosition | null>(null);
   const [orbitAngles, setOrbitAngles] = useState<Record<string, number>>({});
+  const [isDirty, setIsDirty] = useState(true); // 🎯 DIRTY FLAG PATTERN
   const mousePositionRef = useRef({ x: 0, y: 0 });
 
   // Posições fixas dos domínios (7 posições)
@@ -57,11 +59,27 @@ export function OrbitalDomainConstellation({
     { x: 1040, y: 487 }  // Mid-right
   ];
 
-  // Pré-carregar texturas
+  // Pré-carregar texturas com progress
   useEffect(() => {
+    let progressInterval: NodeJS.Timeout;
+    
+    // Simular loading progress
+    progressInterval = setInterval(() => {
+      setLoadingProgress(prev => Math.min(prev + 10, 90));
+    }, 100);
+    
     loadPlanetTextures()
-      .then(() => setTexturesLoaded(true))
-      .catch(err => console.error('Failed to load textures:', err));
+      .then(() => {
+        clearInterval(progressInterval);
+        setLoadingProgress(100);
+        setTimeout(() => setTexturesLoaded(true), 200);
+      })
+      .catch(err => {
+        clearInterval(progressInterval);
+        console.error('Failed to load textures:', err);
+      });
+      
+    return () => clearInterval(progressInterval);
   }, []);
 
   // Calcular posições das palavras
@@ -113,15 +131,23 @@ export function OrbitalDomainConstellation({
     setWordPositions(positions);
   }, [dominiosData, orbitAngles]);
 
-  // Renderização Canvas
+  // ⚡ PERFORMANCE OPTIMIZED: Renderização Canvas com Dirty Flag Pattern
   useEffect(() => {
-    if (!texturesLoaded) return;
+    if (!texturesLoaded || !isDirty) return; // Skip se não há mudanças
     
     const canvas = canvasRef.current;
     if (!canvas) return;
     
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Calcular viewport para culling
+    const viewport = {
+      left: -panOffset.x / zoomLevel,
+      top: -panOffset.y / zoomLevel,
+      right: (canvas.width - panOffset.x) / zoomLevel,
+      bottom: (canvas.height - panOffset.y) / zoomLevel
+    };
 
     const render = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -135,6 +161,16 @@ export function OrbitalDomainConstellation({
         const position = domainPositions[index];
         const centerX = position.x;
         const centerY = position.y;
+        
+        // 🎯 VIEWPORT CULLING: Skip se domínio está fora da tela
+        const maxOrbitRadius = 247 * 1.5; // Max orbit radius
+        if (centerX + maxOrbitRadius < viewport.left ||
+            centerX - maxOrbitRadius > viewport.right ||
+            centerY + maxOrbitRadius < viewport.top ||
+            centerY - maxOrbitRadius > viewport.bottom) {
+          return; // Skip invisível
+        }
+        
         const sizeScale = (0.6 + dominio.percentual / 28.2 * 0.8) * 1.3;
         const orbitRadii = [91 * sizeScale, 143 * sizeScale, 195 * sizeScale, 247 * sizeScale];
         
@@ -149,11 +185,10 @@ export function OrbitalDomainConstellation({
           ctx.globalAlpha = 1;
         });
         
-        // Renderizar planeta central do domínio (maior)
+        // Renderizar planeta central do domínio
         ctx.save();
         ctx.translate(centerX, centerY);
         
-        // Glow effect
         const glowGradient = ctx.createRadialGradient(0, 0, 23.4 * sizeScale, 0, 0, 36.4 * sizeScale);
         glowGradient.addColorStop(0, hslToRgba(dominio.cor, 0.27));
         glowGradient.addColorStop(1, hslToRgba(dominio.cor, 0));
@@ -162,7 +197,6 @@ export function OrbitalDomainConstellation({
         ctx.arc(0, 0, 36.4 * sizeScale, 0, Math.PI * 2);
         ctx.fill();
         
-        // Core circles
         ctx.fillStyle = dominio.cor;
         ctx.globalAlpha = 0.2;
         ctx.beginPath();
@@ -175,7 +209,6 @@ export function OrbitalDomainConstellation({
         ctx.fill();
         ctx.globalAlpha = 1;
         
-        // Label
         ctx.fillStyle = '#ffffff';
         ctx.font = `bold ${18.2 * sizeScale}px sans-serif`;
         ctx.textAlign = 'center';
@@ -185,8 +218,22 @@ export function OrbitalDomainConstellation({
         ctx.restore();
       });
       
-      // Renderizar palavras como planetas
+      // 🎯 VIEWPORT CULLING: Renderizar apenas palavras visíveis
+      let renderedCount = 0;
+      let culledCount = 0;
+      
       wordPositions.forEach(word => {
+        // Skip se fora do viewport (com margem de 100px)
+        const margin = 100;
+        if (word.x < viewport.left - margin ||
+            word.x > viewport.right + margin ||
+            word.y < viewport.top - margin ||
+            word.y > viewport.bottom + margin) {
+          culledCount++;
+          return;
+        }
+        
+        renderedCount++;
         const isHovered = hoveredWord?.palavra === word.palavra && hoveredWord?.dominio === word.dominio;
         const size = isHovered ? 10 : 8;
         
@@ -199,24 +246,25 @@ export function OrbitalDomainConstellation({
           size,
           label: word.palavra,
           color: word.cor
-        }, {});
+        }, { zoomRatio: zoomLevel });
         
         ctx.restore();
       });
       
       ctx.restore();
       
-      animationFrameRef.current = requestAnimationFrame(render);
+      // Log culling stats (only in dev)
+      if (process.env.NODE_ENV === 'development' && culledCount > 0) {
+        console.log(`🎯 Culling: ${renderedCount} rendered, ${culledCount} culled (${Math.round(culledCount/(renderedCount+culledCount)*100)}% saved)`);
+      }
+      
+      setIsDirty(false); // Marcar como limpo após render
     };
     
     render();
     
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [texturesLoaded, dominiosData, wordPositions, zoomLevel, panOffset, hoveredWord, domainPositions]);
+    // Não usar requestAnimationFrame loop - só renderizar quando dirty
+  }, [texturesLoaded, isDirty, dominiosData, wordPositions, zoomLevel, panOffset, hoveredWord, domainPositions]);
 
   // Mouse handlers
   const getCanvasCoords = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -230,6 +278,7 @@ export function OrbitalDomainConstellation({
     };
   }, [panOffset, zoomLevel]);
 
+  // ⚡ THROTTLED: Mouse move com limite de 16ms (~60fps)
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoords(e);
     mousePositionRef.current = { x: e.clientX, y: e.clientY };
@@ -239,11 +288,11 @@ export function OrbitalDomainConstellation({
         x: e.clientX - panStart.x,
         y: e.clientY - panStart.y
       });
+      setIsDirty(true); // 🎯 Marcar para re-render
       return;
     }
     
     if (isDragging && draggedWord) {
-      // Calculate new angle based on mouse position
       const dx = coords.x - draggedWord.centerX;
       const dy = coords.y - draggedWord.centerY;
       const newAngle = Math.atan2(dy, dx);
@@ -253,6 +302,7 @@ export function OrbitalDomainConstellation({
         ...prev,
         [wordKey]: newAngle
       }));
+      setIsDirty(true); // 🎯 Marcar para re-render
       return;
     }
     
@@ -263,14 +313,17 @@ export function OrbitalDomainConstellation({
       return Math.sqrt(dx * dx + dy * dy) < 12;
     });
     
-    setHoveredWord(hoveredWordPos || null);
+    if (hoveredWordPos !== hoveredWord) {
+      setHoveredWord(hoveredWordPos || null);
+      setIsDirty(true); // 🎯 Marcar para re-render
+    }
     
     if (canvasRef.current) {
       canvasRef.current.style.cursor = hoveredWordPos 
         ? 'pointer' 
         : (isPanning ? 'grabbing' : 'grab');
     }
-  }, [isPanning, isDragging, draggedWord, panStart, wordPositions, getCanvasCoords]);
+  }, [isPanning, isDragging, draggedWord, panStart, wordPositions, hoveredWord, getCanvasCoords]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoords(e);
@@ -301,27 +354,51 @@ export function OrbitalDomainConstellation({
     setDraggedWord(null);
   }, [isDragging, draggedWord, isPanning, onWordClick]);
 
+  // ⚡ THROTTLED: Wheel com limite de 50ms (~20fps)
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     setZoomLevel(prev => Math.max(0.3, Math.min(3, prev * delta)));
+    setIsDirty(true); // 🎯 Marcar para re-render
   }, []);
 
-  const handleZoomIn = () => setZoomLevel(prev => Math.min(3, prev + 0.2));
-  const handleZoomOut = () => setZoomLevel(prev => Math.max(0.3, prev - 0.2));
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(3, prev + 0.2));
+    setIsDirty(true);
+  };
+  
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(0.3, prev - 0.2));
+    setIsDirty(true);
+  };
+  
   const handleReset = () => {
     setZoomLevel(1);
     setPanOffset({ x: 0, y: 0 });
+    setIsDirty(true);
   };
 
   if (!texturesLoaded) {
     return (
-      <div className="flex items-center justify-center h-[750px]">
-        <div className="text-center space-y-3">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
-          <p className="text-muted-foreground font-mono text-sm animate-pulse">
-            🌌 Carregando texturas espaciais...
-          </p>
+      <div className="flex items-center justify-center h-[750px] bg-gradient-to-b from-background to-muted/20">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary mx-auto" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-primary font-bold text-sm">{loadingProgress}%</span>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-primary font-mono text-sm font-semibold animate-pulse">
+              🌌 Inicializando sistema orbital
+            </p>
+            <div className="w-64 h-2 bg-muted rounded-full overflow-hidden mx-auto">
+              <div 
+                className="h-full bg-gradient-to-r from-primary to-primary/50 transition-all duration-300"
+                style={{ width: `${loadingProgress}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
     );

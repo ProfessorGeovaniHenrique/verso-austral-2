@@ -1,4 +1,5 @@
-// Exportação centralizada de todos os dados mockados
+export { dominiosNormalizados } from './dominios-normalized';
+export { prosodiasMap, getProsodiaSemantica } from './prosodias-map';
 export { kwicDataMap } from './kwic';
 export { dominiosData } from './dominios';
 export { 
