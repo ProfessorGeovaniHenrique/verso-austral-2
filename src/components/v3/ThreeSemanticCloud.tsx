@@ -16,6 +16,7 @@ interface ThreeSemanticCloudProps {
   connections: DomainConnection[];
   font: string;
   autoRotate: boolean;
+  autoRotateSpeed?: number;
   bloomEnabled: boolean;
   showConnections: boolean;
   filteredNodeIds?: Set<string>;
@@ -84,7 +85,8 @@ export function ThreeSemanticCloud({
   nodes,
   connections,
   font, 
-  autoRotate, 
+  autoRotate,
+  autoRotateSpeed = 2.0,
   bloomEnabled,
   showConnections,
   filteredNodeIds
@@ -106,7 +108,8 @@ export function ThreeSemanticCloud({
           zoomSpeed={0.8}
           minDistance={10}
           maxDistance={80}
-          autoRotate={false}
+          autoRotate={autoRotate}
+          autoRotateSpeed={autoRotateSpeed}
         />
         
         {/* Iluminação */}

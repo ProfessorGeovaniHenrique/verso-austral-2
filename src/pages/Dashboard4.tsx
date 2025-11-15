@@ -20,7 +20,8 @@ export default function Dashboard4() {
   const { resetCamera } = useInteractivityStore();
   
   const [font, setFont] = useState('Orbitron');
-  const [autoRotate, setAutoRotate] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [autoRotateSpeed, setAutoRotateSpeed] = useState(2.0);
   const [bloomEnabled, setBloomEnabled] = useState(true);
   const [showConnections, setShowConnections] = useState(true);
   
@@ -116,6 +117,7 @@ export default function Dashboard4() {
                 connections={connections}
                 font={font}
                 autoRotate={autoRotate}
+                autoRotateSpeed={autoRotateSpeed}
                 bloomEnabled={bloomEnabled}
                 showConnections={showConnections && viewMode === 'constellation'}
                 filteredNodeIds={filteredNodeIds}
@@ -129,6 +131,8 @@ export default function Dashboard4() {
               onFontChange={setFont}
               autoRotate={autoRotate}
               onAutoRotateChange={setAutoRotate}
+              autoRotateSpeed={autoRotateSpeed}
+              onAutoRotateSpeedChange={setAutoRotateSpeed}
               bloomEnabled={bloomEnabled}
               onBloomToggle={setBloomEnabled}
               showConnections={showConnections}

@@ -14,6 +14,8 @@ interface ThreeControlPanelProps {
   onFontChange: (font: string) => void;
   autoRotate: boolean;
   onAutoRotateChange: (value: boolean) => void;
+  autoRotateSpeed: number;
+  onAutoRotateSpeedChange: (value: number) => void;
   bloomEnabled: boolean;
   onBloomToggle: (value: boolean) => void;
   showConnections: boolean;
@@ -62,6 +64,23 @@ export function ThreeControlPanel(props: ThreeControlPanelProps) {
         <Label className="text-sm">Auto-Rotação</Label>
         <Switch checked={props.autoRotate} onCheckedChange={props.onAutoRotateChange} />
       </div>
+      
+      {props.autoRotate && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-xs text-muted-foreground">Velocidade</Label>
+            <span className="text-xs text-cyan-400">{props.autoRotateSpeed.toFixed(1)}x</span>
+          </div>
+          <Slider
+            value={[props.autoRotateSpeed]}
+            onValueChange={([value]) => props.onAutoRotateSpeedChange(value)}
+            min={0.5}
+            max={5.0}
+            step={0.5}
+            className="w-full"
+          />
+        </div>
+      )}
       
       <Separator />
       
