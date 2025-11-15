@@ -10,6 +10,8 @@ import { useRaycasting } from '@/hooks/useRaycasting';
 import { useCameraAnimation } from '@/hooks/useCameraAnimation';
 import { COSMIC_STYLE } from '@/config/visualStyle';
 import * as THREE from 'three';
+// Import shader to ensure extend() is called before rendering
+import '@/shaders/DomainShaderMaterial';
 
 interface ThreeSemanticCloudProps {
   nodes: VisualNode[];
