@@ -298,6 +298,21 @@ All colors MUST be HSL.
   }
 }
 
+/* Scanline animado para preview holográfico de planetas */
+@keyframes scan {
+  0% { 
+    top: -5%; 
+    opacity: 0.2; 
+  }
+  50% { 
+    opacity: 0.8; 
+  }
+  100% { 
+    top: 105%; 
+    opacity: 0.2; 
+  }
+}
+
 /* Scrollbar Sci-Fi */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;

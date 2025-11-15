@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { KWICModal } from "@/components/KWICModal";
 import { InteractiveSemanticNetwork } from "@/components/InteractiveSemanticNetwork";
 import { OrbitalConstellationChart } from "@/components/OrbitalConstellationChart";
+import { OrbitalDomainConstellation } from "@/components/OrbitalDomainConstellation";
 import { NavigationToolbar } from "@/components/NavigationToolbar";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Download, FileText, Network, Sparkles, BarChart3, FileBarChart, Cloud, HelpCircle, TrendingUp, TrendingDown, Maximize2 } from "lucide-react";
@@ -926,7 +927,7 @@ E uma saudade redomona pelos cantos do galpão`}
             <div>
               <p className="text-sm font-medium text-foreground mb-1">🌌 Navegação na Constelação</p>
               <p className="text-xs text-muted-foreground/90">
-                <strong>Scroll do mouse:</strong> Zoom isolado | <strong>Arraste:</strong> Mover canvas | <strong>Clique palavras:</strong> Ver KWIC | Use a barra de ferramentas para controles avançados.
+                <strong>Scroll do mouse:</strong> Zoom | <strong>Arraste:</strong> Mover canvas | <strong>Arraste palavras:</strong> Reposicionar na órbita | <strong>Clique palavras:</strong> Ver KWIC
               </p>
             </div>
           </div>
@@ -935,169 +936,36 @@ E uma saudade redomona pelos cantos do galpão`}
             <CardHeader className="pb-6">
               <CardTitle className="text-2xl font-bold text-foreground">Nuvem de Domínios Semânticos - Constelação Orbital</CardTitle>
               <CardDescription className="text-base text-muted-foreground/80">
-                Clique e arraste para mover o gráfico. Use a roda do mouse para zoom. Arraste as palavras para movê-las na órbita. Clique nas palavras para ver concordância (KWIC).
+                Visualização orbital interativa com texturas de planetas. Clique e arraste para mover, use scroll para zoom. Passe o mouse sobre as palavras para ver preview holográfico.
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
-              <TooltipProvider>
-                <div ref={containerRef} className={`relative h-[750px] bg-gradient-to-br from-background via-muted/10 to-background rounded-lg border-2 border-border/40 overflow-hidden ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`} style={{
-                height: isFullscreen ? 'calc(100vh - 200px)' : '750px'
-              }} onMouseDown={handleCanvasMouseDown} onMouseMove={handleCanvasPanMove} onMouseUp={handleCanvasPanEnd} onMouseLeave={handleCanvasPanEnd} onWheel={handleWheel}>
-                  {/* Controles de Zoom - Interno */}
-                  <NavigationToolbar 
-                    onZoomIn={handleZoomIn} 
-                    onZoomOut={handleZoomOut} 
-                    onReset={handleResetZoom} 
-                    onFitToView={handleFitToView} 
-                    zoomLevel={zoomLevel}
-                    onZoomChange={setZoomLevel}
-                  />
-
-                  <div className="pan-area absolute inset-0" style={{
-                  transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
-                  transformOrigin: 'top left',
-                  pointerEvents: 'none'
-                }}>
-                    <svg ref={svgRef} width={1300} height={975} viewBox="0 0 1300 975" className="w-auto h-auto" style={{
-                    transform: `scale(${zoomLevel})`,
-                    transformOrigin: 'top left',
-                    pointerEvents: 'auto'
-                  }}>
-                      {dominiosData.map((dominio, index) => {
-                      const positions = [{
-                        x: 650,
-                        y: 487
-                      }, {
-                        x: 390,
-                        y: 195
-                      }, {
-                        x: 910,
-                        y: 195
-                      }, {
-                        x: 364,
-                        y: 754
-                      }, {
-                        x: 936,
-                        y: 754
-                      }, {
-                        x: 260,
-                        y: 487
-                      }, {
-                        x: 1040,
-                        y: 487
-                      }];
-                      const position = positions[index];
-                      const centerX = position.x;
-                      const centerY = position.y;
-                      const sizeScale = (0.6 + dominio.percentual / 28.2 * 0.8) * 1.3;
-                      const orbitRadii = [91 * sizeScale, 143 * sizeScale, 195 * sizeScale, 247 * sizeScale];
-                      const totalWords = dominio.palavras.length;
-                      const wordsPerOrbit = Math.ceil(totalWords / 4);
-                      return <g key={dominio.dominio}>
-                            {orbitRadii.map((radius, orbitIndex) => {
-                          const circumference = 2 * Math.PI * radius;
-                          return <g key={`orbit-${orbitIndex}`}>
-                                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke={dominio.cor} strokeWidth={3.9 - orbitIndex * 0.65} opacity={0.25 - orbitIndex * 0.05} />
-                                  <circle cx={centerX} cy={centerY} r={radius} fill="none" stroke={dominio.cor} strokeWidth={3.9 - orbitIndex * 0.65} strokeDasharray={`${circumference * 0.1} ${circumference * 0.9}`} opacity={0.4} style={{
-                              animation: 'spin 60s linear infinite',
-                              transformOrigin: `${centerX}px ${centerY}px`
-                            }} />
-                                </g>;
-                        })}
-
-                            <g style={{
-                          cursor: 'pointer'
-                        }} onClick={() => handleDomainClick(dominio.dominio)}>
-                              <circle cx={centerX} cy={centerY} r={36.4 * sizeScale} fill={dominio.cor} opacity="0.1" className="animate-pulse" />
-                              <circle cx={centerX} cy={centerY} r={29.9 * sizeScale} fill={dominio.cor} opacity="0.2" />
-                              <circle cx={centerX} cy={centerY} r={23.4 * sizeScale} fill={dominio.cor} opacity="0.85" style={{
-                            filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.4))'
-                          }} />
-                              <text x={centerX} y={centerY} textAnchor="middle" dominantBaseline="middle" className="fill-primary-foreground font-bold pointer-events-none" style={{
-                            fontSize: `${18.2 * sizeScale}px`
-                          }}>
-                                {dominio.dominio.split(' ')[0]}
-                              </text>
-                            </g>
-
-                            {dominio.palavras.map((palavra, wordIndex) => {
-                          const orbitLevel = Math.floor(wordIndex / wordsPerOrbit);
-                          const orbit = Math.min(orbitLevel, 3);
-                          const radius = orbitRadii[orbit];
-                          const wordsInThisOrbit = Math.min(wordsPerOrbit, totalWords - orbit * wordsPerOrbit);
-                          const indexInOrbit = wordIndex % wordsPerOrbit;
-                          const wordKey = `${dominio.dominio}-${palavra}`;
-                          let angle: number;
-                          if (orbitProgress[wordKey] !== undefined) {
-                            angle = orbitProgress[wordKey] / 100 * 2 * Math.PI - Math.PI / 2;
-                          } else {
-                            const baseAngle = indexInOrbit / wordsInThisOrbit * 2 * Math.PI - Math.PI / 2;
-                            const angleOffset = Math.sin(wordIndex * 2.5) * 0.3;
-                            angle = baseAngle + angleOffset;
-                          }
-                          const radiusVariation = 1 + Math.cos(wordIndex * 3.7) * 0.12;
-                          const finalRadius = radius * radiusVariation;
-                          const x = centerX + Math.cos(angle) * finalRadius;
-                          const y = centerY + Math.sin(angle) * finalRadius;
-                          const wordScale = (1 - orbit * 0.12) * 1.3;
-                          const stats = palavraStats[palavra];
-                          // Verificação de segurança: se não houver stats, não renderizar a palavra
-                          if (!stats) {
-                            console.warn(`Stats não encontrado para palavra: "${palavra}"`);
-                            return null;
-                          }
-                          return <g key={wordKey} data-word-key={wordKey} data-center-x={centerX} data-center-y={centerY} style={{
-                            cursor: 'grab'
-                          }} onMouseDown={e => handleMouseDown(e, wordKey, centerX, centerY)}>
-                                  <circle cx={x} cy={y} r={10.4 * wordScale} fill={dominio.cor} opacity="0.08" className="animate-pulse" />
-                                  <circle cx={x} cy={y} r={7.8 * wordScale} fill={dominio.cor} opacity="0.15" />
-                                  <circle cx={x} cy={y} r={5.2 * wordScale} fill={dominio.cor} opacity="0.85" style={{
-                              filter: 'drop-shadow(0 2px 6px rgba(0, 0, 0, 0.3))'
-                            }} />
-                                  <circle cx={x} cy={y} r={15.6 * wordScale} fill="transparent" style={{
-                              cursor: 'pointer'
-                            }} onClick={e => {
-                              e.stopPropagation();
-                              if (!isDraggingWord) handleWordClick(palavra);
-                            }}>
-                                    {stats && <title>
-                                        {`${palavra}\nFrequência: ${stats.frequencia}\nProsódia: ${stats.prosodia === 'positiva' ? 'Positiva ✓' : stats.prosodia === 'negativa' ? 'Negativa ✗' : 'Neutra −'}`}
-                                      </title>}
-                                  </circle>
-                                  <text x={x} y={y - 2.6 * wordScale} textAnchor="middle" dominantBaseline="middle" className="fill-foreground font-bold pointer-events-none" style={{
-                              fontSize: `${9.1 * wordScale}px`
-                            }}>
-                                    {palavra}
-                                  </text>
-                                </g>;
-                        })}
-                          </g>;
-                    })}
-                    </svg>
-                  </div>
-                </div>
-              </TooltipProvider>
-              
-              <div className="mt-6 grid grid-cols-4 gap-3 text-xs">
-                <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
-                  <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 1</div>
-                  <div className="text-muted-foreground/80">20-30% de freq.</div>
-                </div>
-                <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
-                  <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 2</div>
-                  <div className="text-muted-foreground/80">15-20% de freq.</div>
-                </div>
-                <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
-                  <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 3</div>
-                  <div className="text-muted-foreground/80">10-15% de freq.</div>
-                </div>
-                <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
-                  <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 4</div>
-                  <div className="text-muted-foreground/80">{'<'}10% de freq.</div>
-                </div>
-              </div>
+              <OrbitalDomainConstellation
+                dominiosData={dominiosData}
+                onWordClick={handleWordClick}
+                palavraStats={palavraStats}
+              />
             </CardContent>
           </Card>
+
+          <div className="grid grid-cols-4 gap-3 text-xs">
+            <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 1</div>
+              <div className="text-muted-foreground/80">20-30% de freq.</div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 2</div>
+              <div className="text-muted-foreground/80">15-20% de freq.</div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 3</div>
+              <div className="text-muted-foreground/80">10-15% de freq.</div>
+            </div>
+            <div className="p-3.5 rounded-lg bg-muted/50 border-2 border-border/40 hover:border-primary/30 transition-colors">
+              <div className="font-semibold mb-1.5 text-sm text-foreground">Órbita 4</div>
+              <div className="text-muted-foreground/80">5-10% de freq.</div>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 

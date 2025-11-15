@@ -1,3 +1,7 @@
+import { useRef, useEffect } from 'react';
+import { drawPlanetNode, loadPlanetTextures } from '@/lib/planetRenderer';
+import { dominiosData } from '@/data/mockup';
+
 interface SpaceHUDTooltipProps {
   word: {
     id: string;
@@ -21,6 +25,99 @@ interface SpaceHUDTooltipProps {
   visible: boolean;
   level?: string;
 }
+
+// Componente interno de preview do planeta
+const PlanetPreview = ({ word }: { word: any }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
+  const getDomainColor = (prosody?: string) => {
+    const prosodyToDomain: Record<string, string> = {
+      'positiva': 'Cultura e Lida Gaúcha',
+      'positive': 'Cultura e Lida Gaúcha',
+      'negativa': 'Sentimentos e Emoções',
+      'negative': 'Sentimentos e Emoções',
+      'neutra': 'Natureza e Paisagem',
+      'neutral': 'Natureza e Paisagem'
+    };
+    
+    const domainName = prosodyToDomain[prosody?.toLowerCase() || 'neutral'];
+    const domain = dominiosData.find(d => d.dominio === domainName);
+    return domain?.cor || '#00E5FF';
+  };
+  
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !word) return;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    
+    const domainColor = getDomainColor(word.prosody);
+    
+    drawPlanetNode(ctx, {
+      x: 0,
+      y: 0,
+      size: 35,
+      label: word.label || word.palavra,
+      color: domainColor
+    }, {});
+    
+    ctx.restore();
+  }, [word]);
+  
+  return (
+    <div className="relative flex flex-col items-center justify-center my-4">
+      <div className="text-center mb-2">
+        <span className="text-[9px] text-cyan-400/60 tracking-widest font-mono">
+          ANÁLISE HOLOGRÁFICA
+        </span>
+      </div>
+      
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          width={100}
+          height={100}
+          className="rounded-lg"
+          style={{
+            background: 'radial-gradient(circle, rgba(0,229,255,0.15) 0%, transparent 70%)',
+            boxShadow: '0 0 30px rgba(0,229,255,0.4)',
+            border: '1px solid rgba(0,229,255,0.3)'
+          }}
+        />
+        
+        {/* Scanline animado */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg">
+          <div 
+            className="w-full h-0.5 bg-cyan-400/40 absolute"
+            style={{ 
+              animation: 'scan 3s linear infinite',
+              boxShadow: '0 0 10px #00E5FF'
+            }}
+          />
+        </div>
+        
+        {/* Corner markers (estilo HUD) */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-0 left-0 w-3 h-3 border-t-2 border-l-2 border-cyan-400/60" />
+          <div className="absolute top-0 right-0 w-3 h-3 border-t-2 border-r-2 border-cyan-400/60" />
+          <div className="absolute bottom-0 left-0 w-3 h-3 border-b-2 border-l-2 border-cyan-400/60" />
+          <div className="absolute bottom-0 right-0 w-3 h-3 border-b-2 border-r-2 border-cyan-400/60" />
+        </div>
+      </div>
+      
+      <div className="mt-2 text-center">
+        <span className="text-[9px] text-cyan-300/60 font-mono tracking-widest">
+          TEXTURA-{((word.label?.charCodeAt(0) || 0) % 10) + 1}
+        </span>
+      </div>
+    </div>
+  );
+};
 
 export const SpaceHUDTooltip = ({ word, visible, level }: SpaceHUDTooltipProps) => {
   if (!visible || !word) return null;
@@ -91,6 +188,9 @@ export const SpaceHUDTooltip = ({ word, visible, level }: SpaceHUDTooltipProps) 
             </span>
           </div>
         </div>
+
+        {/* Planet Preview */}
+        <PlanetPreview word={word} />
 
         {/* Galaxy Level Stats */}
         {level === 'galaxy' && (

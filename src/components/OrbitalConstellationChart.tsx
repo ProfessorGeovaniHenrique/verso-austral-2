@@ -7,7 +7,7 @@ import { ControlToolbar } from './ControlPanel/ControlToolbar';
 import { FloatingControlPanel } from './ControlPanel/FloatingControlPanel';
 import { OrbitalRings } from './OrbitalRings';
 import { FilterPanel } from './FilterPanel';
-import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
+import { drawPlanetNode, drawPlanetNodeHover, loadPlanetTextures } from '@/lib/planetRenderer';
 
 type NavigationLevel = 'universe' | 'galaxy' | 'stellar-system';
 type ConsoleMode = 'docked' | 'minimized' | 'floating';
@@ -98,6 +98,13 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const [consoleMode, setConsoleMode] = useState<ConsoleMode>('docked');
   const [floatingPosition, setFloatingPosition] = useState({ x: 100, y: 100 });
   const [floatingSize, setFloatingSize] = useState({ width: 420, height: 600 });
+
+  // Pré-carregar texturas de planetas
+  useEffect(() => {
+    loadPlanetTextures().catch((err) => {
+      console.error('❌ Failed to load planet textures:', err);
+    });
+  }, []);
 
   // Listener para evento da sidebar
   useEffect(() => {
