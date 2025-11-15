@@ -601,47 +601,45 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
 
 
       {/* HUD Tooltip (complete version) */}
-      {hoveredNode && containerRect && (
+      {hoveredNode && (
         <SpaceHUDTooltip
           word={hoveredNode}
-          position={tooltipPos}
           visible={true}
-          containerRect={containerRect}
           level={level}
         />
       )}
 
       {/* Galaxy Level Legend */}
       {level === 'galaxy' && (
-        <div className="absolute top-4 right-4 bg-black/90 border-2 border-cyan-500/40 rounded-lg p-4 backdrop-blur-sm z-50">
-          <h3 className="text-cyan-400 font-mono text-sm font-bold mb-3 tracking-wider flex items-center gap-2">
+        <div className="absolute bottom-20 right-6 bg-black/95 border-2 border-cyan-500/50 rounded-lg p-4 backdrop-blur-sm z-20 max-w-[240px]">
+          <h3 className="text-cyan-400 font-mono text-xs font-bold mb-2.5 tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
             LEGENDA GALÁXIA
           </h3>
-          <div className="space-y-2 text-xs text-white/80 font-mono">
+          <div className="space-y-2 text-[10px] text-white/80 font-mono">
             <div className="border-b border-cyan-500/20 pb-2 mb-2">
-              <div className="text-cyan-300/90 font-semibold mb-1.5">Comparação vs. Corpus NE:</div>
-              <div className="space-y-1 pl-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-green-400">⬆️</span>
+              <div className="text-cyan-300/90 font-semibold mb-1">Comparação vs. Corpus NE:</div>
+              <div className="space-y-0.5 pl-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-green-400 text-sm">⬆️</span>
                   <span>Super-representado</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-gray-400">➖</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400 text-sm">➖</span>
                   <span>Equilibrado</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-red-400">⬇️</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-red-400 text-sm">⬇️</span>
                   <span>Sub-representado</span>
                 </div>
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="text-cyan-300/90 font-semibold mb-1.5">Métricas Visuais:</div>
-              <div className="pl-2 space-y-0.5">
+            <div className="space-y-0.5">
+              <div className="text-cyan-300/90 font-semibold mb-1">Métricas Visuais:</div>
+              <div className="pl-1.5 space-y-0.5 leading-tight">
                 <div>• Tamanho = Riqueza Lexical</div>
-                <div>• Posição = Relevância Temática</div>
-                <div>• Cor = Domínio Semântico</div>
+                <div>• Posição = Relevância</div>
+                <div>• Cor = Domínio</div>
               </div>
             </div>
           </div>

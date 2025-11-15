@@ -18,51 +18,13 @@ interface SpaceHUDTooltipProps {
     diferencaCorpus?: number;
     numRings?: number;
   } | null;
-  position: { x: number; y: number };
   visible: boolean;
-  containerRect?: DOMRect;
   level?: string;
 }
 
-export const SpaceHUDTooltip = ({ word, position, visible, containerRect, level }: SpaceHUDTooltipProps) => {
+export const SpaceHUDTooltip = ({ word, visible, level }: SpaceHUDTooltipProps) => {
   if (!visible || !word) return null;
 
-  // Smart positioning to avoid UI collision
-  const calculateSmartPosition = () => {
-    const tooltipWidth = 300;
-    const tooltipHeight = 250;
-    const offset = 20;
-    
-    let x = position.x + offset;
-    let y = position.y - 140;
-    
-    if (containerRect) {
-      // Detect collision with top navigation console (first 120px)
-      if (y < 120) {
-        y = position.y + offset; // Move below cursor
-      }
-      
-      // Detect collision with right zoom controls (last 100px)
-      if (x + tooltipWidth > containerRect.width - 100) {
-        x = position.x - tooltipWidth - offset; // Move to left of cursor
-      }
-      
-      // Detect collision with bottom edge
-      if (y + tooltipHeight > containerRect.height) {
-        y = containerRect.height - tooltipHeight - 20;
-      }
-      
-      // Detect collision with left edge
-      if (x < 20) {
-        x = 20;
-      }
-    }
-    
-    return { x, y };
-  };
-
-  const smartPos = calculateSmartPosition();
-  
   const getProsodyColor = (prosody?: string) => {
     switch (prosody?.toLowerCase()) {
       case 'positiva':
@@ -76,163 +38,229 @@ export const SpaceHUDTooltip = ({ word, position, visible, containerRect, level 
     }
   };
 
+  const getComparisonBadgeColor = (comparison?: string) => {
+    switch (comparison) {
+      case 'super-representado':
+        return 'bg-green-500/20 border-green-400 text-green-300';
+      case 'sub-representado':
+        return 'bg-red-500/20 border-red-400 text-red-300';
+      default:
+        return 'bg-gray-500/20 border-gray-400 text-gray-300';
+    }
+  };
+
   return (
     <div
-      className="fixed pointer-events-none z-[100] animate-fade-in"
+      className="fixed right-[130px] top-1/2 -translate-y-1/2 z-30 pointer-events-none"
       style={{
-        left: smartPos.x,
-        top: smartPos.y,
-        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.2))',
-        border: '2px solid #00E5FF',
-        borderRadius: '12px',
-        padding: '16px',
-        minWidth: '300px',
-        boxShadow: '0 0 25px rgba(0, 229, 255, 0.4), inset 0 0 15px rgba(0, 229, 255, 0.1)',
-        fontFamily: 'monospace'
+        animation: 'slideInFromRight 0.3s ease-out'
       }}
     >
-      {/* Header */}
-      <div className="flex justify-between items-start border-b border-cyan-400/30 pb-2 mb-3">
-        <div className="flex flex-col">
-          <span className="text-yellow-400 font-bold text-lg tracking-wider">
-            [ {word.label.toUpperCase()} ]
-          </span>
-          <span className="text-cyan-300/60 text-[10px] tracking-widest mt-1">
-            ID: {word.id}
-          </span>
-        </div>
-        <div className="w-3 h-3 rounded-full animate-pulse" style={{ background: '#00E5FF', boxShadow: '0 0 10px #00E5FF' }}></div>
-      </div>
+      <div
+        className="relative"
+        style={{
+          background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
+          border: '2px solid #00E5FF',
+          borderRadius: '12px',
+          padding: '20px',
+          width: '340px',
+          boxShadow: '0 0 40px rgba(0, 229, 255, 0.5), inset 0 0 30px rgba(0, 229, 255, 0.1)',
+          fontFamily: 'monospace',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        {/* Animated corner decorations (Mass Effect style) */}
+        <div className="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-cyan-400"></div>
+        <div className="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-cyan-400"></div>
+        <div className="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-cyan-400"></div>
+        <div className="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-cyan-400"></div>
 
-      {/* Stats Grid - Universe level */}
-      {level !== 'galaxy' && (
-        <div className="space-y-2.5">
-          {/* Frequência */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-cyan-300/80 uppercase tracking-wide">Frequência:</span>
-              <span className="text-white font-bold">{word.freq || 0} ocorrências</span>
+        {/* Header with pulsing indicator */}
+        <div className="flex justify-between items-start border-b border-cyan-400/30 pb-3 mb-3">
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] text-cyan-300/60 tracking-widest">CODEX LINGUÍSTICO</span>
+              <div className="w-2 h-2 rounded-full animate-pulse bg-cyan-400" 
+                   style={{ boxShadow: '0 0 10px #00E5FF' }}></div>
             </div>
-            <div className="h-1 bg-black/40 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-500"
-                style={{ width: `${Math.min((word.freq || 0) * 10, 100)}%` }}
-              ></div>
-            </div>
-          </div>
-
-          {/* Normalizada */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Normalizada:</span>
-            <span className="text-green-400 font-mono">{word.normalized || 0}/1000</span>
-          </div>
-
-          {/* Log-Likelihood */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Log-Likelihood:</span>
-            <span className="text-purple-400 font-mono">{word.logLikelihood?.toFixed(1) || '0.0'}</span>
-          </div>
-
-          {/* MI Score */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">MI Score:</span>
-            <span className="text-pink-400 font-mono">{word.miScore?.toFixed(2) || '0.00'}</span>
-          </div>
-
-          {/* Association Strength */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Força Assoc.:</span>
-            <span className="text-orange-400 font-mono">{word.associationStrength?.toFixed(1) || '0.0'}%</span>
-          </div>
-
-          {/* Prosódia */}
-          <div className="flex justify-between text-xs items-center">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Prosódia:</span>
-            <span 
-              className="font-bold px-2 py-0.5 rounded text-white"
-              style={{ 
-                background: getProsodyColor(word.prosody),
-                boxShadow: `0 0 8px ${getProsodyColor(word.prosody)}80`
-              }}
-            >
-              {(word.prosody || 'Neutra').toUpperCase()}
+            <span className="text-yellow-400 font-bold text-xl tracking-wider">
+              {word.label.toUpperCase()}
+            </span>
+            <span className="text-cyan-300/50 text-[9px] tracking-widest mt-1">
+              ID: {word.id}
             </span>
           </div>
-
-          {/* Sentimento */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Sentimento:</span>
-            <span className="text-yellow-400 italic">{word.sentiment || 'Indefinido'}</span>
-          </div>
         </div>
-      )}
 
-      {/* Stats Grid - Galaxy level */}
-      {level === 'galaxy' && (
-        <div className="space-y-2.5">
-          {/* Riqueza Lexical */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
-              <span className="text-cyan-300/80 uppercase tracking-wide">Riqueza Lexical:</span>
-              <span className="text-white font-bold">{word.riquezaLexical || 0} lemas únicos</span>
+        {/* Galaxy Level Stats */}
+        {level === 'galaxy' && (
+          <div className="space-y-3">
+            {/* Comparison Badge */}
+            {word.comparacaoCorpus && (
+              <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-bold ${getComparisonBadgeColor(word.comparacaoCorpus)}`}>
+                <span>
+                  {word.comparacaoCorpus === 'super-representado' && '⬆️'}
+                  {word.comparacaoCorpus === 'equilibrado' && '➖'}
+                  {word.comparacaoCorpus === 'sub-representado' && '⬇️'}
+                </span>
+                <span className="uppercase tracking-wide">
+                  {word.comparacaoCorpus.replace('-', ' ')}
+                </span>
+              </div>
+            )}
+
+            {/* Metrics Grid */}
+            <div className="space-y-2.5">
+              {/* Riqueza Lexical */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-cyan-300/80 uppercase tracking-wide">Riqueza Lexical:</span>
+                  <span className="text-white font-bold">{word.riquezaLexical || 0} lemas únicos</span>
+                </div>
+                <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-purple-500 to-pink-400 transition-all duration-500"
+                    style={{ width: `${Math.min((word.riquezaLexical || 0) * 3, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Peso Textual */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-cyan-300/80 uppercase tracking-wide">Peso Textual:</span>
+                  <span className="text-white font-bold">{word.pesoTextual || 0} ocorrências</span>
+                </div>
+                <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-cyan-500 to-blue-400 transition-all duration-500"
+                    style={{ width: `${Math.min((word.pesoTextual || 0) * 3, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Representação Temática */}
+              <div className="space-y-1">
+                <div className="flex justify-between text-xs">
+                  <span className="text-cyan-300/80 uppercase tracking-wide">Representação:</span>
+                  <span className="text-white font-bold">{word.percentualTematico?.toFixed(2)}%</span>
+                </div>
+                <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-yellow-500 to-orange-400 transition-all duration-500"
+                    style={{ width: `${word.percentualTematico || 0}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Comparison with Corpus */}
+              <div className="pt-2 mt-2 border-t border-cyan-500/30">
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-cyan-300/80 uppercase tracking-wide">vs. Corpus NE:</span>
+                  <span className={`font-bold ${(word.diferencaCorpus || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {(word.diferencaCorpus || 0) > 0 ? '+' : ''}{word.diferencaCorpus?.toFixed(2)}pp
+                  </span>
+                </div>
+              </div>
+
+              {/* Orbital Rings Indicator */}
+              <div className="flex justify-between text-xs pt-1">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Anéis Orbitais:</span>
+                <span className="text-white font-bold">{word.numRings || 0}</span>
+              </div>
             </div>
-            <div className="h-1 bg-black/40 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-yellow-500 to-orange-400 transition-all duration-500"
-                style={{ width: `${Math.min((word.riquezaLexical || 0) * 3.5, 100)}%` }}
-              ></div>
+          </div>
+        )}
+
+        {/* Universe Level Stats */}
+        {level !== 'galaxy' && (
+          <div className="space-y-2.5">
+            {/* Frequência */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Frequência:</span>
+                <span className="text-white font-bold">{word.freq || 0} ocorrências</span>
+              </div>
+              <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-cyan-500 to-cyan-300 transition-all duration-500"
+                  style={{ width: `${Math.min((word.freq || 0) * 10, 100)}%` }}
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Peso Textual */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Peso Textual:</span>
-            <span className="text-green-400 font-mono">{word.pesoTextual || 0} ocorrências</span>
-          </div>
-
-          {/* Representação Temática */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Representação:</span>
-            <span className="text-purple-400 font-mono">{word.percentualTematico?.toFixed(2) || '0.00'}%</span>
-          </div>
-
-          {/* Comparação com Corpus */}
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs items-center">
-              <span className="text-cyan-300/80 uppercase tracking-wide">vs. Corpus NE:</span>
-              <span 
-                className={`font-bold px-2 py-0.5 rounded text-white ${
-                  (word.comparacaoCorpus === 'super-representado') ? 'bg-green-600' :
-                  (word.comparacaoCorpus === 'sub-representado') ? 'bg-red-600' :
-                  'bg-gray-600'
-                }`}
-              >
-                {word.comparacaoCorpus === 'super-representado' ? '⬆️ SUPER' :
-                 word.comparacaoCorpus === 'sub-representado' ? '⬇️ SUB' :
-                 '➖ EQUILIBRADO'}
-              </span>
+            {/* Normalized Value */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Valor Normalizado:</span>
+                <span className="text-white font-bold">{word.normalized?.toFixed(4) || '0.0000'}</span>
+              </div>
+              <div className="h-1.5 bg-black/40 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-blue-500 to-purple-400 transition-all duration-500"
+                  style={{ width: `${Math.min((word.normalized || 0) * 1000, 100)}%` }}
+                />
+              </div>
             </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-cyan-300/80 uppercase tracking-wide">Diferença:</span>
-              <span className={`font-mono font-bold ${(word.diferencaCorpus || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                {(word.diferencaCorpus || 0) > 0 ? '+' : ''}{word.diferencaCorpus?.toFixed(2) || '0.00'}pp
-              </span>
-            </div>
-          </div>
 
-          {/* Anéis Orbitais */}
-          <div className="flex justify-between text-xs">
-            <span className="text-cyan-300/80 uppercase tracking-wide">Anéis Orbitais:</span>
-            <span className="text-yellow-400 font-mono">{word.numRings || 0} anéis</span>
+            {/* Log-Likelihood */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Log-Likelihood:</span>
+                <span className="text-white font-bold">{word.logLikelihood?.toFixed(2) || '0.00'}</span>
+              </div>
+            </div>
+
+            {/* MI Score */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">MI Score:</span>
+                <span className="text-white font-bold">{word.miScore?.toFixed(3) || '0.000'}</span>
+              </div>
+            </div>
+
+            {/* Association Strength */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Força de Associação:</span>
+                <span className="text-white font-bold">{word.associationStrength?.toFixed(3) || '0.000'}</span>
+              </div>
+            </div>
+
+            {/* Prosody */}
+            {word.prosody && (
+              <div className="pt-2 mt-2 border-t border-cyan-500/30">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="text-cyan-300/80 uppercase tracking-wide">Prosódia:</span>
+                  <span 
+                    className="px-2 py-1 rounded text-white font-bold text-[10px]"
+                    style={{ 
+                      backgroundColor: getProsodyColor(word.prosody),
+                      boxShadow: `0 0 10px ${getProsodyColor(word.prosody)}`
+                    }}
+                  >
+                    {word.prosody.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Sentiment */}
+            {word.sentiment && (
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-cyan-300/80 uppercase tracking-wide">Sentimento:</span>
+                <span className="text-white font-bold">{word.sentiment}</span>
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Footer - Call to Action */}
+        <div className="mt-4 pt-3 border-t border-cyan-400/30 text-center">
+          <span className="text-[10px] text-cyan-300/70 uppercase tracking-widest">
+            ▶ Clique para análise detalhada
+          </span>
         </div>
-      )}
-
-      {/* Footer */}
-      <div className="border-t border-cyan-400/20 mt-3 pt-2 text-center">
-        <span className="text-[10px] text-cyan-300 tracking-widest animate-pulse">
-          ► CLIQUE PARA ANÁLISE DETALHADA ◄
-        </span>
       </div>
     </div>
   );

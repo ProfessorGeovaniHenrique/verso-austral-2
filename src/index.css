@@ -135,4 +135,16 @@ All colors MUST be HSL.
   .animate-shimmer {
     animation: shimmer 2s infinite;
   }
+
+  /* Slide in from right animation for HUD */
+  @keyframes slideInFromRight {
+    from {
+      opacity: 0;
+      transform: translate(30px, -50%);
+    }
+    to {
+      opacity: 1;
+      transform: translate(0, -50%);
+    }
+  }
 }
