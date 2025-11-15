@@ -1,7 +1,9 @@
 export { dominiosNormalizados } from './dominios-normalized';
+export { dominiosSeparated } from './dominios-separated';
 export { prosodiasMap, getProsodiaSemantica } from './prosodias-map';
 export { kwicDataMap } from './kwic';
 export { dominiosData } from './dominios';
+export { enrichedSemanticData, enrichSemanticWords } from './enrichedSemanticData';
 export { 
   logLikelihoodData, 
   miScoreData, 
@@ -25,3 +27,11 @@ export type {
   ProsodiaData,
   LematizacaoData
 } from '../types/corpus.types';
+
+export type {
+  SemanticWord,
+  FogDomain,
+  SemanticConnection,
+  FogPlanetVisualizationData,
+  VisualizationFilters
+} from '../types/fogPlanetVisualization.types';
