@@ -120,17 +120,18 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
   const colors = getComparisonBadgeColor(word?.comparacaoCorpus);
   
   return (
-    <div 
-      className={`w-full rounded-lg backdrop-blur-md relative overflow-hidden ${
-        animState === 'expanding' ? 'animate-expandVertical' : ''
-      }`}
-      style={{
-        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
-        border: '2px solid rgba(0, 229, 255, 0.6)',
-        boxShadow: '0 0 40px rgba(0, 229, 255, 0.5)',
-        animation: animState === 'expanding' ? 'expandVertical 400ms ease-out forwards' : 'sciFiBorderGlow 3s ease-in-out infinite'
-      }}
-    >
+      <div 
+        className={`w-full rounded-lg backdrop-blur-md relative overflow-hidden ${
+          animState === 'expanding' ? 'animate-expandVertical' : ''
+        }`}
+        style={{
+          background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
+          border: '2px solid rgba(0, 229, 255, 0.6)',
+          boxShadow: '0 0 40px rgba(0, 229, 255, 0.5)',
+          maxHeight: '500px',
+          animation: animState === 'expanding' ? 'expandVertical 400ms ease-out forwards' : 'sciFiBorderGlow 3s ease-in-out infinite'
+        }}
+      >
       {/* Bordas Sci-Fi Superior */}
       <div className="absolute -top-[2px] left-0 right-0 h-[2px] flex items-center">
         <div className="flex-1 h-full bg-gradient-to-r from-transparent via-cyan-400 to-cyan-400" />
@@ -176,7 +177,7 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
       </div>
 
       {/* Conteúdo */}
-      <div className={`p-6 ${animState === 'expanding' ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
+      <div className={`p-6 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-400/50 scrollbar-track-transparent ${animState === 'expanding' ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
         {/* Header */}
         <div className="mb-4 pb-3 border-b border-cyan-500/30">
           <div className="flex items-center justify-between mb-2">

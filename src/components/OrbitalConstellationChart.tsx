@@ -46,6 +46,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<any>(null);
+  const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   // Refs para evitar stale closure nos event handlers (FASE 1)
   const levelRef = useRef<NavigationLevel>('universe');
@@ -414,8 +415,14 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     };
     
     const leaveNodeHandler = () => {
-      setHoveredNode(null);
-      setTimeout(() => setIsPaused(false), 2000);
+      // Delay de 500ms para permitir movimento para o painel
+      const timeoutId = setTimeout(() => {
+        setHoveredNode(null);
+        setTimeout(() => setIsPaused(false), 2000);
+      }, 500);
+      
+      leaveTimeoutRef.current = timeoutId;
+      
       if (!isDragging) {
         sigma.getContainer().style.cursor = 'default';
       }
@@ -649,8 +656,19 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       <div className="w-[420px] relative flex-shrink-0 bg-black/20 backdrop-blur-sm border-l border-cyan-500/20">
         <RightControlPanel 
           hoveredNode={hoveredNode} 
-          level={level}
+          level={level} 
           showGalaxyLegend={level === 'galaxy'}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onReset={handleResetView}
+          onPauseToggle={() => setIsPaused(!isPaused)}
+          isPaused={isPaused}
+          onMouseEnter={() => {
+            if (leaveTimeoutRef.current) {
+              clearTimeout(leaveTimeoutRef.current);
+            }
+          }}
+          onMouseLeave={() => setHoveredNode(null)}
         />
       </div>
       

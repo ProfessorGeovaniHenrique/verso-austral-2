@@ -20,6 +20,7 @@ interface VerticalZoomControlsProps {
   isPaused?: boolean;
   zoomLevel?: number;
   onZoomChange?: (zoom: number) => void;
+  orientation?: 'vertical' | 'horizontal';
 }
 
 export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
@@ -33,15 +34,24 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
   isPaused = false,
   zoomLevel = 100,
   onZoomChange,
+  orientation = 'vertical'
 }) => {
+  const containerClasses = orientation === 'horizontal'
+    ? 'flex flex-row gap-2'
+    : 'flex flex-col gap-2';
+  
+  const sliderContainerClasses = orientation === 'horizontal'
+    ? 'flex items-center gap-2'
+    : 'py-2 px-1';
+
   return (
     <TooltipProvider>
-      <div className="flex flex-col gap-2 backdrop-blur-xl border-2 rounded-xl p-2 shadow-2xl"
-             style={{
-               background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.7))',
-               borderColor: '#00E5FF',
-               boxShadow: '0 0 30px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1)'
-             }}>
+      <div className={`${containerClasses} backdrop-blur-xl border-2 rounded-xl p-2 shadow-2xl`}
+           style={{
+             background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.7))',
+             borderColor: '#00E5FF',
+             boxShadow: '0 0 30px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1)'
+           }}>
           {/* Home/Reset */}
           <Tooltip>
             <TooltipTrigger asChild>
@@ -76,19 +86,20 @@ export const VerticalZoomControls: React.FC<VerticalZoomControlsProps> = ({
             </TooltipContent>
           </Tooltip>
 
-          {/* Vertical Zoom Slider */}
+          {/* Zoom Slider - Adaptável à Orientação */}
           {onZoomChange && (
-            <div className="py-2 px-1">
+            <div className={sliderContainerClasses}>
               <Slider
-                orientation="vertical"
+                orientation={orientation}
                 value={[zoomLevel]}
                 onValueChange={([value]) => onZoomChange(value)}
                 min={50}
                 max={200}
                 step={5}
-                className="h-24"
+                className={orientation === 'horizontal' ? 'w-32' : 'h-24'}
               />
-              <div className="text-xs text-center mt-2" style={{ color: '#00E5FF' }}>
+              <div className={`text-xs ${orientation === 'horizontal' ? '' : 'text-center mt-2'}`} 
+                   style={{ color: '#00E5FF' }}>
                 {zoomLevel}%
               </div>
             </div>
