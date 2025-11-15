@@ -13,17 +13,10 @@ export const RightControlPanel = ({
   showGalaxyLegend 
 }: RightControlPanelProps) => {
   return (
-    <div 
-      className="fixed right-[110px] top-0 h-full w-[420px] z-30 p-4 flex flex-col gap-4"
-      style={{
-        background: 'linear-gradient(270deg, rgba(0, 0, 0, 0.85), transparent)',
-        pointerEvents: 'none'
-      }}
-    >
+    <div className="h-full w-full p-4 flex flex-col gap-4 overflow-y-auto">
+
       {/* Codex Drawer - Animação Bandeja */}
-      <div style={{ pointerEvents: 'auto' }}>
-        <CodexDrawer word={hoveredNode} level={level} />
-      </div>
+      <CodexDrawer word={hoveredNode} level={level} />
 
       {/* Separador Holográfico */}
       <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent relative">
@@ -31,21 +24,14 @@ export const RightControlPanel = ({
       </div>
 
       {/* Galaxy Legend Panel */}
-      <div style={{ pointerEvents: 'auto' }}>
-        <GalaxyLegendPanel visible={showGalaxyLegend} />
-      </div>
+      <GalaxyLegendPanel visible={showGalaxyLegend} />
 
       {/* Separador Holográfico */}
       <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-cyan-400/50 to-transparent" />
 
       {/* Future Features Placeholder */}
-      <div 
-        className="w-full border-2 border-dashed border-cyan-400/30 rounded-lg p-4 backdrop-blur-sm"
-        style={{ 
-          pointerEvents: 'auto',
-          background: 'rgba(0, 0, 0, 0.3)'
-        }}
-      >
+      <div className="w-full border-2 border-dashed border-cyan-400/30 rounded-lg p-4 backdrop-blur-sm bg-black/30">
+
         <div className="text-cyan-400/50 text-xs text-center font-mono">
           🚀 Espaço Reservado para:
           <ul className="mt-2 text-left space-y-1 text-[10px]">

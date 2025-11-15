@@ -569,100 +569,107 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   };
   
   return (
-    <div 
-      className="relative bg-gradient-to-b from-black via-slate-900 to-black overflow-hidden"
-      style={{ 
-        height: '100vh',
-        width: '100vw',
-        paddingRight: '530px'
-      }}
-    >
-      {/* Starry background effect */}
-      <div className="absolute inset-0 opacity-30">
-        {Array.from({ length: 100 }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${2 + Math.random() * 3}s`
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Sigma container */}
-      <div ref={containerRef} className="w-full h-full relative z-10" />
-
-      {/* Orbital Rings (visual effect) */}
-      {level !== 'universe' && containerRect && (
-        <OrbitalRings
-          level={level}
-          isPaused={isPaused}
-          containerWidth={containerRect.width}
-          containerHeight={containerRect.height}
+    <div className="flex h-screen w-full overflow-hidden bg-gradient-to-b from-black via-slate-900 to-black">
+      
+      {/* ÁREA PRINCIPAL - Grafo (flex-1 = ocupa espaço restante) */}
+      <div className="flex-1 relative">
+        
+        {/* Starry Background */}
+        <div className="absolute inset-0 opacity-30 pointer-events-none">
+          {Array.from({ length: 100 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute w-1 h-1 bg-white rounded-full animate-pulse"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                animationDelay: `${Math.random() * 3}s`,
+                animationDuration: `${2 + Math.random() * 3}s`
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Sigma Container */}
+        <div ref={containerRef} className="absolute inset-0 z-10" />
+        
+        {/* Orbital Rings - Overlay sobre o Sigma */}
+        {level !== 'universe' && containerRect && (
+          <div className="absolute inset-0 pointer-events-none z-20">
+            <OrbitalRings
+              level={level}
+              isPaused={isPaused}
+              containerWidth={containerRect.width}
+              containerHeight={containerRect.height}
+            />
+          </div>
+        )}
+        
+        {/* Filter Panel */}
+        <FilterPanel
+          isOpen={isFilterPanelOpen}
+          onToggle={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+          filters={activeFilters}
+          onFilterChange={setActiveFilters}
+          availableDomains={dominiosData.map(d => ({
+            label: d.dominio,
+            color: d.cor,
+            corTexto: d.corTexto
+          }))}
         />
-      )}
-
-
-      {/* Right Control Panel - Painel Lateral Fixo */}
-      <RightControlPanel
-        hoveredNode={hoveredNode}
-        level={level}
-        showGalaxyLegend={level === 'galaxy'}
-      />
-
-      {/* Filter Panel (FASE 1) */}
-      <FilterPanel
-        isOpen={isFilterPanelOpen}
-        onToggle={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-        filters={activeFilters}
-        onFilterChange={setActiveFilters}
-        availableDomains={dominiosData.map(d => ({
-          label: d.dominio,
-          color: d.cor,
-          corTexto: d.corTexto
-        }))}
-      />
-
-      {/* Navigation Console (FASE 2) */}
-      <SpaceNavigationConsole
-        level={level}
-        onNavigate={navigateToLevel}
-        onFilterChange={setActiveFilters}
-        onReset={() => {
-          setActiveFilters({
-            minFrequency: 0,
-            prosody: [],
-            domains: [],
-            searchQuery: ''
-          });
-        }}
-        isFilterPanelOpen={isFilterPanelOpen}
-        onToggleFilterPanel={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-        activeFilterCount={
-          (activeFilters.minFrequency > 0 ? 1 : 0) +
-          activeFilters.prosody.length +
-          activeFilters.domains.length +
-          (activeFilters.searchQuery ? 1 : 0)
-        }
-      />
-
-      {/* Vertical Zoom Controls */}
-      <VerticalZoomControls
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onReset={handleResetView}
-        onFit={() => sigmaRef.current?.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1 })}
-        onRefresh={() => {
-          if (level === 'universe') buildUniverseView();
-          else if (level === 'galaxy') buildGalaxyView();
-        }}
-        isPaused={isPaused}
-        onPauseToggle={() => setIsPaused(!isPaused)}
-      />
+        
+        {/* Navigation Console - Fixed no topo */}
+        <div className="absolute top-0 left-0 right-0 z-30">
+          <SpaceNavigationConsole
+            level={level}
+            onNavigate={navigateToLevel}
+            onFilterChange={setActiveFilters}
+            onReset={() => {
+              setActiveFilters({
+                minFrequency: 0,
+                prosody: [],
+                domains: [],
+                searchQuery: ''
+              });
+            }}
+            isFilterPanelOpen={isFilterPanelOpen}
+            onToggleFilterPanel={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+            activeFilterCount={
+              (activeFilters.minFrequency > 0 ? 1 : 0) +
+              activeFilters.prosody.length +
+              activeFilters.domains.length +
+              (activeFilters.searchQuery ? 1 : 0)
+            }
+          />
+        </div>
+        
+      </div>
+      
+      {/* PAINEL DIREITO - Width fixo de 420px */}
+      <div className="w-[420px] relative flex-shrink-0 bg-black/20 backdrop-blur-sm border-l border-cyan-500/20">
+        <RightControlPanel 
+          hoveredNode={hoveredNode} 
+          level={level}
+          showGalaxyLegend={level === 'galaxy'}
+        />
+      </div>
+      
+      {/* ZOOM BAR - Fixed na borda direita */}
+      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50">
+        <VerticalZoomControls
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onReset={handleResetView}
+          onFit={() => sigmaRef.current?.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1 })}
+          onRefresh={() => {
+            if (level === 'universe') buildUniverseView();
+            else if (level === 'galaxy') buildGalaxyView();
+          }}
+          isPaused={isPaused}
+          onPauseToggle={() => setIsPaused(!isPaused)}
+        />
+      </div>
+      
     </div>
   );
 };
