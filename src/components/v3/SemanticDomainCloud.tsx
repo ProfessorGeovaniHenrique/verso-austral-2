@@ -185,6 +185,8 @@ export function SemanticDomainCloud({
 }: SemanticDomainCloudProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredNode, setHoveredNode] = useState<CloudNode | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [cursorStyle, setCursorStyle] = useState<'default' | 'pointer'>('default');
   const animationFrameRef = useRef<number>();
   

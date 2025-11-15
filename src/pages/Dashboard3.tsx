@@ -1,4 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SemanticDomainCloud } from "@/components/v3/SemanticDomainCloud";
+import { StatisticalFooter } from "@/components/v3/StatisticalFooter";
+import { CloudControlPanel, Camera, LayerMode } from "@/components/v3/CloudControlPanel";
+import { KWICModal } from "@/components/KWICModal";
+import { useSemanticCloudData, CloudNode } from "@/hooks/useSemanticCloudData";
+import { kwicDataMap } from "@/data/mockup/kwic";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SemanticDomainCloud } from "@/components/v3/SemanticDomainCloud";
@@ -13,6 +21,84 @@ export default function Dashboard3() {
   const [selectedWord, setSelectedWord] = useState<CloudNode | null>(null);
   const [hoveredWord, setHoveredWord] = useState<CloudNode | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  
+  // Controles
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 });
+  const [font, setFont] = useState("Orbitron");
+  const [layerMode, setLayerMode] = useState<LayerMode>("balanced");
+  const [fps, setFps] = useState(60);
+
+  // Performance monitor
+  useEffect(() => {
+    let frameCount = 0;
+    let lastTime = performance.now();
+    
+    const updateFps = () => {
+      frameCount++;
+      const currentTime = performance.now();
+      
+      if (currentTime - lastTime >= 1000) {
+        setFps(frameCount);
+        frameCount = 0;
+        lastTime = currentTime;
+      }
+      
+      requestAnimationFrame(updateFps);
+    };
+    
+    const rafId = requestAnimationFrame(updateFps);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  // Listener para mudanças de câmera
+  useEffect(() => {
+    const handleCameraChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Camera>;
+      setCamera(customEvent.detail);
+    };
+    
+    window.addEventListener('camera-change', handleCameraChange);
+    return () => window.removeEventListener('camera-change', handleCameraChange);
+  }, []);
+  
+  // Novos estados para controles
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 });
+  const [font, setFont] = useState("Orbitron");
+  const [layerMode, setLayerMode] = useState<LayerMode>("balanced");
+  const [fps, setFps] = useState(60);
+
+  // Performance monitor
+  useEffect(() => {
+    let frameCount = 0;
+    let lastTime = performance.now();
+    
+    const updateFps = () => {
+      frameCount++;
+      const currentTime = performance.now();
+      
+      if (currentTime - lastTime >= 1000) {
+        setFps(frameCount);
+        frameCount = 0;
+        lastTime = currentTime;
+      }
+      
+      requestAnimationFrame(updateFps);
+    };
+    
+    const rafId = requestAnimationFrame(updateFps);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  // Listener para mudanças de câmera
+  useEffect(() => {
+    const handleCameraChange = (e: Event) => {
+      const customEvent = e as CustomEvent<Camera>;
+      setCamera(customEvent.detail);
+    };
+    
+    window.addEventListener('camera-change', handleCameraChange);
+    return () => window.removeEventListener('camera-change', handleCameraChange);
+  }, []);
 
   const handleWordClick = (node: CloudNode) => {
     if (node.type === 'word') {
