@@ -1,0 +1,219 @@
+/**
+ * Academic Theme - Tema Acadêmico Gaúcho
+ * Classes customizadas para o tema acadêmico com cores da bandeira do RS
+ */
+  /* Botões Acadêmicos */
+  .btn-academic-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 
+           shadow-sm transition-colors duration-200;
+  }
+
+  .btn-academic-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 
+           shadow-sm transition-colors duration-200;
+  }
+
+  .btn-academic-accent {
+    @apply bg-accent text-accent-foreground hover:bg-accent/90 
+           shadow-sm transition-colors duration-200;
+  }
+
+  /* Badges Acadêmicos */
+  .badge-verde {
+    @apply bg-[#E8F5EE] text-[#1A5F36] border border-[#24824A] 
+           px-2.5 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .badge-vermelho {
+    @apply bg-[#FCE8E8] text-[#A01F1F] border border-[#D62828] 
+           px-2.5 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  .badge-amarelo {
+    @apply bg-[#FFF9E6] text-[#C79400] border border-[#F2B705] 
+           px-2.5 py-0.5 rounded-md text-xs font-medium;
+  }
+
+  /* Cards Acadêmicos */
+  .card-academic {
+    @apply bg-card border border-border rounded-lg shadow-sm 
+           hover:shadow-md transition-shadow duration-200;
+  }
+
+  .card-academic-hover {
+    @apply bg-card border border-border rounded-lg shadow-sm 
+           hover:shadow-md hover:border-primary/30 
+           transition-all duration-200 cursor-pointer;
+  }
+
+  /* Tabelas Acadêmicas */
+  .table-academic {
+    @apply w-full border-collapse;
+  }
+
+  .table-academic thead {
+    @apply bg-muted/50 border-b-2 border-primary/20;
+  }
+
+  .table-academic th {
+    @apply px-4 py-3 text-left text-sm font-semibold text-foreground;
+  }
+
+  .table-academic td {
+    @apply px-4 py-3 text-sm text-foreground;
+  }
+
+  .table-academic tbody tr {
+    @apply border-b border-border hover:bg-muted/30 transition-colors;
+  }
+
+  .table-academic tbody tr:nth-child(even) {
+    @apply bg-muted/10;
+  }
+
+  /* Tabs Acadêmicos */
+  .tabs-academic {
+    @apply border-b border-border;
+  }
+
+  .tabs-academic button {
+    @apply px-4 py-2 text-sm font-medium text-muted-foreground 
+           hover:text-foreground transition-colors border-b-2 border-transparent;
+  }
+
+  .tabs-academic button[data-state="active"] {
+    @apply text-primary border-primary;
+  }
+
+  /* Headers de Seção */
+  .section-header-academic {
+    @apply text-xl font-semibold text-primary mb-4;
+  }
+
+  .section-description-academic {
+    @apply text-sm text-muted-foreground mb-6;
+  }
+
+  /* Inputs Acadêmicos */
+  .input-academic {
+    @apply w-full px-3 py-2 bg-background border border-input 
+           rounded-md text-sm text-foreground placeholder:text-muted-foreground
+           focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary
+           transition-colors;
+  }
+
+  /* Scrollbar Acadêmica */
+  .scrollbar-academic::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-academic::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+    border-radius: 4px;
+  }
+
+  .scrollbar-academic::-webkit-scrollbar-thumb {
+    background: hsl(var(--primary) / 0.3);
+    border-radius: 4px;
+  }
+
+  .scrollbar-academic::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+
+  /* Tooltip Acadêmico */
+  .tooltip-academic {
+    @apply bg-card border border-border rounded-lg shadow-lg 
+           px-3 py-2 text-sm text-foreground z-50;
+  }
+
+  /* Divisor com Label */
+  .divider-academic {
+    @apply flex items-center gap-4 my-6;
+  }
+
+  .divider-academic::before,
+  .divider-academic::after {
+    @apply flex-1 border-t border-border;
+    content: '';
+  }
+
+  .divider-academic span {
+    @apply text-sm text-muted-foreground font-medium;
+  }
+
+  /* Grid de Cards Responsivo */
+  .grid-academic-cards {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  /* Container Acadêmico */
+  .container-academic {
+    @apply container mx-auto px-6 py-6 max-w-7xl;
+  }
+
+  /* Header Acadêmico */
+  .header-academic {
+    @apply border-b border-border bg-card/50 backdrop-blur-sm 
+           sticky top-0 z-50 shadow-sm;
+  }
+
+  /* Footer Acadêmico */
+  .footer-academic {
+    @apply border-t border-border mt-12 py-6 bg-muted/20;
+  }
+
+  /* Estatísticas em Cards */
+  .stat-card-academic {
+    @apply flex flex-col gap-1;
+  }
+
+  .stat-label-academic {
+    @apply text-xs text-muted-foreground font-medium uppercase tracking-wide;
+  }
+
+  .stat-value-academic {
+    @apply text-2xl font-bold text-foreground;
+  }
+
+  /* Alert Acadêmico */
+  .alert-academic-success {
+    @apply bg-[#E8F5EE] border-l-4 border-[#24824A] 
+           p-4 rounded-md text-[#1A5F36];
+  }
+
+  .alert-academic-warning {
+    @apply bg-[#FFF9E6] border-l-4 border-[#F2B705] 
+           p-4 rounded-md text-[#C79400];
+  }
+
+  .alert-academic-error {
+    @apply bg-[#FCE8E8] border-l-4 border-[#D62828] 
+           p-4 rounded-md text-[#A01F1F];
+  }
+
+  /* Skeleton Loader Acadêmico */
+  .skeleton-academic {
+    @apply bg-muted animate-pulse rounded-md;
+  }
+
+  /* Chip/Tag Acadêmico */
+  .chip-academic {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 
+           bg-muted text-foreground text-xs font-medium rounded-full 
+           border border-border hover:bg-muted/70 transition-colors;
+  }
+
+/* Variações de hover para prosódia */
+.hover-positiva {
+  @apply hover:bg-[#E8F5EE] hover:border-[#24824A] transition-colors;
+}
+
+.hover-negativa {
+  @apply hover:bg-[#FCE8E8] hover:border-[#D62828] transition-colors;
+}
+
+.hover-neutra {
+  @apply hover:bg-[#FFF9E6] hover:border-[#F2B705] transition-colors;
+}

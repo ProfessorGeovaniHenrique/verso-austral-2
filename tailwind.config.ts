@@ -20,6 +20,7 @@ export default {
         audiowide: ['Audiowide', 'sans-serif'],
         rajdhani: ['Rajdhani', 'sans-serif'],
         georgia: ['Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -68,6 +69,25 @@ export default {
           "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
+        },
+        // Cores da Bandeira do RS para uso direto
+        'rs-verde': {
+          DEFAULT: '#24824A',
+          light: '#36B368',
+          dark: '#1A5F36',
+          subtle: '#E8F5EE',
+        },
+        'rs-vermelho': {
+          DEFAULT: '#D62828',
+          light: '#E85D5D',
+          dark: '#A01F1F',
+          subtle: '#FCE8E8',
+        },
+        'rs-amarelo': {
+          DEFAULT: '#F2B705',
+          light: '#FFD23F',
+          dark: '#C79400',
+          subtle: '#FFF9E6',
         },
       },
       borderRadius: {
