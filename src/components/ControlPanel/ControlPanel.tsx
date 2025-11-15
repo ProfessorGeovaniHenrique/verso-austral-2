@@ -4,8 +4,6 @@ import { Button } from '@/components/ui/button';
 import { PanelSection } from './PanelSection';
 import { CodexDrawer } from '../CodexDrawer';
 import { GalaxyLegendPanel } from '../GalaxyLegendPanel';
-import { VisualizationControlsSection } from './VisualizationControlsSection';
-import type { VisualizationFilters } from '@/data/types/fogPlanetVisualization.types';
 
 interface ControlPanelProps {
   mode?: 'docked' | 'floating';
@@ -16,14 +14,11 @@ interface ControlPanelProps {
   onMouseLeave: () => void;
   openSections: {
     codex: boolean;
-    visualization?: boolean;
     legend: boolean;
     future: boolean;
   };
   onMinimize?: () => void;
   onFloat?: () => void;
-  filters?: VisualizationFilters;
-  onFilterChange?: (filters: Partial<VisualizationFilters>) => void;
 }
 export const ControlPanel = ({
   mode = 'docked',
@@ -34,9 +29,7 @@ export const ControlPanel = ({
   onMouseLeave,
   openSections,
   onMinimize,
-  onFloat,
-  filters,
-  onFilterChange
+  onFloat
 }: ControlPanelProps) => {
   const showCodex = codexState !== 'closed' && hoveredNode;
   return <motion.div initial={mode === 'docked' ? {
@@ -100,17 +93,10 @@ export const ControlPanel = ({
             </div>
           </PanelSection>}
 
-        {/* Visualization Controls Section */}
-        {openSections.visualization && filters && onFilterChange && (
-          <VisualizationControlsSection
-            filters={filters}
-            onFilterChange={onFilterChange}
-            isOpen={true}
-          />
-        )}
+        {/* Visualization Controls Section - REMOVIDO */}
         
         {/* Separador */}
-        {(openSections.codex || openSections.visualization) && (openSections.legend || openSections.future) && <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent relative">
+        {openSections.codex && (openSections.legend || openSections.future) && <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-primary/50 to-transparent relative">
             <div className="absolute left-1/2 -translate-x-1/2 -top-1 w-2 h-2 bg-primary rounded-full animate-pulse" />
           </div>}
         

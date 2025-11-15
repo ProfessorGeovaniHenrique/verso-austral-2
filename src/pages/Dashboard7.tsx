@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stars } from '@react-three/drei';
-import { SpaceNavigationConsole } from '@/components/SpaceNavigationConsole';
+import { SpaceNavigationHub } from '@/components/SpaceNavigationHub';
 import { FilterPanel } from '@/components/FilterPanel';
 import { ControlPanel } from '@/components/ControlPanel/ControlPanel';
 import { ControlToolbar } from '@/components/ControlPanel/ControlToolbar';
@@ -80,7 +80,6 @@ export default function Dashboard7() {
   const { domains, connections, filters, setFilters, resetFilters } = useFogPlanetData();
 
   // Estados de UI
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [isConsoleMinimized, setIsConsoleMinimized] = useState(false);
   const [autoRotate, setAutoRotate] = useState(true);
@@ -92,7 +91,6 @@ export default function Dashboard7() {
   const [codexState, setCodexState] = useState<'auto-open' | 'closed' | 'pinned'>('auto-open');
   const [openSections, setOpenSections] = useState({
     codex: true,
-    visualization: true,
     legend: false,
     future: false,
   });
@@ -188,22 +186,12 @@ export default function Dashboard7() {
 
   return (
     <div className="relative w-full h-screen bg-gradient-to-br from-slate-950 to-emerald-950 overflow-hidden">
-      {/* SpaceNavigationConsole - Superior Centralizado */}
-      <SpaceNavigationConsole 
+      {/* SpaceNavigationHub - Hub Central */}
+      <SpaceNavigationHub
         level={navigationLevel}
         selectedDomain={selectedDomain}
         onNavigate={handleNavigate}
-        onFilterChange={handleFilterChange}
         onReset={handleReset}
-        isFilterPanelOpen={isFilterPanelOpen}
-        onToggleFilterPanel={() => setIsFilterPanelOpen(prev => !prev)}
-        activeFilterCount={activeFilterCount}
-      />
-
-      {/* FilterPanel - Lateral Esquerdo Deslizante */}
-      <FilterPanel
-        isOpen={isFilterPanelOpen}
-        onToggle={() => setIsFilterPanelOpen(prev => !prev)}
         filters={{
           minFrequency: filters.minFrequency,
           prosody: additionalFilters.prosody,
@@ -211,7 +199,14 @@ export default function Dashboard7() {
           searchQuery: additionalFilters.searchQuery,
         }}
         onFilterChange={handleFilterChange}
-        availableDomains={domains.map(d => ({ label: d.dominio, color: d.cor, corTexto: d.corTexto }))}
+        activeFilterCount={activeFilterCount}
+        availableDomains={domains.map(d => ({ 
+          label: d.dominio, 
+          color: d.cor, 
+          corTexto: d.corTexto 
+        }))}
+        visualizationFilters={filters}
+        onVisualizationFilterChange={setFilters}
       />
 
       {/* Canvas 3D - Área Central */}
@@ -288,13 +283,11 @@ export default function Dashboard7() {
             hoveredNode={hoveredNode}
             level={navigationLevel}
             codexState={codexState}
-            onMouseEnter={handleCodexMouseEnter}
-            onMouseLeave={handleCodexMouseLeave}
-            openSections={openSections}
-            onMinimize={handleMinimizeConsole}
-            filters={filters}
-            onFilterChange={setFilters}
-          />
+          onMouseEnter={handleCodexMouseEnter}
+          onMouseLeave={handleCodexMouseLeave}
+          openSections={openSections}
+          onMinimize={handleMinimizeConsole}
+        />
         </div>
 
         {/* ControlToolbar - Sempre Visível */}
