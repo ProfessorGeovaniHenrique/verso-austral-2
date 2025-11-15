@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { SemanticDomainCloud } from "@/components/v3/SemanticDomainCloud";
 import { StatisticalFooter } from "@/components/v3/StatisticalFooter";
 import { KWICModal } from "@/components/KWICModal";
 import { useSemanticCloudData, CloudNode } from "@/hooks/useSemanticCloudData";
 import { kwicDataMap } from "@/data/mockup/kwic";
+import { Link } from "react-router-dom";
+import { Sparkles } from "lucide-react";
 
 export default function Dashboard3() {
   const [activeTab, setActiveTab] = useState("galaxy");
@@ -35,13 +38,21 @@ export default function Dashboard3() {
   return (
     <div className="container mx-auto p-6 space-y-6 max-w-[1600px]">
       {/* Header */}
-      <header className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-          Análise de Domínios Semânticos
-        </h1>
-        <p className="text-muted-foreground">
-          Visualização orbital interativa - Arquitetura otimizada v3
-        </p>
+      <header className="flex items-center justify-between">
+        <div className="space-y-2">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
+            Análise de Domínios Semânticos
+          </h1>
+          <p className="text-muted-foreground">
+            Visualização orbital interativa - Canvas 2D otimizado
+          </p>
+        </div>
+        <Link to="/dashboard4">
+          <Button variant="outline" className="border-purple-500/50 hover:bg-purple-500/10">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Ver versão 3D (Three.js)
+          </Button>
+        </Link>
       </header>
 
       {/* Tabs de Navegação */}

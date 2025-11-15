@@ -26,6 +26,7 @@ const mainItems = [
 
 const projectItems = [
   { title: "Análise de Estilística de Corpus", url: "/dashboard2", icon: FileText },
+  { title: "Nuvem Semântica 3D (Three.js)", url: "/dashboard4", icon: Sparkles },
 ];
 
 const advancedItems = [
