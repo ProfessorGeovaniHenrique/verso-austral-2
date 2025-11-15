@@ -409,7 +409,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const navigateToLevel = useCallback((targetLevel: NavigationLevel) => {
     if (!sigmaRef.current || !graphRef.current) return;
     
-    console.log('Navigating to level:', targetLevel);
+    console.log('🚀 Navigating to level:', targetLevel, 'selectedDomain:', selectedDomainRef.current);
     
     // Atualiza refs (FASE 1: evita stale closure)
     levelRef.current = targetLevel;
@@ -425,17 +425,23 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       if (!graphRef.current) return;
       
       const graph = graphRef.current;
+      let newGraph;
       
       // Reconstrói o grafo baseado no novo nível
       if (targetLevel === 'universe') {
-        const newGraph = buildUniverseView();
-        graph.clear();
-        graph.import(newGraph.export());
+        newGraph = buildUniverseView();
+      } else if (targetLevel === 'galaxy') {
+        newGraph = buildGalaxyView();
+      } else if (targetLevel === 'stellar-system' && selectedDomainRef.current) {
+        newGraph = buildStellarSystemView(selectedDomainRef.current);
       } else {
-        const newGraph = buildGalaxyView();
-        graph.clear();
-        graph.import(newGraph.export());
+        console.error('❌ Invalid navigation state!');
+        container.style.opacity = '1';
+        return;
       }
+      
+      graph.clear();
+      graph.import(newGraph.export());
       
       // Animação de fade in + zoom
       if (sigmaRef.current) {
@@ -444,7 +450,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         sigmaRef.current.getCamera().animate({ x: 0.5, y: 0.5, ratio: 0.8 }, { duration: 800 });
       }
     }, 300);
-  }, [buildUniverseView, buildGalaxyView]);
+  }, [buildUniverseView, buildGalaxyView, buildStellarSystemView]);
 
   // Inicializar Sigma.js (executa UMA VEZ)
   useEffect(() => {
@@ -949,49 +955,11 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
           }))}
         />
         
-        {/* Breadcrumb Navigation */}
-        <div className="absolute top-4 left-4 z-40 flex items-center gap-2 bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-cyan-500/30">
-          <button
-            onClick={() => navigateToLevel('universe')}
-            className={`text-xs font-mono transition-colors ${
-              level === 'universe' 
-                ? 'text-cyan-400 font-bold cursor-default' 
-                : 'text-white/60 hover:text-white cursor-pointer'
-            }`}
-            disabled={level === 'universe'}
-          >
-            🌌 UNIVERSO
-          </button>
-          {(level === 'galaxy' || level === 'stellar-system') && (
-            <>
-              <span className="text-cyan-500/50 text-xs">›</span>
-              <button
-                onClick={() => navigateToLevel('galaxy')}
-                className={`text-xs font-mono transition-colors ${
-                  level === 'galaxy' 
-                    ? 'text-cyan-400 font-bold cursor-default' 
-                    : 'text-white/60 hover:text-white cursor-pointer'
-                }`}
-                disabled={level === 'galaxy'}
-              >
-                🌀 GALÁXIA
-              </button>
-            </>
-          )}
-          {level === 'stellar-system' && selectedDomain && (
-            <>
-              <span className="text-cyan-500/50 text-xs">›</span>
-              <span className="text-cyan-400 font-bold text-xs font-mono cursor-default">
-                ⭐ {selectedDomain.toUpperCase()}
-              </span>
-            </>
-          )}
-        </div>
-        
         {/* Navigation Console - Fixed no topo */}
         <div className="absolute top-0 left-0 right-0 z-30">
           <SpaceNavigationConsole
             level={level}
+            selectedDomain={selectedDomain}
             onNavigate={navigateToLevel}
             onFilterChange={setActiveFilters}
             onReset={() => {

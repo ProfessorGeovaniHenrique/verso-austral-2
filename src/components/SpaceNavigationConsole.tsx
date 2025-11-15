@@ -6,6 +6,7 @@ import { RotateCcw, Orbit, Star, CircleDot, Settings } from "lucide-react";
 
 interface SpaceNavigationConsoleProps {
   level: 'universe' | 'galaxy' | 'stellar-system';
+  selectedDomain?: string | null;
   onNavigate: (level: 'universe' | 'galaxy' | 'stellar-system') => void;
   onFilterChange: (filters: any) => void;
   onReset: () => void;
@@ -16,6 +17,7 @@ interface SpaceNavigationConsoleProps {
 
 export const SpaceNavigationConsole = ({
   level,
+  selectedDomain,
   onNavigate,
   onFilterChange,
   onReset,
@@ -24,7 +26,7 @@ export const SpaceNavigationConsole = ({
   activeFilterCount = 0
 }: SpaceNavigationConsoleProps) => {
   return (
-    <div className="absolute left-1/2 -translate-x-1/2 z-50 flex gap-6 items-center px-6 py-4 rounded-2xl border-2 backdrop-blur-xl"
+    <div className="absolute left-1/2 -translate-x-1/2 z-50 flex flex-col gap-4 px-6 py-4 rounded-2xl border-2 backdrop-blur-xl"
          style={{
            top: '10px',
            background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.85))',
@@ -32,6 +34,46 @@ export const SpaceNavigationConsole = ({
            boxShadow: '0 0 30px rgba(0, 229, 255, 0.3), inset 0 0 20px rgba(0, 229, 255, 0.1)'
          }}>
       
+      {/* Breadcrumb Navigation */}
+      <div className="flex items-center gap-2 px-2 py-1.5 bg-black/40 rounded border border-cyan-500/20">
+        <button
+          onClick={() => onNavigate('universe')}
+          className={`text-[10px] font-mono transition-colors ${
+            level === 'universe' 
+              ? 'text-cyan-400 font-bold cursor-default' 
+              : 'text-white/60 hover:text-white cursor-pointer'
+          }`}
+          disabled={level === 'universe'}
+        >
+          🌌 UNIVERSO
+        </button>
+        {(level === 'galaxy' || level === 'stellar-system') && (
+          <>
+            <span className="text-cyan-500/50 text-[10px]">›</span>
+            <button
+              onClick={() => onNavigate('galaxy')}
+              className={`text-[10px] font-mono transition-colors ${
+                level === 'galaxy' 
+                  ? 'text-cyan-400 font-bold cursor-default' 
+                  : 'text-white/60 hover:text-white cursor-pointer'
+              }`}
+              disabled={level === 'galaxy'}
+            >
+              🌀 GALÁXIA
+            </button>
+          </>
+        )}
+        {level === 'stellar-system' && selectedDomain && (
+          <>
+            <span className="text-cyan-500/50 text-[10px]">›</span>
+            <span className="text-cyan-400 font-bold text-[10px] font-mono cursor-default">
+              ⭐ {selectedDomain.toUpperCase()}
+            </span>
+          </>
+        )}
+      </div>
+      
+      <div className="flex gap-6 items-center">
       {/* Botão de Filtros */}
       {onToggleFilterPanel && (
         <div className="relative">
@@ -93,6 +135,7 @@ export const SpaceNavigationConsole = ({
             GALÁXIA
           </Button>
         </div>
+      </div>
       </div>
     </div>
   );
