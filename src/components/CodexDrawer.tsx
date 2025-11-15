@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
+import { prosodiaSemanticaData } from '@/data/mockup';
+import { Smile, Frown, Minus } from 'lucide-react';
 
 interface CodexDrawerProps {
   word?: {
@@ -428,6 +431,82 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
               </div>
             )}
 
+            {/* 4. PROSÓDIA SEMÂNTICA */}
+            {displayWord && (() => {
+              const prosodiaInfo = prosodiaSemanticaData.find(
+                p => p.lema.toLowerCase() === displayWord.toLowerCase()
+              );
+              
+              if (!prosodiaInfo) return null;
+              
+              const getProsodyBadge = () => {
+                if (prosodiaInfo.prosody === 'Positiva') {
+                  return {
+                    icon: <Smile className="w-4 h-4" />,
+                    bg: 'bg-green-500/20',
+                    border: 'border-green-500',
+                    text: 'text-green-400',
+                    emoji: '🟢'
+                  };
+                }
+                if (prosodiaInfo.prosody === 'Negativa') {
+                  return {
+                    icon: <Frown className="w-4 h-4" />,
+                    bg: 'bg-red-500/20',
+                    border: 'border-red-500',
+                    text: 'text-red-400',
+                    emoji: '🔴'
+                  };
+                }
+                return {
+                  icon: <Minus className="w-4 h-4" />,
+                  bg: 'bg-gray-500/20',
+                  border: 'border-gray-500',
+                  text: 'text-gray-400',
+                  emoji: '⚪'
+                };
+              };
+              
+              const badge = getProsodyBadge();
+              
+              return (
+                <div className="bg-black/40 rounded-lg p-3 border border-purple-500/30">
+                  <div className="text-purple-300 text-[10px] font-mono mb-3 flex items-center gap-2">
+                    <span>💭</span>
+                    PROSÓDIA SEMÂNTICA
+                  </div>
+                  
+                  {/* Badge de Prosódia */}
+                  <div className={`${badge.bg} ${badge.border} border-2 rounded-lg p-3 mb-3`}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-2xl">{badge.emoji}</span>
+                      <div className="flex-1">
+                        <div className={`${badge.text} font-bold text-sm uppercase tracking-wide`}>
+                          {prosodiaInfo.prosody}
+                        </div>
+                        <div className="text-white/60 text-[9px] font-mono">
+                          Análise Contextual
+                        </div>
+                      </div>
+                      <div className={badge.text}>
+                        {badge.icon}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Justificativa */}
+                  <div className="bg-black/30 rounded p-2 border border-purple-500/20">
+                    <div className="text-purple-300/70 text-[9px] font-mono mb-1 uppercase">
+                      Justificativa:
+                    </div>
+                    <p className="text-white/90 text-xs leading-relaxed">
+                      {prosodiaInfo.justificativa}
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
         )}
 
@@ -472,14 +551,78 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
               </div>
             )}
 
-            {word?.prosody && (
-              <div className="bg-black/30 rounded-lg p-3 border border-cyan-500/20">
-                <div className="text-cyan-300 text-[10px] font-mono mb-1">Prosódia Semântica</div>
-                <div className={`font-bold text-sm uppercase tracking-wide ${getProsodyColor(word.prosody)}`}>
-                  {word.prosody}
+            {/* Prosódia Semântica Enriquecida */}
+            {displayWord && (() => {
+              const prosodiaInfo = prosodiaSemanticaData.find(
+                p => p.lema.toLowerCase() === displayWord.toLowerCase()
+              );
+              
+              if (!prosodiaInfo) return null;
+              
+              const getProsodyBadge = () => {
+                if (prosodiaInfo.prosody === 'Positiva') {
+                  return {
+                    icon: <Smile className="w-3 h-3" />,
+                    bg: 'bg-green-500/20',
+                    border: 'border-green-500',
+                    text: 'text-green-400',
+                    emoji: '🟢'
+                  };
+                }
+                if (prosodiaInfo.prosody === 'Negativa') {
+                  return {
+                    icon: <Frown className="w-3 h-3" />,
+                    bg: 'bg-red-500/20',
+                    border: 'border-red-500',
+                    text: 'text-red-400',
+                    emoji: '🔴'
+                  };
+                }
+                return {
+                  icon: <Minus className="w-3 h-3" />,
+                  bg: 'bg-gray-500/20',
+                  border: 'border-gray-500',
+                  text: 'text-gray-400',
+                  emoji: '⚪'
+                };
+              };
+              
+              const badge = getProsodyBadge();
+              
+              return (
+                <div className="bg-black/40 rounded-lg p-3 border border-purple-500/30">
+                  <div className="text-purple-300 text-[10px] font-mono mb-2 flex items-center gap-2">
+                    <span>💭</span>
+                    PROSÓDIA SEMÂNTICA
+                  </div>
+                  
+                  {/* Badge de Prosódia */}
+                  <div className={`${badge.bg} ${badge.border} border-2 rounded-lg p-2 mb-2`}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xl">{badge.emoji}</span>
+                      <div className="flex-1">
+                        <div className={`${badge.text} font-bold text-xs uppercase tracking-wide`}>
+                          {prosodiaInfo.prosody}
+                        </div>
+                      </div>
+                      <div className={badge.text}>
+                        {badge.icon}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Justificativa */}
+                  <div className="bg-black/30 rounded p-2 border border-purple-500/20">
+                    <div className="text-purple-300/70 text-[9px] font-mono mb-1 uppercase">
+                      Justificativa:
+                    </div>
+                    <p className="text-white/90 text-[10px] leading-relaxed">
+                      {prosodiaInfo.justificativa}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
       </div>
