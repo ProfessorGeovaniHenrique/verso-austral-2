@@ -225,12 +225,6 @@ export default function Dashboard5() {
               {/* Luz central para iluminar os FOGs por dentro */}
               <pointLight position={[0, 0, 0]} intensity={0.8} color="#ffffff" distance={40} decay={1.8} />
 
-              {/* 🔴 CUBO DE TESTE - Se este não aparecer, Three.js não está funcionando */}
-              <mesh position={[0, 0, 0]}>
-                <boxGeometry args={[2, 2, 2]} />
-                <meshStandardMaterial color="red" />
-              </mesh>
-
               {/* Background: Estrelas */}
               <Stars
                 radius={100}

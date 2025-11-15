@@ -1,14 +1,9 @@
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame, extend } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import { FogDomain as FogDomainType } from '@/data/types/fogPlanetVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
-import { FogShaderMaterial } from '@/shaders/FogShaderMaterial';
 import * as THREE from 'three';
-
-// Garantir que o material está registrado no R3F
-extend({ FogShaderMaterial });
 
 interface FogDomainProps {
   domain: FogDomainType;
@@ -19,7 +14,6 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
   // Refs
   const sphereRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
-  const materialRef = useRef<FogShaderMaterial>(null);
   
   // Store
   const hover = useInteractivityStore(selectHover);
@@ -28,25 +22,6 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
   // States
   const isHovered = hover.hoveredNodeId === domain.dominio;
   const isSelected = selectedDomainId === domain.dominio;
-  const shouldPulse = domain.comparacaoCorpus === 'super-representado';
-  
-  // Animação temporal via shader
-  useFrame((state) => {
-    if (materialRef.current) {
-      // Atualizar tempo para noise e pulsação
-      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
-      
-      // Hover intensity
-      materialRef.current.uniforms.uHoverIntensity.value = isHovered ? 1.0 : 0.0;
-      
-      // Pulsação dinâmica (aumenta velocidade se super-representado)
-      if (shouldPulse) {
-        materialRef.current.uniforms.uPulsationSpeed.value = domain.pulsationSpeed * 1.5;
-      } else {
-        materialRef.current.uniforms.uPulsationSpeed.value = domain.pulsationSpeed;
-      }
-    }
-  });
   
   // Opacidade contextual
   const finalOpacity = useMemo(() => {
@@ -74,43 +49,24 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
       sphereRef.current.userData.nodeId = domain.dominio;
       sphereRef.current.userData.nodeType = 'domain';
     }
-    
-    // 🔴 DIAGNÓSTICO: Log da posição e propriedades do FOG
-    console.log(`[FOG DIAGNÓSTICO] ${domain.dominio}:`, {
-      position: domain.position,
-      fogRadius: domain.fogRadius,
-      color: domain.cor,
-      baseOpacity: domain.baseOpacity,
-      finalOpacity,
-      isVisible: sphereRef.current?.visible,
-      geometryExists: sphereRef.current?.geometry ? 'SIM' : 'NÃO',
-      materialExists: materialRef.current ? 'SIM' : 'NÃO'
-    });
-  }, [domain.dominio, domain.position, domain.fogRadius, domain.cor, domain.baseOpacity, finalOpacity]);
+  }, [domain.dominio]);
   
   return (
     <group ref={groupRef} position={domain.position}>
-      {/* FOG Sphere */}
+      {/* FOG Sphere - Material Nativo */}
       <mesh ref={sphereRef}>
-        <sphereGeometry args={[domain.fogRadius, 24, 24]} />
-        <fogShaderMaterial
-          ref={materialRef}
-          uColor={new THREE.Color(domain.cor)}
-          uEmissiveIntensity={domain.emissiveIntensity}
-          uOpacity={finalOpacity * domain.baseOpacity}
-          uPulsationSpeed={domain.pulsationSpeed}
-          uNoiseScale={domain.noiseScale}
-          uFresnelPower={2.5}
-          uCenterFade={0.4}
-          uNoiseIntensity={0.3}
-          uHoverIntensity={0.0}
+        <sphereGeometry args={[domain.fogRadius, 32, 32]} />
+        <meshStandardMaterial
+          color={domain.cor}
+          emissive={domain.cor}
+          emissiveIntensity={domain.emissiveIntensity * (isHovered ? 1.5 : 1.0)}
+          transparent
+          opacity={finalOpacity * domain.baseOpacity}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          roughness={0.8}
+          metalness={0.2}
         />
-      </mesh>
-
-      {/* 🔴 WIREFRAME DE DIAGNÓSTICO - Ver se a geometria existe */}
-      <mesh>
-        <sphereGeometry args={[domain.fogRadius, 16, 16]} />
-        <meshBasicMaterial color="yellow" wireframe opacity={0.3} transparent />
       </mesh>
       
       {/* Selection Ring */}

@@ -83,14 +83,14 @@ function calculateFogProperties(
   // Pulsação mais rápida para domínios super-representados
   const pulsationSpeed = domainData.comparacaoCorpus === 'super-representado' ? 0.4 : 0.25;
   
-  // Intensidade do brilho baseada na frequência normalizada
-  const emissiveIntensity = 0.5 + (domainData.frequenciaNormalizada / 100) * 0.5; // 0.5 a 1.0 (mais brilhante)
+  // Intensidade do brilho aumentada para material nativo (sem fresnel)
+  const emissiveIntensity = domainData.comparacaoCorpus === 'super-representado' ? 1.8 : 1.5;
   
   // Escala do noise (turbulência da nuvem)
   const noiseScale = 1.5 + Math.random() * 0.5; // 1.5 a 2.0 (variação visual)
   
-  // Opacidade base (aumentada para melhor visibilidade)
-  const baseOpacity = 0.75 + (domainData.percentualTematico / 100) * 0.25; // 0.75 a 1.0
+  // Opacidade base ajustada para material nativo
+  const baseOpacity = 0.85 + (domainData.percentualTematico / 100) * 0.15; // 0.85 a 1.0
   
   return {
     fogRadius,
