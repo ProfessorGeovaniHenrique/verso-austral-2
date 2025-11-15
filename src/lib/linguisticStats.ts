@@ -142,30 +142,44 @@ export function calculateWordMIScore(
  * @param frequency - Frequência bruta da palavra
  * @returns Objeto com camada, raio base e limites
  */
+/**
+ * Distribui palavras em camadas baseado em frequência usando FATORES RELATIVOS
+ * ao fogRadius do domínio (alinha com camadas da FOG)
+ */
 export function frequencyToOrbitalLayer(frequency: number): {
   layer: number;
-  radius: number;
-  minRadius: number;
-  maxRadius: number;
+  radiusFactor: number;
+  minRadiusFactor: number;
+  maxRadiusFactor: number;
 } {
-  // Mapear frequência BRUTA para camadas (corpus gaúcho: 1-28)
-  // Camadas bem espaçadas para evitar aglomeração
+  // Mapear para FATORES do fogRadius (alinhar com camadas da FOG)
   const layers = [
-    { layer: 1, minFreq: 15, radius: 2.5, spread: 1.0 },  // Muito frequente: 2.0-3.0
-    { layer: 2, minFreq: 10, radius: 4.0, spread: 1.0 },  // Frequente: 3.5-4.5
-    { layer: 3, minFreq: 6,  radius: 6.0, spread: 1.2 },  // Médio-alto: 5.4-6.6
-    { layer: 4, minFreq: 4,  radius: 8.0, spread: 1.4 },  // Médio: 7.3-8.7
-    { layer: 5, minFreq: 2,  radius: 10.0, spread: 1.6 }, // Baixo: 9.2-10.8
-    { layer: 6, minFreq: 0,  radius: 12.5, spread: 2.0 }, // Muito baixo: 11.5-13.5
+    // Camada 1: Entre FOG Core (0.7x) e Mid (1.0x)
+    { layer: 1, minFreq: 15, radiusFactor: 0.85, spread: 0.15 },  // 0.775-0.925
+    
+    // Camada 2: Entre Mid (1.0x) e Atmosphere (1.4x)
+    { layer: 2, minFreq: 10, radiusFactor: 1.2, spread: 0.2 },    // 1.1-1.3
+    
+    // Camada 3: Na Atmosphere (1.4x)
+    { layer: 3, minFreq: 6,  radiusFactor: 1.6, spread: 0.3 },    // 1.45-1.75
+    
+    // Camada 4: Além da Atmosphere
+    { layer: 4, minFreq: 4,  radiusFactor: 2.1, spread: 0.4 },    // 1.9-2.3
+    
+    // Camada 5: Região externa
+    { layer: 5, minFreq: 2,  radiusFactor: 2.8, spread: 0.5 },    // 2.55-3.05
+    
+    // Camada 6: Borda do sistema
+    { layer: 6, minFreq: 0,  radiusFactor: 3.8, spread: 0.7 },    // 3.45-4.15
   ];
   
   const layerData = layers.find(l => frequency >= l.minFreq) || layers[5];
   
   return {
     layer: layerData.layer,
-    radius: layerData.radius,
-    minRadius: layerData.radius - layerData.spread / 2,
-    maxRadius: layerData.radius + layerData.spread / 2,
+    radiusFactor: layerData.radiusFactor,
+    minRadiusFactor: layerData.radiusFactor - layerData.spread / 2,
+    maxRadiusFactor: layerData.radiusFactor + layerData.spread / 2,
   };
 }
 

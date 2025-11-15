@@ -217,8 +217,13 @@ export default function Dashboard7() {
         camera={{ position: [0, 8, 35], fov: 60 }}
       >
         <color attach="background" args={['#0a0e1a']} />
-        <ambientLight intensity={0.3} />
+        
+        {/* ✅ Iluminação Melhorada */}
+        <ambientLight intensity={0.4} />
+        <directionalLight position={[10, 10, 10]} intensity={0.8} color="#ffffff" />
+        <directionalLight position={[-10, -5, -10]} intensity={0.3} color="#6699ff" />
         <pointLight position={[10, 10, 10]} intensity={0.8} />
+        
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
 
         {/* Controlador de Câmera Animado */}
@@ -270,8 +275,18 @@ export default function Dashboard7() {
             ))
         )}
 
-        {/* ProsodySectorGuide - Guia visual de setores de prosódia */}
-        <ProsodySectorGuide visible={filters.showLabels} />
+        {/* ProsodySectorGuide - Guia visual de setores de prosódia (RELATIVO ao domínio) */}
+        <ProsodySectorGuide 
+          visible={filters.showLabels}
+          domainFogRadius={
+            selectedDomain && visibleDomains.length > 0
+              ? (() => {
+                  const domain = visibleDomains.find(d => d.dominio === selectedDomain);
+                  return domain ? domain.fogRadius : 2.0;
+                })()
+              : 2.0
+          }
+        />
       </Canvas>
 
       {/* RightControlPanel - Lateral Direito */}

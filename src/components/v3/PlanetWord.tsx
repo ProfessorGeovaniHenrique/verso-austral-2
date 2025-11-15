@@ -42,6 +42,15 @@ export function PlanetWord({
   // Sempre carregar a textura (useTexture faz cache automaticamente)
   const texture = useTexture(word.planetTexture) as THREE.Texture;
   
+  // Configurar textura para cobrir 360°
+  useEffect(() => {
+    if (texture) {
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      texture.needsUpdate = true;
+    }
+  }, [texture]);
+  
   // Converter cor HSL para THREE.Color
   const domainColorObj = useMemo(() => new THREE.Color(domainColor), [domainColor]);
   
@@ -135,7 +144,7 @@ export function PlanetWord({
   
   return (
     <animated.group ref={groupRef} scale={springProps.scale}>
-      {/* Planeta com Material Nativo */}
+      {/* Planeta com Material Corrigido */}
       <mesh 
         ref={meshRef}
         renderOrder={10}
@@ -173,15 +182,40 @@ export function PlanetWord({
           gl.domElement.style.cursor = 'default';
         }}
       >
-        <sphereGeometry args={[planetRadius, 24, 24]} />
+        <sphereGeometry args={[planetRadius, 64, 64]} />
         <meshStandardMaterial
           map={texture}
+          
+          // ✅ Colorir via color (preserva textura)
+          color={isHovered ? '#ffffff' : domainColor}
+          
+          // ✅ Profundidade 3D
+          roughness={0.9}
+          metalness={0.1}
+          
+          // ✅ Bump map para relevo
+          bumpMap={texture}
+          bumpScale={0.02}
+          
+          // Opacidade
           transparent
           opacity={finalOpacity}
-          emissive={domainColorObj}
-          emissiveIntensity={isHovered ? 0.4 : 0.2}
-          roughness={0.7}
-          metalness={0.3}
+          
+          // ✅ Wrap para 360°
+          map-wrapS={THREE.RepeatWrapping}
+          map-wrapT={THREE.RepeatWrapping}
+        />
+      </mesh>
+      
+      {/* ✅ Glow Ring para prosódia (ao invés de emissive) */}
+      <mesh>
+        <sphereGeometry args={[planetRadius * 1.05, 32, 32]} />
+        <meshBasicMaterial
+          color={domainColor}
+          transparent
+          opacity={isHovered ? 0.3 : 0.15}
+          depthWrite={false}
+          side={THREE.BackSide}
         />
       </mesh>
       
