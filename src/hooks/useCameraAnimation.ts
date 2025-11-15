@@ -44,8 +44,8 @@ export function useCameraAnimation({
     timeline.then(() => {
       setCameraAnimating(false);
     });
-    
-  }, [selectedDomainId, nodes, camera, scene, setCameraAnimating]);
+    // Nota: setCameraAnimating é estável do Zustand
+  }, [selectedDomainId, nodes, camera, scene]);
   
   // Reset de câmera
   useEffect(() => {
@@ -64,8 +64,8 @@ export function useCameraAnimation({
     timeline.then(() => {
       setCameraAnimating(false);
     });
-    
-  }, [cameraState.shouldReset, camera, scene, defaultCameraPosition, defaultCameraTarget, setCameraAnimating]);
+    // Nota: setCameraAnimating é estável do Zustand
+  }, [cameraState.shouldReset, camera, scene, defaultCameraPosition, defaultCameraTarget]);
   
   return {
     controlsTarget: controlsTargetRef.current,

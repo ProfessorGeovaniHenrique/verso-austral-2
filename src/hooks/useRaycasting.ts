@@ -93,7 +93,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       hideTooltip();
       gl.domElement.style.cursor = 'default';
     }
-  }, [enabled, nodes, camera, scene, gl, raycaster, showTooltip, hideTooltip, setHoveredNode]);
+    // Nota: funções do Zustand (showTooltip, hideTooltip, setHoveredNode) são estáveis e não precisam estar nas dependências
+  }, [enabled, nodes, camera, scene, gl, raycaster]);
   
   // Handler de click
   const handleClick = useCallback((event: MouseEvent) => {
@@ -131,7 +132,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       // Domínio: zoom (será tratado pelo useCameraAnimation)
       // A lógica de zoom está no componente principal
     }
-  }, [openModal]);
+    // Nota: openModal é estável do Zustand
+  }, []);
   
   // Criar dados do tooltip a partir do nó
   const createTooltipData = (node: VisualNode) => {
@@ -192,7 +194,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       setHoveredNode(null, null);
       gl.domElement.style.cursor = 'default';
     };
-  }, [enabled, handleMouseMove, handleClick, gl, hideTooltip, setHoveredNode]);
+    // Nota: hideTooltip e setHoveredNode são estáveis do Zustand, não precisam estar nas dependências
+  }, [enabled, handleMouseMove, handleClick, gl]);
   
   return {
     // Expor para uso externo se necessário
