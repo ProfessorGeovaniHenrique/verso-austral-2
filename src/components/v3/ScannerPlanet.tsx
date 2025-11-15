@@ -11,13 +11,17 @@ interface ScannerPlanetProps {
   isOrbitalView?: boolean;
   onProbeClick?: (probe: ScannerProbeType) => void;
   selectedProbeId?: string | null;
+  onClick?: () => void;
+  onHover?: (isHovering: boolean) => void;
 }
 
 export function ScannerPlanet({ 
   planet, 
   isOrbitalView = false, 
   onProbeClick,
-  selectedProbeId 
+  selectedProbeId,
+  onClick,
+  onHover
 }: ScannerPlanetProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
@@ -39,7 +43,12 @@ export function ScannerPlanet({
   return (
     <group position={planet.position}>
       {/* Esfera principal com textura 2K */}
-      <mesh ref={meshRef}>
+      <mesh 
+        ref={meshRef}
+        onClick={onClick}
+        onPointerEnter={() => onHover?.(true)}
+        onPointerLeave={() => onHover?.(false)}
+      >
         <sphereGeometry args={[planet.radius, 64, 64]} />
         <meshStandardMaterial
           map={texture}

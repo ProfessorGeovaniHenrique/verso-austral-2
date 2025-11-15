@@ -1,9 +1,16 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { dominiosData } from '@/data/mockup/dominios';
 import { prosodiasMap } from '@/data/mockup/prosodias-map';
 import { selectTextureForDomain } from '@/data/planetTextureMapping';
 import { scannerTextures } from '@/assets/planets/scanner';
 import type { ScannerPlanet, ScannerProbe } from '@/data/types/scannerVisualization.types';
+
+export interface ScannerFilters {
+  minFrequency: number;
+  prosody: string[];
+  domains: string[];
+  searchQuery: string;
+}
 
 /**
  * Algoritmo Fibonacci Sphere para distribuição uniforme de pontos em esfera
@@ -50,7 +57,15 @@ function latLonToCartesian(
  * Hook para converter dados semânticos em estrutura de Scanner
  */
 export function useScannerData() {
-  const planets = useMemo<ScannerPlanet[]>(() => {
+  const [filters, setFilters] = useState<ScannerFilters>({
+    minFrequency: 0,
+    prosody: [],
+    domains: [],
+    searchQuery: '',
+  });
+
+  // Gerar todos os planetas
+  const allPlanets = useMemo<ScannerPlanet[]>(() => {
     const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5 graus
     
     return dominiosData.map((dominio, index) => {
@@ -115,5 +130,56 @@ export function useScannerData() {
     });
   }, []);
 
-  return { planets };
+  // Aplicar filtros aos planetas
+  const filteredPlanets = useMemo(() => {
+    return allPlanets.filter(planet => {
+      // Filtro de domínios selecionados
+      if (filters.domains.length > 0 && !filters.domains.includes(planet.name)) {
+        return false;
+      }
+      
+      // Filtro de busca por palavra
+      if (filters.searchQuery) {
+        const query = filters.searchQuery.toLowerCase();
+        const hasMatchingWord = planet.probes.some(probe => 
+          probe.word.toLowerCase().includes(query)
+        );
+        if (!hasMatchingWord) return false;
+      }
+
+      return true;
+    }).map(planet => ({
+      ...planet,
+      probes: planet.probes.filter(probe => {
+        // Filtro de frequência mínima
+        if (filters.minFrequency > 0 && probe.frequency < filters.minFrequency) {
+          return false;
+        }
+        
+        // Filtro de prosódia
+        if (filters.prosody.length > 0 && !filters.prosody.includes(probe.prosody)) {
+          return false;
+        }
+
+        return true;
+      })
+    }));
+  }, [allPlanets, filters]);
+
+  const resetFilters = useCallback(() => {
+    setFilters({
+      minFrequency: 0,
+      prosody: [],
+      domains: [],
+      searchQuery: '',
+    });
+  }, []);
+
+  return { 
+    planets: filteredPlanets,
+    allPlanets,
+    filters,
+    setFilters,
+    resetFilters,
+  };
 }
