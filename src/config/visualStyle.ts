@@ -3,6 +3,24 @@
  * Cores, efeitos e temas visuais
  */
 
+export const SCI_FI_COLORS = {
+  cyan: '#00d9ff',
+  cyanDark: '#004466',
+  neonGreen: '#00ff88',
+  neonMagenta: '#ff0055',
+  neonBlue: '#0088ff',
+  gridPrimary: 'rgba(0, 68, 102, 0.15)',
+  gridSecondary: 'rgba(0, 217, 255, 0.05)',
+  hudBackground: 'rgba(10, 14, 39, 0.8)',
+  glowShadow: '0 0 20px rgba(0, 217, 255, 0.6)',
+};
+
+export const PROBE_COLORS = {
+  Positiva: '#00ff88',
+  Negativa: '#ff0055',
+  Neutra: '#00d9ff',
+};
+
 export const COSMIC_STYLE = {
   // Cores por status de comparação
   domainColors: {

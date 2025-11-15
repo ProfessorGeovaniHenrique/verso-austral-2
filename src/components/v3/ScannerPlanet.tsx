@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { LatLongGrid } from './LatLongGrid';
-import { ScannerProbe } from './ScannerProbe';
+import { HolographicBeaconProbe } from './HolographicBeaconProbe';
 import type { ScannerPlanet as ScannerPlanetType, ScannerProbe as ScannerProbeType } from '@/data/types/scannerVisualization.types';
 
 interface ScannerPlanetProps {
@@ -64,10 +64,10 @@ export function ScannerPlanet({
 
       {/* Probes (apenas em orbital view) */}
       {isOrbitalView && onProbeClick && planet.probes.map((probe) => (
-        <ScannerProbe
+        <HolographicBeaconProbe
           key={probe.id}
           probe={probe}
-          onClick={onProbeClick}
+          onClick={() => onProbeClick(probe)}
           isActive={probe.id === selectedProbeId}
         />
       ))}

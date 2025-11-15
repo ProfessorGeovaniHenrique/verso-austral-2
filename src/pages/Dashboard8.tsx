@@ -7,6 +7,14 @@ import { ControlToolbar } from '@/components/ControlPanel/ControlToolbar';
 import { KWICModal } from '@/components/KWICModal';
 import { Starfield8K } from '@/components/v3/Starfield8K';
 import { ScannerPlanet } from '@/components/v3/ScannerPlanet';
+import { OrbitalRings } from '@/components/v3/OrbitalRings';
+import { CoordinateGrid } from '@/components/v3/CoordinateGrid';
+import { ScanWaveEffect } from '@/components/v3/ScanWaveEffect';
+import { PlanetLabel } from '@/components/v3/PlanetLabel';
+import { ScannerHUD } from '@/components/hud/ScannerHUD';
+import { SystemStatusPanel } from '@/components/hud/SystemStatusPanel';
+import { TimelineFooter } from '@/components/hud/TimelineFooter';
+import { SideIconsPanel } from '@/components/hud/SideIconsPanel';
 import { useScannerData } from '@/hooks/useScannerData';
 import { useNavigationLevel } from '@/hooks/useNavigationLevel';
 import { toast } from 'sonner';
@@ -88,6 +96,11 @@ function Scene({
   onProbeClick,
   onNodeHover,
   selectedProbeId,
+  showGrid,
+  showOrbitalRings,
+  hoveredNode,
+  scanWaves,
+  setScanWaves,
 }: {
   navigationLevel: NavigationLevel;
   selectedDomain: string | null;
@@ -97,6 +110,11 @@ function Scene({
   onProbeClick: (probe: ScannerProbe) => void;
   onNodeHover: (node: any) => void;
   selectedProbeId: string | null;
+  showGrid: boolean;
+  showOrbitalRings: boolean;
+  hoveredNode: any;
+  scanWaves: Array<{ id: string; position: [number, number, number]; color: string }>;
+  setScanWaves: React.Dispatch<React.SetStateAction<Array<{ id: string; position: [number, number, number]; color: string }>>>;
 }) {
   const selectedPlanet = selectedDomain
     ? planets.find(p => p.id === selectedDomain) || null
@@ -117,25 +135,53 @@ function Scene({
 
       <Starfield8K variant="milkyWay" radius={500} />
 
+      {/* Grid 3D */}
+      {navigationLevel === 'universe' && showGrid && <CoordinateGrid />}
+
+      {/* Órbitas planetárias */}
+      {navigationLevel === 'universe' && showOrbitalRings && (
+        <OrbitalRings planets={planets} />
+      )}
+
+      {/* Vista Universe: Todos os planetas */}
       {navigationLevel === 'universe' && planets.map((planet) => (
-        <group
-          key={planet.id}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPlanetClick(planet);
-          }}
-          onPointerOver={(e) => {
-            e.stopPropagation();
-            document.body.style.cursor = 'pointer';
-            onNodeHover({ ...planet, type: 'domain' });
-          }}
-          onPointerOut={() => {
-            document.body.style.cursor = 'default';
-            onNodeHover(null);
-          }}
-        >
-          <ScannerPlanet planet={planet} />
+        <group key={planet.id}>
+          <group
+            onClick={(e) => {
+              e.stopPropagation();
+              onPlanetClick(planet);
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              document.body.style.cursor = 'pointer';
+              onNodeHover({ ...planet, type: 'domain' });
+            }}
+            onPointerOut={() => {
+              document.body.style.cursor = 'default';
+              onNodeHover(null);
+            }}
+          >
+            <ScannerPlanet planet={planet} />
+          </group>
+          
+          {/* Label flutuante */}
+          <PlanetLabel 
+            planet={planet}
+            visible={!hoveredNode || hoveredNode.id !== planet.id}
+          />
         </group>
+      ))}
+
+      {/* Scan waves effects */}
+      {scanWaves.map(wave => (
+        <ScanWaveEffect
+          key={wave.id}
+          position={wave.position}
+          color={wave.color}
+          onComplete={() => {
+            setScanWaves(prev => prev.filter(w => w.id !== wave.id));
+          }}
+        />
       ))}
 
       {navigationLevel === 'galaxy' && selectedPlanet && (
@@ -178,11 +224,61 @@ export default function Dashboard8() {
     future: false,
   });
 
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [visualizationFilters, setVisualizationFilters] = useState({
+    showConnections: true,
+    showLabels: true,
+    showGrid: false,
+    showProbes: true,
+    fogIntensity: 0.5,
+    maxWords: 50,
+  });
+  
+  // Estados adicionais para visual effects
+  const [scanWaves, setScanWaves] = useState<Array<{
+    id: string;
+    position: [number, number, number];
+    color: string;
+  }>>([]);
+  const [showOrbitalRings, setShowOrbitalRings] = useState(true);
+  const [showGrid, setShowGrid] = useState(true);
+
   const activeFilterCount = 
     (filters.minFrequency > 0 ? 1 : 0) +
     filters.prosody.length +
     filters.domains.length +
     (filters.searchQuery ? 1 : 0);
+
+  // Cálculos para HUD
+  const calculateScanPercentage = useCallback(() => {
+    if (navigationLevel === 'universe') return 0;
+    const selectedPlanet = planets.find(p => p.id === selectedDomain);
+    if (!selectedPlanet) return 0;
+    
+    const scanned = selectedPlanet.probes.filter(p => p.isScanned).length;
+    const total = selectedPlanet.probes.length;
+    return total > 0 ? (scanned / total) * 100 : 0;
+  }, [navigationLevel, selectedDomain, planets]);
+
+  const getTotalWords = useCallback(() => {
+    return planets.reduce((sum, planet) => sum + planet.stats.totalWords, 0);
+  }, [planets]);
+
+  const navigateToPrevDomain = useCallback(() => {
+    if (navigationLevel !== 'universe') return;
+    const currentIndex = planets.findIndex(p => p.id === selectedDomain);
+    if (currentIndex > 0) {
+      navigateToGalaxy(planets[currentIndex - 1].id);
+    }
+  }, [navigationLevel, planets, selectedDomain, navigateToGalaxy]);
+
+  const navigateToNextDomain = useCallback(() => {
+    if (navigationLevel !== 'universe') return;
+    const currentIndex = planets.findIndex(p => p.id === selectedDomain);
+    if (currentIndex < planets.length - 1) {
+      navigateToGalaxy(planets[currentIndex + 1].id);
+    }
+  }, [navigationLevel, planets, selectedDomain, navigateToGalaxy]);
 
   const availableDomains = allPlanets.map(planet => ({
     label: planet.name,
@@ -199,6 +295,25 @@ export default function Dashboard8() {
   }, [navigationLevel, navigateToGalaxy]);
 
   const handleProbeClick = useCallback((probe: ScannerProbe) => {
+    // Disparar scan wave effect
+    const probeColors = {
+      Positiva: '#00ff88',
+      Negativa: '#ff0055',
+      Neutra: '#00d9ff',
+    };
+    
+    const waveId = `wave-${Date.now()}`;
+    setScanWaves(prev => [...prev, {
+      id: waveId,
+      position: probe.surfacePosition,
+      color: probeColors[probe.prosody],
+    }]);
+    
+    // Remover wave após 1.5s
+    setTimeout(() => {
+      setScanWaves(prev => prev.filter(w => w.id !== waveId));
+    }, 1500);
+    
     setSelectedProbeId(probe.id);
     setSelectedWordForModal(probe.word);
     setModalOpen(true);
@@ -307,8 +422,43 @@ export default function Dashboard8() {
           onProbeClick={handleProbeClick}
           onNodeHover={setHoveredNode}
           selectedProbeId={selectedProbeId}
+          showGrid={showGrid}
+          showOrbitalRings={showOrbitalRings}
+          hoveredNode={hoveredNode}
+          scanWaves={scanWaves}
+          setScanWaves={setScanWaves}
         />
       </Canvas>
+
+      {/* HUD Elements */}
+      <ScannerHUD
+        scanPercentage={calculateScanPercentage()}
+        totalProbes={planets.find(p => p.id === selectedDomain)?.probes.length || 0}
+        scannedProbes={planets.find(p => p.id === selectedDomain)?.probes.filter(p => p.isScanned).length || 0}
+      />
+
+      <SystemStatusPanel
+        level={navigationLevel}
+        planetsVisible={planets.length}
+        totalWords={getTotalWords()}
+      />
+
+      <TimelineFooter
+        isPaused={isPaused}
+        onTogglePause={() => setIsPaused(!isPaused)}
+        onPrevDomain={navigateToPrevDomain}
+        onNextDomain={navigateToNextDomain}
+        currentProgress={calculateScanPercentage()}
+      />
+
+      <SideIconsPanel
+        showOrbitalRings={showOrbitalRings}
+        onToggleOrbits={() => setShowOrbitalRings(!showOrbitalRings)}
+        onOpenSettings={() => setIsFilterPanelOpen(true)}
+        onOpenSearch={() => {
+          setIsFilterPanelOpen(true);
+        }}
+      />
 
       <div className="absolute right-0 top-0 h-full flex z-40">
         {!isConsoleMinimized && (
