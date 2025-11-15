@@ -1,5 +1,6 @@
 import { useRef, useMemo, useEffect } from 'react';
 import { Text } from '@react-three/drei';
+import { useThree } from '@react-three/fiber';
 import { useSpring, animated } from '@react-spring/three';
 import { FogDomain as FogDomainType } from '@/data/types/fogPlanetVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
@@ -14,6 +15,9 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
   // Refs
   const sphereRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
+  
+  // Three.js
+  const { gl } = useThree();
   
   // Store
   const hover = useInteractivityStore(selectHover);
@@ -53,15 +57,33 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
   
   return (
     <group ref={groupRef} position={domain.position}>
-      {/* FOG Sphere - Material Nativo */}
-      <mesh ref={sphereRef}>
-        <sphereGeometry args={[domain.fogRadius, 32, 32]} />
+      {/* FOG Core - Núcleo mais denso */}
+      <mesh 
+        ref={sphereRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          useInteractivityStore.getState().setSelectedDomain(
+            useInteractivityStore.getState().selectedDomainId === domain.dominio 
+              ? undefined 
+              : domain.dominio
+          );
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          gl.domElement.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          gl.domElement.style.cursor = 'default';
+        }}
+      >
+        <sphereGeometry args={[domain.fogRadius * 0.7, 32, 32]} />
         <meshStandardMaterial
           color={domain.cor}
           emissive={domain.cor}
-          emissiveIntensity={domain.emissiveIntensity * (isHovered ? 1.5 : 1.0)}
+          emissiveIntensity={domain.emissiveIntensity * (isHovered ? 1.8 : 1.2)}
           transparent
-          opacity={finalOpacity * domain.baseOpacity * 0.7}
+          opacity={finalOpacity * domain.baseOpacity * 0.6}
           depthWrite={false}
           side={THREE.DoubleSide}
           roughness={0.95}
@@ -69,15 +91,31 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
         />
       </mesh>
       
-      {/* FOG Atmosphere - Camada Externa Difusa */}
+      {/* FOG Mid-layer - Camada intermediária */}
       <mesh>
-        <sphereGeometry args={[domain.fogRadius * 1.3, 24, 24]} />
+        <sphereGeometry args={[domain.fogRadius, 24, 24]} />
         <meshStandardMaterial
           color={domain.cor}
           emissive={domain.cor}
-          emissiveIntensity={domain.emissiveIntensity * 0.5}
+          emissiveIntensity={domain.emissiveIntensity * 0.7}
           transparent
-          opacity={(finalOpacity * domain.baseOpacity) * 0.25}
+          opacity={(finalOpacity * domain.baseOpacity) * 0.35}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          roughness={1.0}
+          metalness={0.0}
+        />
+      </mesh>
+      
+      {/* FOG Atmosphere - Halo externo */}
+      <mesh>
+        <sphereGeometry args={[domain.fogRadius * 1.4, 16, 16]} />
+        <meshStandardMaterial
+          color={domain.cor}
+          emissive={domain.cor}
+          emissiveIntensity={domain.emissiveIntensity * 0.3}
+          transparent
+          opacity={(finalOpacity * domain.baseOpacity) * 0.15}
           depthWrite={false}
           side={THREE.DoubleSide}
           roughness={1.0}

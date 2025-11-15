@@ -53,15 +53,18 @@ function calculateDomainPosition(
   domainIndex: number, 
   totalDomains: number
 ): [number, number, number] {
-  // Distribuir em círculo no plano XZ com raio maior
-  const radius = 15;
+  const radius = 18; // Aumentar raio para maior espaçamento
   const angle = (domainIndex / totalDomains) * Math.PI * 2;
   
-  const x = Math.cos(angle) * radius;
-  const z = Math.sin(angle) * radius;
+  // Adicionar offset para evitar sobreposição exata
+  const angleOffset = (domainIndex % 2) * 0.3;
+  const finalAngle = angle + angleOffset;
   
-  // Variação vertical maior para espalhar em 3D
-  const y = Math.sin(domainIndex * 1.3) * 4;
+  const x = Math.cos(finalAngle) * radius;
+  const z = Math.sin(finalAngle) * radius;
+  
+  // Variação em Y para espalhar verticalmente
+  const y = Math.sin(domainIndex * 1.5) * 5;
   
   return [x, y, z];
 }

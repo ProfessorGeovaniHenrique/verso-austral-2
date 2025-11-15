@@ -1,8 +1,9 @@
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { Text, useTexture } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import { SemanticWord } from '@/data/types/fogPlanetVisualization.types';
+import { VisualWordNode } from '@/data/types/threeVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
 import * as THREE from 'three';
 
@@ -27,6 +28,9 @@ export function PlanetWord({
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   const orbitalAngleRef = useRef(word.orbitalAngle);
+  
+  // Three.js
+  const { gl } = useThree();
   
   // Store
   const hover = useInteractivityStore(selectHover);
@@ -111,7 +115,42 @@ export function PlanetWord({
   return (
     <animated.group ref={groupRef} scale={springProps.scale}>
       {/* Planeta com Material Nativo */}
-      <mesh ref={meshRef}>
+      <mesh 
+        ref={meshRef}
+        onClick={(e) => {
+          e.stopPropagation();
+          // Criar um VisualWordNode compatível a partir do SemanticWord
+          const visualNode: VisualWordNode = {
+            id: word.palavra,
+            label: word.palavra,
+            type: 'word',
+            position: [0, 0, 0], // Posição será calculada dinamicamente
+            scale: planetRadius,
+            color: domainColor,
+            opacity: finalOpacity,
+            baseOpacity: opacity,
+            glowIntensity: isHovered ? 0.4 : 0.2,
+            domain: word.dominio,
+            frequency: word.ocorrencias,
+            prosody: word.prosody,
+            rawData: {
+              text: word.palavra,
+              rawFrequency: word.ocorrencias,
+              normalizedFrequency: word.ocorrencias,
+              prosody: word.prosody
+            }
+          };
+          useInteractivityStore.getState().openModal(visualNode);
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation();
+          gl.domElement.style.cursor = 'pointer';
+        }}
+        onPointerOut={(e) => {
+          e.stopPropagation();
+          gl.domElement.style.cursor = 'default';
+        }}
+      >
         <sphereGeometry args={[planetRadius, 24, 24]} />
         <meshStandardMaterial
           map={texture}
