@@ -59,26 +59,30 @@ export function PlanetWord({
     return Math.max(calculatedSize, minSize);
   }, [word.ocorrencias]);
   
-  // Movimento orbital
+  // Movimento orbital em espiral
   useFrame((state, delta) => {
     if (groupRef.current) {
       // Atualizar ângulo orbital
       orbitalAngleRef.current += word.orbitalSpeed * delta;
       
-      // Calcular posição orbital elíptica
+      // Calcular posição orbital elíptica em espiral
       const a = word.orbitalRadius; // Semi-eixo maior
       const b = word.orbitalRadius * (1 - word.orbitalEccentricity); // Semi-eixo menor
       
-      const x = domainPosition[0] + a * Math.cos(orbitalAngleRef.current);
+      // Movimento em espiral: aumenta ligeiramente o raio com o tempo para criar efeito de espiral
+      const spiralFactor = Math.sin(orbitalAngleRef.current * 0.5) * 0.1;
+      
+      const x = domainPosition[0] + (a + spiralFactor) * Math.cos(orbitalAngleRef.current);
       const y = domainPosition[1] + (Math.sin(orbitalAngleRef.current * 2) * 0.3); // Variação vertical
-      const z = domainPosition[2] + b * Math.sin(orbitalAngleRef.current);
+      const z = domainPosition[2] + (b + spiralFactor) * Math.sin(orbitalAngleRef.current);
       
       groupRef.current.position.set(x, y, z);
     }
     
-    // Rotação suave do planeta
+    // Rotação suave do planeta em seu próprio eixo
     if (meshRef.current) {
       meshRef.current.rotation.y += delta * 0.2;
+      meshRef.current.rotation.x += delta * 0.05;
     }
   });
   

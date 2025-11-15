@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls, PerspectiveCamera, Stars } from '@react-three/drei';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,67 @@ import { ArrowLeft, Info, AlertTriangle } from 'lucide-react';
 import { ProsodiaType } from '@/data/types/corpus.types';
 import * as THREE from 'three';
 import { toast } from 'sonner';
+import gsap from 'gsap';
+
+// Componente auxiliar para controlar a câmera
+function CameraController({ 
+  selectedDomainId, 
+  domains 
+}: { 
+  selectedDomainId?: string; 
+  domains: any[];
+}) {
+  const { camera, controls } = useThree();
+  const controlsRef = useRef(controls);
+  
+  useEffect(() => {
+    controlsRef.current = controls;
+  }, [controls]);
+  
+  useEffect(() => {
+    if (!camera || !controlsRef.current) return;
+    
+    if (selectedDomainId) {
+      // Encontrar o domínio selecionado
+      const selectedDomain = domains.find(d => d.dominio === selectedDomainId);
+      if (!selectedDomain) return;
+      
+      const [x, y, z] = selectedDomain.position;
+      
+      // Animar câmera para focar no domínio
+      gsap.to(camera.position, {
+        x: x + 8,
+        y: y + 5,
+        z: z + 12,
+        duration: 1.5,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          if (controlsRef.current) {
+            (controlsRef.current as any).target.set(x, y, z);
+            (controlsRef.current as any).update();
+          }
+        }
+      });
+    } else {
+      // Resetar para posição padrão
+      gsap.to(camera.position, {
+        x: 0,
+        y: 8,
+        z: 35,
+        duration: 1.5,
+        ease: 'power2.inOut',
+        onUpdate: () => {
+          if (controlsRef.current) {
+            (controlsRef.current as any).target.set(0, 0, 0);
+            (controlsRef.current as any).update();
+          }
+        }
+      });
+    }
+  }, [selectedDomainId, domains, camera]);
+  
+  return null;
+}
 
 export default function Dashboard5() {
   // Hook de dados FOG & PLANETS
@@ -41,7 +102,7 @@ export default function Dashboard5() {
   const interactivity = useInteractivityStore();
 
   // Estados de controle de câmera
-  const [autoRotate, setAutoRotate] = useState(false);
+  const [autoRotate, setAutoRotate] = useState(true); // Auto-rotação ativada por padrão
   const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.5);
   
   // Estado de texturas pré-carregadas
@@ -88,8 +149,10 @@ export default function Dashboard5() {
   const handleDomainSelect = useCallback((domainId: string) => {
     if (filters.selectedDomainId === domainId) {
       setFilters({ selectedDomainId: undefined });
+      setAutoRotate(true); // Reativar auto-rotação ao desselecionar
     } else {
       setFilters({ selectedDomainId: domainId });
+      setAutoRotate(false); // Pausar auto-rotação ao selecionar domínio
     }
   }, [filters.selectedDomainId, setFilters]);
   
@@ -211,6 +274,12 @@ export default function Dashboard5() {
                 maxDistance={50}
                 maxPolarAngle={Math.PI / 1.5}
                 minPolarAngle={Math.PI / 6}
+              />
+              
+              {/* Controlador de Câmera para Zoom em Domínios */}
+              <CameraController 
+                selectedDomainId={filters.selectedDomainId} 
+                domains={domains} 
               />
 
               {/* Iluminação - Aumentada para melhor visibilidade dos FOGs */}
@@ -349,10 +418,10 @@ export default function Dashboard5() {
                 Filtros
               </h3>
 
-              {/* Intensidade do FOG */}
+              {/* Opacidade do FOG */}
               <div className="space-y-2">
                 <Label className="text-xs">
-                  Intensidade FOG: {(filters.fogIntensity * 100).toFixed(0)}%
+                  Opacidade FOG: {(filters.fogIntensity * 100).toFixed(0)}%
                 </Label>
                 <Slider
                   value={[filters.fogIntensity]}

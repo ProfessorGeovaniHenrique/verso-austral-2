@@ -166,17 +166,34 @@ export function enrichSemanticWords(): SemanticWord[] {
       // Atribuir textura e hue shift
       const { texture, hueShift } = assignPlanetVisuals(palavra, globalWordIndex, domainColor);
       
-      // Calcular propriedades orbitais
+      // Calcular propriedades orbitais baseadas na FREQUÊNCIA
       const frequency = wordData.ocorrencias;
-      const normalizedFreq = frequency / Math.max(...domainWords.map(w => w.ocorrencias));
       
-      // Calcular órbita elíptica baseada na posição no domínio - PREVENIR DIVISÃO POR ZERO
+      // Encontrar frequência máxima no domínio para normalização
+      const maxFrequency = Math.max(...domainWords.map(w => w.ocorrencias));
+      const normalizedFreq = frequency / maxFrequency; // 0 a 1
+      
+      // ===== DISTRIBUIÇÃO POR CAMADAS DE FREQUÊNCIA =====
+      // Palavras mais frequentes ficam mais próximas do núcleo
+      // Inverter: 1.0 (alta freq) = perto do núcleo, 0 (baixa freq) = longe
+      const distanceFromCore = 1.0 - normalizedFreq;
+      
+      // Calcular raio orbital baseado na frequência
+      // Camada 1 (núcleo): 0.5-1.2 (palavras mais frequentes)
+      // Camada 2 (média): 1.2-2.0
+      // Camada 3 (externa): 2.0-3.0
+      // Camada 4 (periférica): 3.0-4.0
+      const orbitalRadius = 0.5 + (distanceFromCore * 3.5);
+      
+      // Ângulo orbital inicial: distribuído uniformemente em círculo
       const angleStep = (Math.PI * 2) / Math.max(domainWords.length, 1);
-      const orbitalRadius = 3.0 + (i / domainWords.length) * 2.0; // 3.0 a 5.0 (mais visível)
       const orbitalAngle = i * angleStep;
-      const orbitalSpeed = 0.0005 + (1 - normalizedFreq) * 0.002; // 0.0005 a 0.0025
-      const orbitalEccentricity = prosody === 'Positiva' ? 0.2 : 
-                                   prosody === 'Negativa' ? 0.4 : 0.1;
+      
+      // Velocidade orbital: mais rápida para palavras próximas ao núcleo (como planetas reais)
+      const orbitalSpeed = 0.15 + (normalizedFreq * 0.35); // 0.15 a 0.5
+      
+      // Excentricidade orbital: órbitas mais elípticas nas camadas externas
+      const orbitalEccentricity = distanceFromCore * 0.35; // 0 a 0.35
       
       // Criar palavra enriquecida
       const enrichedWord: SemanticWord = {

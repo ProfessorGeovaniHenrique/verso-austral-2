@@ -123,6 +123,22 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
         />
       </mesh>
       
+      {/* FOG Outer Shell - Camada externa ultra-difusa */}
+      <mesh>
+        <sphereGeometry args={[domain.fogRadius * 1.8, 12, 12]} />
+        <meshStandardMaterial
+          color={domain.cor}
+          emissive={domain.cor}
+          emissiveIntensity={domain.emissiveIntensity * 0.15}
+          transparent
+          opacity={(finalOpacity * domain.baseOpacity) * 0.08}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          roughness={1.0}
+          metalness={0.0}
+        />
+      </mesh>
+      
       {/* Selection Ring */}
       {isSelected && (
         <animated.mesh rotation={[Math.PI / 2, 0, 0]} scale={springProps.ringScale}>
