@@ -363,7 +363,7 @@ export function TabStatistics() {
                       <XAxis dataKey="palavra" angle={-45} textAnchor="end" height={80} />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="frequencia" fill={ACADEMIC_RS_COLORS.azul.main} radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="frequencia" fill={ACADEMIC_RS_COLORS.verde.main} radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </CardContent>
