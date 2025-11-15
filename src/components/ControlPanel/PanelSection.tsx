@@ -7,6 +7,7 @@ interface PanelSectionProps {
   isOpen: boolean;
   onToggle?: () => void;
   hideToggle?: boolean;
+  className?: string;
   children: React.ReactNode;
 }
 
@@ -16,6 +17,7 @@ export const PanelSection = ({
   isOpen, 
   onToggle, 
   hideToggle = false,
+  className,
   children 
 }: PanelSectionProps) => {
   return (
@@ -24,7 +26,7 @@ export const PanelSection = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3 }}
-      className="border border-primary/30 rounded-lg bg-black/30 backdrop-blur-sm overflow-hidden"
+      className={`border border-primary/30 rounded-lg bg-black/30 backdrop-blur-sm overflow-hidden ${className || ''}`}
     >
       {/* Header */}
       {!hideToggle && (

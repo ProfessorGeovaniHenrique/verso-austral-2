@@ -488,12 +488,51 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     
     const clickNodeHandler = ({ node }: any) => {
       const currentLevel = levelRef.current;
+      const nodeAttrs = graph.getNodeAttributes(node);
       
-      console.log('Node clicked:', node, 'Current level:', currentLevel);
+      console.log('🖱️ Node clicked:', node, 'Current level:', currentLevel);
       
       // Clique no centro no nível universe: ir para galaxy
       if (currentLevel === 'universe' && node === 'center') {
         navigateToLevel('galaxy');
+        return;
+      }
+      
+      // 📌 Click-to-Pin Logic: Toggle pin no nó atual
+      if (hoveredNode && hoveredNode.id === node && currentLevel !== 'universe' || node === 'center') {
+        if (codexState === 'pinned') {
+          // Despin: voltar para fechado
+          setCodexState('closed');
+          setHoveredNode(null);
+          setIsPaused(false);
+          console.log('🔓 Codex unpinned');
+        } else if (codexState === 'auto-open') {
+          // Pin: travar o Codex
+          setCodexState('pinned');
+          // Cancela timer de fechamento automático
+          if (leaveTimeoutRef.current) {
+            clearTimeout(leaveTimeoutRef.current);
+            leaveTimeoutRef.current = null;
+          }
+          console.log('📌 Codex pinned');
+        }
+        return;
+      }
+      
+      // Se clicar em nó diferente do hoveredNode, pin no novo nó
+      if (currentLevel === 'galaxy' && node !== 'center' && (!hoveredNode || hoveredNode.id !== node)) {
+        setHoveredNode({ ...nodeAttrs, id: node, level: currentLevel });
+        setTooltipPos({ x: 0, y: 0 });
+        setIsPaused(true);
+        setCodexState('pinned');
+        
+        // Cancela qualquer timer de fechamento
+        if (leaveTimeoutRef.current) {
+          clearTimeout(leaveTimeoutRef.current);
+          leaveTimeoutRef.current = null;
+        }
+        
+        console.log('📌 Codex pinned to new node:', node);
         return;
       }
       
@@ -502,7 +541,6 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         const nodeData = graph.getNodeAttributes(node);
         const words = nodeData.words || [];
         if (words.length > 0 && onWordClick) {
-          // Abre KWIC da primeira palavra do domínio
           onWordClick(words[0]);
         }
         return;
@@ -526,6 +564,16 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       }
     };
     
+    const clickStageHandler = () => {
+      // Click no vazio: fechar Codex se estiver pinado
+      if (codexState === 'pinned') {
+        setCodexState('closed');
+        setHoveredNode(null);
+        setIsPaused(false);
+        console.log('🔓 Codex closed by clicking stage');
+      }
+    };
+    
     // Drag handlers removidos (não há mais nível stellar)
     const downNodeHandler = () => {};
     const handleMouseMove = () => {};
@@ -534,6 +582,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     sigma.on('enterNode', enterNodeHandler);
     sigma.on('leaveNode', leaveNodeHandler);
     sigma.on('clickNode', clickNodeHandler);
+    sigma.on('clickStage', clickStageHandler);
     sigma.on('downNode', downNodeHandler);
     
     document.addEventListener('mousemove', handleMouseMove);
@@ -543,6 +592,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       sigma.off('enterNode', enterNodeHandler);
       sigma.off('leaveNode', leaveNodeHandler);
       sigma.off('clickNode', clickNodeHandler);
+      sigma.off('clickStage', clickStageHandler);
       sigma.off('downNode', downNodeHandler);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
