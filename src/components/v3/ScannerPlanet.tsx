@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
+import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { LatLongGrid } from './LatLongGrid';
 import { ScannerProbe } from './ScannerProbe';
@@ -20,6 +21,14 @@ export function ScannerPlanet({
 }: ScannerPlanetProps) {
   const meshRef = useRef<THREE.Mesh>(null);
 
+  // Carregar textura 2K do planeta
+  const texture = useTexture(planet.textureUrl);
+
+  // Configurar textura para cobertura 360° sem costuras
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+
   // Rotação lenta do planeta
   useFrame(() => {
     if (meshRef.current) {
@@ -27,44 +36,13 @@ export function ScannerPlanet({
     }
   });
 
-  // Criar textura procedural baseada na cor do domínio
-  const planetTexture = useRef<THREE.Texture | null>(null);
-  if (!planetTexture.current) {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      // Gradiente radial
-      const gradient = ctx.createRadialGradient(256, 256, 0, 256, 256, 256);
-      gradient.addColorStop(0, planet.color);
-      gradient.addColorStop(0.5, planet.color);
-      gradient.addColorStop(1, '#000000');
-      
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, 512, 512);
-      
-      // Adicionar noise
-      for (let i = 0; i < 5000; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const brightness = Math.random() * 100 + 155;
-        ctx.fillStyle = `rgba(${brightness}, ${brightness}, ${brightness}, ${Math.random() * 0.3})`;
-        ctx.fillRect(x, y, 2, 2);
-      }
-      
-      planetTexture.current = new THREE.CanvasTexture(canvas);
-    }
-  }
-
   return (
     <group position={planet.position}>
-      {/* Esfera principal */}
+      {/* Esfera principal com textura 2K */}
       <mesh ref={meshRef}>
         <sphereGeometry args={[planet.radius, 64, 64]} />
         <meshStandardMaterial
-          map={planetTexture.current}
+          map={texture}
           roughness={0.7}
           metalness={0.2}
         />

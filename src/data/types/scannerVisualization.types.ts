@@ -6,6 +6,7 @@ export interface ScannerPlanet {
   name: string;
   color: string;
   textColor: string;
+  textureUrl: string;
   position: [number, number, number];
   radius: number;
   rotationSpeed: number;

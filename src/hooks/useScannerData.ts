@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { dominiosData } from '@/data/mockup/dominios';
 import { prosodiasMap } from '@/data/mockup/prosodias-map';
+import { selectTextureForDomain } from '@/data/planetTextureMapping';
+import { scannerTextures } from '@/assets/planets/scanner';
 import type { ScannerPlanet, ScannerProbe } from '@/data/types/scannerVisualization.types';
 
 /**
@@ -84,11 +86,20 @@ export function useScannerData() {
         };
       });
 
+      // Selecionar textura apropriada baseado em características semânticas
+      const textureKey = selectTextureForDomain(
+        dominio.comparacaoCorpus,
+        dominio.riquezaLexical,
+        dominio.percentualTematico,
+        dominio.dominio
+      );
+
       return {
         id: dominio.dominio,
         name: dominio.dominio,
         color: dominio.cor,
         textColor: dominio.corTexto,
+        textureUrl: scannerTextures[textureKey],
         position: [x, y, z],
         radius: planetRadius,
         rotationSpeed: 0.05 + Math.random() * 0.05,
