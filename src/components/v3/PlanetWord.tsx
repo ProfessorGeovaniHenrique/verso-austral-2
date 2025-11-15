@@ -47,13 +47,18 @@ export function PlanetWord({
   
   // Calcular tamanho do planeta baseado na frequência
   const planetRadius = useMemo(() => {
-    const baseSize = 0.15;  // Aumentado de 0.12
-    const maxSize = 0.35;   // Aumentado de 0.25
-    const minSize = 0.12;   // Aumentado de 0.08
+    // Recalibrado para o range REAL do corpus gaúcho (1-28 ocorrências)
+    const baseSize = 0.25;  // Era 0.15 → +67% maior
+    const maxSize = 0.6;    // Era 0.35 → +71% maior
+    const minSize = 0.18;   // Era 0.12 → +50% maior
     
-    // Normalizar ocorrências (assumindo max ~100)
-    const normalizedFreq = Math.min(word.ocorrencias / 100, 1.0);
-    const calculatedSize = baseSize + (normalizedFreq * (maxSize - baseSize));
+    // Normalizar para o range do corpus (max ~30 ocorrências)
+    const normalizedFreq = Math.min(word.ocorrencias / 30, 1.0);
+    
+    // Curva de crescimento não-linear (raiz quadrada para amplificar diferenças pequenas)
+    const scaleFactor = Math.sqrt(normalizedFreq);
+    
+    const calculatedSize = baseSize + (scaleFactor * (maxSize - baseSize));
     
     // Garantir tamanho mínimo visível
     return Math.max(calculatedSize, minSize);
@@ -73,10 +78,10 @@ export function PlanetWord({
       const x = domainPosition[0] + a * Math.cos(orbitalAngleRef.current);
       const z = domainPosition[2] + b * Math.sin(orbitalAngleRef.current);
       
-      // Variação em Y baseada no hash da palavra (para evitar colisões)
+      // Variação em Y AUMENTADA para evitar colisões verticais
       // Usar um offset único por palavra baseado no seu nome
       const wordHash = word.palavra.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-      const yOffset = ((wordHash % 100) / 100) * 0.8 - 0.4; // -0.4 a +0.4
+      const yOffset = ((wordHash % 100) / 100) * 1.2 - 0.6; // -0.6 a +0.6 (era -0.4 a +0.4)
       const y = domainPosition[1] + yOffset;
       
       groupRef.current.position.set(x, y, z);
@@ -89,14 +94,23 @@ export function PlanetWord({
     }
   });
   
-  // Opacidade contextual
+  // Opacidade contextual com VARIAÇÃO por Prosódia
   const finalOpacity = useMemo(() => {
+    let baseOpacity = opacity;
+    
+    // Palavras com prosódia positiva são mais opacas/visíveis
+    if (word.prosody === 'Positiva') {
+      baseOpacity = Math.min(opacity * 1.2, 1.0);
+    } else if (word.prosody === 'Negativa') {
+      baseOpacity = opacity * 0.85;
+    }
+    
     if (isHovered) return 1.0;
     if (selectedDomainId && !isInSelectedDomain) {
       return 0.2; // Palavras de outros domínios ficam bem transparentes
     }
-    return opacity;
-  }, [isHovered, selectedDomainId, isInSelectedDomain, opacity]);
+    return baseOpacity;
+  }, [isHovered, selectedDomainId, isInSelectedDomain, opacity, word.prosody]);
   
   // Animações de hover
   const springProps = useSpring({

@@ -198,19 +198,27 @@ export function enrichSemanticWords(): SemanticWord[] {
         baseAngle = (Math.PI * 4) / 3;    // Início: 240°
       }
 
-      // ===== 4. JITTER INTELIGENTE =====
-      // Adicionar variação angular dentro do setor (0-120°)
+      // ===== 4. JITTER INTELIGENTE MELHORADO =====
+      // Adicionar variação angular dentro do setor com spread ampliado
       // Usar hash da palavra para jitter determinístico (mesma palavra = mesmo ângulo)
       const wordHash = palavra.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
       const jitterAngle = (wordHash % 1000) / 1000; // 0 a 1
-      const sectorSpread = (Math.PI * 2) / 3; // 120° em radianos
+      
+      // A. Jitter Angular - AUMENTADO para 150° (era 120°)
+      // Palavras podem "vazar" entre setores para evitar aglomeração
+      const sectorSpread = (Math.PI * 2) / 2.4; // 150° em radianos (era 120°)
 
       const orbitalAngle = baseAngle + (jitterAngle * sectorSpread);
+      
+      // B. Jitter Radial - NOVO!
+      // Adicionar variação de ±15% na distância orbital para espalhar palavras
+      const radialJitter = ((wordHash % 500) / 500 - 0.5) * 0.3; // -0.15 a +0.15
+      const finalOrbitalRadius = orbitalRadius * (1 + radialJitter);
 
       // ===== 5. VELOCIDADE ORBITAL =====
       // Palavras mais próximas orbitam mais rápido (física real)
-      // Inverter: orbitalRadius pequeno = velocidade alta
-      const normalizedDistance = (orbitalRadius - 0.5) / 3.5; // 0 a 1
+      // Usar o raio com jitter para calcular velocidade
+      const normalizedDistance = (finalOrbitalRadius - 1.8) / 2.7; // Ajustado para novo range (1.8 a 4.5)
       const orbitalSpeed = 0.5 - (normalizedDistance * 0.35); // 0.5 (perto) a 0.15 (longe)
 
       // ===== 6. EXCENTRICIDADE ORBITAL =====
@@ -219,7 +227,7 @@ export function enrichSemanticWords(): SemanticWord[] {
 
       // 🔍 DEBUG: Log temporário para verificar distribuição orbital
       if (i < 3) { // Log apenas primeiras 3 palavras de cada domínio
-        console.log(`🪐 ${domain.dominio} | ${palavra}: freq=${frequency}, MI=${miScore.toFixed(2)}, radius=${orbitalRadius.toFixed(2)}, angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°, prosody=${prosody}`);
+        console.log(`🪐 ${domain.dominio} | ${palavra}: freq=${frequency}, MI=${miScore.toFixed(2)}, radius=${finalOrbitalRadius.toFixed(2)}, angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°, prosody=${prosody}`);
       }
 
       // ===== 7. CRIAR PALAVRA ENRIQUECIDA =====
@@ -234,7 +242,7 @@ export function enrichSemanticWords(): SemanticWord[] {
         relatedWords,
         planetTexture: texture,
         hueShift,
-        orbitalRadius,
+        orbitalRadius: finalOrbitalRadius, // USAR RAIO COM JITTER
         orbitalAngle,
         orbitalSpeed,
         orbitalEccentricity,
