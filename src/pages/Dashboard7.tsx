@@ -36,12 +36,13 @@ function CameraController({
         ease: 'power2.inOut',
       });
     } else if (navigationLevel === 'galaxy' && selectedDomain) {
-      // Zoom no domínio selecionado
+      // Zoom no domínio selecionado - posicionar à ESQUERDA da tela
       const domain = domains.find((d: any) => d.dominio === selectedDomain);
       if (domain) {
         const [x, y, z] = domain.position;
+        // Câmera posicionada à esquerda: offset negativo em X para mover domínio para a esquerda
         gsap.to(camera.position, {
-          x: x + 8,
+          x: x - 12,  // Offset negativo para posicionar à esquerda
           y: y + 5,
           z: z + 12,
           duration: 1.5,

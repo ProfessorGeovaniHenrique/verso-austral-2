@@ -49,7 +49,7 @@ export const SpaceNavigationHub = ({
 
   return (
     <div 
-      className="absolute left-1/2 -translate-x-1/2 z-50 space-navigation-console"
+      className="absolute left-8 z-50 space-navigation-console"
       style={{ top: '20px' }}
     >
       <div 

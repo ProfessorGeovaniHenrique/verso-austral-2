@@ -50,11 +50,10 @@ export function FilterDropdownPanel({
           exit={{ opacity: 0, y: -20, scaleY: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
           style={{
-            transformOrigin: 'top center',
+            transformOrigin: 'top left',
             position: 'absolute',
             top: '100%',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: '0',
             marginTop: '8px',
             width: '600px',
             maxHeight: '500px',
