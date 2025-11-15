@@ -6,7 +6,7 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Separator } from '@/components/ui/separator';
-import { RotateCw, Zap, Network, TrendingUp, Filter, Eye, Layers } from 'lucide-react';
+import { RotateCw, Zap, Network, TrendingUp, Filter, Eye, Layers, Sparkles } from 'lucide-react';
 import { ViewMode } from '@/hooks/useThreeSemanticData';
 
 interface ThreeControlPanelProps {
@@ -18,6 +18,8 @@ interface ThreeControlPanelProps {
   onAutoRotateSpeedChange: (value: number) => void;
   bloomEnabled: boolean;
   onBloomToggle: (value: boolean) => void;
+  customShadersEnabled: boolean;
+  onCustomShadersToggle: (value: boolean) => void;
   showConnections: boolean;
   onConnectionsToggle: (value: boolean) => void;
   onResetCamera: () => void;
@@ -96,6 +98,11 @@ export function ThreeControlPanel(props: ThreeControlPanelProps) {
       <div className="flex items-center justify-between">
         <Label className="text-sm flex items-center gap-2"><Zap className="w-4 h-4" />Bloom</Label>
         <Switch checked={props.bloomEnabled} onCheckedChange={props.onBloomToggle} />
+      </div>
+      
+      <div className="flex items-center justify-between">
+        <Label className="text-sm flex items-center gap-2"><Sparkles className="w-4 h-4" />Shaders Sci-Fi</Label>
+        <Switch checked={props.customShadersEnabled} onCheckedChange={props.onCustomShadersToggle} />
       </div>
       
       <div className="flex items-center justify-between">

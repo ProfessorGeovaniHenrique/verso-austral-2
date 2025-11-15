@@ -8,16 +8,19 @@ import { COSMIC_STYLE } from '@/config/visualStyle';
 import { shouldPulseDomain } from '@/lib/visualNormalization';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
 import * as THREE from 'three';
+import { DomainShaderMaterial } from '@/shaders/DomainShaderMaterial';
 
 interface InteractiveDomainProps {
   node: VisualDomainNode;
   opacity: number;
+  useCustomShader?: boolean;
 }
 
-export function InteractiveDomain({ node, opacity }: InteractiveDomainProps) {
+export function InteractiveDomain({ node, opacity, useCustomShader = false }: InteractiveDomainProps) {
   const sphereRef = useRef<THREE.Mesh>(null);
   const textRef = useRef<any>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const materialRef = useRef<DomainShaderMaterial>(null);
   
   const hover = useInteractivityStore(selectHover);
   const selectedDomainId = useInteractivityStore(selectSelectedDomainId);
@@ -32,12 +35,19 @@ export function InteractiveDomain({ node, opacity }: InteractiveDomainProps) {
   );
   
   useFrame((state) => {
+    // Pulse animation
     if (shouldPulse && sphereRef.current && !isSelected) {
       const pulse = 1 + Math.sin(state.clock.elapsedTime * node.pulseSpeed) * 
                     HIERARCHY_CONFIG.domainPulse.amplitude;
       sphereRef.current.scale.setScalar(pulse);
     } else if (sphereRef.current && !isSelected) {
       sphereRef.current.scale.setScalar(1);
+    }
+    
+    // Update shader uniforms
+    if (useCustomShader && materialRef.current) {
+      materialRef.current.uniforms.uTime.value = state.clock.elapsedTime;
+      materialRef.current.uniforms.uHoverIntensity.value = isHovered ? 1.0 : 0.0;
     }
   });
   
@@ -73,15 +83,27 @@ export function InteractiveDomain({ node, opacity }: InteractiveDomainProps) {
       {/* Esfera do domínio */}
       <animated.mesh ref={sphereRef} scale={springProps.scale}>
         <sphereGeometry args={[node.scale, 64, 64]} />
-        <animated.meshStandardMaterial
-          color={node.color}
-          transparent
-          opacity={finalOpacity}
-          emissive={node.color}
-          emissiveIntensity={springProps.emissiveIntensity}
-          roughness={0.3}
-          metalness={0.8}
-        />
+        {useCustomShader ? (
+          <domainShaderMaterial
+            ref={materialRef}
+            uColor={new THREE.Color(node.color)}
+            uEmissiveIntensity={springProps.emissiveIntensity}
+            uOpacity={finalOpacity}
+            uFresnelPower={3.0}
+            uWaveAmplitude={0.05}
+            uWaveFrequency={3.0}
+          />
+        ) : (
+          <animated.meshStandardMaterial
+            color={node.color}
+            transparent
+            opacity={finalOpacity}
+            emissive={node.color}
+            emissiveIntensity={springProps.emissiveIntensity}
+            roughness={0.3}
+            metalness={0.8}
+          />
+        )}
       </animated.mesh>
       
       {/* Halo externo (efeito de glow no hover) */}
