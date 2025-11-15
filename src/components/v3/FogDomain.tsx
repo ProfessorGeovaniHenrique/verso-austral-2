@@ -74,7 +74,19 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
       sphereRef.current.userData.nodeId = domain.dominio;
       sphereRef.current.userData.nodeType = 'domain';
     }
-  }, [domain.dominio]);
+    
+    // 🔴 DIAGNÓSTICO: Log da posição e propriedades do FOG
+    console.log(`[FOG DIAGNÓSTICO] ${domain.dominio}:`, {
+      position: domain.position,
+      fogRadius: domain.fogRadius,
+      color: domain.cor,
+      baseOpacity: domain.baseOpacity,
+      finalOpacity,
+      isVisible: sphereRef.current?.visible,
+      geometryExists: sphereRef.current?.geometry ? 'SIM' : 'NÃO',
+      materialExists: materialRef.current ? 'SIM' : 'NÃO'
+    });
+  }, [domain.dominio, domain.position, domain.fogRadius, domain.cor, domain.baseOpacity, finalOpacity]);
   
   return (
     <group ref={groupRef} position={domain.position}>
@@ -93,6 +105,12 @@ export function FogDomain({ domain, opacity }: FogDomainProps) {
           uNoiseIntensity={0.3}
           uHoverIntensity={0.0}
         />
+      </mesh>
+
+      {/* 🔴 WIREFRAME DE DIAGNÓSTICO - Ver se a geometria existe */}
+      <mesh>
+        <sphereGeometry args={[domain.fogRadius, 16, 16]} />
+        <meshBasicMaterial color="yellow" wireframe opacity={0.3} transparent />
       </mesh>
       
       {/* Selection Ring */}
