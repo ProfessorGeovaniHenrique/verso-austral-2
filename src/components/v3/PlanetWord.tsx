@@ -1,11 +1,14 @@
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, extend } from '@react-three/fiber';
 import { Text, useTexture } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import { SemanticWord } from '@/data/types/fogPlanetVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
 import { PlanetShaderMaterial } from '@/shaders/PlanetShaderMaterial';
 import * as THREE from 'three';
+
+// Garantir que o material está registrado no R3F
+extend({ PlanetShaderMaterial });
 
 interface PlanetWordProps {
   word: SemanticWord;

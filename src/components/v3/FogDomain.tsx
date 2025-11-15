@@ -1,11 +1,14 @@
 import { useRef, useMemo, useEffect } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, extend } from '@react-three/fiber';
 import { Text } from '@react-three/drei';
 import { useSpring, animated } from '@react-spring/three';
 import { FogDomain as FogDomainType } from '@/data/types/fogPlanetVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
 import { FogShaderMaterial } from '@/shaders/FogShaderMaterial';
 import * as THREE from 'three';
+
+// Garantir que o material está registrado no R3F
+extend({ FogShaderMaterial });
 
 interface FogDomainProps {
   domain: FogDomainType;
