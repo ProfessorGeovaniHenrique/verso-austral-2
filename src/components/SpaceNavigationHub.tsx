@@ -5,11 +5,12 @@ import { RotateCcw, Orbit, Star, CircleDot, Filter, Settings } from "lucide-reac
 import { FilterDropdownPanel } from "./FilterDropdownPanel";
 import { VisualizationControlsDropdown } from "./VisualizationControlsDropdown";
 import type { VisualizationFilters } from "@/data/types/fogPlanetVisualization.types";
+import type { NavigationLevel } from "@/hooks/useNavigationLevel";
 
 interface SpaceNavigationHubProps {
-  level: 'universe' | 'galaxy' | 'stellar-system';
+  level: NavigationLevel;
   selectedDomain?: string | null;
-  onNavigate: (level: 'universe' | 'galaxy' | 'stellar-system') => void;
+  onNavigate: (level: NavigationLevel) => void;
   onReset: () => void;
   
   // Filtros

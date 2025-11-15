@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 
-export type NavigationLevel = 'universe' | 'galaxy' | 'stellar-system';
+export type NavigationLevel = 'universe' | 'galaxy' | 'stellar-system' | 'scan';
 
 export function useNavigationLevel() {
   const [level, setLevel] = useState<NavigationLevel>('universe');

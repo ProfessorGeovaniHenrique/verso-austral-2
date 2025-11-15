@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button';
 import { PanelSection } from './PanelSection';
 import { CodexDrawer } from '../CodexDrawer';
 import { GalaxyLegendPanel } from '../GalaxyLegendPanel';
+import type { NavigationLevel } from '@/hooks/useNavigationLevel';
 
 interface ControlPanelProps {
   mode?: 'docked' | 'floating';
   hoveredNode: any;
-  level: 'universe' | 'galaxy' | 'stellar-system';
+  level: NavigationLevel;
   codexState: 'closed' | 'auto-open' | 'pinned';
   onMouseEnter: () => void;
   onMouseLeave: () => void;
