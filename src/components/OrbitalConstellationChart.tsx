@@ -4,11 +4,13 @@ import Graph from 'graphology';
 import { SpaceNavigationConsole } from './SpaceNavigationConsole';
 import { ControlPanel } from './ControlPanel/ControlPanel';
 import { ControlToolbar } from './ControlPanel/ControlToolbar';
+import { FloatingControlPanel } from './ControlPanel/FloatingControlPanel';
 import { OrbitalRings } from './OrbitalRings';
 import { FilterPanel } from './FilterPanel';
 import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
 
 type NavigationLevel = 'universe' | 'galaxy';
+type ConsoleMode = 'docked' | 'minimized' | 'floating';
 
 interface OrbitalConstellationChartProps {
   onWordClick?: (word: string) => void;
@@ -58,7 +60,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const [isPaused, setIsPaused] = useState(false);
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   
-  // Novo sistema de estados do Codex: closed -> auto-open (5s) -> pinned
+  // Sistema de estados do Codex
   const [codexState, setCodexState] = useState<'closed' | 'auto-open' | 'pinned'>('closed');
   
   // Estados para drag circular
@@ -80,6 +82,11 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     legend: false,
     future: false
   });
+  
+  // Estados para modo de janela do console
+  const [consoleMode, setConsoleMode] = useState<ConsoleMode>('docked');
+  const [floatingPosition, setFloatingPosition] = useState({ x: 100, y: 100 });
+  const [floatingSize, setFloatingSize] = useState({ width: 420, height: 600 });
 
   // Função auxiliar para mapear domínio de uma palavra
   const getWordDomain = useCallback((palavra: string): { cor: string; corTexto: string } => {
@@ -624,6 +631,12 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     setOpenSections(prev => ({ ...prev, future: !prev.future }));
   };
   
+  // Handlers de modo do console
+  const handleMinimizeConsole = () => setConsoleMode('minimized');
+  const handleFloatConsole = () => setConsoleMode('floating');
+  const handleDockConsole = () => setConsoleMode('docked');
+  const handleExpandConsole = () => setConsoleMode('docked');
+  
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gradient-to-b from-black via-slate-900 to-black">
       
@@ -701,31 +714,63 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         
       </div>
       
-      {/* PAINEL DIREITO */}
-      <ControlPanel
-        hoveredNode={hoveredNode}
-        level={level}
-        codexState={codexState}
-        onMouseEnter={handlePanelMouseEnter}
-        onMouseLeave={handlePanelMouseLeave}
-        openSections={openSections}
-      />
+      {/* PAINEL DIREITO - Console + Toolbar agrupados */}
+      <div className="flex items-stretch h-full">
+        
+        {/* Console - Condicional baseado no modo */}
+        {consoleMode === 'docked' && (
+          <ControlPanel
+            mode="docked"
+            hoveredNode={hoveredNode}
+            level={level}
+            codexState={codexState}
+            onMouseEnter={handlePanelMouseEnter}
+            onMouseLeave={handlePanelMouseLeave}
+            openSections={openSections}
+            onMinimize={handleMinimizeConsole}
+            onFloat={handleFloatConsole}
+          />
+        )}
+        
+        {/* Toolbar - Sempre visível */}
+        <ControlToolbar
+          isMinimized={consoleMode === 'minimized'}
+          onExpandConsole={handleExpandConsole}
+          onZoomIn={handleZoomIn}
+          onZoomOut={handleZoomOut}
+          onReset={handleResetView}
+          isPaused={isPaused}
+          onPauseToggle={() => setIsPaused(!isPaused)}
+          isCodexOpen={openSections.codex}
+          isLegendOpen={openSections.legend}
+          isFutureOpen={openSections.future}
+          onToggleCodex={handleToggleCodex}
+          onToggleLegend={handleToggleLegend}
+          onToggleFuture={handleToggleFuture}
+          showLegend={level === 'galaxy'}
+        />
+        
+      </div>
       
-      {/* TOOLBAR VERTICAL DIREITA */}
-      <ControlToolbar
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onReset={handleResetView}
-        isPaused={isPaused}
-        onPauseToggle={() => setIsPaused(!isPaused)}
-        isCodexOpen={openSections.codex}
-        isLegendOpen={openSections.legend}
-        isFutureOpen={openSections.future}
-        onToggleCodex={handleToggleCodex}
-        onToggleLegend={handleToggleLegend}
-        onToggleFuture={handleToggleFuture}
-        showLegend={level === 'galaxy'}
-      />
+      {/* Console Flutuante - Portal */}
+      {consoleMode === 'floating' && (
+        <FloatingControlPanel
+          position={floatingPosition}
+          size={floatingSize}
+          onDock={handleDockConsole}
+          onPositionChange={setFloatingPosition}
+        >
+          <ControlPanel
+            mode="floating"
+            hoveredNode={hoveredNode}
+            level={level}
+            codexState={codexState}
+            onMouseEnter={handlePanelMouseEnter}
+            onMouseLeave={handlePanelMouseLeave}
+            openSections={openSections}
+          />
+        </FloatingControlPanel>
+      )}
       
     </div>
   );

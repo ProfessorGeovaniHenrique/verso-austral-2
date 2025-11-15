@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion';
+import { CircuitBoard, Minimize2, Move } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { PanelSection } from './PanelSection';
 import { CodexDrawer } from '../CodexDrawer';
 import { GalaxyLegendPanel } from '../GalaxyLegendPanel';
 
 interface ControlPanelProps {
+  mode?: 'docked' | 'floating';
   hoveredNode: any;
   level: 'universe' | 'galaxy';
   codexState: 'closed' | 'auto-open' | 'pinned';
@@ -14,39 +17,98 @@ interface ControlPanelProps {
     legend: boolean;
     future: boolean;
   };
+  onMinimize?: () => void;
+  onFloat?: () => void;
 }
 
 export const ControlPanel = ({ 
+  mode = 'docked',
   hoveredNode, 
   level,
   codexState,
   onMouseEnter,
   onMouseLeave,
-  openSections
+  openSections,
+  onMinimize,
+  onFloat
 }: ControlPanelProps) => {
   const showCodex = codexState !== 'closed' && hoveredNode;
 
   return (
     <motion.div 
-      initial={{ x: 420 }}
+      initial={mode === 'docked' ? { x: 420 } : false}
       animate={{ x: 0 }}
       transition={{ type: "spring", stiffness: 260, damping: 20 }}
-      className="w-[420px] h-full flex flex-col bg-black/20 backdrop-blur-sm border-l border-primary/20"
+      className="w-[420px] h-full flex flex-col rounded-l-2xl border-2 backdrop-blur-xl overflow-hidden"
+      style={{
+        background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.85))',
+        borderColor: 'hsl(var(--primary))',
+        boxShadow: '0 0 30px hsl(var(--primary) / 0.3), inset 0 0 20px hsl(var(--primary) / 0.1)'
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
     >
       {/* Header */}
-      <div className="p-4 border-b border-primary/20">
-        <h2 className="text-primary font-mono text-lg font-bold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-          CONSOLE DE CONTROLE
-        </h2>
+      <div 
+        className="p-4 border-b relative"
+        style={{ borderColor: 'hsl(var(--primary) / 0.3)' }}
+      >
+        {/* Corner indicators */}
+        <div 
+          className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 animate-pulse" 
+          style={{ borderColor: 'hsl(var(--primary))' }}
+        />
+        <div 
+          className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 animate-pulse" 
+          style={{ borderColor: 'hsl(var(--primary))' }}
+        />
+        <div 
+          className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 animate-pulse" 
+          style={{ borderColor: 'hsl(var(--primary))' }}
+        />
+        <div 
+          className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 animate-pulse" 
+          style={{ borderColor: 'hsl(var(--primary))' }}
+        />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <h2 className="text-primary font-mono text-lg font-bold flex items-center gap-2">
+            <CircuitBoard className="w-5 h-5" />
+            CONSOLE DE CONTROLE
+          </h2>
+          
+          {/* Botões de controle - apenas no modo docked */}
+          {mode === 'docked' && (onMinimize || onFloat) && (
+            <div className="flex items-center gap-1">
+              {onMinimize && (
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={onMinimize}
+                  className="h-8 w-8 text-primary hover:bg-primary/20"
+                >
+                  <Minimize2 className="w-4 h-4" />
+                </Button>
+              )}
+              {onFloat && (
+                <Button 
+                  size="icon" 
+                  variant="ghost" 
+                  onClick={onFloat}
+                  className="h-8 w-8 text-primary hover:bg-primary/20"
+                >
+                  <Move className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent">
         
-        {/* Codex Section - Sempre visível quando há dados */}
+        {/* Codex Section */}
         {openSections.codex && (
           <PanelSection 
             title="CODEX LINGUÍSTICO"

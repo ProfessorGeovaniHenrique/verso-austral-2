@@ -1,29 +1,27 @@
-import { Home, ZoomIn, ZoomOut, Maximize, RotateCw, Pause, Play, Sparkles, Map, Rocket } from 'lucide-react';
+import { Home, ZoomIn, ZoomOut, Maximize, Pause, Play, Sparkles, Map, Rocket, PanelLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ControlToolbarProps {
-  // Zoom
+  isMinimized?: boolean;
+  onExpandConsole?: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onReset: () => void;
-  
-  // Animation
   isPaused: boolean;
   onPauseToggle: () => void;
-  
-  // Panel toggles
   isCodexOpen: boolean;
   isLegendOpen: boolean;
   isFutureOpen: boolean;
   onToggleCodex: () => void;
   onToggleLegend: () => void;
   onToggleFuture: () => void;
-  
   showLegend: boolean;
 }
 
 export const ControlToolbar = ({ 
+  isMinimized = false,
+  onExpandConsole,
   onZoomIn,
   onZoomOut,
   onReset,
@@ -40,18 +38,31 @@ export const ControlToolbar = ({
   return (
     <TooltipProvider>
       <div 
-        className="fixed right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-1 p-2 rounded-xl backdrop-blur-xl border-2 bg-black/80 shadow-2xl"
+        className="h-full w-[60px] flex flex-col gap-1 p-2 backdrop-blur-xl border-l-2"
         style={{
+          background: 'linear-gradient(180deg, rgba(10, 14, 39, 0.95), rgba(27, 94, 32, 0.85))',
           borderColor: 'hsl(var(--primary))',
-          boxShadow: '0 0 30px hsl(var(--primary) / 0.3), inset 0 0 20px hsl(var(--primary) / 0.1)'
+          boxShadow: '-10px 0 30px hsl(var(--primary) / 0.2), inset 0 0 20px hsl(var(--primary) / 0.1)'
         }}
       >
-        {/* Zoom Controls Group */}
+        {/* Botão Expandir Console (quando minimizado) */}
+        {isMinimized && onExpandConsole && (
+          <>
+            <ToolbarButton 
+              icon={PanelLeft} 
+              onClick={onExpandConsole} 
+              tooltip="Expandir Console"
+              active={true}
+            />
+            <ToolbarDivider />
+          </>
+        )}
+        
+        {/* Zoom Controls */}
         <ToolbarButton icon={Home} onClick={onReset} tooltip="Resetar Vista" />
         <ToolbarButton icon={ZoomIn} onClick={onZoomIn} tooltip="Aumentar Zoom" />
         <ToolbarButton icon={ZoomOut} onClick={onZoomOut} tooltip="Diminuir Zoom" />
         <ToolbarButton icon={Maximize} onClick={onReset} tooltip="Ajustar à Tela" />
-        <ToolbarButton icon={RotateCw} onClick={onReset} tooltip="Recarregar" />
         
         <ToolbarDivider />
         
