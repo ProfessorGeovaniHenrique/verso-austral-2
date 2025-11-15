@@ -100,20 +100,50 @@ function assignPlanetVisuals(
 
 // ===== FUNÇÃO PRINCIPAL: Enriquecer Palavras =====
 export function enrichSemanticWords(): SemanticWord[] {
+  console.log('🔄 Starting semantic enrichment...');
+  
   const enrichedWords: SemanticWord[] = [];
   let globalWordIndex = 0;
+  
+  // Validar dados de entrada
+  if (!dominiosSeparated || dominiosSeparated.length === 0) {
+    console.error('❌ dominiosSeparated is empty or undefined');
+    return [];
+  }
   
   // Filtrar domínios temáticos (excluir Palavras Funcionais)
   const thematicDomains = dominiosSeparated.filter(
     d => d.dominio !== "Palavras Funcionais"
   );
   
+  if (thematicDomains.length === 0) {
+    console.warn('⚠️ No thematic domains found after filtering');
+    return [];
+  }
+  
+  console.log(`📊 Processing ${thematicDomains.length} thematic domains...`);
+  
   for (const domain of thematicDomains) {
     const domainWords = domain.palavrasComFrequencia || [];
     const domainColor = domain.cor;
     
+    // Validar que o domínio tem palavras
+    if (domainWords.length === 0) {
+      console.warn(`⚠️ Domain "${domain.dominio}" has no words, skipping...`);
+      continue;
+    }
+    
+    console.log(`  🌫️ ${domain.dominio}: ${domainWords.length} words`);
+    
     for (let i = 0; i < domainWords.length; i++) {
       const wordData = domainWords[i];
+      
+      // Validar dados da palavra
+      if (!wordData || !wordData.palavra) {
+        console.warn(`⚠️ Invalid word data at index ${i} in domain "${domain.dominio}", skipping...`);
+        continue;
+      }
+      
       const palavra = wordData.palavra;
       
       // Obter prosódia
@@ -140,8 +170,8 @@ export function enrichSemanticWords(): SemanticWord[] {
       const frequency = wordData.ocorrencias;
       const normalizedFreq = frequency / Math.max(...domainWords.map(w => w.ocorrencias));
       
-      // Calcular órbita elíptica baseada na posição no domínio
-      const angleStep = (Math.PI * 2) / domainWords.length;
+      // Calcular órbita elíptica baseada na posição no domínio - PREVENIR DIVISÃO POR ZERO
+      const angleStep = (Math.PI * 2) / Math.max(domainWords.length, 1);
       const orbitalRadius = 3.0 + (i / domainWords.length) * 2.0; // 3.0 a 5.0 (mais visível)
       const orbitalAngle = i * angleStep;
       const orbitalSpeed = 0.0005 + (1 - normalizedFreq) * 0.002; // 0.0005 a 0.0025
@@ -171,6 +201,7 @@ export function enrichSemanticWords(): SemanticWord[] {
     }
   }
   
+  console.log(`✅ Enrichment complete: ${enrichedWords.length} total words`);
   return enrichedWords;
 }
 
@@ -193,4 +224,15 @@ const additionalDefinitions: Record<string, string> = {
 Object.assign(contextualDefinitions, additionalDefinitions);
 
 // ===== EXPORTAR DADOS ENRIQUECIDOS =====
-export const enrichedSemanticData = enrichSemanticWords();
+let enrichedSemanticData: SemanticWord[] = [];
+
+try {
+  enrichedSemanticData = enrichSemanticWords();
+  console.log('✅ Semantic data enriched successfully:', enrichedSemanticData.length, 'words');
+} catch (error) {
+  console.error('❌ ERROR enriching semantic data:', error);
+  // Fallback: retornar array vazio para evitar crash completo
+  enrichedSemanticData = [];
+}
+
+export { enrichedSemanticData };
