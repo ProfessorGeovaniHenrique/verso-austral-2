@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { X, Search, Sparkles, Heart, Meh, RotateCcw } from "lucide-react";
+import { X, Search, Sparkles, Smile, Frown, Minus, RotateCcw } from "lucide-react";
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -132,9 +132,9 @@ export const FilterPanel = ({
               <AccordionContent>
                 <div className="space-y-2 pt-2">
                   {[
-                    { value: 'positiva', label: 'Positiva', icon: Heart, color: 'text-green-400' },
-                    { value: 'negativa', label: 'Negativa', icon: X, color: 'text-red-400' },
-                    { value: 'neutra', label: 'Neutra', icon: Meh, color: 'text-gray-400' }
+                    { value: 'positiva', label: 'Positiva 🟢', icon: Smile, color: 'text-green-400', bg: 'bg-green-500/20' },
+                    { value: 'negativa', label: 'Negativa 🔴', icon: Frown, color: 'text-red-400', bg: 'bg-red-500/20' },
+                    { value: 'neutra', label: 'Neutra ⚪', icon: Minus, color: 'text-gray-400', bg: 'bg-gray-500/20' }
                   ].map((prosody) => {
                     const Icon = prosody.icon;
                     const isActive = filters.prosody.includes(prosody.value);
@@ -144,14 +144,16 @@ export const FilterPanel = ({
                         variant={isActive ? "default" : "outline"}
                         size="sm"
                         onClick={() => toggleProsody(prosody.value)}
-                        className="w-full justify-start"
+                        className="w-full justify-start transition-all hover:scale-[1.02]"
                         style={{
-                          background: isActive ? 'rgba(0, 229, 255, 0.2)' : 'transparent',
-                          borderColor: isActive ? '#00E5FF' : 'rgba(100, 255, 218, 0.3)'
+                          background: isActive ? prosody.bg : 'transparent',
+                          borderColor: isActive ? prosody.color.replace('text-', '') : 'rgba(100, 255, 218, 0.3)'
                         }}
                       >
                         <Icon className={`w-4 h-4 mr-2 ${prosody.color}`} />
-                        {prosody.label}
+                        <span className={isActive ? prosody.color : 'text-white/70'}>
+                          {prosody.label}
+                        </span>
                       </Button>
                     );
                   })}
