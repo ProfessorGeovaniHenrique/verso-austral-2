@@ -5,7 +5,7 @@ import { getProsodiaSemantica } from './prosodias-map';
 import { planetTextures } from '@/assets/planets';
 import { 
   calculateWordMIScore, 
-  miScoreToOrbitalLayer,
+  frequencyToOrbitalLayer,
   calculateUniformAngle
 } from '@/lib/linguisticStats';
 
@@ -78,46 +78,44 @@ const prosodyJustifications: Record<string, string> = {
   "açoite": "Instrumento de castigo ou flagelo, conotação negativa de violência.",
   "cansado": "Estado de exaustão, geralmente conotação negativa.",
   "sol": "Fonte de luz e calor, essencial para a vida, conotação positiva.",
-  "noite": "Momento de descanso após a lida, conotação neutra ou positiva.",
+  "mate": "Bebida compartilhada que representa hospitalidade e conexão social, conotação positiva.",
+  "galpão": "Espaço de encontro e celebração, conotação positiva de comunidade.",
+  "bomba": "Objeto associado ao ritual positivo do chimarrão.",
+  "prenda": "Termo carinhoso que celebra a mulher gaúcha, conotação positiva.",
+  "gateado": "Pelagem apreciada e valorizada, conotação positiva.",
+  "arreio": "Ferramenta de trabalho essencial, conotação neutra/positiva.",
+  "tropa": "Conjunto de animais que representa trabalho e mobilidade, conotação neutra.",
+  "campo": "Paisagem característica do pampa, conotação neutra descritiva.",
+  "coxilha": "Formação geográfica típica, conotação neutra descritiva.",
 };
 
-// ===== FUNÇÃO: Gerar Palavras Relacionadas =====
+/**
+ * Gera lista mock de palavras relacionadas dentro do mesmo domínio
+ */
 function generateRelatedWords(palavra: string, dominio: string): string[] {
-  const dom = dominiosSeparated.find(d => d.dominio === dominio);
-  if (!dom) return [];
+  const domainData = dominiosSeparated.find(d => d.dominio === dominio);
+  if (!domainData) return [];
   
-  return dom.palavras
-    .filter(p => p !== palavra)
-    .slice(0, 8);
+  const relacionadas = domainData.palavrasComFrequencia
+    .map(w => w.palavra)
+    .filter(p => p !== palavra);
+  
+  return relacionadas.filter(p => p !== palavra).slice(0, 5);
 }
 
-// ===== FUNÇÃO: Atribuir Textura e Hue Shift =====
-function assignPlanetVisuals(
-  palavra: string, 
-  wordIndex: number, 
-  domainColor: string
-): { texture: string; hueShift: number } {
-  const textureIndex = wordIndex % planetTextures.length;
-  const texture = planetTextures[textureIndex];
-  
-  const hslMatch = domainColor.match(/hsl\((\d+),/);
-  const domainHue = hslMatch ? parseInt(hslMatch[1]) : 0;
-  
-  const hueVariation = ((wordIndex % 10) - 5) * 6;
-  const hueShift = (domainHue + hueVariation) % 360;
-  
-  return { texture, hueShift };
+/**
+ * Pré-conta palavras por camada e prosódia para distribuição uniforme real
+ */
+interface LayerCount {
+  [layerId: number]: {
+    Positiva: number;
+    Neutra: number;
+    Negativa: number;
+  };
 }
 
-// ===== FUNÇÃO PRINCIPAL: Enriquecer Palavras =====
-export function enrichSemanticWords(): SemanticWord[] {
-  console.log('🔄 Starting semantic enrichment...');
-  
-  const allWords: SemanticWord[] = [];
-  let globalWordIndex = 0;
-  
-  // Mapear palavras por camada orbital e prosódia para distribuição uniforme
-  const layerCounters: Record<number, Record<string, number>> = {
+function countWordsPerLayerAndProsody(domainWords: Array<{ palavra: string; ocorrencias: number }>, domainName: string): LayerCount {
+  const counts: LayerCount = {
     1: { Positiva: 0, Neutra: 0, Negativa: 0 },
     2: { Positiva: 0, Neutra: 0, Negativa: 0 },
     3: { Positiva: 0, Neutra: 0, Negativa: 0 },
@@ -125,6 +123,39 @@ export function enrichSemanticWords(): SemanticWord[] {
     5: { Positiva: 0, Neutra: 0, Negativa: 0 },
     6: { Positiva: 0, Neutra: 0, Negativa: 0 },
   };
+  
+  domainWords.forEach(wordData => {
+    const frequency = wordData.ocorrencias;
+    const prosody = getProsodiaSemantica(wordData.palavra);
+    const layer = frequencyToOrbitalLayer(frequency).layer;
+    
+    counts[layer][prosody]++;
+  });
+  
+  return counts;
+}
+
+/**
+ * Atribui textura de planeta e calcula hue shift baseado na cor do domínio
+ */
+function assignPlanetVisuals(palavra: string, wordIndex: number, domainColor: string): { texture: string; hueShift: number } {
+  const textureIndex = wordIndex % planetTextures.length;
+  const texture = planetTextures[textureIndex];
+  
+  const wordHash = palavra.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const colorHash = domainColor.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  
+  const hueShift = ((wordHash + colorHash) % 360) - 180;
+  
+  return { texture, hueShift };
+}
+
+/**
+ * Função principal que enriquece todas as palavras dos domínios
+ */
+export function enrichSemanticWords(): SemanticWord[] {
+  const allWords: SemanticWord[] = [];
+  let globalWordIndex = 0;
   
   if (!dominiosSeparated || dominiosSeparated.length === 0) {
     console.error('❌ dominiosSeparated is empty or undefined');
@@ -153,6 +184,19 @@ export function enrichSemanticWords(): SemanticWord[] {
     
     console.log(`  🌫️ ${domain.dominio}: ${domainWords.length} words`);
     
+    // PRÉ-PROCESSAR: Contar palavras por camada e prosódia ANTES de distribuir
+    const layerCounts = countWordsPerLayerAndProsody(domainWords, domain.dominio);
+    
+    // Contadores incrementais por camada e prosódia (índice dentro do setor)
+    const layerIndexCounters: Record<number, Record<string, number>> = {
+      1: { Positiva: 0, Neutra: 0, Negativa: 0 },
+      2: { Positiva: 0, Neutra: 0, Negativa: 0 },
+      3: { Positiva: 0, Neutra: 0, Negativa: 0 },
+      4: { Positiva: 0, Neutra: 0, Negativa: 0 },
+      5: { Positiva: 0, Neutra: 0, Negativa: 0 },
+      6: { Positiva: 0, Neutra: 0, Negativa: 0 },
+    };
+    
     for (let i = 0; i < domainWords.length; i++) {
       const wordData = domainWords[i];
       
@@ -179,9 +223,9 @@ export function enrichSemanticWords(): SemanticWord[] {
       const domainTotalFreq = domain.ocorrencias;
       const miScore = calculateWordMIScore(frequency, domainTotalFreq, 10000);
 
-      // ===== 2. MAPEAR PARA CAMADA ORBITAL DISCRETA =====
-      const orbitalLayer = miScoreToOrbitalLayer(miScore);
-
+      // ===== 2. MAPEAR PARA CAMADA ORBITAL DISCRETA (baseado em FREQUÊNCIA) =====
+      const orbitalLayer = frequencyToOrbitalLayer(frequency);
+      
       // ===== 3. SETOR ANGULAR (baseado em Prosódia) =====
       let sectorStart: number;
       const sectorSpread = (Math.PI * 2) / 3;
@@ -194,13 +238,14 @@ export function enrichSemanticWords(): SemanticWord[] {
         sectorStart = (Math.PI * 4) / 3;
       }
 
-      // ===== 4. DISTRIBUIÇÃO UNIFORME DENTRO DO SETOR =====
-      const wordIndexInLayerSector = layerCounters[orbitalLayer.layer][prosody];
-      layerCounters[orbitalLayer.layer][prosody]++;
+      // ===== 4. DISTRIBUIÇÃO UNIFORME DENTRO DO SETOR (usando contagem REAL) =====
+      const wordIndexInLayerSector = layerIndexCounters[orbitalLayer.layer][prosody];
+      const totalWordsInLayerSector = layerCounts[orbitalLayer.layer][prosody];
+      layerIndexCounters[orbitalLayer.layer][prosody]++;
 
       const baseAngle = calculateUniformAngle(
         wordIndexInLayerSector,
-        100,
+        totalWordsInLayerSector, // ✅ CONTAGEM REAL de palavras nesta camada+setor
         sectorStart,
         sectorSpread
       );
@@ -214,13 +259,13 @@ export function enrichSemanticWords(): SemanticWord[] {
       const finalOrbitalRadius = orbitalLayer.minRadius + (radialJitter * (orbitalLayer.maxRadius - orbitalLayer.minRadius));
 
       // ===== 6. VELOCIDADE E EXCENTRICIDADE =====
-      const normalizedDistance = (finalOrbitalRadius - 1.8) / 3.2;
+      const normalizedDistance = (finalOrbitalRadius - 2.0) / 11.5; // Ajustado para novo range (2.0-13.5)
       const orbitalSpeed = 0.5 - (normalizedDistance * 0.35);
       const orbitalEccentricity = normalizedDistance * 0.3;
 
-      // 🔍 DEBUG
+      // 🔍 DEBUG DETALHADO
       if (i < 3) {
-        console.log(`🪐 ${domain.dominio} | ${palavra}: MI=${miScore.toFixed(2)}, layer=${orbitalLayer.layer}, radius=${finalOrbitalRadius.toFixed(2)}, angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°, prosody=${prosody}`);
+        console.log(`🪐 ${domain.dominio} | ${palavra}: freq=${frequency}, MI=${miScore.toFixed(2)}, layer=${orbitalLayer.layer}, radius=${finalOrbitalRadius.toFixed(2)}, totalInLayerSector=${totalWordsInLayerSector}, angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°, prosody=${prosody}`);
       }
 
       // ===== 7. CRIAR PALAVRA ENRIQUECIDA =====
@@ -229,38 +274,31 @@ export function enrichSemanticWords(): SemanticWord[] {
         ocorrencias: frequency,
         dominio: domain.dominio,
         prosody,
-        prosodyJustification,
-        contextualDefinition,
-        concordances,
-        relatedWords,
-        planetTexture: texture,
-        hueShift,
+        miScore,
         orbitalRadius: finalOrbitalRadius,
         orbitalAngle,
         orbitalSpeed,
         orbitalEccentricity,
-        miScore,
         orbitalLayer: orbitalLayer.layer,
+        contextualDefinition,
+        prosodyJustification,
+        relatedWords,
+        concordances,
+        planetTexture: texture,
+        hueShift: hueShift,
       };
-      
+
       allWords.push(enrichedWord);
       globalWordIndex++;
     }
+    
+    // Debug: Mostrar distribuição final por camadas
+    console.log(`📊 ${domain.dominio} - Distribuição por camadas:`, layerCounts);
   }
-  
-  console.log(`✅ Enrichment complete: ${allWords.length} total words`);
+
+  console.log(`✅ Enrichment complete: ${allWords.length} words processed`);
   return allWords;
 }
 
-// ===== EXPORTAR DADOS ENRIQUECIDOS =====
-let enrichedSemanticData: SemanticWord[] = [];
-
-try {
-  enrichedSemanticData = enrichSemanticWords();
-  console.log('✅ Semantic data enriched successfully:', enrichedSemanticData.length, 'words');
-} catch (error) {
-  console.error('❌ ERROR enriching semantic data:', error);
-  enrichedSemanticData = [];
-}
-
-export { enrichedSemanticData };
+// Exportar dados enriquecidos (gerados uma única vez)
+export const enrichedSemanticData = enrichSemanticWords();
