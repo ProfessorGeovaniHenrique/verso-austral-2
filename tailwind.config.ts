@@ -15,6 +15,9 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
+        orbitron: ['Orbitron', 'sans-serif'],
+        georgia: ['Georgia', 'serif'],
       },
       colors: {
         border: "hsl(var(--border))",
