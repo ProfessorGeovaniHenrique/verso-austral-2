@@ -15,6 +15,7 @@ export interface DominioSemantico {
   ocorrencias: number;
   percentual: number;
   palavras: string[];
+  palavrasComFrequencia: Array<{ palavra: string; ocorrencias: number }>;
   cor: string;
   corTexto: string;
   frequenciaNormalizada: number;

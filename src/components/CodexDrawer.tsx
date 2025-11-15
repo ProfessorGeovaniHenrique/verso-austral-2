@@ -36,8 +36,13 @@ interface CodexDrawerProps {
     dominioMaisRico?: string;
     dominioMaisFrequente?: string;
     top3Dominios?: Array<{ nome: string; percentual: number; cor: string }>;
+    // Dados de sistema estelar
+    isStellarCore?: boolean;
+    frequenciaNormalizadaDominio?: number;
+    ocorrencias?: number;
+    orbitIndex?: number;
   } | null;
-  level?: 'universe' | 'galaxy' | string;
+  level?: 'universe' | 'galaxy' | 'stellar-system' | string;
 }
 
 type AnimationState = 'collapsed' | 'sliding-in' | 'expanding' | 'expanded';
@@ -623,6 +628,36 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
                 </div>
               );
             })()}
+          </div>
+        )}
+        
+        {/* STELLAR SYSTEM VIEW - Palavra em Sistema Estelar */}
+        {level === 'stellar-system' && word && !word.isStellarCore && (
+          <div className="space-y-3">
+            {/* Frequência no Sistema */}
+            <div className="bg-black/40 rounded-lg p-3 border border-cyan-500/30">
+              <div className="text-cyan-300 text-[10px] font-mono mb-2">🌟 FREQUÊNCIA NO SISTEMA</div>
+              <div className="text-3xl font-bold text-white">
+                {word.frequenciaNormalizadaDominio?.toFixed(2) || '0.00'}%
+              </div>
+              <div className="text-white/50 text-[10px] mt-1">
+                {word.ocorrencias}× ocorrências em "{word.dominio}"
+              </div>
+            </div>
+            
+            {/* Órbita */}
+            <div className="bg-black/40 rounded-lg p-3 border border-purple-500/30">
+              <div className="text-purple-300 text-[10px] font-mono mb-2">🪐 POSIÇÃO ORBITAL</div>
+              <div className="text-white text-sm">
+                Órbita {(word.orbitIndex || 0) + 1} 
+                <span className="text-white/50 ml-2">
+                  ({(word.orbitIndex || 0) * 10}-{((word.orbitIndex || 0) + 1) * 10}%)
+                </span>
+              </div>
+              <div className="text-white/40 text-[9px] mt-2">
+                Palavras de mesma frequência orbital agrupadas
+              </div>
+            </div>
           </div>
         )}
       </div>

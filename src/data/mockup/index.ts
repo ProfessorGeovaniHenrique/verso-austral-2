@@ -9,6 +9,7 @@ export {
   lematizacaoData 
 } from './palavras-chave';
 export { prosodiaSemanticaData } from './prosodias';
+export { frequenciaNormalizadaData } from './frequencia-normalizada';
 
 // Re-exportar types para conveniência
 export type {

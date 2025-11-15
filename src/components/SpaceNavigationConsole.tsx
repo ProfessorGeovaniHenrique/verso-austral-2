@@ -5,8 +5,8 @@ import { Slider } from "@/components/ui/slider";
 import { RotateCcw, Orbit, Star, CircleDot, Settings } from "lucide-react";
 
 interface SpaceNavigationConsoleProps {
-  level: 'universe' | 'galaxy';
-  onNavigate: (level: 'universe' | 'galaxy') => void;
+  level: 'universe' | 'galaxy' | 'stellar-system';
+  onNavigate: (level: 'universe' | 'galaxy' | 'stellar-system') => void;
   onFilterChange: (filters: any) => void;
   onReset: () => void;
   isFilterPanelOpen?: boolean;

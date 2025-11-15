@@ -7,7 +7,7 @@ import { GalaxyLegendPanel } from '../GalaxyLegendPanel';
 interface ControlPanelProps {
   mode?: 'docked' | 'floating';
   hoveredNode: any;
-  level: 'universe' | 'galaxy';
+  level: 'universe' | 'galaxy' | 'stellar-system';
   codexState: 'closed' | 'auto-open' | 'pinned';
   onMouseEnter: () => void;
   onMouseLeave: () => void;

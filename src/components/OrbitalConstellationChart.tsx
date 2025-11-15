@@ -9,7 +9,7 @@ import { OrbitalRings } from './OrbitalRings';
 import { FilterPanel } from './FilterPanel';
 import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
 
-type NavigationLevel = 'universe' | 'galaxy';
+type NavigationLevel = 'universe' | 'galaxy' | 'stellar-system';
 type ConsoleMode = 'docked' | 'minimized' | 'floating';
 
 interface OrbitalConstellationChartProps {
@@ -25,6 +25,7 @@ interface OrbitalConstellationChartProps {
     diferencaCorpus: number;
     percentualCorpusNE: number;
     palavras: string[];
+    palavrasComFrequencia: Array<{ palavra: string; ocorrencias: number }>;
     cor: string;
     corTexto: string;
   }>;
@@ -42,9 +43,15 @@ interface OrbitalConstellationChartProps {
     rightContext: string;
     source: string;
   }>>;
+  frequenciaNormalizadaData?: Array<{
+    palavra: string;
+    frequenciaBruta: number;
+    frequenciaNormalizada: number;
+    lema: string;
+  }>;
 }
 
-export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasChaveData, kwicDataMap }: OrbitalConstellationChartProps) => {
+export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasChaveData, kwicDataMap, frequenciaNormalizadaData }: OrbitalConstellationChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const sigmaRef = useRef<Sigma | null>(null);
   const graphRef = useRef<any>(null);
@@ -55,10 +62,10 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   
   // Refs para evitar stale closure nos event handlers
   const levelRef = useRef<NavigationLevel>('universe');
-  const selectedSystemRef = useRef<string | null>(null);
+  const selectedDomainRef = useRef<string | null>(null);
   
   const [level, setLevel] = useState<NavigationLevel>('universe');
-  const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [isPaused, setIsPaused] = useState(false);
@@ -310,7 +317,8 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         comparacaoCorpus: domain.comparacaoCorpus,
         diferencaCorpus: domain.diferencaCorpus,
         percentualCorpusNE: domain.percentualCorpusNE,
-        palavrasFrequentes: domain.palavras,
+        palavrasFrequentes: [...domain.palavrasComFrequencia]
+          .sort((a, b) => b.ocorrencias - a.ocorrencias),
         cor: domain.cor,
         numRings: numRings
       });
@@ -319,8 +327,85 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     return graph;
   }, [dominiosData]);
 
+  // Constrói visualização de sistema estelar (palavras de um domínio orbitando)
+  const buildStellarSystemView = useCallback((domainName: string) => {
+    const graph: any = new Graph();
+    
+    // Encontrar domínio selecionado
+    const domain = dominiosData.find(d => d.dominio === domainName);
+    if (!domain) return graph;
+    
+    // Nó central = Domínio Semântico (Sistema Estelar)
+    graph.addNode('stellar-core', {
+      x: 0.5,
+      y: 0.5,
+      size: 50,
+      label: `⭐ ${domain.dominio}`,
+      color: domain.cor,
+      isStellarCore: true,
+      dominio: domain.dominio,
+      riquezaLexical: domain.riquezaLexical,
+      ocorrencias: domain.ocorrencias,
+      percentualTematico: domain.percentualTematico,
+      comparacaoCorpus: domain.comparacaoCorpus,
+      diferencaCorpus: domain.diferencaCorpus
+    });
+    
+    // Palavras do domínio como planetas orbitantes
+    const palavrasComFreq = domain.palavrasComFrequencia;
+    
+    // Calcular frequência normalizada para cada palavra (% sobre total do domínio)
+    const totalOcorrencias = palavrasComFreq.reduce((sum, p) => sum + p.ocorrencias, 0);
+    
+    palavrasComFreq.forEach((palavra, idx) => {
+      // Frequência normalizada: % da palavra dentro do domínio
+      const freqNormalizadaDominio = (palavra.ocorrencias / totalOcorrencias) * 100;
+      
+      // Distribuir em órbitas de 10 em 10%
+      // 0-10% = órbita 1 (0.08)
+      // 10-20% = órbita 2 (0.14)
+      // 20-30% = órbita 3 (0.20)
+      const orbitIndex = Math.floor(freqNormalizadaDominio / 10);
+      const orbitRadius = 0.08 + (orbitIndex * 0.06);
+      
+      // Palavras na mesma órbita
+      const palavrasNaOrbita = palavrasComFreq.filter(p => {
+        const pFreq = (p.ocorrencias / totalOcorrencias) * 100;
+        return Math.floor(pFreq / 10) === orbitIndex;
+      });
+      const indexNaOrbita = palavrasNaOrbita.findIndex(p => p.palavra === palavra.palavra);
+      const angle = (indexNaOrbita / palavrasNaOrbita.length) * 2 * Math.PI;
+      
+      const x = 0.5 + Math.cos(angle) * orbitRadius;
+      const y = 0.5 + Math.sin(angle) * orbitRadius;
+      
+      // Tamanho proporcional à frequência (5-18)
+      const maxFreq = Math.max(...palavrasComFreq.map(p => p.ocorrencias));
+      const normalizedSize = 5 + (palavra.ocorrencias / maxFreq) * 13;
+      
+      graph.addNode(palavra.palavra, {
+        x,
+        y,
+        size: normalizedSize,
+        label: palavra.palavra,
+        color: domain.cor,
+        palavra: palavra.palavra,
+        ocorrencias: palavra.ocorrencias,
+        frequenciaNormalizadaDominio: freqNormalizadaDominio,
+        orbitRadius,
+        orbitAngle: angle,
+        orbitIndex,
+        initialAngle: angle,
+        dominio: domain.dominio,
+        hasKWIC: kwicDataMap[palavra.palavra]?.length > 0
+      });
+    });
+    
+    console.log(`✅ Stellar System "${domainName}" created with ${graph.order} nodes`);
+    return graph;
+  }, [dominiosData, kwicDataMap]);
 
-  // Navega entre níveis (universe, galaxy)
+  // Navega entre níveis (universe, galaxy, stellar-system)
   const navigateToLevel = useCallback((targetLevel: NavigationLevel) => {
     if (!sigmaRef.current || !graphRef.current) return;
     
@@ -617,12 +702,25 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         lastClickedNodeRef.current = null;
         clickTimeoutRef.current = null;
         
-        // Single click normal: abrir modal KWIC
+      // Single click normal
         if (currentLevel === 'galaxy' && node !== 'center') {
+          // Clique em domínio = navegar para stellar-system
           const nodeData = graph.getNodeAttributes(node);
-          const words = nodeData.words || [];
-          if (words.length > 0 && onWordClick) {
-            onWordClick(words[0]);
+          const domainName = nodeData.dominio;
+          if (domainName) {
+            console.log(`🚀 Navigating to Stellar System: ${domainName}`);
+            setSelectedDomain(domainName);
+            selectedDomainRef.current = domainName;
+            setTimeout(() => navigateToLevel('stellar-system'), 100);
+          }
+        } else if (currentLevel === 'stellar-system' && node === 'stellar-core') {
+          // Clique no núcleo = voltar para galaxy
+          navigateToLevel('galaxy');
+        } else if (currentLevel === 'stellar-system' && node !== 'stellar-core') {
+          // Clique em palavra = abrir KWIC
+          const kwicData = kwicDataMap[node];
+          if (kwicData && kwicData.length > 0) {
+            onWordClick?.(node);
           }
         } else if (currentLevel === 'universe' && node !== 'center') {
           const kwicData = kwicDataMap[node];
@@ -735,8 +833,13 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       graphRef.current.clear();
       graphRef.current.import(newGraph.export());
       sigmaRef.current.refresh();
+    } else if (level === 'stellar-system' && selectedDomain) {
+      const newGraph = buildStellarSystemView(selectedDomain);
+      graphRef.current.clear();
+      graphRef.current.import(newGraph.export());
+      sigmaRef.current.refresh();
     }
-  }, [activeFilters, level, selectedSystem, buildUniverseView, buildGalaxyView]);
+  }, [activeFilters, level, selectedDomain, buildUniverseView, buildGalaxyView, buildStellarSystemView]);
 
   const handleZoomIn = () => {
     if (sigmaRef.current) {
@@ -845,6 +948,45 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
             corTexto: d.corTexto
           }))}
         />
+        
+        {/* Breadcrumb Navigation */}
+        <div className="absolute top-4 left-4 z-40 flex items-center gap-2 bg-black/60 backdrop-blur px-4 py-2 rounded-lg border border-cyan-500/30">
+          <button
+            onClick={() => navigateToLevel('universe')}
+            className={`text-xs font-mono transition-colors ${
+              level === 'universe' 
+                ? 'text-cyan-400 font-bold cursor-default' 
+                : 'text-white/60 hover:text-white cursor-pointer'
+            }`}
+            disabled={level === 'universe'}
+          >
+            🌌 UNIVERSO
+          </button>
+          {(level === 'galaxy' || level === 'stellar-system') && (
+            <>
+              <span className="text-cyan-500/50 text-xs">›</span>
+              <button
+                onClick={() => navigateToLevel('galaxy')}
+                className={`text-xs font-mono transition-colors ${
+                  level === 'galaxy' 
+                    ? 'text-cyan-400 font-bold cursor-default' 
+                    : 'text-white/60 hover:text-white cursor-pointer'
+                }`}
+                disabled={level === 'galaxy'}
+              >
+                🌀 GALÁXIA
+              </button>
+            </>
+          )}
+          {level === 'stellar-system' && selectedDomain && (
+            <>
+              <span className="text-cyan-500/50 text-xs">›</span>
+              <span className="text-cyan-400 font-bold text-xs font-mono cursor-default">
+                ⭐ {selectedDomain.toUpperCase()}
+              </span>
+            </>
+          )}
+        </div>
         
         {/* Navigation Console - Fixed no topo */}
         <div className="absolute top-0 left-0 right-0 z-30">

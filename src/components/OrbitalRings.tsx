@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 interface OrbitalRingsProps {
-  level: 'universe' | 'galaxy';
+  level: 'universe' | 'galaxy' | 'stellar-system';
   isPaused: boolean;
   containerWidth: number;
   containerHeight: number;

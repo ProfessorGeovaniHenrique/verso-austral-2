@@ -22,7 +22,8 @@ import {
   miScoreData,
   palavrasChaveData,
   palavraStats,
-  lematizacaoData
+  lematizacaoData,
+  frequenciaNormalizadaData
 } from '@/data/mockup';
 export default function Dashboard2() {
   const [modalOpen, setModalOpen] = useState(false);
@@ -791,6 +792,7 @@ E uma saudade redomona pelos cantos do galpão`}
                 dominiosData={dominiosData}
                 palavrasChaveData={palavrasChaveData}
                 kwicDataMap={kwicDataMap}
+                frequenciaNormalizadaData={frequenciaNormalizadaData}
               />
             </CardContent>
           </Card>
