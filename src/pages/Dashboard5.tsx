@@ -10,11 +10,14 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { FogDomain } from '@/components/v3/FogDomain';
 import { PlanetWord } from '@/components/v3/PlanetWord';
+import { TexturePreloader } from '@/components/v3/TexturePreloader';
 import { useFogPlanetData } from '@/hooks/useFogPlanetData';
 import { useInteractivityStore } from '@/store/interactivityStore';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Info } from 'lucide-react';
+import { ArrowLeft, Info, AlertTriangle } from 'lucide-react';
 import { ProsodiaType } from '@/data/types/corpus.types';
+import * as THREE from 'three';
+import { toast } from 'sonner';
 
 export default function Dashboard5() {
   // Hook de dados FOG & PLANETS
@@ -28,8 +31,8 @@ export default function Dashboard5() {
     resetFilters
   } = useFogPlanetData({
     initialFilters: {
-      minFrequency: 1,
-      maxWords: 15,
+      minFrequency: 2,
+      maxWords: 10,
       fogIntensity: 0.7
     }
   });
@@ -40,6 +43,12 @@ export default function Dashboard5() {
   // Estados de controle de câmera
   const [autoRotate, setAutoRotate] = useState(false);
   const [autoRotateSpeed, setAutoRotateSpeed] = useState(0.5);
+  
+  // Estado de texturas pré-carregadas
+  const [preloadedTextures, setPreloadedTextures] = useState<THREE.Texture[] | null>(null);
+  
+  // Estado de WebGL Context
+  const [webglError, setWebglError] = useState(false);
 
   // Estatísticas filtradas
   const stats = useMemo(() => ({
@@ -72,6 +81,32 @@ export default function Dashboard5() {
       setFilters({ selectedDomainId: domainId });
     }
   }, [filters.selectedDomainId, setFilters]);
+  
+  // Handler de WebGL Context Lost
+  const handleWebGLContextLost = useCallback((event: Event) => {
+    event.preventDefault();
+    console.warn('🔴 WebGL context lost. Tentando recuperar...');
+    setWebglError(true);
+    toast.error('Contexto WebGL perdido. Tentando recuperar...', {
+      duration: 5000
+    });
+  }, []);
+  
+  // Handler de WebGL Context Restored
+  const handleWebGLContextRestored = useCallback(() => {
+    console.log('✅ WebGL context restaurado!');
+    setWebglError(false);
+    toast.success('Visualização 3D restaurada com sucesso!', {
+      duration: 3000
+    });
+    window.location.reload(); // Recarregar para garantir estado limpo
+  }, []);
+  
+  // Handler de texturas carregadas
+  const handleTexturesLoaded = useCallback((textures: THREE.Texture[]) => {
+    setPreloadedTextures(textures);
+    console.log('✅ Texturas pré-carregadas:', textures.length);
+  }, []);
 
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -111,73 +146,111 @@ export default function Dashboard5() {
       <div className="flex-1 flex overflow-hidden">
         {/* Canvas 3D */}
         <div className="flex-1 relative bg-slate-950">
+          {webglError && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm">
+              <Card className="max-w-md border-destructive">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-5 h-5" />
+                    Erro de Renderização
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    O contexto WebGL foi perdido. Isso pode acontecer quando a GPU está sobrecarregada.
+                  </p>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    className="w-full"
+                  >
+                    Recarregar Visualização
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
           <Canvas
             shadows
-            gl={{ antialias: true, alpha: true }}
-            dpr={[1, 2]}
+            gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+            dpr={[1, 1.5]}
+            onCreated={({ gl }) => {
+              // Adicionar listeners para WebGL context loss
+              gl.domElement.addEventListener('webglcontextlost', handleWebGLContextLost);
+              gl.domElement.addEventListener('webglcontextrestored', handleWebGLContextRestored);
+            }}
           >
-            {/* Câmera */}
-            <PerspectiveCamera makeDefault position={[0, 5, 20]} fov={60} />
-            
-            {/* Controles de Órbita */}
-            <OrbitControls
-              enablePan={true}
-              enableZoom={true}
-              enableRotate={true}
-              autoRotate={autoRotate}
-              autoRotateSpeed={autoRotateSpeed}
-              minDistance={5}
-              maxDistance={50}
-              maxPolarAngle={Math.PI / 1.5}
-              minPolarAngle={Math.PI / 6}
-            />
-
-            {/* Iluminação */}
-            <ambientLight intensity={0.3} />
-            <directionalLight
-              position={[10, 10, 5]}
-              intensity={0.5}
-              castShadow
-            />
-            <pointLight position={[-10, -10, -5]} intensity={0.3} color="#4fc3f7" />
-            <pointLight position={[10, 10, 10]} intensity={0.2} color="#ab47bc" />
-
-            {/* Background: Estrelas */}
-            <Stars
-              radius={100}
-              depth={50}
-              count={3000}
-              factor={4}
-              saturation={0}
-              fade
-              speed={0.5}
-            />
-
-            {/* Renderizar FOG Domains */}
-            {domains.map(domain => (
-              <FogDomain
-                key={domain.dominio}
-                domain={domain}
-                opacity={filters.selectedDomainId && filters.selectedDomainId !== domain.dominio ? 0.15 : 1.0}
+            <TexturePreloader onLoaded={handleTexturesLoaded}>
+              {/* Câmera */}
+              <PerspectiveCamera makeDefault position={[0, 5, 20]} fov={60} />
+              
+              {/* Controles de Órbita */}
+              <OrbitControls
+                enablePan={true}
+                enableZoom={true}
+                enableRotate={true}
+                autoRotate={autoRotate}
+                autoRotateSpeed={autoRotateSpeed}
+                minDistance={5}
+                maxDistance={50}
+                maxPolarAngle={Math.PI / 1.5}
+                minPolarAngle={Math.PI / 6}
               />
-            ))}
 
-            {/* Renderizar Planet Words */}
-            {domains.flatMap(domain => {
-              const isInSelectedDomain = !filters.selectedDomainId || filters.selectedDomainId === domain.dominio;
-              const wordOpacity = isInSelectedDomain ? 1.0 : 0.2;
+              {/* Iluminação */}
+              <ambientLight intensity={0.3} />
+              <directionalLight
+                position={[10, 10, 5]}
+                intensity={0.5}
+                castShadow
+              />
+              <pointLight position={[-10, -10, -5]} intensity={0.3} color="#4fc3f7" />
+              <pointLight position={[10, 10, 10]} intensity={0.2} color="#ab47bc" />
 
-              return domain.palavras.map(word => (
-                <PlanetWord
-                  key={`${domain.dominio}-${word.palavra}`}
-                  word={word}
-                  domainColor={domain.cor}
-                  domainPosition={domain.position}
-                  opacity={wordOpacity}
-                  isInSelectedDomain={isInSelectedDomain}
+              {/* Background: Estrelas */}
+              <Stars
+                radius={100}
+                depth={50}
+                count={3000}
+                factor={4}
+                saturation={0}
+                fade
+                speed={0.5}
+              />
+
+              {/* Renderizar FOG Domains */}
+              {domains.map(domain => (
+                <FogDomain
+                  key={domain.dominio}
+                  domain={domain}
+                  opacity={filters.selectedDomainId && filters.selectedDomainId !== domain.dominio ? 0.15 : 1.0}
                 />
-              ));
-            })}
+              ))}
+
+              {/* Renderizar Planet Words */}
+              {domains.flatMap(domain => {
+                const isInSelectedDomain = !filters.selectedDomainId || filters.selectedDomainId === domain.dominio;
+                const wordOpacity = isInSelectedDomain ? 1.0 : 0.2;
+
+                return domain.palavras.map(word => {
+                  // Mapear textureIndex para textura pré-carregada
+                  const textureIndex = parseInt(word.planetTexture.match(/planet-(\d+)/)?.[1] || '1') - 1;
+                  const preloadedTexture = preloadedTextures?.[textureIndex];
+                  
+                  return (
+                    <PlanetWord
+                      key={`${domain.dominio}-${word.palavra}`}
+                      word={word}
+                      domainColor={domain.cor}
+                      domainPosition={domain.position}
+                      opacity={wordOpacity}
+                      isInSelectedDomain={isInSelectedDomain}
+                      preloadedTexture={preloadedTexture}
+                    />
+                  );
+                });
+              })}
+            </TexturePreloader>
           </Canvas>
 
           {/* Overlay: Info */}

@@ -28,8 +28,8 @@ interface UseFogPlanetDataReturn {
 // ===== FILTROS DEFAULT =====
 const defaultFilters: VisualizationFilters = {
   selectedDomainId: undefined,
-  minFrequency: 1,           // Mínimo 1 para incluir todas as palavras por padrão
-  maxWords: 15,              // Máximo 15 palavras por domínio
+  minFrequency: 2,           // Otimizado: reduzir palavras de baixa frequência
+  maxWords: 10,              // Otimizado: máximo 10 palavras por domínio
   showLabels: true,
   fogIntensity: 0.7,         // 70% de opacidade base
   prosodyFilter: undefined   // Sem filtro de prosódia inicialmente
