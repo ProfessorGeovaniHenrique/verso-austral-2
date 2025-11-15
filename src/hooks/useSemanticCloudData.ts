@@ -1,124 +1,97 @@
-import { useMemo } from "react";
-import { dominiosNormalizados } from "@/data/mockup/dominios-normalized";
-import { getProsodiaSemantica } from "@/data/mockup/prosodias-map";
-import { calculateAllDomainStats, DomainStats } from "@/lib/linguisticStats";
+import { useMemo } from 'react';
+import { dominiosNormalizados } from '@/data/mockup/dominios-normalized';
+import { getProsodiaSemantica } from '@/data/mockup/prosodias-map';
+import { calculateAllDomainStats } from '@/lib/linguisticStats';
 
 export interface CloudNode {
   id: string;
   label: string;
   x: number;
   y: number;
-  z: number; // Profundidade (0-100)
+  z: number;
   fontSize: number;
   color: string;
   type: 'domain' | 'word';
   frequency: number;
   domain: string;
-  prosody: 'Positiva' | 'Negativa' | 'Neutra';
+  prosody: string;
 }
 
-/**
- * Posicionamento em espiral (Golden Angle Spiral)
- * Distribui pontos de forma natural sem colisões
- */
-function getSpiralPosition(
+const CANVAS_WIDTH = 1400;
+const CANVAS_HEIGHT = 700;
+const CORPUS_SIZE = 10000;
+
+function getCirclePosition(
   index: number,
-  spacing: number,
-  canvasWidth: number,
-  canvasHeight: number
+  total: number,
+  radius: number,
+  centerX: number,
+  centerY: number
 ): { x: number; y: number } {
-  const centerX = canvasWidth / 2;
-  const centerY = canvasHeight / 2;
-  
-  // Golden angle em radianos
-  const goldenAngle = 137.5 * (Math.PI / 180);
-  const angle = index * goldenAngle;
-  const radius = spacing * Math.sqrt(index);
-  
+  const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
   return {
     x: centerX + Math.cos(angle) * radius,
     y: centerY + Math.sin(angle) * radius
   };
 }
 
-/**
- * Verifica se uma posição está muito próxima de nós existentes
- */
-function hasCollision(
-  x: number,
-  y: number,
-  size: number,
-  existingNodes: CloudNode[],
-  minDistance: number
-): boolean {
-  return existingNodes.some(node => {
-    const dx = node.x - x;
-    const dy = node.y - y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    const requiredDistance = (node.fontSize + size) / 2 + minDistance;
-    return distance < requiredDistance;
-  });
+function getOrbitPosition(
+  domainX: number,
+  domainY: number,
+  wordIndex: number,
+  totalWords: number,
+  orbitRadius: number,
+  randomness: number = 0.2
+): { x: number; y: number } {
+  const angle = (wordIndex / totalWords) * Math.PI * 2 + Math.random() * randomness;
+  const radiusVariation = orbitRadius * (1 + (Math.random() - 0.5) * 0.3);
+  
+  return {
+    x: domainX + Math.cos(angle) * radiusVariation,
+    y: domainY + Math.sin(angle) * radiusVariation
+  };
 }
 
-/**
- * Encontra uma posição disponível para uma palavra
- */
-function findAvailablePosition(
-  existingNodes: CloudNode[],
-  frequency: number,
-  canvasWidth: number,
-  canvasHeight: number,
-  attempt: number = 0
-): { x: number; y: number; z: number } {
-  const centerX = canvasWidth / 2;
-  const centerY = canvasHeight / 2;
-  
-  // Espalhamento baseado na frequência (palavras mais frequentes mais perto do centro)
-  const maxRadius = Math.min(canvasWidth, canvasHeight) / 2 - 100;
-  const minRadius = 150;
-  const radius = minRadius + (1 - frequency / 10) * (maxRadius - minRadius);
-  
-  // Tentar posições aleatórias
-  const angle = (attempt * 17 + Math.random() * 360) * (Math.PI / 180);
-  const r = radius + (Math.random() - 0.5) * 100;
-  
-  const x = centerX + Math.cos(angle) * r;
-  const y = centerY + Math.sin(angle) * r;
-  const z = Math.random() * 50; // Palavras no fundo (0-50)
-  
-  return { x, y, z };
-}
-
-/**
- * Hook para gerar dados da nuvem de domínios semânticos
- */
 export function useSemanticCloudData() {
   const { cloudNodes, stats } = useMemo(() => {
     const nodes: CloudNode[] = [];
     
-    // Filtrar domínios (excluir palavras funcionais)
     const domains = dominiosNormalizados.filter(
       d => d.dominio !== "Palavras Funcionais"
     );
     
-    // Canvas dimensions
-    const canvasWidth = 1400;
-    const canvasHeight = 700;
+    const domainStats = calculateAllDomainStats(domains);
+    const statsMap = new Map(domainStats.map(s => [s.domain, s]));
     
-    // FASE 1: Criar nós de domínios (grandes, destaque)
+    const centerX = CANVAS_WIDTH / 2;
+    const centerY = CANVAS_HEIGHT / 2;
+    const domainCircleRadius = 220;
+    
+    const richnesses = domainStats.map(s => s.lexicalRichness);
+    const minRichness = Math.min(...richnesses);
+    const maxRichness = Math.max(...richnesses);
+    
     domains.forEach((dominio, index) => {
-      // Usar spiral placement para distribuir domínios uniformemente
-      const position = getSpiralPosition(index, 140, canvasWidth, canvasHeight);
+      const position = getCirclePosition(
+        index, 
+        domains.length, 
+        domainCircleRadius,
+        centerX,
+        centerY
+      );
       
-      // Tamanho baseado na frequência (40-70px)
-      const fontSize = 40 + Math.min(30, dominio.ocorrencias * 3);
+      const stats = statsMap.get(dominio.dominio);
+      const richness = stats?.lexicalRichness || 0.5;
+      
+      const normalizedRichness = (richness - minRichness) / (maxRichness - minRichness);
+      const fontSize = 45 + normalizedRichness * 40;
       
       nodes.push({
         id: `domain-${dominio.dominio}`,
         label: dominio.dominio,
         x: position.x,
         y: position.y,
-        z: 60 + Math.random() * 35, // Profundidade alta (60-95) - primeiro plano
+        z: 60 + Math.random() * 20,
         fontSize,
         color: dominio.cor,
         type: 'domain',
@@ -128,42 +101,42 @@ export function useSemanticCloudData() {
       });
     });
     
-    // FASE 2: Criar nós de palavras (menores, background)
-    domains.forEach(dominio => {
-      // Pegar apenas as palavras mais frequentes de cada domínio (top 15)
+    domains.forEach((dominio) => {
+      const domainNode = nodes.find(n => n.id === `domain-${dominio.dominio}`);
+      if (!domainNode) return;
+      
       const topWords = dominio.palavrasComFrequencia
         .sort((a, b) => b.ocorrencias - a.ocorrencias)
         .slice(0, 15);
       
+      const normalizedFreqs = topWords.map(p => (p.ocorrencias / CORPUS_SIZE) * 1000);
+      const minFreq = Math.min(...normalizedFreqs);
+      const maxFreq = Math.max(...normalizedFreqs);
+      
       topWords.forEach((palavra, wordIndex) => {
-        let position;
-        let attempts = 0;
-        const maxAttempts = 20;
+        const normalizedFreq = (palavra.ocorrencias / CORPUS_SIZE) * 1000;
         
-        // Tentar encontrar posição sem colisão
-        do {
-          position = findAvailablePosition(
-            nodes,
-            palavra.ocorrencias,
-            canvasWidth,
-            canvasHeight,
-            attempts + wordIndex * 100
-          );
-          attempts++;
-        } while (
-          attempts < maxAttempts &&
-          hasCollision(position.x, position.y, 16, nodes, 25)
+        const normalizedValue = maxFreq > minFreq 
+          ? (normalizedFreq - minFreq) / (maxFreq - minFreq)
+          : 0.5;
+        const fontSize = 14 + normalizedValue * 18;
+        
+        const orbitRadius = 85 + (1 - normalizedValue) * 35;
+        
+        const position = getOrbitPosition(
+          domainNode.x,
+          domainNode.y,
+          wordIndex,
+          topWords.length,
+          orbitRadius
         );
         
-        // Tamanho baseado na frequência (12-28px)
-        const fontSize = 12 + Math.min(16, palavra.ocorrencias * 4);
-        
         nodes.push({
-          id: `word-${palavra.palavra}`,
+          id: `word-${palavra.palavra}-${dominio.dominio}`,
           label: palavra.palavra,
           x: position.x,
           y: position.y,
-          z: position.z,
+          z: 20 + Math.random() * 25,
           fontSize,
           color: dominio.cor,
           type: 'word',
@@ -173,9 +146,6 @@ export function useSemanticCloudData() {
         });
       });
     });
-    
-    // Calcular estatísticas
-    const domainStats = calculateAllDomainStats(domains);
     
     return { cloudNodes: nodes, stats: domainStats };
   }, []);

@@ -1,296 +1,314 @@
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { CloudNode } from "@/hooks/useSemanticCloudData";
-import { throttle } from "lodash";
+import { Camera, LayerMode } from "./CloudControlPanel";
 
 interface SemanticDomainCloudProps {
   nodes: CloudNode[];
+  camera: Camera;
+  font: string;
+  layerMode: LayerMode;
   onWordClick?: (node: CloudNode) => void;
   onWordHover?: (node: CloudNode | null) => void;
 }
 
-/**
- * Renderiza um nó de domínio com glow neon intenso
- */
-function renderDomainNode(
-  ctx: CanvasRenderingContext2D,
-  node: CloudNode,
-  isHovered: boolean = false
-) {
-  const scale = 1 + (node.z / 100) * 0.3;
-  const actualSize = node.fontSize * scale;
-  
-  ctx.save();
-  ctx.translate(node.x, node.y);
-  
-  // Efeito de pulsação no hover
-  const pulse = isHovered ? 1 + Math.sin(Date.now() / 200) * 0.08 : 1;
-  const finalSize = actualSize * pulse;
-  
-  // Glow neon multicamadas (3 camadas para intensidade)
-  ctx.font = `bold ${finalSize}px "Inter", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  // Camada 1: Glow externo intenso
-  ctx.shadowColor = node.color;
-  ctx.shadowBlur = isHovered ? 50 : 35;
-  ctx.fillStyle = node.color;
-  ctx.globalAlpha = 0.8;
-  ctx.fillText(node.label, 0, 0);
-  
-  // Camada 2: Glow médio
-  ctx.shadowBlur = isHovered ? 30 : 20;
-  ctx.globalAlpha = 0.9;
-  ctx.fillText(node.label, 0, 0);
-  
-  // Camada 3: Glow interno
-  ctx.shadowBlur = isHovered ? 15 : 10;
-  ctx.globalAlpha = 1;
-  ctx.fillText(node.label, 0, 0);
-  
-  // Texto principal branco por cima
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 1;
-  ctx.fillText(node.label, 0, 0);
-  
-  ctx.restore();
-}
+const canvasWidth = 1400;
+const canvasHeight = 700;
 
-/**
- * Renderiza um nó de palavra com opacidade baseada em profundidade
- */
-function renderWordNode(
-  ctx: CanvasRenderingContext2D,
-  node: CloudNode,
-  isHovered: boolean = false
-) {
-  const scale = 0.7 + (node.z / 100) * 0.5;
-  const actualSize = node.fontSize * scale;
-  
-  // Opacidade baseada na profundidade (z)
-  // z = 0-50: palavras no fundo ficam mais transparentes
-  const baseOpacity = 0.35 + (node.z / 100) * 0.5;
-  const opacity = isHovered ? Math.min(1, baseOpacity + 0.3) : baseOpacity;
-  
-  ctx.save();
-  ctx.translate(node.x, node.y);
-  
-  ctx.font = `${actualSize}px "Inter", sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  
-  // Sutil glow para palavras em hover
-  if (isHovered) {
-    ctx.shadowColor = node.color;
-    ctx.shadowBlur = 12;
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = node.color;
-    ctx.fillText(node.label, 0, 0);
-  }
-  
-  // Texto da palavra
-  ctx.shadowBlur = 0;
-  ctx.globalAlpha = opacity;
-  ctx.fillStyle = node.color;
-  ctx.fillText(node.label, 0, 0);
-  
-  ctx.restore();
-}
-
-/**
- * Limpa o canvas com fundo gradiente escuro
- */
-function clearCanvas(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number
-) {
-  // Gradiente radial do centro para as bordas
-  const gradient = ctx.createRadialGradient(
-    width / 2,
-    height / 2,
-    0,
-    width / 2,
-    height / 2,
-    Math.max(width, height) / 2
-  );
-  
-  gradient.addColorStop(0, 'hsl(222, 47%, 11%)');
-  gradient.addColorStop(1, 'hsl(222, 47%, 6%)');
-  
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, width, height);
-}
-
-/**
- * Encontra o nó na posição do cursor
- */
-function getNodeAtPosition(
-  x: number,
-  y: number,
-  nodes: CloudNode[]
-): CloudNode | null {
-  // Ordenar por z (mais próximo primeiro)
-  const sortedNodes = [...nodes].sort((a, b) => b.z - a.z);
-  
-  for (const node of sortedNodes) {
-    const scale = node.type === 'domain' 
-      ? 1 + (node.z / 100) * 0.3
-      : 0.7 + (node.z / 100) * 0.5;
-    
-    const actualSize = node.fontSize * scale;
-    
-    // Aproximação: usar retângulo do texto
-    const width = actualSize * node.label.length * 0.6;
-    const height = actualSize;
-    
-    const dx = Math.abs(x - node.x);
-    const dy = Math.abs(y - node.y);
-    
-    if (dx < width / 2 && dy < height / 2) {
-      return node;
-    }
-  }
-  
-  return null;
-}
-
-/**
- * Renderiza partículas de fundo sutis
- */
-function renderBackgroundParticles(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  time: number
-) {
-  for (let i = 0; i < 30; i++) {
-    const x = (i * 137.5) % width;
-    const y = ((i * 73) % height + time * 0.01 * i) % height;
-    const size = 1 + (i % 3);
-    const opacity = 0.05 + Math.sin(time / 1000 + i) * 0.05;
-    
-    ctx.fillStyle = `rgba(6, 182, 212, ${opacity})`;
-    ctx.beginPath();
-    ctx.arc(x, y, size, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-export function SemanticDomainCloud({
-  nodes,
-  onWordClick,
-  onWordHover
+export function SemanticDomainCloud({ 
+  nodes, 
+  camera, 
+  font, 
+  layerMode,
+  onWordClick, 
+  onWordHover 
 }: SemanticDomainCloudProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hoveredNode, setHoveredNode] = useState<CloudNode | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-  const [cursorStyle, setCursorStyle] = useState<'default' | 'pointer'>('default');
-  const animationFrameRef = useRef<number>();
-  
-  // Renderização contínua com animações
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    
-    const render = (time: number) => {
-      clearCanvas(ctx, canvas.width, canvas.height);
-      
-      // Partículas de fundo
-      renderBackgroundParticles(ctx, canvas.width, canvas.height, time);
-      
-      // Ordenar nós por z (fundo para frente)
-      const sortedNodes = [...nodes].sort((a, b) => a.z - b.z);
-      
-      // Renderizar palavras primeiro (background)
-      sortedNodes.forEach(node => {
-        if (node.type === 'word') {
-          renderWordNode(ctx, node, node.id === hoveredNode?.id);
-        }
-      });
-      
-      // Renderizar domínios por cima (foreground)
-      sortedNodes.forEach(node => {
-        if (node.type === 'domain') {
-          renderDomainNode(ctx, node, node.id === hoveredNode?.id);
-        }
-      });
-      
-      animationFrameRef.current = requestAnimationFrame(render);
+
+  const worldToScreen = useCallback((node: CloudNode) => {
+    return {
+      x: (node.x - camera.x) * camera.zoom + canvasWidth / 2,
+      y: (node.y - camera.y) * camera.zoom + canvasHeight / 2
     };
+  }, [camera]);
+
+  const getAdjustedNode = useCallback((node: CloudNode): CloudNode => {
+    let zAdjustment = 0;
     
-    animationFrameRef.current = requestAnimationFrame(render);
+    switch (layerMode) {
+      case 'domains':
+        zAdjustment = node.type === 'domain' ? +30 : -20;
+        break;
+      case 'words':
+        zAdjustment = node.type === 'word' ? +30 : -20;
+        break;
+      case 'balanced':
+        zAdjustment = 0;
+        break;
+    }
     
-    return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
+    return { ...node, z: node.z + zAdjustment };
+  }, [layerMode]);
+
+  function renderDomainNode(
+    ctx: CanvasRenderingContext2D,
+    node: CloudNode,
+    screenPos: { x: number; y: number },
+    isHovered: boolean
+  ) {
+    const scale = 1 + (node.z / 100) * 0.5;
+    const pulse = isHovered ? 1 + Math.sin(Date.now() / 200) * 0.08 : 1;
+    const finalSize = node.fontSize * scale * pulse * camera.zoom;
+
+    ctx.save();
+    ctx.translate(screenPos.x, screenPos.y);
+
+    ctx.shadowColor = node.color;
+    ctx.shadowBlur = isHovered ? 40 * scale : 30 * scale;
+    ctx.fillStyle = node.color;
+    ctx.font = `bold ${finalSize}px "${font}", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let i = 0; i < 3; i++) {
+      ctx.fillText(node.label, 0, 0);
+    }
+
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.fillText(node.label, 0, 0);
+
+    ctx.restore();
+  }
+
+  function renderWordNode(
+    ctx: CanvasRenderingContext2D,
+    node: CloudNode,
+    screenPos: { x: number; y: number },
+    isHovered: boolean
+  ) {
+    const scale = 0.8 + (node.z / 100) * 0.4;
+    const opacity = 0.5 + (node.z / 100) * 0.5;
+    const actualSize = node.fontSize * scale * camera.zoom;
+
+    ctx.save();
+    ctx.translate(screenPos.x, screenPos.y);
+
+    if (isHovered) {
+      ctx.shadowColor = node.color;
+      ctx.shadowBlur = 15;
+    }
+
+    ctx.globalAlpha = isHovered ? Math.min(1, opacity + 0.3) : opacity;
+    ctx.fillStyle = node.color;
+    ctx.font = `${actualSize}px "${font}", sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(node.label, 0, 0);
+
+    ctx.restore();
+  }
+
+  function clearCanvas(ctx: CanvasRenderingContext2D) {
+    const gradient = ctx.createRadialGradient(
+      canvasWidth / 2,
+      canvasHeight / 2,
+      0,
+      canvasWidth / 2,
+      canvasHeight / 2,
+      Math.max(canvasWidth, canvasHeight) / 2
+    );
+
+    gradient.addColorStop(0, "hsl(222, 47%, 11%)");
+    gradient.addColorStop(1, "hsl(222, 47%, 6%)");
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
+
+  function renderBackgroundParticles(ctx: CanvasRenderingContext2D) {
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * canvasWidth;
+      const y = Math.random() * canvasHeight;
+      const size = 1 + Math.random() * 2;
+
+      ctx.fillStyle = "rgba(6, 182, 212, 0.1)";
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  const getNodeAtPosition = useCallback(
+    (screenX: number, screenY: number): CloudNode | null => {
+      const ctx = canvasRef.current?.getContext("2d");
+      if (!ctx) return null;
+
+      const worldX = (screenX - canvasWidth / 2) / camera.zoom + camera.x;
+      const worldY = (screenY - canvasHeight / 2) / camera.zoom + camera.y;
+
+      const sortedNodes = nodes
+        .map(n => getAdjustedNode(n))
+        .sort((a, b) => b.z - a.z);
+
+      for (const node of sortedNodes) {
+        const scale = node.type === "domain" 
+          ? 1 + (node.z / 100) * 0.5 
+          : 0.8 + (node.z / 100) * 0.4;
+        const fontSize = node.fontSize * scale;
+
+        ctx.font = `${node.type === "domain" ? "bold " : ""}${fontSize}px "${font}", sans-serif`;
+        const metrics = ctx.measureText(node.label);
+        const textWidth = metrics.width;
+        const textHeight = fontSize;
+
+        if (
+          worldX >= node.x - textWidth / 2 &&
+          worldX <= node.x + textWidth / 2 &&
+          worldY >= node.y - textHeight / 2 &&
+          worldY <= node.y + textHeight / 2
+        ) {
+          return node;
+        }
       }
-    };
-  }, [nodes, hoveredNode]);
-  
-  // Manipulador de movimento do mouse (throttled)
-  const handleMouseMove = useCallback(
-    throttle((e: React.MouseEvent<HTMLCanvasElement>) => {
+
+      return null;
+    },
+    [nodes, camera, font, getAdjustedNode]
+  );
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
-      
+
       const rect = canvas.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
-      const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-      
-      const node = getNodeAtPosition(x, y, nodes);
-      
-      if (node !== hoveredNode) {
-        setHoveredNode(node);
-        onWordHover?.(node);
-        setCursorStyle(node ? 'pointer' : 'default');
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      const node = getNodeAtPosition(x, y);
+      if (node) {
+        onWordClick?.(node);
       }
-    }, 16),
-    [nodes, hoveredNode, onWordHover]
+    },
+    [getNodeAtPosition, onWordClick]
   );
-  
-  // Manipulador de clique
-  const handleClick = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width;
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height;
-    
-    const node = getNodeAtPosition(x, y, nodes);
-    
-    if (node && node.type === 'word') {
-      onWordClick?.(node);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (e.button === 0) {
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
     }
-  }, [nodes, onWordClick]);
-  
-  // Limpar hover ao sair
+  }, []);
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      if (isPanning) {
+        const dx = (e.clientX - panStart.x) / camera.zoom;
+        const dy = (e.clientY - panStart.y) / camera.zoom;
+        
+        const event = new CustomEvent('camera-change', {
+          detail: { x: camera.x - dx, y: camera.y - dy, zoom: camera.zoom }
+        });
+        window.dispatchEvent(event);
+        
+        setPanStart({ x: e.clientX, y: e.clientY });
+        canvas.style.cursor = "grabbing";
+      } else {
+        const node = getNodeAtPosition(x, y);
+        
+        if (node !== hoveredNode) {
+          setHoveredNode(node);
+          onWordHover?.(node);
+          canvas.style.cursor = node ? "pointer" : "grab";
+        }
+      }
+    },
+    [hoveredNode, onWordHover, getNodeAtPosition, isPanning, panStart, camera]
+  );
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.style.cursor = "grab";
+    }
+  }, []);
+
   const handleMouseLeave = useCallback(() => {
     setHoveredNode(null);
     onWordHover?.(null);
-    setCursorStyle('default');
+    setIsPanning(false);
   }, [onWordHover]);
-  
+
+  const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+    const newZoom = Math.max(0.5, Math.min(3, camera.zoom * zoomFactor));
+    
+    const event = new CustomEvent('camera-change', {
+      detail: { ...camera, zoom: newZoom }
+    });
+    window.dispatchEvent(event);
+  }, [camera]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const render = () => {
+      clearCanvas(ctx);
+      renderBackgroundParticles(ctx);
+
+      const adjustedNodes = nodes.map(n => getAdjustedNode(n));
+      const sortedNodes = adjustedNodes.sort((a, b) => a.z - b.z);
+
+      sortedNodes.forEach((node) => {
+        const isHovered = hoveredNode?.id === node.id;
+        const screenPos = worldToScreen(node);
+        
+        if (screenPos.x < -100 || screenPos.x > canvasWidth + 100 ||
+            screenPos.y < -100 || screenPos.y > canvasHeight + 100) {
+          return;
+        }
+        
+        if (node.type === "domain") {
+          renderDomainNode(ctx, node, screenPos, isHovered);
+        } else {
+          renderWordNode(ctx, node, screenPos, isHovered);
+        }
+      });
+    };
+
+    render();
+  }, [nodes, hoveredNode, camera, font, layerMode, worldToScreen, getAdjustedNode]);
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={1400}
-      height={700}
-      onMouseMove={handleMouseMove}
-      onClick={handleClick}
-      onMouseLeave={handleMouseLeave}
-      className="w-full h-auto"
-      style={{
-        maxWidth: '100%',
-        aspectRatio: '1400 / 700',
-        cursor: cursorStyle
-      }}
-    />
+    <div className="relative w-full h-full bg-slate-950">
+      <canvas
+        ref={canvasRef}
+        width={canvasWidth}
+        height={canvasHeight}
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onWheel={handleWheel}
+        className="w-full h-full cursor-grab"
+      />
+    </div>
   );
 }

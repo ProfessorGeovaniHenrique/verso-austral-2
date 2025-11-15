@@ -7,13 +7,6 @@ import { CloudControlPanel, Camera, LayerMode } from "@/components/v3/CloudContr
 import { KWICModal } from "@/components/KWICModal";
 import { useSemanticCloudData, CloudNode } from "@/hooks/useSemanticCloudData";
 import { kwicDataMap } from "@/data/mockup/kwic";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { SemanticDomainCloud } from "@/components/v3/SemanticDomainCloud";
-import { StatisticalFooter } from "@/components/v3/StatisticalFooter";
-import { KWICModal } from "@/components/KWICModal";
-import { useSemanticCloudData, CloudNode } from "@/hooks/useSemanticCloudData";
-import { kwicDataMap } from "@/data/mockup/kwic";
 
 export default function Dashboard3() {
   const [activeTab, setActiveTab] = useState("galaxy");
@@ -22,13 +15,11 @@ export default function Dashboard3() {
   const [hoveredWord, setHoveredWord] = useState<CloudNode | null>(null);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   
-  // Controles
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 });
   const [font, setFont] = useState("Orbitron");
   const [layerMode, setLayerMode] = useState<LayerMode>("balanced");
   const [fps, setFps] = useState(60);
 
-  // Performance monitor
   useEffect(() => {
     let frameCount = 0;
     let lastTime = performance.now();
@@ -50,46 +41,6 @@ export default function Dashboard3() {
     return () => cancelAnimationFrame(rafId);
   }, []);
 
-  // Listener para mudanças de câmera
-  useEffect(() => {
-    const handleCameraChange = (e: Event) => {
-      const customEvent = e as CustomEvent<Camera>;
-      setCamera(customEvent.detail);
-    };
-    
-    window.addEventListener('camera-change', handleCameraChange);
-    return () => window.removeEventListener('camera-change', handleCameraChange);
-  }, []);
-  
-  // Novos estados para controles
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, zoom: 1 });
-  const [font, setFont] = useState("Orbitron");
-  const [layerMode, setLayerMode] = useState<LayerMode>("balanced");
-  const [fps, setFps] = useState(60);
-
-  // Performance monitor
-  useEffect(() => {
-    let frameCount = 0;
-    let lastTime = performance.now();
-    
-    const updateFps = () => {
-      frameCount++;
-      const currentTime = performance.now();
-      
-      if (currentTime - lastTime >= 1000) {
-        setFps(frameCount);
-        frameCount = 0;
-        lastTime = currentTime;
-      }
-      
-      requestAnimationFrame(updateFps);
-    };
-    
-    const rafId = requestAnimationFrame(updateFps);
-    return () => cancelAnimationFrame(rafId);
-  }, []);
-
-  // Listener para mudanças de câmera
   useEffect(() => {
     const handleCameraChange = (e: Event) => {
       const customEvent = e as CustomEvent<Camera>;
@@ -110,142 +61,114 @@ export default function Dashboard3() {
     setHoveredWord(node);
   };
 
-  const handleCloseModal = () => {
-    setSelectedWord(null);
-  };
-
   const handleMouseMove = (e: React.MouseEvent) => {
     setMousePosition({ x: e.clientX, y: e.clientY });
   };
 
+  const handleCloseModal = () => {
+    setSelectedWord(null);
+  };
+
   return (
-    <div className="container mx-auto p-6 space-y-6 max-w-[1600px]">
-      {/* Header */}
-      <header className="space-y-2">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-cyan-400 bg-clip-text text-transparent">
-          Análise de Domínios Semânticos
+    <div className="container mx-auto p-6 space-y-6 max-w-[1800px]" onMouseMove={handleMouseMove}>
+      <div className="space-y-2">
+        <h1 className="text-4xl font-bold tracking-tight font-orbitron">
+          Análise Estilística de Corpus
         </h1>
         <p className="text-muted-foreground">
-          Visualização orbital interativa - Arquitetura otimizada v3
+          Visualização interativa de domínios semânticos e análise linguística computacional
         </p>
-      </header>
+      </div>
 
-      {/* Tabs de Navegação */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="galaxy" className="flex items-center gap-2">
-            <span>🌌</span>
-            <span>Galáxia</span>
-          </TabsTrigger>
-          <TabsTrigger value="network" className="flex items-center gap-2">
-            <span>🕸️</span>
-            <span>Rede</span>
-          </TabsTrigger>
-          <TabsTrigger value="stats" className="flex items-center gap-2">
-            <span>📊</span>
-            <span>Estatísticas</span>
-          </TabsTrigger>
+          <TabsTrigger value="galaxy">Nuvem</TabsTrigger>
+          <TabsTrigger value="network">Rede</TabsTrigger>
+          <TabsTrigger value="stats">Estatísticas</TabsTrigger>
         </TabsList>
 
-        {/* Tab: Nuvem de Domínios */}
-        <TabsContent value="galaxy" className="mt-6" onMouseMove={handleMouseMove}>
-          <Card className="border-cyan-500/30">
+        <TabsContent value="galaxy" className="space-y-4">
+          <Card>
             <CardHeader>
-              <CardTitle>Nuvem de Domínios Semânticos 3D</CardTitle>
+              <CardTitle className="text-3xl font-orbitron">Nuvem de Domínios Semânticos</CardTitle>
               <CardDescription>
-                Clique em qualquer palavra para ver suas concordâncias (KWIC). Domínios em destaque com glow neon.
+                Arraste para mover, scroll para zoom, clique em palavras para ver concordâncias
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0 relative">
-              <div className="relative">
-                {/* Canvas da nuvem */}
-                <SemanticDomainCloud
-                  nodes={cloudNodes}
-                  onWordClick={handleWordClick}
-                  onWordHover={handleWordHover}
-                />
-                
-                {/* Tooltip de hover */}
-                {hoveredWord && (
-                  <div
-                    className="absolute bg-slate-900/95 border border-cyan-500/50 
+            <CardContent className="p-0">
+              <div className="flex h-[800px]">
+                <div className="flex-1 relative">
+                  <SemanticDomainCloud
+                    nodes={cloudNodes}
+                    camera={camera}
+                    font={font}
+                    layerMode={layerMode}
+                    onWordClick={handleWordClick}
+                    onWordHover={handleWordHover}
+                  />
+                  
+                  {hoveredWord && (
+                    <div
+                      className="absolute bg-slate-900/95 border border-cyan-500/50 
                                 rounded-lg p-3 pointer-events-none z-50 backdrop-blur-sm
                                 shadow-lg shadow-cyan-500/20"
-                    style={{
-                      left: mousePosition.x - 100,
-                      top: mousePosition.y - 150,
-                    }}
-                  >
-                    <p className="font-bold text-cyan-400 text-sm">
-                      {hoveredWord.label}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Domínio: <span className="text-slate-300">{hoveredWord.domain}</span>
-                    </p>
-                    <p className="text-xs text-slate-400">
-                      Frequência: <span className="text-slate-300 font-mono">{hoveredWord.frequency}</span>
-                    </p>
-                    {hoveredWord.type === 'word' && (
-                      <p className="text-xs text-slate-400">
-                        Prosódia: <span className={`font-semibold ${
-                          hoveredWord.prosody === 'Positiva' ? 'text-green-400' :
-                          hoveredWord.prosody === 'Negativa' ? 'text-red-400' :
-                          'text-slate-300'
-                        }`}>
-                          {hoveredWord.prosody}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                )}
-                
-                {/* Rodapé estatístico retrátil */}
-                <StatisticalFooter stats={stats} />
+                      style={{
+                        left: mousePosition.x + 20,
+                        top: mousePosition.y + 20
+                      }}
+                    >
+                      <p className="font-bold text-cyan-400 text-sm mb-1">{hoveredWord.label}</p>
+                      <div className="text-xs text-slate-300 space-y-0.5">
+                        <p>Domínio: <span className="text-cyan-300">{hoveredWord.domain}</span></p>
+                        <p>Frequência: <span className="text-cyan-300">{hoveredWord.frequency}</span></p>
+                        <p>Prosódia: <span className="text-cyan-300">{hoveredWord.prosody}</span></p>
+                      </div>
+                    </div>
+                  )}
+
+                  <StatisticalFooter stats={stats} />
+                </div>
+
+                <CloudControlPanel
+                  camera={camera}
+                  onCameraChange={setCamera}
+                  font={font}
+                  onFontChange={setFont}
+                  layerMode={layerMode}
+                  onLayerModeChange={setLayerMode}
+                  stats={{
+                    fps,
+                    visibleNodes: cloudNodes.length
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Tab: Rede */}
-        <TabsContent value="network" className="mt-6">
-          <Card className="border-cyan-500/30">
+        <TabsContent value="network">
+          <Card>
             <CardHeader>
               <CardTitle>Rede Semântica</CardTitle>
-              <CardDescription>
-                Visualização de rede com conexões entre palavras e domínios
-              </CardDescription>
+              <CardDescription>Em desenvolvimento</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[600px] flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-lg">
-                <p className="text-muted-foreground">Em desenvolvimento - Fase 6</p>
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
 
-        {/* Tab: Estatísticas */}
-        <TabsContent value="stats" className="mt-6">
-          <Card className="border-cyan-500/30">
+        <TabsContent value="stats">
+          <Card>
             <CardHeader>
-              <CardTitle>Análise Estatística</CardTitle>
-              <CardDescription>
-                Frequências, distribuições e métricas dos domínios semânticos
-              </CardDescription>
+              <CardTitle>Estatísticas Detalhadas</CardTitle>
+              <CardDescription>Em desenvolvimento</CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="h-[600px] flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-lg">
-                <p className="text-muted-foreground">Em desenvolvimento - Fase 7</p>
-              </div>
-            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
 
-      {/* Modal KWIC */}
       {selectedWord && (
         <KWICModal
           open={!!selectedWord}
-          onOpenChange={(open) => !open && handleCloseModal()}
+          onOpenChange={handleCloseModal}
           word={selectedWord.label}
           data={kwicDataMap[selectedWord.label] || []}
         />
