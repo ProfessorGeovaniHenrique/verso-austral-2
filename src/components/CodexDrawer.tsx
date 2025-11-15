@@ -41,6 +41,11 @@ interface CodexDrawerProps {
     frequenciaNormalizadaDominio?: number;
     ocorrencias?: number;
     orbitIndex?: number;
+    // Propriedades orbitais
+    orbitalRadius?: number;
+    orbitalAngle?: number;
+    orbitalSpeed?: number;
+    orbitalEccentricity?: number;
   } | null;
   level?: 'universe' | 'galaxy' | 'stellar-system' | string;
 }
@@ -511,6 +516,49 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
                 </div>
               );
             })()}
+
+            {/* 4. ESTATÍSTICAS DE ASSOCIAÇÃO (para palavras) */}
+            {word?.miScore !== undefined && (
+              <div className="bg-cyan-950/30 rounded-lg p-3 border border-cyan-500/20">
+                <div className="text-cyan-300 text-[10px] font-mono mb-3 flex items-center gap-2">
+                  <span>📊</span>
+                  ESTATÍSTICAS DE ASSOCIAÇÃO
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">MI Score:</span>
+                    <span className="text-white font-bold font-mono text-sm">
+                      {word.miScore.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">Distância Orbital:</span>
+                    <span className="text-white font-bold font-mono text-sm">
+                      {word.orbitalRadius?.toFixed(2) || 'N/A'} UA
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400 text-xs">Setor de Prosódia:</span>
+                    <span className={`font-bold text-sm ${
+                      word.prosody === 'Positiva' ? 'text-green-400' :
+                      word.prosody === 'Neutra' ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>
+                      {word.prosody}
+                      {word.prosody === 'Positiva' ? ' (0°-120°)' :
+                       word.prosody === 'Neutra' ? ' (120°-240°)' :
+                       ' (240°-360°)'}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-cyan-500/20">
+                  <p className="text-gray-400 text-[9px] leading-relaxed">
+                    💡 <strong className="text-cyan-300">MI Score alto</strong> indica forte associação semântica. 
+                    Palavras próximas ao núcleo (distância baixa) têm maior força de associação com o domínio.
+                  </p>
+                </div>
+              </div>
+            )}
 
           </div>
         )}

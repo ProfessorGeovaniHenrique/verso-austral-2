@@ -3,6 +3,10 @@ import { dominiosSeparated } from './dominios-separated';
 import { kwicDataMap } from './kwic';
 import { getProsodiaSemantica } from './prosodias-map';
 import { planetTextures } from '@/assets/planets';
+import { 
+  calculateWordMIScore, 
+  miScoreToOrbitalRadius 
+} from '@/lib/linguisticStats';
 
 /**
  * Enriquecimento de Dados Semânticos para Visualização FOG & PLANETS
@@ -166,36 +170,54 @@ export function enrichSemanticWords(): SemanticWord[] {
       // Atribuir textura e hue shift
       const { texture, hueShift } = assignPlanetVisuals(palavra, globalWordIndex, domainColor);
       
-      // Calcular propriedades orbitais baseadas na FREQUÊNCIA
+      // ===== CALCULAR PROPRIEDADES ORBITAIS - SOLUÇÃO HÍBRIDA =====
       const frequency = wordData.ocorrencias;
-      
-      // Encontrar frequência máxima no domínio para normalização
-      const maxFrequency = Math.max(...domainWords.map(w => w.ocorrencias));
-      const normalizedFreq = frequency / maxFrequency; // 0 a 1
-      
-      // ===== DISTRIBUIÇÃO POR CAMADAS DE FREQUÊNCIA =====
-      // Palavras mais frequentes ficam mais próximas do núcleo
-      // Inverter: 1.0 (alta freq) = perto do núcleo, 0 (baixa freq) = longe
-      const distanceFromCore = 1.0 - normalizedFreq;
-      
-      // Calcular raio orbital baseado na frequência
-      // Camada 1 (núcleo): 0.5-1.2 (palavras mais frequentes)
-      // Camada 2 (média): 1.2-2.0
-      // Camada 3 (externa): 2.0-3.0
-      // Camada 4 (periférica): 3.0-4.0
-      const orbitalRadius = 0.5 + (distanceFromCore * 3.5);
-      
-      // Ângulo orbital inicial: distribuído uniformemente em círculo
-      const angleStep = (Math.PI * 2) / Math.max(domainWords.length, 1);
-      const orbitalAngle = i * angleStep;
-      
-      // Velocidade orbital: mais rápida para palavras próximas ao núcleo (como planetas reais)
-      const orbitalSpeed = 0.15 + (normalizedFreq * 0.35); // 0.15 a 0.5
-      
-      // Excentricidade orbital: órbitas mais elípticas nas camadas externas
-      const orbitalEccentricity = distanceFromCore * 0.35; // 0 a 0.35
-      
-      // Criar palavra enriquecida
+      const domainTotalFreq = domain.ocorrencias;
+
+      // ===== 1. CALCULAR MI SCORE =====
+      const miScore = calculateWordMIScore(
+        frequency,
+        domainTotalFreq,
+        10000 // Tamanho estimado do corpus
+      );
+
+      // ===== 2. DISTÂNCIA ORBITAL (baseada em MI Score) =====
+      const orbitalRadius = miScoreToOrbitalRadius(miScore);
+
+      // ===== 3. SETOR ANGULAR (baseado em Prosódia) =====
+      // Prosódia Positiva: 0° - 120° (setor verde)
+      // Prosódia Neutra: 120° - 240° (setor amarelo)
+      // Prosódia Negativa: 240° - 360° (setor vermelho)
+
+      let baseAngle: number;
+      if (prosody === 'Positiva') {
+        baseAngle = 0;                    // Início: 0°
+      } else if (prosody === 'Neutra') {
+        baseAngle = (Math.PI * 2) / 3;    // Início: 120°
+      } else {
+        baseAngle = (Math.PI * 4) / 3;    // Início: 240°
+      }
+
+      // ===== 4. JITTER INTELIGENTE =====
+      // Adicionar variação angular dentro do setor (0-120°)
+      // Usar hash da palavra para jitter determinístico (mesma palavra = mesmo ângulo)
+      const wordHash = palavra.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      const jitterAngle = (wordHash % 1000) / 1000; // 0 a 1
+      const sectorSpread = (Math.PI * 2) / 3; // 120° em radianos
+
+      const orbitalAngle = baseAngle + (jitterAngle * sectorSpread);
+
+      // ===== 5. VELOCIDADE ORBITAL =====
+      // Palavras mais próximas orbitam mais rápido (física real)
+      // Inverter: orbitalRadius pequeno = velocidade alta
+      const normalizedDistance = (orbitalRadius - 0.5) / 3.5; // 0 a 1
+      const orbitalSpeed = 0.5 - (normalizedDistance * 0.35); // 0.5 (perto) a 0.15 (longe)
+
+      // ===== 6. EXCENTRICIDADE ORBITAL =====
+      // Órbitas mais distantes são mais elípticas
+      const orbitalEccentricity = normalizedDistance * 0.4; // 0 a 0.4
+
+      // ===== 7. CRIAR PALAVRA ENRIQUECIDA =====
       const enrichedWord: SemanticWord = {
         palavra,
         ocorrencias: frequency,
@@ -210,7 +232,8 @@ export function enrichSemanticWords(): SemanticWord[] {
         orbitalRadius,
         orbitalAngle,
         orbitalSpeed,
-        orbitalEccentricity
+        orbitalEccentricity,
+        miScore, // Adicionar MI Score para tooltip/debug
       };
       
       enrichedWords.push(enrichedWord);

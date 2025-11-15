@@ -7,6 +7,7 @@ import { ControlPanel } from '@/components/ControlPanel/ControlPanel';
 import { ControlToolbar } from '@/components/ControlPanel/ControlToolbar';
 import { FogDomain } from '@/components/v3/FogDomain';
 import { PlanetWord } from '@/components/v3/PlanetWord';
+import { ProsodySectorGuide } from '@/components/v3/ProsodySectorGuide';
 import { KWICModal } from '@/components/KWICModal';
 import { useFogPlanetData } from '@/hooks/useFogPlanetData';
 import { useNavigationLevel } from '@/hooks/useNavigationLevel';
@@ -268,6 +269,9 @@ export default function Dashboard7() {
               />
             ))
         )}
+
+        {/* ProsodySectorGuide - Guia visual de setores de prosódia */}
+        <ProsodySectorGuide visible={filters.showLabels} />
       </Canvas>
 
       {/* RightControlPanel - Lateral Direito */}

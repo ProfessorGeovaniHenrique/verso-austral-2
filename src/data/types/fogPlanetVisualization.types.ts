@@ -33,6 +33,9 @@ export interface SemanticWord {
   orbitalAngle: number; // Ângulo inicial na órbita (radianos)
   orbitalSpeed: number; // Velocidade de rotação orbital
   orbitalEccentricity: number; // Excentricidade da elipse (0 = círculo, 0.5 = elipse)
+  
+  // Metadados Estatísticos (para tooltip/debug)
+  miScore?: number; // Mutual Information Score (força de associação)
 }
 
 // ===== DOMÍNIO SEMÂNTICO (Nuvem FOG) =====

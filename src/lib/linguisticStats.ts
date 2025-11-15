@@ -108,6 +108,59 @@ export function calculateDomainStats(dominio: DominioSemantico): DomainStats {
 }
 
 /**
+ * Calcula MI Score para uma palavra específica dentro de seu domínio
+ * 
+ * @param wordFreq - Frequência da palavra no domínio
+ * @param domainTotalFreq - Frequência total do domínio
+ * @param corpusSize - Tamanho total do corpus
+ * @returns MI Score (0 a ~10, onde > 3.0 indica forte associação)
+ */
+export function calculateWordMIScore(
+  wordFreq: number,
+  domainTotalFreq: number,
+  corpusSize: number
+): number {
+  if (wordFreq === 0 || domainTotalFreq === 0) return 0;
+  
+  // Probabilidade observada: P(palavra no domínio)
+  const observedProb = wordFreq / domainTotalFreq;
+  
+  // Probabilidade esperada: P(palavra no corpus geral)
+  const expectedProb = wordFreq / corpusSize;
+  
+  // MI = log2(P(observada) / P(esperada))
+  const mi = Math.log2(observedProb / expectedProb);
+  
+  // Normalizar para valores positivos (MI pode ser negativo para palavras sub-representadas)
+  // Retornar entre 0 e ~10
+  return Math.max(0, Math.round(mi * 100) / 100);
+}
+
+/**
+ * Mapeia MI Score para distância orbital
+ * MI alto (> 3.0) = órbita próxima (associação forte)
+ * MI médio (1.0-3.0) = órbita média
+ * MI baixo (< 1.0) = órbita distante
+ */
+export function miScoreToOrbitalRadius(miScore: number): number {
+  // Normalizar MI Score (geralmente entre 0 e 6)
+  const normalizedMI = Math.min(miScore, 6) / 6; // 0 a 1
+  
+  // Inverter: MI alto = distância baixa
+  const distanceFromCore = 1.0 - normalizedMI;
+  
+  // Mapear para raios orbitais
+  // Camada 1 (MI > 4.5): 0.5 - 1.0 (núcleo)
+  // Camada 2 (MI 3.0-4.5): 1.0 - 1.8
+  // Camada 3 (MI 1.5-3.0): 1.8 - 2.8
+  // Camada 4 (MI < 1.5): 2.8 - 4.0
+  const minRadius = 0.5;
+  const maxRadius = 4.0;
+  
+  return minRadius + (distanceFromCore * (maxRadius - minRadius));
+}
+
+/**
  * Calcula estatísticas para todos os domínios
  */
 export function calculateAllDomainStats(dominios: DominioSemantico[]): DomainStats[] {

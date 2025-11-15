@@ -61,15 +61,57 @@ export const GalaxyLegendPanel = ({ visible, isCodexOpen = false }: GalaxyLegend
               </div>
             </div>
             
-            {/* Métricas Visuais */}
-            <div className="space-y-1">
+            {/* Distribuição Orbital */}
+            <div className="space-y-2">
               <div className="text-green-300 font-semibold mb-1.5 text-xs">
-                Métricas Visuais:
+                🌌 DISTRIBUIÇÃO ORBITAL:
               </div>
-              <div className="pl-2 space-y-1 leading-relaxed text-xs">
-                <div>• <strong className="text-cyan-300">Tamanho</strong> = Riqueza Lexical</div>
-                <div>• <strong className="text-cyan-300">Posição</strong> = Relevância Temática</div>
-                <div>• <strong className="text-cyan-300">Cor</strong> = Domínio Semântico</div>
+              
+              {/* Distância = MI Score */}
+              <div className="pl-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-3 h-3 rounded-full bg-cyan-400" />
+                  <span className="text-cyan-300 font-bold text-xs">Distância do Núcleo</span>
+                </div>
+                <p className="text-gray-400 text-[10px] ml-5 leading-relaxed">
+                  Quanto mais próxima a palavra está do núcleo (FOG), maior sua força de associação semântica com o domínio (MI Score alto).
+                </p>
+              </div>
+              
+              {/* Setor Angular = Prosódia */}
+              <div className="pl-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-green-400 via-yellow-400 to-red-400" />
+                  <span className="text-cyan-300 font-bold text-xs">Setor Angular</span>
+                </div>
+                <div className="space-y-1 ml-5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-400" />
+                    <span className="text-[10px] text-green-400">0°-120°: Prosódia Positiva</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-400" />
+                    <span className="text-[10px] text-yellow-400">120°-240°: Prosódia Neutra</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-400" />
+                    <span className="text-[10px] text-red-400">240°-360°: Prosódia Negativa</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Tamanho = Frequência */}
+              <div className="pl-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-white" />
+                    <div className="w-3 h-3 rounded-full bg-white" />
+                  </div>
+                  <span className="text-cyan-300 font-bold text-xs">Tamanho do Planeta</span>
+                </div>
+                <p className="text-gray-400 text-[10px] ml-5 leading-relaxed">
+                  Quanto maior o planeta, mais frequente é a palavra no corpus.
+                </p>
               </div>
             </div>
           </motion.div>
