@@ -10,6 +10,17 @@ import {
 } from '@/lib/linguisticStats';
 
 /**
+ * Calcula o raio da FOG baseado no peso textual (percentualTematico)
+ */
+function calculateFogRadiusFromWeight(percentualTematico: number): number {
+  const min = 0.8;
+  const max = 2.5;
+  // Normalizar 0-100 para min-max
+  const normalized = percentualTematico / 100;
+  return min + normalized * (max - min);
+}
+
+/**
  * Enriquecimento de Dados Semânticos para Visualização FOG & PLANETS
  * 
  * Gera dados mock para:
@@ -226,6 +237,9 @@ export function enrichSemanticWords(): SemanticWord[] {
       // ===== 2. MAPEAR PARA CAMADA ORBITAL DISCRETA (baseado em FREQUÊNCIA) =====
       const orbitalLayer = frequencyToOrbitalLayer(frequency);
       
+      // ✅ NOVO: Calcular fogRadius do domínio para órbitas RELATIVAS
+      const domainFogRadius = calculateFogRadiusFromWeight(domain.percentualTematico);
+      
       // ===== 3. SETOR ANGULAR (baseado em Prosódia) =====
       let sectorStart: number;
       const sectorSpread = (Math.PI * 2) / 3;
@@ -254,18 +268,27 @@ export function enrichSemanticWords(): SemanticWord[] {
       const microJitter = ((wordHash % 100) / 100 - 0.5) * 0.1;
       const orbitalAngle = baseAngle + microJitter;
 
-      // ===== 5. JITTER RADIAL DENTRO DA CAMADA =====
+      // ===== 5. JITTER RADIAL DENTRO DA CAMADA (RELATIVO ao fogRadius) =====
       const radialJitter = (wordHash % 500) / 500;
-      const finalOrbitalRadius = orbitalLayer.minRadius + (radialJitter * (orbitalLayer.maxRadius - orbitalLayer.minRadius));
+      const finalOrbitalRadius = 
+        domainFogRadius * (
+          orbitalLayer.minRadiusFactor + 
+          (radialJitter * (orbitalLayer.maxRadiusFactor - orbitalLayer.minRadiusFactor))
+        );
 
-      // ===== 6. VELOCIDADE E EXCENTRICIDADE =====
-      const normalizedDistance = (finalOrbitalRadius - 2.0) / 11.5; // Ajustado para novo range (2.0-13.5)
+      // ===== 6. VELOCIDADE E EXCENTRICIDADE (relativo ao fator) =====
+      const normalizedDistance = (orbitalLayer.radiusFactor - 0.85) / 3.0; // 0.85-3.8
       const orbitalSpeed = 0.5 - (normalizedDistance * 0.35);
       const orbitalEccentricity = normalizedDistance * 0.3;
 
-      // 🔍 DEBUG DETALHADO
-      if (i < 3) {
-        console.log(`🪐 ${domain.dominio} | ${palavra}: freq=${frequency}, MI=${miScore.toFixed(2)}, layer=${orbitalLayer.layer}, radius=${finalOrbitalRadius.toFixed(2)}, totalInLayerSector=${totalWordsInLayerSector}, angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°, prosody=${prosody}`);
+      // 🔍 DEBUG DETALHADO (sistema RELATIVO)
+      if (i < 2) {
+        console.log(`🪐 ${palavra}: freq=${frequency}, layer=${orbitalLayer.layer}, ` +
+          `factor=${orbitalLayer.radiusFactor.toFixed(2)}, ` +
+          `fogRadius=${domainFogRadius.toFixed(2)}, ` +
+          `orbitalRadius=${finalOrbitalRadius.toFixed(2)}, ` +
+          `totalInSector=${totalWordsInLayerSector}, ` +
+          `angle=${(orbitalAngle * 180 / Math.PI).toFixed(0)}°`);
       }
 
       // ===== 7. CRIAR PALAVRA ENRIQUECIDA =====
