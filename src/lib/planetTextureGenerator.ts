@@ -9,20 +9,25 @@ export function generateEquirectangularTexture(
   targetWidth: number = 2048,
   targetHeight: number = 1024
 ): THREE.CanvasTexture | null {
-  // ✅ FASE 1: Validação de carregamento
-  const img = sourceTexture.image as HTMLImageElement;
+  // ✅ FASE 2: Validação corrigida para diferentes tipos de imagem
+  const img = sourceTexture.image;
   
-  // Verificar se a imagem está completamente carregada
-  if (!img || !img.complete || img.naturalWidth === 0) {
-    console.warn('⚠️ Textura ainda não carregada, aguardando...', {
-      hasImage: !!img,
-      complete: img?.complete,
-      naturalWidth: img?.naturalWidth
-    });
+  // CORREÇÃO: Aceitar diferentes tipos de imagem
+  if (!img) {
+    console.error('❌ sourceTexture.image é null/undefined');
     return null;
   }
   
-  console.log(`✅ Processando textura: ${img.width}x${img.height} (${img.src})`);
+  // Log detalhado para debug
+  console.log('🎨 Gerando textura equirectangular:', img.constructor.name);
+  
+  // CORREÇÃO: Para HTMLImageElement, verificar carregamento
+  if (img instanceof HTMLImageElement) {
+    if (!img.complete || img.naturalWidth === 0) {
+      console.warn('⚠️ HTMLImageElement ainda não carregada');
+      return null;
+    }
+  }
   
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
@@ -37,26 +42,31 @@ export function generateEquirectangularTexture(
   // ESTRATÉGIA: Repetir a imagem 4 vezes na horizontal com espelhamento
   const sectionWidth = targetWidth / 4;
   
-  for (let i = 0; i < 4; i++) {
-    const x = i * sectionWidth;
-    
-    // Espelhar em seções alternadas para criar continuidade
-    if (i % 2 === 0) {
-      ctx.drawImage(img, x, 0, sectionWidth, targetHeight);
-    } else {
-      ctx.save();
-      ctx.translate(x + sectionWidth, 0);
-      ctx.scale(-1, 1); // Espelhar horizontalmente
-      ctx.drawImage(img, 0, 0, sectionWidth, targetHeight);
-      ctx.restore();
+  try {
+    for (let i = 0; i < 4; i++) {
+      const x = i * sectionWidth;
+      
+      // Espelhar em seções alternadas para criar continuidade
+      if (i % 2 === 0) {
+        ctx.drawImage(img as CanvasImageSource, x, 0, sectionWidth, targetHeight);
+      } else {
+        ctx.save();
+        ctx.translate(x + sectionWidth, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(img as CanvasImageSource, 0, 0, sectionWidth, targetHeight);
+        ctx.restore();
+      }
     }
+  } catch (error) {
+    console.error('❌ Erro ao desenhar imagem no canvas:', error);
+    return null;
   }
   
   // Adicionar gradiente nos polos para suavizar
   const gradient = ctx.createLinearGradient(0, 0, 0, targetHeight);
-  gradient.addColorStop(0, 'rgba(0,0,0,0.2)'); // Polo norte escuro
-  gradient.addColorStop(0.5, 'rgba(0,0,0,0)'); // Equador normal
-  gradient.addColorStop(1, 'rgba(0,0,0,0.2)'); // Polo sul escuro
+  gradient.addColorStop(0, 'rgba(0,0,0,0.2)');
+  gradient.addColorStop(0.5, 'rgba(0,0,0,0)');
+  gradient.addColorStop(1, 'rgba(0,0,0,0.2)');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, targetWidth, targetHeight);
   
@@ -68,6 +78,7 @@ export function generateEquirectangularTexture(
   canvasTexture.magFilter = THREE.LinearFilter;
   canvasTexture.anisotropy = 16;
   
+  console.log('✅ Textura equirectangular criada com sucesso');
   return canvasTexture;
 }
 

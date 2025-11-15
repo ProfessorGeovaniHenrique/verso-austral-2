@@ -81,6 +81,14 @@ export default function Dashboard7() {
   // Dados FOG & Planets
   const { domains, connections, filters, setFilters, resetFilters } = useFogPlanetData();
 
+  // ✅ FASE 4: Debug logging para monitorar carregamento de texturas
+  useEffect(() => {
+    const timer = setInterval(() => {
+      console.log('📊 Dashboard7 - Texturas sendo carregadas...');
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Estados de UI
   const [hoveredNode, setHoveredNode] = useState<any>(null);
   const [isConsoleMinimized, setIsConsoleMinimized] = useState(false);

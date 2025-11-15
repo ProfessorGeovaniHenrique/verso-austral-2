@@ -48,35 +48,42 @@ export function PlanetWord({
   const [processedTexture, setProcessedTexture] = useState<THREE.CanvasTexture | null>(null);
   const [isTextureReady, setIsTextureReady] = useState(false);
   
-  // Processar textura quando estiver carregada
+  // ✅ FASE 1: Processar textura com timeout e validação aprimorada
   useEffect(() => {
-    if (!rawTexture?.image) return;
-    
-    const img = rawTexture.image as HTMLImageElement;
-    
-    // Aguardar carregamento completo da imagem
-    if (img.complete && img.naturalWidth > 0) {
-      const processed = getOrCreatePlanetTexture(rawTexture, word.planetTexture);
-      
-      if (processed) {
-        console.log(`✅ Textura processada com sucesso: ${word.palavra}`);
-        setProcessedTexture(processed);
-        setIsTextureReady(true);
+    // Adicionar timeout para garantir que drei terminou de carregar
+    const timer = setTimeout(() => {
+      if (!rawTexture?.image) {
+        console.warn(`⚠️ Textura sem image para: ${word.palavra}`);
+        return;
       }
-    } else {
-      // Imagem ainda não carregou - aguardar evento onload
-      const handleLoad = () => {
+      
+      const img = rawTexture.image;
+      console.log(`🔍 Verificando textura ${word.palavra}:`, img.constructor.name);
+      
+      // CORREÇÃO: Verificar tipo de imagem
+      const isHTMLImage = img instanceof HTMLImageElement;
+      const isLoaded = isHTMLImage 
+        ? img.complete && img.naturalWidth > 0
+        : true; // Para Canvas/Video, assumir carregado
+      
+      if (isLoaded) {
         const processed = getOrCreatePlanetTexture(rawTexture, word.planetTexture);
+        
         if (processed) {
-          console.log(`✅ Textura carregada e processada: ${word.palavra}`);
+          console.log(`✅ Textura processada: ${word.palavra}`);
           setProcessedTexture(processed);
           setIsTextureReady(true);
+        } else {
+          console.error(`❌ Falha ao processar textura: ${word.palavra}`);
+          // Fallback: usar textura raw
+          setIsTextureReady(true);
         }
-      };
-      
-      img.addEventListener('load', handleLoad);
-      return () => img.removeEventListener('load', handleLoad);
-    }
+      } else {
+        console.warn(`⏳ Aguardando carregamento: ${word.palavra}`);
+      }
+    }, 100); // Pequeno delay para garantir que drei terminou
+    
+    return () => clearTimeout(timer);
   }, [rawTexture, word.planetTexture, word.palavra]);
   
   // Configurar anisotropia para máxima qualidade
@@ -220,23 +227,22 @@ export function PlanetWord({
       >
         {/* Planeta principal */}
         <sphereGeometry args={[planetRadius, 64, 64]} />
-        {/* ✅ FASE 3: Indicador visual de carregamento */}
+        {/* ✅ FASE 3: Material com fallback para rawTexture */}
         <meshStandardMaterial
-          map={isTextureReady ? processedTexture : null}
+          map={processedTexture || rawTexture}
           color={
-            isTextureReady 
-              ? (isHovered ? '#ffffff' : new THREE.Color(domainColor).lerp(new THREE.Color('#ffffff'), 0.5))
-              : '#444444' // Cinza escuro enquanto carrega
+            isHovered 
+              ? '#ffffff' 
+              : new THREE.Color(domainColor).lerp(new THREE.Color('#ffffff'), 0.5)
           }
-          roughness={isTextureReady ? 0.7 : 0.9}
-          metalness={isTextureReady ? 0.15 : 0.05}
-          bumpMap={isTextureReady ? processedTexture : null}
+          roughness={0.7}
+          metalness={0.15}
+          bumpMap={processedTexture || rawTexture}
           bumpScale={0.03}
-          normalMap={isTextureReady ? processedTexture : null}
+          normalMap={processedTexture || rawTexture}
           normalScale={new THREE.Vector2(0.5, 0.5)}
           transparent
-          opacity={isTextureReady ? finalOpacity : finalOpacity * 0.6}
-          emissive={isTextureReady ? '#000000' : '#222222'} // Leve brilho enquanto carrega
+          opacity={finalOpacity}
         />
       </mesh>
         
