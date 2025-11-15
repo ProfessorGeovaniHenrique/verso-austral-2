@@ -7,48 +7,121 @@ All colors MUST be HSL.
 */
 
 @layer base {
-  :root {
-    --background: 0 0% 10%;
-    --foreground: 0 0% 98%;
+  /* Tema Cosmic (Sci-Fi Espacial) - Padrão */
+  :root, [data-theme="cosmic"] {
+    /* Cores Base - Espaço Profundo */
+    --background: 222 47% 4%;
+    --foreground: 210 40% 98%;
 
-    --card: 0 0% 12%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 0 0% 12%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
 
-    --primary: 348 83% 47%;
-    --primary-foreground: 0 0% 100%;
+    /* Cores Primárias - Cyan Neon */
+    --primary: 180 100% 50%;
+    --primary-foreground: 222 47% 4%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 240 60% 20%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 0 0% 20%;
-    --muted-foreground: 0 0% 65%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 45 80% 55%;
-    --accent-foreground: 0 0% 10%;
+    /* Cores de Acento - Purple/Magenta Neon */
+    --accent: 280 100% 70%;
+    --accent-foreground: 222 47% 4%;
 
-    --success: 142 45% 45%;
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 348 83% 47%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 180 100% 50%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 10%;
-    --sidebar-foreground: 0 0% 85%;
-    --sidebar-primary: 348 83% 47%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 348 83% 47%;
+    /* Sidebar */
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 210 40% 90%;
+    --sidebar-primary: 180 100% 50%;
+    --sidebar-primary-foreground: 222 47% 4%;
+    --sidebar-accent: 240 60% 20%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 180 100% 50%;
+
+    /* Efeitos Sci-Fi */
+    --glow-intensity: 1;
+    --neon-cyan: 0 229 255;
+    --neon-purple: 138 43 226;
+    --neon-pink: 255 20 147;
+    --animation-speed: 0.6s;
+    
+    /* Tipografia */
+    --font-heading: 'Orbitron', sans-serif;
+    --font-body: 'Inter', sans-serif;
+  }
+
+  /* Tema Academic (Corporativo/Acadêmico) */
+  [data-theme="academic"] {
+    /* Cores Base - Papel e Tinta */
+    --background: 0 0% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Cores Primárias - Azul Corporativo */
+    --primary: 215 60% 45%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Cores de Acento - Dourado Sóbrio */
+    --accent: 43 74% 49%;
+    --accent-foreground: 0 0% 98%;
+
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 98%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 215 60% 45%;
+
+    --radius: 0.375rem;
+
+    /* Sidebar */
+    --sidebar-background: 210 40% 98%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 215 60% 45%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 215 60% 45%;
+
+    /* Efeitos Desativados */
+    --glow-intensity: 0;
+    --animation-speed: 0.2s;
+    
+    /* Tipografia */
+    --font-heading: 'Georgia', serif;
+    --font-body: 'Inter', sans-serif;
   }
 }
 
@@ -59,6 +132,11 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading);
   }
 }
 
