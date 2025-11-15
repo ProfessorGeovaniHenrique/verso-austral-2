@@ -223,8 +223,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
       y: 0.5, 
       size: 45, 
       label: '☀️ UNIVERSO\nGAÚCHO', 
-      color: '#FFD700',
-      type: 'center'
+      color: '#FFD700'
     });
     
     // Filtrar domínios temáticos (excluir Palavras Funcionais)
