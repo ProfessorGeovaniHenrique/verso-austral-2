@@ -5,6 +5,7 @@ import { useSpring, animated } from '@react-spring/three';
 import { SemanticWord } from '@/data/types/fogPlanetVisualization.types';
 import { VisualWordNode } from '@/data/types/threeVisualization.types';
 import { useInteractivityStore, selectHover, selectSelectedDomainId } from '@/store/interactivityStore';
+import { getOrCreatePlanetTexture } from '@/lib/planetTextureGenerator';
 import * as THREE from 'three';
 
 interface PlanetWordProps {
@@ -39,17 +40,21 @@ export function PlanetWord({
   // States
   const isHovered = hover.hoveredNodeId === word.palavra;
   
-  // Sempre carregar a textura (useTexture faz cache automaticamente)
-  const texture = useTexture(word.planetTexture) as THREE.Texture;
+  // Carregar textura do planeta
+  const rawTexture = useTexture(word.planetTexture) as THREE.Texture;
   
-  // Configurar textura para cobrir 360°
+  // Processar para equiretangular (cobertura 360°)
+  const texture = useMemo(() => {
+    return getOrCreatePlanetTexture(rawTexture, word.planetTexture);
+  }, [rawTexture, word.planetTexture]);
+  
+  // Configurar anisotropia para máxima qualidade
   useEffect(() => {
-    if (texture) {
-      texture.wrapS = THREE.RepeatWrapping;
-      texture.wrapT = THREE.RepeatWrapping;
+    if (texture && gl) {
+      texture.anisotropy = gl.capabilities.getMaxAnisotropy();
       texture.needsUpdate = true;
     }
-  }, [texture]);
+  }, [texture, gl]);
   
   // Converter cor HSL para THREE.Color
   const domainColorObj = useMemo(() => new THREE.Color(domainColor), [domainColor]);
@@ -186,37 +191,44 @@ export function PlanetWord({
         <meshStandardMaterial
           map={texture}
           
-          // ✅ Colorir via color (preserva textura)
-          color={isHovered ? '#ffffff' : domainColor}
+          // Reduzir influência da cor do domínio para preservar textura
+          color={isHovered ? '#ffffff' : new THREE.Color(domainColor).lerp(new THREE.Color('#ffffff'), 0.5)}
           
-          // ✅ Profundidade 3D
-          roughness={0.9}
-          metalness={0.1}
+          // Menos rugosidade para mais brilho e detalhes
+          roughness={0.7}
+          metalness={0.15}
           
-          // ✅ Bump map para relevo
+          // Bump map para profundidade
           bumpMap={texture}
-          bumpScale={0.02}
+          bumpScale={0.03}
           
-          // Opacidade
+          // Normal map usando a mesma textura
+          normalMap={texture}
+          normalScale={new THREE.Vector2(0.5, 0.5)}
+          
           transparent
           opacity={finalOpacity}
-          
-          // ✅ Wrap para 360°
-          map-wrapS={THREE.RepeatWrapping}
-          map-wrapT={THREE.RepeatWrapping}
         />
-      </mesh>
-      
-      {/* ✅ Glow Ring para prosódia (ao invés de emissive) */}
-      <mesh>
-        <sphereGeometry args={[planetRadius * 1.05, 32, 32]} />
-        <meshBasicMaterial
-          color={domainColor}
-          transparent
-          opacity={isHovered ? 0.3 : 0.15}
-          depthWrite={false}
-          side={THREE.BackSide}
-        />
+        
+        {/* Glow Ring para indicar prosódia */}
+        <mesh>
+          <sphereGeometry args={[planetRadius * 1.05, 32, 32]} />
+          <meshBasicMaterial
+            color={domainColor}
+            transparent
+            opacity={isHovered ? 0.3 : 0.15}
+            depthWrite={false}
+            side={THREE.BackSide}
+          />
+        </mesh>
+        
+        {/* Debug: Grid helper para verificar cobertura de textura */}
+        {import.meta.env.DEV && isHovered && (
+          <lineSegments>
+            <edgesGeometry args={[new THREE.SphereGeometry(planetRadius, 16, 16)]} />
+            <lineBasicMaterial color="#00ff00" opacity={0.3} transparent />
+          </lineSegments>
+        )}
       </mesh>
       
       {/* Label Flutuante (aparece no hover) */}
