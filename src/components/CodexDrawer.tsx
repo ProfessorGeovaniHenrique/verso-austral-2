@@ -124,11 +124,11 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
         className={`w-full rounded-lg backdrop-blur-md relative overflow-hidden ${
           animState === 'expanding' ? 'animate-expandVertical' : ''
         }`}
-        style={{
-          background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
-          border: '2px solid rgba(0, 229, 255, 0.6)',
-          boxShadow: '0 0 40px rgba(0, 229, 255, 0.5)',
-          maxHeight: '500px',
+  style={{
+    background: 'linear-gradient(135deg, rgba(10, 14, 39, 0.98), rgba(0, 229, 255, 0.15))',
+    border: '2px solid hsl(var(--primary) / 0.6)',
+    boxShadow: '0 0 40px hsl(var(--primary) / 0.5)',
+    maxHeight: '450px',
           animation: animState === 'expanding' ? 'expandVertical 400ms ease-out forwards' : 'sciFiBorderGlow 3s ease-in-out infinite'
         }}
       >
@@ -177,7 +177,7 @@ export const CodexDrawer = ({ word, level }: CodexDrawerProps) => {
       </div>
 
       {/* Conteúdo */}
-      <div className={`p-6 max-h-[460px] overflow-y-auto scrollbar-thin scrollbar-thumb-cyan-400/50 scrollbar-track-transparent ${animState === 'expanding' ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
+      <div className={`p-6 max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent ${animState === 'expanding' ? 'opacity-0' : 'opacity-100 animate-fade-in'}`}>
         {/* Header */}
         <div className="mb-4 pb-3 border-b border-cyan-500/30">
           <div className="flex items-center justify-between mb-2">
