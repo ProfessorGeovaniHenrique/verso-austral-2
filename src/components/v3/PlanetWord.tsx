@@ -124,6 +124,7 @@ export function PlanetWord({
       {/* Planeta com Material Nativo */}
       <mesh 
         ref={meshRef}
+        renderOrder={10}
         onClick={(e) => {
           e.stopPropagation();
           // Criar um VisualWordNode compatível a partir do SemanticWord

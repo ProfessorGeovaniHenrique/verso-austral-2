@@ -61,7 +61,7 @@ function calculateDomainPosition(
   // Offset especial para "Seres Vivos" evitar sobreposição
   let angleOffset = (domainIndex % 2) * 0.3;
   if (domainName === "Partes do Corpo e Seres Vivos") {
-    angleOffset += 0.8; // Adicionar 0.8 radianos (~45 graus) de offset
+    angleOffset += 1.5; // Adicionar 1.5 radianos (~86 graus) de offset
   }
   
   const finalAngle = angle + angleOffset;
@@ -69,11 +69,11 @@ function calculateDomainPosition(
   const x = Math.cos(finalAngle) * radius;
   const z = Math.sin(finalAngle) * radius;
   
-  // Variação em Y para espalhar verticalmente
+  // Variação em Y para espalhar verticalmente (-8 a +8)
   // "Seres Vivos" fica em uma altura diferente
-  let y = Math.sin(domainIndex * 1.5) * 5;
+  let y = Math.sin(domainIndex * 2.3) * 8;
   if (domainName === "Partes do Corpo e Seres Vivos") {
-    y += 2; // Elevar 2 unidades
+    y += 5; // Elevar 5 unidades
   }
   
   return [x, y, z];

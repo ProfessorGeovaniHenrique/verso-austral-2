@@ -313,8 +313,9 @@ export default function Dashboard5() {
                 <FogDomain
                   key={domain.dominio}
                   domain={domain}
-                  opacity={filters.selectedDomainId && filters.selectedDomainId !== domain.dominio ? 0.15 : 1.0}
+                  opacity={filters.fogIntensity}
                   glowIntensity={filters.glowIntensity}
+                  onDomainClick={handleDomainSelect}
                 />
               ))}
 
@@ -427,14 +428,14 @@ export default function Dashboard5() {
               <Label className="text-xs">
                 Opacidade FOG: {(filters.fogIntensity * 100).toFixed(0)}%
               </Label>
-              <Slider
-                value={[filters.fogIntensity]}
-                onValueChange={([v]) => setFilters({ fogIntensity: v })}
-                min={0.2}
-                max={1.0}
-                step={0.05}
-                className="w-full"
-              />
+            <Slider
+              value={[filters.fogIntensity]}
+              onValueChange={([v]) => setFilters({ fogIntensity: v })}
+              min={0.002}
+              max={1.0}
+              step={0.01}
+              className="w-full"
+            />
             </div>
 
             {/* Intensidade do Glow */}

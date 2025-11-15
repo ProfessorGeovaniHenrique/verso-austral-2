@@ -10,9 +10,10 @@ interface FogDomainProps {
   domain: FogDomainType;
   opacity: number;
   glowIntensity?: number;
+  onDomainClick?: (domainId: string) => void;
 }
 
-export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainProps) {
+export function FogDomain({ domain, opacity, glowIntensity = 1.0, onDomainClick }: FogDomainProps) {
   // Refs
   const sphereRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -59,7 +60,7 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
   return (
     <group ref={groupRef} position={domain.position}>
       {/* NÚCLEO ESTELAR - Sempre visível com glow máximo */}
-      <mesh>
+      <mesh renderOrder={1}>
         <sphereGeometry args={[domain.fogRadius * 0.35, 32, 32]} />
         <meshBasicMaterial
           color={domain.cor}
@@ -69,7 +70,7 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
       </mesh>
       
       {/* Halo do Núcleo - Glow interno */}
-      <mesh>
+      <mesh renderOrder={1}>
         <sphereGeometry args={[domain.fogRadius * 0.45, 24, 24]} />
         <meshBasicMaterial
           color={domain.cor}
@@ -83,13 +84,12 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
       {/* FOG Core - Núcleo mais denso */}
       <mesh 
         ref={sphereRef}
+        renderOrder={2}
         onClick={(e) => {
           e.stopPropagation();
-          useInteractivityStore.getState().setSelectedDomain(
-            useInteractivityStore.getState().selectedDomainId === domain.dominio 
-              ? undefined 
-              : domain.dominio
-          );
+          if (onDomainClick) {
+            onDomainClick(domain.dominio);
+          }
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
@@ -115,7 +115,7 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
       </mesh>
       
       {/* FOG Mid-layer - Camada intermediária */}
-      <mesh>
+      <mesh renderOrder={3}>
         <sphereGeometry args={[domain.fogRadius, 24, 24]} />
         <meshStandardMaterial
           color={domain.cor}
@@ -131,7 +131,7 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
       </mesh>
       
       {/* FOG Atmosphere - Halo externo */}
-      <mesh>
+      <mesh renderOrder={4}>
         <sphereGeometry args={[domain.fogRadius * 1.4, 16, 16]} />
         <meshStandardMaterial
           color={domain.cor}
@@ -147,7 +147,7 @@ export function FogDomain({ domain, opacity, glowIntensity = 1.0 }: FogDomainPro
       </mesh>
       
       {/* FOG Outer Shell - Camada externa ultra-difusa */}
-      <mesh>
+      <mesh renderOrder={5}>
         <sphereGeometry args={[domain.fogRadius * 1.8, 12, 12]} />
         <meshStandardMaterial
           color={domain.cor}
