@@ -17,10 +17,7 @@ export default {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
         orbitron: ['Orbitron', 'sans-serif'],
-        audiowide: ['Audiowide', 'sans-serif'],
-        rajdhani: ['Rajdhani', 'sans-serif'],
         georgia: ['Georgia', 'serif'],
-        mono: ['Courier New', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",
