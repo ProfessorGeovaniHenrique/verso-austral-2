@@ -2,10 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import Sigma from 'sigma';
 import Graph from 'graphology';
 import { SpaceNavigationConsole } from './SpaceNavigationConsole';
-import { RightControlPanel } from './RightControlPanel';
-import { VerticalZoomControls } from './VerticalZoomControls';
+import { ControlPanel } from './ControlPanel/ControlPanel';
+import { ControlToolbar } from './ControlPanel/ControlToolbar';
 import { OrbitalRings } from './OrbitalRings';
-import { OrbitalSlider } from './OrbitalSlider';
 import { FilterPanel } from './FilterPanel';
 import { drawPlanetNode, drawPlanetNodeHover } from '@/lib/planetRenderer';
 
@@ -48,7 +47,7 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const graphRef = useRef<any>(null);
   const leaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
-  // Refs para evitar stale closure nos event handlers (FASE 1)
+  // Refs para evitar stale closure nos event handlers
   const levelRef = useRef<NavigationLevel>('universe');
   const selectedSystemRef = useRef<string | null>(null);
   
@@ -59,17 +58,27 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
   const [isPaused, setIsPaused] = useState(false);
   const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
   
-  // Estados para drag circular (FASE 2)
+  // Novo sistema de estados do Codex: closed -> auto-open (5s) -> pinned
+  const [codexState, setCodexState] = useState<'closed' | 'auto-open' | 'pinned'>('closed');
+  
+  // Estados para drag circular
   const [isDragging, setIsDragging] = useState(false);
   const [draggedNode, setDraggedNode] = useState<string | null>(null);
   
-  // Estados para filtros (FASE C)
+  // Estados para filtros
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState({
     minFrequency: 0,
     prosody: [] as string[],
     domains: [] as string[],
     searchQuery: ''
+  });
+  
+  // Estados para controle das seções do painel
+  const [openSections, setOpenSections] = useState({
+    codex: true,
+    legend: false,
+    future: false
   });
 
   // Função auxiliar para mapear domínio de uma palavra
@@ -396,33 +405,41 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     
     console.log('🔗 Setting up event handlers');
     
-    // Event handlers (FASE 1: usar refs para evitar stale closure)
+    // Novo sistema de hover com timer de 5 segundos
     const enterNodeHandler = ({ node, event }: any) => {
       const currentLevel = levelRef.current;
       const nodeAttrs = graph.getNodeAttributes(node);
       const displayPoint = { x: event.x, y: event.y };
       
+      // Cancela timer anterior se existir
+      if (leaveTimeoutRef.current) {
+        clearTimeout(leaveTimeoutRef.current);
+        leaveTimeoutRef.current = null;
+      }
+      
       setHoveredNode({ ...nodeAttrs, id: node, level: currentLevel });
       setTooltipPos(displayPoint);
       setIsPaused(true);
+      setCodexState('auto-open');
       
-      // Cursor pointer para nós clicáveis
-      if (node === 'center') {
-        sigma.getContainer().style.cursor = 'pointer';
-      } else {
-        sigma.getContainer().style.cursor = 'pointer';
-      }
-    };
-    
-    const leaveNodeHandler = () => {
-      // Delay de 500ms para permitir movimento para o painel
+      // Timer de 5 segundos para fechar automaticamente
       const timeoutId = setTimeout(() => {
-        setHoveredNode(null);
-        setTimeout(() => setIsPaused(false), 2000);
-      }, 500);
+        if (codexState === 'auto-open') {
+          setCodexState('closed');
+          setHoveredNode(null);
+          setTimeout(() => setIsPaused(false), 2000);
+        }
+      }, 5000); // 5 segundos
       
       leaveTimeoutRef.current = timeoutId;
       
+      // Cursor pointer para nós clicáveis
+      sigma.getContainer().style.cursor = 'pointer';
+    };
+    
+    const leaveNodeHandler = () => {
+      // Não fecha imediatamente - timer já está ativo
+      // O usuário tem 5s para mover o mouse para o painel
       if (!isDragging) {
         sigma.getContainer().style.cursor = 'default';
       }
@@ -575,6 +592,38 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
     }
   };
   
+  // Handlers para manter Codex aberto quando mouse entra no painel
+  const handlePanelMouseEnter = () => {
+    // Mouse entrou no painel - cancela timer e fixa Codex
+    if (leaveTimeoutRef.current) {
+      clearTimeout(leaveTimeoutRef.current);
+      leaveTimeoutRef.current = null;
+    }
+    if (codexState === 'auto-open') {
+      setCodexState('pinned');
+    }
+  };
+  
+  const handlePanelMouseLeave = () => {
+    // Mouse saiu do painel - fecha Codex
+    setCodexState('closed');
+    setHoveredNode(null);
+    setTimeout(() => setIsPaused(false), 500);
+  };
+  
+  // Toggle handlers para a toolbar
+  const handleToggleCodex = () => {
+    setOpenSections(prev => ({ ...prev, codex: !prev.codex }));
+  };
+  
+  const handleToggleLegend = () => {
+    setOpenSections(prev => ({ ...prev, legend: !prev.legend }));
+  };
+  
+  const handleToggleFuture = () => {
+    setOpenSections(prev => ({ ...prev, future: !prev.future }));
+  };
+  
   return (
     <div className="flex h-screen w-full overflow-hidden bg-gradient-to-b from-black via-slate-900 to-black">
       
@@ -652,41 +701,31 @@ export const OrbitalConstellationChart = ({ onWordClick, dominiosData, palavrasC
         
       </div>
       
-      {/* PAINEL DIREITO - Width fixo de 420px */}
-      <div className="w-[420px] relative flex-shrink-0 bg-black/20 backdrop-blur-sm border-l border-cyan-500/20">
-        <RightControlPanel 
-          hoveredNode={hoveredNode} 
-          level={level} 
-          showGalaxyLegend={level === 'galaxy'}
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onReset={handleResetView}
-          onPauseToggle={() => setIsPaused(!isPaused)}
-          isPaused={isPaused}
-          onMouseEnter={() => {
-            if (leaveTimeoutRef.current) {
-              clearTimeout(leaveTimeoutRef.current);
-            }
-          }}
-          onMouseLeave={() => setHoveredNode(null)}
-        />
-      </div>
+      {/* PAINEL DIREITO */}
+      <ControlPanel
+        hoveredNode={hoveredNode}
+        level={level}
+        codexState={codexState}
+        onMouseEnter={handlePanelMouseEnter}
+        onMouseLeave={handlePanelMouseLeave}
+        openSections={openSections}
+      />
       
-      {/* ZOOM BAR - Fixed na borda direita */}
-      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-50">
-        <VerticalZoomControls
-          onZoomIn={handleZoomIn}
-          onZoomOut={handleZoomOut}
-          onReset={handleResetView}
-          onFit={() => sigmaRef.current?.getCamera().setState({ x: 0.5, y: 0.5, ratio: 1 })}
-          onRefresh={() => {
-            if (level === 'universe') buildUniverseView();
-            else if (level === 'galaxy') buildGalaxyView();
-          }}
-          isPaused={isPaused}
-          onPauseToggle={() => setIsPaused(!isPaused)}
-        />
-      </div>
+      {/* TOOLBAR VERTICAL DIREITA */}
+      <ControlToolbar
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onReset={handleResetView}
+        isPaused={isPaused}
+        onPauseToggle={() => setIsPaused(!isPaused)}
+        isCodexOpen={openSections.codex}
+        isLegendOpen={openSections.legend}
+        isFutureOpen={openSections.future}
+        onToggleCodex={handleToggleCodex}
+        onToggleLegend={handleToggleLegend}
+        onToggleFuture={handleToggleFuture}
+        showLegend={level === 'galaxy'}
+      />
       
     </div>
   );
