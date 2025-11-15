@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useInteractivityStore } from '@/store/interactivityStore';
@@ -14,6 +14,14 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
   const raycaster = new THREE.Raycaster();
   const mouse = new THREE.Vector2();
   
+  // Usar ref para evitar que callbacks sejam recriados constantemente
+  const nodesRef = useRef<VisualNode[]>(nodes);
+  
+  // Atualizar ref quando nodes mudar
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  
   const { 
     showTooltip, 
     hideTooltip, 
@@ -25,21 +33,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
   // Mapa de objetos 3D para nós de dados
   const objectToNodeMap = new Map<THREE.Object3D, VisualNode>();
   
-  // Construir mapa de objetos 3D
-  useEffect(() => {
-    if (!enabled) return;
-    
-    objectToNodeMap.clear();
-    
-    scene.traverse((object) => {
-      if (object.userData.nodeId) {
-        const node = nodes.find(n => n.id === object.userData.nodeId);
-        if (node) {
-          objectToNodeMap.set(object, node);
-        }
-      }
-    });
-  }, [nodes, scene, enabled]);
+  // Construir mapa de objetos 3D (não precisa mais com a abordagem de ref)
+  // useEffect removido para evitar re-execuções desnecessárias
   
   // Handler de mouse move (hover)
   const handleMouseMove = useCallback((event: MouseEvent) => {
@@ -64,7 +59,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       // Subir na hierarquia até encontrar um objeto com nodeId
       while (obj) {
         if (obj.userData.nodeId) {
-          const node = nodes.find(n => n.id === obj.userData.nodeId);
+          // Usar nodesRef para evitar dependência de nodes
+          const node = nodesRef.current.find(n => n.id === obj.userData.nodeId);
           if (node) {
             foundNode = node;
             foundObject = obj;
@@ -93,8 +89,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       hideTooltip();
       gl.domElement.style.cursor = 'default';
     }
-    // Nota: funções do Zustand (showTooltip, hideTooltip, setHoveredNode) são estáveis e não precisam estar nas dependências
-  }, [enabled, nodes, camera, scene, gl, raycaster]);
+    // Nota: funções do Zustand são estáveis, nodes usa ref
+  }, [enabled, camera, scene, gl]);
   
   // Handler de click
   const handleClick = useCallback((event: MouseEvent) => {
@@ -112,7 +108,8 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       
       while (obj) {
         if (obj.userData.nodeId) {
-          const node = nodes.find(n => n.id === obj.userData.nodeId);
+          // Usar nodesRef para evitar dependência de nodes
+          const node = nodesRef.current.find(n => n.id === obj.userData.nodeId);
           if (node) {
             handleNodeClick(node);
             return;
@@ -121,7 +118,7 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
         obj = obj.parent as THREE.Object3D;
       }
     }
-  }, [enabled, nodes, camera, scene, gl, raycaster]);
+  }, [enabled, camera, scene, gl]);
   
   // Handler de node click (lógica de negócio)
   const handleNodeClick = useCallback((node: VisualNode) => {
@@ -189,12 +186,10 @@ export function useRaycasting({ nodes, enabled = true }: UseRaycastingProps) {
       canvas.removeEventListener('mousemove', handleMouseMove);
       canvas.removeEventListener('click', handleClick);
       
-      // Cleanup
-      hideTooltip();
-      setHoveredNode(null, null);
+      // Cleanup - usar funções diretamente sem chamar no cleanup para evitar loops
+      // O estado será limpo naturalmente quando o componente desmontar
       gl.domElement.style.cursor = 'default';
     };
-    // Nota: hideTooltip e setHoveredNode são estáveis do Zustand, não precisam estar nas dependências
   }, [enabled, handleMouseMove, handleClick, gl]);
   
   return {
