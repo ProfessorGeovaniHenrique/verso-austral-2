@@ -959,13 +959,13 @@ E uma saudade redomona pelos cantos do galpão`}
                 Visualização orbital interativa com texturas de planetas. Clique e arraste para mover, use scroll para zoom. Passe o mouse sobre as palavras para ver preview holográfico.
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-6">
-              <OrbitalDomainConstellation
-                dominiosData={dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais")}
-                onWordClick={handleWordClick}
-                palavraStats={palavraStats}
-              />
-            </CardContent>
+              <CardContent className="p-0">
+                <OrbitalDomainConstellation
+                  dominiosData={dominiosNormalizados.filter(d => d.dominio !== "Palavras Funcionais")}
+                  onWordClick={handleWordClick}
+                  palavraStats={palavraStats}
+                />
+              </CardContent>
           </Card>
 
           <div className="grid grid-cols-4 gap-3 text-xs">

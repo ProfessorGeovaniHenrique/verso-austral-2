@@ -1,7 +1,11 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
-import { NavigationToolbar } from './NavigationToolbar';
-import { SpaceHUDTooltip } from './SpaceHUDTooltip';
+import { motion } from 'framer-motion';
 import { loadPlanetTextures, drawPlanetNode } from '@/lib/planetRenderer';
+import { SpaceNavigationConsole } from './SpaceNavigationConsole';
+import { ControlPanel } from './ControlPanel/ControlPanel';
+import { ControlToolbar } from './ControlPanel/ControlToolbar';
+import { FloatingControlPanel } from './ControlPanel/FloatingControlPanel';
+import { FilterPanel } from './FilterPanel';
 import { hslToRgba } from '@/lib/colorUtils';
 import type { DominioSemantico, PalavraStatsMap } from '@/data/types/corpus.types';
 
@@ -45,8 +49,29 @@ export function OrbitalDomainConstellation({
   const [isDragging, setIsDragging] = useState(false);
   const [draggedWord, setDraggedWord] = useState<WordPosition | null>(null);
   const [orbitAngles, setOrbitAngles] = useState<Record<string, number>>({});
-  const [isDirty, setIsDirty] = useState(true); // 🎯 DIRTY FLAG PATTERN
+  const [isDirty, setIsDirty] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
   const mousePositionRef = useRef({ x: 0, y: 0 });
+  
+  // Estados para o sistema de console (igual ao OrbitalConstellationChart)
+  const [level, setLevel] = useState<'universe' | 'galaxy' | 'stellar-system'>('universe');
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [codexState, setCodexState] = useState<'closed' | 'auto-open' | 'pinned'>('closed');
+  const [consoleMode, setConsoleMode] = useState<'docked' | 'minimized' | 'floating'>('docked');
+  const [floatingPosition, setFloatingPosition] = useState({ x: 100, y: 100 });
+  const [floatingSize, setFloatingSize] = useState({ width: 420, height: 600 });
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    minFrequency: 0,
+    prosody: [] as string[],
+    domains: [] as string[],
+    searchQuery: ''
+  });
+  const [openSections, setOpenSections] = useState({
+    codex: true,
+    legend: false,
+    future: false
+  });
 
   // Posições fixas dos domínios (7 posições)
   const domainPositions = [
@@ -315,7 +340,14 @@ export function OrbitalDomainConstellation({
     
     if (hoveredWordPos !== hoveredWord) {
       setHoveredWord(hoveredWordPos || null);
-      setIsDirty(true); // 🎯 Marcar para re-render
+      setIsDirty(true);
+      
+      // Gerenciar Codex baseado no hover
+      if (hoveredWordPos && codexState === 'closed') {
+        setCodexState('auto-open');
+      } else if (!hoveredWordPos && codexState === 'auto-open') {
+        setCodexState('closed');
+      }
     }
     
     if (canvasRef.current) {
@@ -323,7 +355,7 @@ export function OrbitalDomainConstellation({
         ? 'pointer' 
         : (isPanning ? 'grabbing' : 'grab');
     }
-  }, [isPanning, isDragging, draggedWord, panStart, wordPositions, hoveredWord, getCanvasCoords]);
+  }, [isPanning, isDragging, draggedWord, panStart, wordPositions, hoveredWord, codexState, getCanvasCoords]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     const coords = getCanvasCoords(e);
@@ -378,6 +410,51 @@ export function OrbitalDomainConstellation({
     setIsDirty(true);
   };
 
+  // Handlers para o Codex e Console
+  const handlePanelMouseEnter = useCallback(() => {
+    if (codexState === 'auto-open') {
+      setCodexState('pinned');
+    }
+  }, [codexState]);
+
+  const handlePanelMouseLeave = useCallback(() => {
+    // Não fecha automaticamente quando está pinned
+  }, []);
+
+  const handleMinimizeConsole = useCallback(() => {
+    setConsoleMode('minimized');
+  }, []);
+
+  const handleExpandConsole = useCallback(() => {
+    setConsoleMode('docked');
+  }, []);
+
+  const handleFloatConsole = useCallback(() => {
+    setConsoleMode('floating');
+    setFloatingPosition({ x: 100, y: 100 });
+  }, []);
+
+  const handleDockConsole = useCallback(() => {
+    setConsoleMode('docked');
+  }, []);
+
+  const handleToggleCodex = useCallback(() => {
+    setOpenSections(prev => ({ ...prev, codex: !prev.codex }));
+  }, []);
+
+  const handleToggleLegend = useCallback(() => {
+    setOpenSections(prev => ({ ...prev, legend: !prev.legend }));
+  }, []);
+
+  const handleToggleFuture = useCallback(() => {
+    setOpenSections(prev => ({ ...prev, future: !prev.future }));
+  }, []);
+
+  const handleNavigateToLevel = useCallback((newLevel: 'universe' | 'galaxy' | 'stellar-system') => {
+    setLevel(newLevel);
+    setIsDirty(true);
+  }, []);
+
   if (!texturesLoaded) {
     return (
       <div className="flex items-center justify-center h-[750px] bg-gradient-to-b from-background to-muted/20">
@@ -405,45 +482,165 @@ export function OrbitalDomainConstellation({
   }
 
   return (
-    <div className="relative h-[750px] overflow-hidden">
-      <NavigationToolbar
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onReset={handleReset}
-        onFitToView={handleReset}
-        zoomLevel={zoomLevel}
-        onZoomChange={setZoomLevel}
-      />
+    <div className="relative flex h-[750px] overflow-hidden">
       
-      <canvas
-        ref={canvasRef}
-        width={1300}
-        height={975}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        className="w-full h-full"
-        style={{ 
-          background: 'radial-gradient(circle, hsl(var(--background)) 0%, hsl(var(--muted)) 100%)',
-          cursor: isPanning ? 'grabbing' : 'grab'
-        }}
-      />
+      {/* ÁREA PRINCIPAL - Canvas + Overlays */}
+      <div className="flex-1 relative">
+        
+        {!texturesLoaded ? (
+          <div className="flex items-center justify-center h-full" style={{
+            background: 'radial-gradient(circle at 50% 50%, hsl(var(--background)) 0%, hsl(222, 47%, 11%) 100%)'
+          }}>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center space-y-4">
+              <div className="text-cyan-400 text-xl font-mono">
+                🌌 Carregando Universo Semântico...
+              </div>
+              <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                  style={{ width: `${loadingProgress}%` }}
+                  animate={{ width: `${loadingProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <div className="text-cyan-300 text-sm font-mono">
+                {loadingProgress}% carregado
+              </div>
+            </motion.div>
+          </div>
+        ) : (
+          <>
+            {/* Canvas de Renderização */}
+            <canvas
+              ref={canvasRef}
+              width={1300}
+              height={975}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
+              onWheel={handleWheel}
+              className="w-full h-full"
+              style={{ 
+                background: 'radial-gradient(circle at 50% 50%, hsl(var(--background)) 0%, hsl(222, 47%, 11%) 100%)',
+                cursor: isPanning ? 'grabbing' : isDragging ? 'move' : 'grab'
+              }}
+            />
+            
+            {/* Filter Panel - Sobreposto */}
+            <FilterPanel
+              isOpen={isFilterPanelOpen}
+              onToggle={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+              filters={activeFilters}
+              onFilterChange={setActiveFilters}
+              availableDomains={dominiosData.map(d => ({
+                label: d.dominio,
+                color: d.cor,
+                corTexto: d.corTexto
+              }))}
+            />
+            
+            {/* Navigation Console - Fixo no topo */}
+            <div className="absolute top-0 left-0 right-0 z-30">
+              <SpaceNavigationConsole
+                level={level}
+                selectedDomain={selectedDomain}
+                onNavigate={handleNavigateToLevel}
+                onFilterChange={setActiveFilters}
+                onReset={() => {
+                  setActiveFilters({
+                    minFrequency: 0,
+                    prosody: [],
+                    domains: [],
+                    searchQuery: ''
+                  });
+                }}
+                isFilterPanelOpen={isFilterPanelOpen}
+                onToggleFilterPanel={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                activeFilterCount={
+                  (activeFilters.minFrequency > 0 ? 1 : 0) +
+                  activeFilters.prosody.length +
+                  activeFilters.domains.length +
+                  (activeFilters.searchQuery ? 1 : 0)
+                }
+              />
+            </div>
+          </>
+        )}
+      </div>
       
-      {hoveredWord && palavraStats[hoveredWord.palavra] && (
-        <SpaceHUDTooltip
-          word={{
-            id: hoveredWord.palavra,
-            label: hoveredWord.palavra,
-            freq: palavraStats[hoveredWord.palavra]?.frequencia,
-            prosody: palavraStats[hoveredWord.palavra]?.prosodia,
-            level: 'orbital'
-          }}
-          visible={true}
-          level="orbital"
-        />
+      {/* PAINEL DIREITO - Console + Toolbar */}
+      {texturesLoaded && (
+        <div className="flex items-stretch h-full">
+          
+          {/* Console - Condicional baseado no modo */}
+          {consoleMode === 'docked' && (
+            <ControlPanel
+              mode="docked"
+              hoveredNode={hoveredWord ? {
+                id: hoveredWord.palavra,
+                label: hoveredWord.palavra,
+                freq: palavraStats[hoveredWord.palavra]?.frequencia,
+                prosody: palavraStats[hoveredWord.palavra]?.prosodia,
+                domain: hoveredWord.dominio
+              } : null}
+              level={level}
+              codexState={codexState}
+              onMouseEnter={handlePanelMouseEnter}
+              onMouseLeave={handlePanelMouseLeave}
+              openSections={openSections}
+              onMinimize={handleMinimizeConsole}
+              onFloat={handleFloatConsole}
+            />
+          )}
+          
+          {/* Toolbar - Sempre visível */}
+          <ControlToolbar
+            isMinimized={consoleMode === 'minimized'}
+            onToggleConsole={handleExpandConsole}
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onReset={handleReset}
+            isPaused={isPaused}
+            onPauseToggle={() => setIsPaused(!isPaused)}
+            isCodexOpen={openSections.codex}
+            isLegendOpen={openSections.legend}
+            isFutureOpen={openSections.future}
+            onToggleCodex={handleToggleCodex}
+            onToggleLegend={handleToggleLegend}
+            onToggleFuture={handleToggleFuture}
+            showLegend={level === 'galaxy'}
+          />
+          
+        </div>
       )}
+      
+      {/* Console Flutuante - Portal */}
+      {consoleMode === 'floating' && texturesLoaded && (
+        <FloatingControlPanel
+          position={floatingPosition}
+          size={floatingSize}
+          onDock={handleDockConsole}
+          onPositionChange={setFloatingPosition}
+        >
+          <ControlPanel
+            mode="floating"
+            hoveredNode={hoveredWord ? {
+              id: hoveredWord.palavra,
+              label: hoveredWord.palavra,
+              freq: palavraStats[hoveredWord.palavra]?.frequencia,
+              prosody: palavraStats[hoveredWord.palavra]?.prosodia,
+              domain: hoveredWord.dominio
+            } : null}
+            level={level}
+            codexState={codexState}
+            onMouseEnter={handlePanelMouseEnter}
+            onMouseLeave={handlePanelMouseLeave}
+            openSections={openSections}
+          />
+        </FloatingControlPanel>
+      )}
+      
     </div>
   );
 }
