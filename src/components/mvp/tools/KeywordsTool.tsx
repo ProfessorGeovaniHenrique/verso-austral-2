@@ -28,6 +28,7 @@ export function KeywordsTool() {
   });
   const [sortColumn, setSortColumn] = useState<keyof KeywordEntry>('ll');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [minLLFilter, setMinLLFilter] = useState<number>(3.84);
   
   // Filter and sort keywords
   const filteredKeywords = useMemo(() => {
@@ -48,6 +49,11 @@ export function KeywordsTool() {
           return false;
         }
         
+        // LL threshold filter
+        if (kw.ll < minLLFilter) {
+          return false;
+        }
+        
         return true;
       })
       .sort((a, b) => {
@@ -60,7 +66,7 @@ export function KeywordsTool() {
         
         return 0;
       });
-  }, [keywords, searchTerm, filterSignificancia, filterEfeito, sortColumn, sortDirection]);
+  }, [keywords, searchTerm, filterSignificancia, filterEfeito, sortColumn, sortDirection, minLLFilter]);
   
   const handleSort = (column: keyof KeywordEntry) => {
     if (sortColumn === column) {
@@ -299,6 +305,52 @@ export function KeywordsTool() {
                   </div>
                 ))}
               </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">
+                Threshold Log-Likelihood (LL ≥ {minLLFilter.toFixed(2)})
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input
+                  type="number"
+                  min="0"
+                  max="20"
+                  step="0.1"
+                  value={minLLFilter}
+                  onChange={(e) => setMinLLFilter(parseFloat(e.target.value) || 3.84)}
+                  className="w-20 h-8"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMinLLFilter(3.84)}
+                    className={minLLFilter === 3.84 ? 'bg-primary/10' : ''}
+                  >
+                    3.84 (p&lt;0.05)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMinLLFilter(6.63)}
+                    className={minLLFilter === 6.63 ? 'bg-primary/10' : ''}
+                  >
+                    6.63 (p&lt;0.01)
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMinLLFilter(10.83)}
+                    className={minLLFilter === 10.83 ? 'bg-primary/10' : ''}
+                  >
+                    10.83 (p&lt;0.001)
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ajuste o valor mínimo de Log-Likelihood para filtrar palavras-chave por significância estatística
+              </p>
             </div>
           </div>
           

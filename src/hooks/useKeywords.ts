@@ -55,6 +55,19 @@ export function useKeywords() {
       const estudoData = parseTSVCorpus(estudoText);
       const referenciaData = parseTSVCorpus(referenciaText);
       
+      console.log(`📄 Corpus Estudo: ${estudoData.length} palavras únicas`);
+      console.log(`📄 Corpus Referência: ${referenciaData.length} palavras únicas`);
+      console.log(`📊 Sample Estudo:`, estudoData.slice(0, 3));
+      console.log(`📊 Sample Referência:`, referenciaData.slice(0, 3));
+      
+      if (estudoData.length === 0) {
+        throw new Error('Corpus de estudo vazio ou mal formatado');
+      }
+      
+      if (referenciaData.length === 0) {
+        throw new Error('Corpus de referência vazio ou mal formatado');
+      }
+      
       // Gerar keywords
       const kws = generateKeywords(estudoData, referenciaData);
       

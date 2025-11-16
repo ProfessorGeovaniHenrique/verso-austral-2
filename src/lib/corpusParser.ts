@@ -7,7 +7,9 @@ import { CorpusWord } from "@/data/types/corpus-tools.types";
 export function parseTSVCorpus(tsvContent: string): CorpusWord[] {
   const lines = tsvContent.split('\n').slice(1); // Skip header
   
-  return lines
+  console.log(`🔍 Parsing TSV - Total lines (excluding header): ${lines.length}`);
+  
+  const parsed = lines
     .filter(line => line.trim())
     .map((line, index) => {
       const columns = line.split(',');
@@ -45,7 +47,16 @@ export function parseTSVCorpus(tsvContent: string): CorpusWord[] {
         normRange: 0 // Will be calculated dynamically
       };
     })
-    .filter(word => word.headword && word.freq > 0); // Filter out invalid entries
+    .filter(word => {
+      const isValid = word.headword && word.freq > 0;
+      if (!isValid && word.headword) {
+        console.log(`⚠️ Filtered out: ${word.headword} (freq: ${word.freq})`);
+      }
+      return isValid;
+    });
+  
+  console.log(`✅ Parsed corpus: ${parsed.length} valid words`);
+  return parsed;
 }
 
 /**
