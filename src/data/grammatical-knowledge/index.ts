@@ -10,6 +10,13 @@ export * from './adverbial-patterns';
 export * from './pronoun-system';
 export * from './semantic-categories';
 
+// Fase 1: Base de conhecimento expandida (Castilho 2010)
+export * from './thematic-roles';
+export * from './pronoun-adverbials';
+export * from './adjective-quantifiers';
+export * from './relative-clause-patterns';
+export * from './iterative-adverbials';
+
 // Metadados da base de conhecimento
 export const grammarKnowledgeMetadata = {
   version: '1.0.0',
