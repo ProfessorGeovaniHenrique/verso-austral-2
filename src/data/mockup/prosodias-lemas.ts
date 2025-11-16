@@ -449,6 +449,76 @@ export const prosodiasLemasMap: Record<string, ProsodiaInfo> = {
     lema: "ramada",
     prosody: "Positiva",
     justificativa: "Cobertura rústica de ramos, espaço de convívio e descanso."
+  },
+  "canto": {
+    lema: "canto",
+    prosody: "Negativa",
+    justificativa: "Usado em 'pelos cantos do galpão', evoca abandono, solidão e espaços esquecidos."
+  },
+  "chão": {
+    lema: "chão",
+    prosody: "Neutra",
+    justificativa: "Termo descritivo em 'fogo de chão', referência espacial neutra."
+  },
+  "cerne": {
+    lema: "cerne",
+    prosody: "Positiva",
+    justificativa: "Em 'cerne com cor de aurora', representa a essência, o núcleo vital com beleza."
+  },
+  "cor": {
+    lema: "cor",
+    prosody: "Positiva",
+    justificativa: "Usado em 'cor de aurora', evoca a beleza cromática do amanhecer."
+  },
+  "espichado": {
+    lema: "espichado",
+    prosody: "Neutra",
+    justificativa: "Regionalismo para 'estendida' em 'várzea espichada', termo descritivo da paisagem."
+  },
+  "feito": {
+    lema: "feito",
+    prosody: "Neutra",
+    justificativa: "Conjunção comparativa em 'saudades feito açoite', função gramatical neutra."
+  },
+  "figura": {
+    lema: "figura",
+    prosody: "Positiva",
+    justificativa: "Usado em 'estampando a figura, campeira', representa orgulho e identidade."
+  },
+  "fim": {
+    lema: "fim",
+    prosody: "Positiva",
+    justificativa: "Em 'fim de tarde bem lindo', marca um momento de beleza e apreciação estética."
+  },
+  "madrugada": {
+    lema: "madrugada",
+    prosody: "Neutra",
+    justificativa: "Período do dia em 'rondar na madrugada', contexto de vigília ou solidão ambíguo."
+  },
+  "manhã": {
+    lema: "manhã",
+    prosody: "Positiva",
+    justificativa: "Em 'galo prás manhãs', representa renovação, vitalidade e o início promissor do dia."
+  },
+  "noite": {
+    lema: "noite",
+    prosody: "Negativa",
+    justificativa: "Usado em 'olhos negros de noite', associado à escuridão, melancolia e saudade."
+  },
+  "pañuelo": {
+    lema: "pañuelo",
+    prosody: "Positiva",
+    justificativa: "Lenço tradicionalista maragato, símbolo cultural e identitário valorizado."
+  },
+  "quarto": {
+    lema: "quarto",
+    prosody: "Positiva",
+    justificativa: "Em 'quarto gordo nas brasa', representa fartura, abundância e conforto."
+  },
+  "queimar": {
+    lema: "queimar",
+    prosody: "Positiva",
+    justificativa: "Usado poeticamente em 'queimando em fogo de chão', evoca calor, vida e energia."
   }
 };
 
