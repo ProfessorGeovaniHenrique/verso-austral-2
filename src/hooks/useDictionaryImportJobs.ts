@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useEffect, useRef } from 'react';
 
 export interface DictionaryImportJob {
   id: string;
@@ -19,7 +20,7 @@ export interface DictionaryImportJob {
 }
 
 export function useDictionaryImportJobs(refetchInterval: number = 2000) {
-  return useQuery({
+  const queryResult = useQuery({
     queryKey: ['dictionary-import-jobs'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -32,11 +33,42 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
       return data as DictionaryImportJob[];
     },
     refetchInterval: (query) => {
-      // Continuar polling se há jobs em andamento
+      // ✅ FIX MEMORY LEAK: Pausar polling se não há jobs ativos
       const hasActiveJobs = query.state.data?.some(
-        job => job.status === 'iniciado' || job.status === 'processando'
+        job => job.status === 'iniciado' || job.status === 'processando' || job.status === 'pendente'
       );
       return hasActiveJobs ? refetchInterval : false;
-    }
+    },
+    staleTime: 1000,
+    gcTime: 5 * 60 * 1000,
   });
+
+  // ✅ FIX MEMORY LEAK: Realtime com cleanup
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    channelRef.current = supabase
+      .channel('dictionary_jobs_realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'dictionary_import_jobs'
+        },
+        () => {
+          queryResult.refetch();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, []);
+
+  return queryResult;
 }

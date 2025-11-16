@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -22,8 +22,14 @@ export function useAnnotationJobs() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // ✅ FIX MEMORY LEAK: Refs para rastrear estado
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const isMountedRef = useRef(true);
 
   const fetchJobs = async () => {
+    if (!isMountedRef.current) return;
+
     try {
       setIsLoading(true);
       setError(null);
@@ -36,25 +42,32 @@ export function useAnnotationJobs() {
 
       if (fetchError) throw fetchError;
 
-      setJobs(data || []);
+      if (isMountedRef.current) {
+        setJobs(data || []);
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar jobs';
-      setError(errorMessage);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar jobs',
-        description: errorMessage
-      });
+      if (isMountedRef.current) {
+        setError(errorMessage);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar jobs',
+          description: errorMessage
+        });
+      }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   useEffect(() => {
+    isMountedRef.current = true;
     fetchJobs();
 
-    // Configurar realtime para atualizar jobs em tempo real
-    const channel = supabase
+    // ✅ Realtime com cleanup
+    channelRef.current = supabase
       .channel('annotation_jobs_changes')
       .on(
         'postgres_changes',
@@ -70,7 +83,11 @@ export function useAnnotationJobs() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      isMountedRef.current = false;
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
   }, []);
 

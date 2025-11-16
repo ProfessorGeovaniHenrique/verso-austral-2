@@ -6,6 +6,36 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const BATCH_SIZE = 1000;
+const TIMEOUT_MS = 50000;
+
+interface ProcessRequest {
+  fileContent: string;
+  volumeNum: string;
+}
+
+function validateRequest(data: any): ProcessRequest {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Payload inválido');
+  }
+  
+  const { fileContent, volumeNum } = data;
+  
+  if (!fileContent || typeof fileContent !== 'string') {
+    throw new Error('fileContent deve ser uma string válida');
+  }
+  
+  if (fileContent.length > 10000000) {
+    throw new Error('fileContent excede tamanho máximo de 10MB');
+  }
+  
+  if (!volumeNum || !['I', 'II'].includes(volumeNum)) {
+    throw new Error('volumeNum deve ser "I" ou "II"');
+  }
+  
+  return { fileContent, volumeNum };
+}
+
 function normalizeWord(word: string): string {
   return word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
@@ -79,13 +109,15 @@ async function processInBackground(jobId: string, verbetes: string[], volumeNum:
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
-  console.log(`[JOB ${jobId}] Iniciando processamento em background de ${verbetes.length} verbetes`);
+  const startTime = Date.now();
+  console.log(`[JOB ${jobId}] Iniciando processamento de ${verbetes.length} verbetes (timeout: ${TIMEOUT_MS}ms)`);
 
   await supabase
     .from("dictionary_import_jobs")
     .update({ 
       status: 'processando',
-      total_verbetes: verbetes.length 
+      total_verbetes: verbetes.length,
+      tempo_inicio: new Date().toISOString()
     })
     .eq('id', jobId);
 

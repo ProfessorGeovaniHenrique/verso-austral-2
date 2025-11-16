@@ -29,6 +29,25 @@ interface AIAnnotation {
   new_category_examples?: string[];
 }
 
+// Validação de entrada
+function validateRequest(data: any): AnnotationRequest {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Payload inválido');
+  }
+  
+  const { corpus_type, custom_text } = data;
+  
+  if (!corpus_type || !['gaucho', 'nordestino', 'marenco-verso'].includes(corpus_type)) {
+    throw new Error('corpus_type deve ser: gaucho, nordestino ou marenco-verso');
+  }
+  
+  if (custom_text !== undefined && (typeof custom_text !== 'string' || custom_text.length > 1000000)) {
+    throw new Error('custom_text deve ser string com máximo 1MB');
+  }
+  
+  return { corpus_type, custom_text };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -39,25 +58,37 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // TODO: Em produção, implementar autenticação
-    // Por enquanto, usar UUID fixo para modo demo
-    const userId = '00000000-0000-0000-0000-000000000001';
-
-    const { corpus_type, custom_text }: AnnotationRequest = await req.json();
-
-    if (!corpus_type) {
+    // ✅ SEGURANÇA: Autenticação real via JWT
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'corpus_type é obrigatório' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Autenticação necessária' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[annotate-semantic] Iniciando anotação para corpus: ${corpus_type}, user: ${userId}`);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+    if (authError || !user) {
+      console.error('[annotate-semantic] Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Token inválido ou expirado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ✅ VALIDAÇÃO: Schema de entrada
+    const rawBody = await req.json();
+    const validatedRequest = validateRequest(rawBody);
+    const { corpus_type, custom_text } = validatedRequest;
+
+    console.log(`[annotate-semantic] Usuário ${user.id} iniciando anotação: ${corpus_type}`);
 
     const { data: job, error: jobError } = await supabase
       .from('annotation_jobs')
       .insert({
-        user_id: userId,
+        user_id: user.id,
         corpus_type: corpus_type,
         status: 'pending',
         metadata: {
@@ -98,8 +129,9 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('[annotate-semantic] Unexpected error:', error);
+    const message = error instanceof Error ? error.message : 'Erro interno do servidor';
     return new Response(
-      JSON.stringify({ error: 'Erro interno do servidor' }),
+      JSON.stringify({ error: message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

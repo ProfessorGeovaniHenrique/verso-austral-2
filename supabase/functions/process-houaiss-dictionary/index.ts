@@ -6,6 +6,31 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const BATCH_SIZE = 1000;
+const TIMEOUT_MS = 50000;
+
+interface ProcessRequest {
+  fileContent: string;
+}
+
+function validateRequest(data: any): ProcessRequest {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Payload inválido');
+  }
+  
+  const { fileContent } = data;
+  
+  if (!fileContent || typeof fileContent !== 'string') {
+    throw new Error('fileContent deve ser uma string válida');
+  }
+  
+  if (fileContent.length > 10000000) {
+    throw new Error('fileContent excede tamanho máximo de 10MB');
+  }
+  
+  return { fileContent };
+}
+
 interface HouaissEntry {
   palavra: string;
   pos: string;
