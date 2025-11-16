@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useRef } from 'react';
+import { retrySupabaseOperation } from '@/lib/retryUtils';
+import { notifications } from '@/lib/notifications';
 
 export interface DictionaryImportJob {
   id: string;
@@ -23,14 +25,25 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
   const queryResult = useQuery({
     queryKey: ['dictionary-import-jobs'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('dictionary_import_jobs')
-        .select('*')
-        .order('criado_em', { ascending: false })
-        .limit(20);
+      return retrySupabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('dictionary_import_jobs')
+          .select('*')
+          .order('criado_em', { ascending: false })
+          .limit(20);
 
-      if (error) throw error;
-      return data as DictionaryImportJob[];
+        if (error) throw error;
+        return data as DictionaryImportJob[];
+      }, {
+        maxRetries: 5,
+        baseDelay: 500,
+        onRetry: (error, attempt) => {
+          notifications.info(
+            `Reconectando... (${attempt}/5)`,
+            'Tentando carregar jobs de importação'
+          );
+        }
+      });
     },
     refetchInterval: (query) => {
       // ✅ FIX MEMORY LEAK: Pausar polling se não há jobs ativos

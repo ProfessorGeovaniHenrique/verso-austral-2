@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { retrySupabaseOperation } from '@/lib/retryUtils';
+import { notifications } from '@/lib/notifications';
 
 export interface AnnotationJob {
   id: string;
@@ -21,14 +23,25 @@ export function useAnnotationJobs(refetchInterval: number = 3000) {
   const queryResult = useQuery({
     queryKey: ['annotation-jobs'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('annotation_jobs')
-        .select('*')
-        .order('tempo_inicio', { ascending: false })
-        .limit(50);
+      return retrySupabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('annotation_jobs')
+          .select('*')
+          .order('tempo_inicio', { ascending: false })
+          .limit(50);
 
-      if (error) throw error;
-      return data as AnnotationJob[];
+        if (error) throw error;
+        return data as AnnotationJob[];
+      }, {
+        maxRetries: 5,
+        baseDelay: 500,
+        onRetry: (error, attempt) => {
+          notifications.info(
+            `Reconectando... (${attempt}/5)`,
+            'Tentando carregar jobs de anotação'
+          );
+        }
+      });
     },
     refetchInterval: (query) => {
       // ✅ CORREÇÃO #7: Pausar polling se não há jobs ativos

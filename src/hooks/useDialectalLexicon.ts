@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { retrySupabaseOperation } from '@/lib/retryUtils';
+import { notifications } from '@/lib/notifications';
 
 export interface DialectalEntry {
   id: string;
@@ -48,28 +50,39 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
   const queryResult = useQuery({
     queryKey: ['dialectal-lexicon', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('dialectal_lexicon')
-        .select('*')
-        .order('verbete', { ascending: true });
+      return retrySupabaseOperation(async () => {
+        let query = supabase
+          .from('dialectal_lexicon')
+          .select('*')
+          .order('verbete', { ascending: true });
 
-      if (filters?.origem) {
-        query = query.eq('origem_primaria', filters.origem);
-      }
+        if (filters?.origem) {
+          query = query.eq('origem_primaria', filters.origem);
+        }
 
-      if (filters?.categoria) {
-        query = query.contains('categorias_tematicas', [filters.categoria]);
-      }
+        if (filters?.categoria) {
+          query = query.contains('categorias_tematicas', [filters.categoria]);
+        }
 
-      if (filters?.searchTerm) {
-        query = query.ilike('verbete_normalizado', `%${filters.searchTerm.toLowerCase()}%`);
-      }
+        if (filters?.searchTerm) {
+          query = query.ilike('verbete_normalizado', `%${filters.searchTerm.toLowerCase()}%`);
+        }
 
-      const { data, error } = await query.limit(100);
+        const { data, error } = await query.limit(100);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      return (data || []) as DialectalEntry[];
+        return (data || []) as DialectalEntry[];
+      }, {
+        maxRetries: 5,
+        baseDelay: 500,
+        onRetry: (error, attempt) => {
+          notifications.info(
+            `Reconectando... (${attempt}/5)`,
+            'Tentando carregar léxico dialectal'
+          );
+        }
+      });
     },
     // ✅ CACHE TTL: Dicionário dialectal muda raramente
     staleTime: 24 * 60 * 60 * 1000, // 24 horas
@@ -108,19 +121,24 @@ export function useDialectalEntry(palavra: string) {
     queryFn: async () => {
       if (!palavra) return null;
 
-      const normalizedWord = palavra.toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+      return retrySupabaseOperation(async () => {
+        const normalizedWord = palavra.toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '');
 
-      const { data, error } = await supabase
-        .from('dialectal_lexicon')
-        .select('*')
-        .eq('verbete_normalizado', normalizedWord)
-        .single();
+        const { data, error } = await supabase
+          .from('dialectal_lexicon')
+          .select('*')
+          .eq('verbete_normalizado', normalizedWord)
+          .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+        if (error) throw error;
 
-      return data as DialectalEntry | null;
+        return data as DialectalEntry | null;
+      }, {
+        maxRetries: 3,
+        baseDelay: 500
+      });
     },
     // ✅ CACHE: Verbete específico raramente muda
     staleTime: 24 * 60 * 60 * 1000,

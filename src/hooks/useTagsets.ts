@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { retrySupabaseOperation } from '@/lib/retryUtils';
+import { notifications } from '@/lib/notifications';
 
 export interface Tagset {
   id: string;
@@ -23,13 +24,24 @@ export function useTagsets() {
   const queryResult = useQuery({
     queryKey: ['semantic-tagsets'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('semantic_tagset')
-        .select('*')
-        .order('nome', { ascending: true });
+      return retrySupabaseOperation(async () => {
+        const { data, error } = await supabase
+          .from('semantic_tagset')
+          .select('*')
+          .order('nome', { ascending: true });
 
-      if (error) throw error;
-      return data as Tagset[];
+        if (error) throw error;
+        return data as Tagset[];
+      }, {
+        maxRetries: 5,
+        baseDelay: 500,
+        onRetry: (error, attempt) => {
+          notifications.info(
+            `Reconectando... (${attempt}/5)`,
+            'Tentando carregar tagsets'
+          );
+        }
+      });
     },
     // ✅ CORREÇÃO #11: Cache estratégico para dados estáticos
     staleTime: 30 * 60 * 1000, // 30 minutos
@@ -40,31 +52,28 @@ export function useTagsets() {
 
   const proposeTagset = async (tagset: Omit<Tagset, 'id' | 'criado_em' | 'aprovado_por' | 'aprovado_em' | 'validacoes_humanas'>) => {
     try {
-      const { error: insertError } = await supabase
-        .from('semantic_tagset')
-        .insert({
-          codigo: tagset.codigo,
-          nome: tagset.nome,
-          descricao: tagset.descricao,
-          categoria_pai: tagset.categoria_pai,
-          status: tagset.status,
-          exemplos: tagset.exemplos,
-          criado_por: tagset.criado_por
-        });
+      await retrySupabaseOperation(async () => {
+        const { error: insertError } = await supabase
+          .from('semantic_tagset')
+          .insert({
+            codigo: tagset.codigo,
+            nome: tagset.nome,
+            descricao: tagset.descricao,
+            categoria_pai: tagset.categoria_pai,
+            status: tagset.status,
+            exemplos: tagset.exemplos,
+            criado_por: tagset.criado_por
+          });
 
-      if (insertError) throw insertError;
-
-      toast.success('Tagset proposto com sucesso', {
-        description: `O tagset "${tagset.nome}" foi adicionado para revisão.`
+        if (insertError) throw insertError;
       });
+
+      notifications.success('Tagset proposto com sucesso', `O tagset "${tagset.nome}" foi adicionado para revisão.`);
 
       // Invalidar cache após mutação
       await queryClient.invalidateQueries({ queryKey: ['semantic-tagsets'] });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao propor tagset';
-      toast.error('Erro ao propor tagset', {
-        description: errorMessage
-      });
+      notifications.error('Erro ao propor tagset', err as Error);
       throw err;
     }
   };
