@@ -7,6 +7,7 @@ import { GrammarIntegration } from "@/components/devlogs/GrammarIntegration";
 import { TechnicalDecisions } from "@/components/devlogs/TechnicalDecisions";
 import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
 import { SearchBar } from "@/components/devlogs/SearchBar";
+import { AuditReport } from "@/components/devlogs/AuditReport";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
 import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download } from "lucide-react";
@@ -138,8 +139,12 @@ export default function DeveloperLogs() {
           onClear={handleClearFilters}
         />
 
-        <Tabs defaultValue="timeline" className="space-y-6 mt-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <Tabs defaultValue="audit" className="space-y-6 mt-6">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
+            <TabsTrigger value="audit" className="gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">🔍 Auditoria</span>
+            </TabsTrigger>
             <TabsTrigger value="timeline" className="gap-2">
               <Target className="w-4 h-4" />
               <span className="hidden sm:inline">Timeline</span>
@@ -161,6 +166,11 @@ export default function DeveloperLogs() {
               <span className="hidden sm:inline">Roadmap</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* TAB 0: Auditoria e Debugging */}
+          <TabsContent value="audit">
+            <AuditReport />
+          </TabsContent>
 
           {/* TAB 1: Timeline de Fases */}
           <TabsContent value="timeline" className="space-y-6">
