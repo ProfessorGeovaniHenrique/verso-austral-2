@@ -1,8 +1,9 @@
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { DemoModeBlocker } from "@/components/advanced/DemoModeBlocker";
 import { TabLexicalProfile } from "@/components/advanced/TabLexicalProfile";
+import { POSAnalysisTool } from "@/components/mvp/tools/POSAnalysisTool";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Network, Sparkles, Link2, FileBarChart } from "lucide-react";
+import { BookOpen, Network, Sparkles, Link2, FileBarChart, Layers } from "lucide-react";
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
 
@@ -26,10 +27,14 @@ export default function AdvancedMode() {
         </div>
 
         <Tabs defaultValue="lexical" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="lexical" className="gap-2">
               <BookOpen className="w-4 h-4" />
               <span className="hidden sm:inline">Perfil Léxico</span>
+            </TabsTrigger>
+            <TabsTrigger value="pos" className="gap-2">
+              <Layers className="w-4 h-4" />
+              <span className="hidden sm:inline">POS Tagging</span>
             </TabsTrigger>
             <TabsTrigger value="syntactic" className="gap-2" disabled>
               <Network className="w-4 h-4" />
@@ -51,6 +56,10 @@ export default function AdvancedMode() {
 
           <TabsContent value="lexical">
             <TabLexicalProfile />
+          </TabsContent>
+
+          <TabsContent value="pos">
+            <POSAnalysisTool />
           </TabsContent>
 
           <TabsContent value="syntactic">

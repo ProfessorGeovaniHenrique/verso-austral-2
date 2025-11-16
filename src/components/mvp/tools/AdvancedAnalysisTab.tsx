@@ -9,12 +9,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Sparkles, TrendingUp, MapPin, Calendar, List, Layers } from 'lucide-react';
+import { Sparkles, TrendingUp, MapPin, Calendar, List } from 'lucide-react';
 import { KeywordsTool } from './KeywordsTool';
 import { TemporalAnalysisTool } from './TemporalAnalysisTool';
 import { DialectalAnalysisTool } from './DialectalAnalysisTool';
 import { DialectalNGramsTool } from './DialectalNGramsTool';
-import { POSAnalysisTool } from './POSAnalysisTool';
 
 export function AdvancedAnalysisTab() {
   return (
@@ -25,13 +24,13 @@ export function AdvancedAnalysisTab() {
           Análise Avançada
         </CardTitle>
         <CardDescription className="section-description-academic">
-          Keywords estatísticas, evolução temporal, marcas dialetais e análise morfossintática (POS)
+          Keywords estatísticas, evolução temporal e marcas dialetais
         </CardDescription>
       </CardHeader>
       
       <CardContent>
         <Tabs defaultValue="keywords" className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="keywords" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Keywords
@@ -47,10 +46,6 @@ export function AdvancedAnalysisTab() {
             <TabsTrigger value="ngrams-dialectal" className="flex items-center gap-2">
               <List className="h-4 w-4" />
               N-grams Dialetais
-            </TabsTrigger>
-            <TabsTrigger value="pos" className="flex items-center gap-2">
-              <Layers className="h-4 w-4" />
-              POS Tagging
             </TabsTrigger>
           </TabsList>
           
@@ -68,10 +63,6 @@ export function AdvancedAnalysisTab() {
           
           <TabsContent value="ngrams-dialectal">
             <DialectalNGramsTool />
-          </TabsContent>
-          
-          <TabsContent value="pos">
-            <POSAnalysisTool />
           </TabsContent>
         </Tabs>
       </CardContent>
