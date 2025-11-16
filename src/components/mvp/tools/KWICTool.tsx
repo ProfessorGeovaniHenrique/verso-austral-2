@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Slider } from "@/components/ui/slider";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useFullTextCorpus } from "@/hooks/useFullTextCorpus";
+import { useCorpusCache } from "@/contexts/CorpusContext";
 import { generateKWIC, exportKWICToCSV } from "@/services/kwicService";
-import { KWICContext } from "@/data/types/full-text-corpus.types";
+import { KWICContext, CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { useTools } from "@/contexts/ToolsContext";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -28,6 +28,9 @@ export function KWICTool() {
   const [anoFim, setAnoFim] = useState<string>('');
   
   const { selectedWord } = useTools();
+  const { getFullTextCache, isLoading: isCacheLoading } = useCorpusCache();
+  const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
+  const [progress, setProgress] = useState(0);
   
   const filters = useMemo(() => ({
     artistas: selectedArtistas.length > 0 ? selectedArtistas : undefined,
@@ -36,14 +39,28 @@ export function KWICTool() {
     anoFim: anoFim ? parseInt(anoFim) : undefined,
   }), [selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
   
-  const { corpus, isLoading, error, progress } = useFullTextCorpus(corpusType, filters);
+  useEffect(() => {
+    const loadCorpus = async () => {
+      try {
+        setProgress(30);
+        const cache = await getFullTextCache(corpusType, filters);
+        setCorpus(cache.corpus);
+        setProgress(100);
+      } catch (error) {
+        console.error('Erro ao carregar corpus:', error);
+        toast.error('Erro ao carregar corpus');
+      }
+    };
+    
+    loadCorpus();
+  }, [corpusType, filters, getFullTextCache]);
   
   // Auto-fill word from context
   useEffect(() => {
     if (selectedWord && selectedWord !== palavra) {
       setPalavra(selectedWord);
     }
-  }, [selectedWord]);
+  }, [selectedWord, palavra]);
   
   // Get unique artists and albums for filters
   const artistasDisponiveis = useMemo(() => {
@@ -108,19 +125,13 @@ export function KWICTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading && (
+          {isCacheLoading && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Carregando corpus...
               </div>
               <Progress value={progress} className="w-full" />
-            </div>
-          )}
-          
-          {error && (
-            <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-              {error}
             </div>
           )}
           
@@ -250,8 +261,8 @@ export function KWICTool() {
           
           <div className="flex gap-2">
             <Button 
-              onClick={handleSearch} 
-              disabled={isLoading || isProcessing}
+              onClick={handleSearch}
+              disabled={isCacheLoading || isProcessing}
               className="flex-1"
             >
               {isProcessing ? (

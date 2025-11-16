@@ -9,8 +9,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Download, Search, Loader2, ChevronDown, ChevronUp, MousePointerClick } from "lucide-react";
 import { CorpusType, CORPUS_CONFIG } from "@/data/types/corpus-tools.types";
 import { useTools } from "@/contexts/ToolsContext";
+import { useCorpusCache } from "@/contexts/CorpusContext";
 import { toast } from "sonner";
-import { parseTSVCorpus, calculateTotalTokens } from "@/lib/corpusParser";
 
 interface WordEntry {
   palavra: string;
@@ -21,45 +21,29 @@ interface WordEntry {
 export function WordlistTool() {
   const [corpusType, setCorpusType] = useState<CorpusType>('gaucho');
   const [wordlist, setWordlist] = useState<WordEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortColumn, setSortColumn] = useState<'frequencia' | 'palavra'>('frequencia');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const { navigateToKWIC } = useTools();
+  const { getWordlistCache, isLoading } = useCorpusCache();
 
   const loadWordlist = async () => {
-    setIsLoading(true);
     try {
       const config = CORPUS_CONFIG[corpusType];
-      const response = await fetch(config.estudoPath);
-      const text = await response.text();
-      
-      // Usar parser correto do corpusParser.ts
-      const parsedCorpus = parseTSVCorpus(text);
-      const totalTokens = calculateTotalTokens(parsedCorpus);
+      const cache = await getWordlistCache(corpusType, config.estudoPath);
       
       // Converter para formato WordEntry com normalização
-      const words: WordEntry[] = parsedCorpus.map(word => ({
+      const words: WordEntry[] = cache.words.map(word => ({
         palavra: word.headword,
         frequencia: word.freq,
-        frequenciaNormalizada: (word.freq / totalTokens) * 10000
+        frequenciaNormalizada: (word.freq / cache.totalTokens) * 10000
       }));
-
-      console.log(`📊 Wordlist ${corpusType}:`, {
-        totalPalavras: words.length,
-        totalTokens: totalTokens,
-        primeirasPalavras: words.slice(0, 5).map(w => 
-          `${w.palavra}: ${w.frequencia} (${w.frequenciaNormalizada.toFixed(2)}/10k)`
-        )
-      });
 
       setWordlist(words);
       toast.success(`${words.length.toLocaleString('pt-BR')} palavras carregadas`);
     } catch (error) {
       console.error('Erro ao carregar wordlist:', error);
       toast.error('Erro ao carregar wordlist');
-    } finally {
-      setIsLoading(false);
     }
   };
 

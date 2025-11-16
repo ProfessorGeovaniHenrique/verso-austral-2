@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Search, Download, Loader2, Hash, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useFullTextCorpus } from "@/hooks/useFullTextCorpus";
+import { useCorpusCache } from "@/contexts/CorpusContext";
 import { generateNGrams, exportNGramsToCSV } from "@/services/ngramsService";
-import { NGramAnalysis } from "@/data/types/full-text-corpus.types";
+import { NGramAnalysis, CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +34,25 @@ export function NGramsTool() {
     anoFim: anoFim ? parseInt(anoFim) : undefined,
   }), [selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
   
-  const { corpus, isLoading, error, progress } = useFullTextCorpus(corpusType, filters);
+  const { getFullTextCache, isLoading: isCacheLoading } = useCorpusCache();
+  const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
+  const [progress, setProgress] = useState(0);
+  
+  useEffect(() => {
+    const loadCorpus = async () => {
+      try {
+        setProgress(30);
+        const cache = await getFullTextCache(corpusType, filters);
+        setCorpus(cache.corpus);
+        setProgress(100);
+      } catch (error) {
+        console.error('Erro ao carregar corpus:', error);
+        toast.error('Erro ao carregar corpus');
+      }
+    };
+    
+    loadCorpus();
+  }, [corpusType, filters, getFullTextCache]);
   
   const artistasDisponiveis = useMemo(() => {
     if (!corpus) return [];
@@ -97,7 +115,7 @@ export function NGramsTool() {
           <CardDescription>Identifique sequências frequentes no corpus</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isLoading && (
+          {isCacheLoading && (
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -106,8 +124,6 @@ export function NGramsTool() {
               <Progress value={progress} className="w-full" />
             </div>
           )}
-          
-          {error && <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm">{error}</div>}
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -190,7 +206,7 @@ export function NGramsTool() {
           </Collapsible>
           
           <div className="flex gap-2">
-            <Button onClick={handleGenerate} disabled={isLoading || isProcessing} className="flex-1">
+            <Button onClick={handleGenerate} disabled={isCacheLoading || isProcessing} className="flex-1">
               {isProcessing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Gerando...</> : <><Hash className="mr-2 h-4 w-4" />Gerar</>}
             </Button>
             <Button onClick={handleExport} variant="outline" disabled={!analysis}><Download className="mr-2 h-4 w-4" />CSV</Button>
