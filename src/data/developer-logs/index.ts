@@ -40,3 +40,10 @@ export {
   type BugReport,
   type RefactoringStrategy
 } from './audit-report-2024-11';
+
+export {
+  corrections,
+  summaryMetrics,
+  nextSteps,
+  type Correction
+} from './changelog-corrections-nov2024';

@@ -10,7 +10,7 @@ interface DialectalExplorerProps {
 }
 
 export function DialectalExplorer({ palavra }: DialectalExplorerProps) {
-  const { entry, isLoading, error } = useDialectalEntry(palavra);
+  const { data: entry, isLoading, error } = useDialectalEntry(palavra);
 
   if (isLoading) {
     return (
@@ -30,7 +30,7 @@ export function DialectalExplorer({ palavra }: DialectalExplorerProps) {
     return (
       <Card>
         <CardContent className="pt-6">
-          <p className="text-sm text-destructive">Erro ao carregar dados: {error}</p>
+          <p className="text-sm text-destructive">Erro ao carregar dados: {error.message}</p>
         </CardContent>
       </Card>
     );

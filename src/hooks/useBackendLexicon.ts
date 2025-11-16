@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -24,22 +25,16 @@ interface Filters {
 }
 
 export function useBackendLexicon(filters?: Filters) {
-  const [lexicon, setLexicon] = useState<LexiconEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const fetchLexicon = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
+  const queryResult = useQuery({
+    queryKey: ['backend-lexicon', filters],
+    queryFn: async () => {
       let query = supabase
         .from('semantic_lexicon')
         .select('*')
         .order('criado_em', { ascending: false });
 
-      // Aplicar filtros
       if (filters?.pos && filters.pos !== 'all') {
         query = query.eq('pos', filters.pos);
       }
@@ -54,42 +49,40 @@ export function useBackendLexicon(filters?: Filters) {
         query = query.ilike('palavra', `%${filters.searchTerm}%`);
       }
 
-      const { data, error: fetchError } = await query;
+      const { data, error } = await query;
 
-      if (fetchError) throw fetchError;
+      if (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar léxico',
+          description: error.message
+        });
+        throw error;
+      }
 
-      setLexicon(data || []);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar léxico';
-      setError(errorMessage);
-      toast({
-        variant: 'destructive',
-        title: 'Erro ao carregar léxico',
-        description: errorMessage
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchLexicon();
-  }, [filters?.pos, filters?.validationStatus, filters?.searchTerm]);
+      return (data || []) as LexiconEntry[];
+    },
+    // ✅ CACHE TTL: Dados de léxico mudam raramente
+    staleTime: 24 * 60 * 60 * 1000, // 24 horas
+    gcTime: 48 * 60 * 60 * 1000, // 48 horas
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
 
   const stats = {
-    totalWords: lexicon.length,
-    validatedWords: lexicon.filter(w => w.validado).length,
-    pendingWords: lexicon.filter(w => !w.validado).length,
-    avgConfidence: lexicon.length > 0 
-      ? lexicon.reduce((sum, w) => sum + w.confianca, 0) / lexicon.length 
+    totalWords: queryResult.data?.length || 0,
+    validatedWords: queryResult.data?.filter(w => w.validado).length || 0,
+    pendingWords: queryResult.data?.filter(w => !w.validado).length || 0,
+    avgConfidence: queryResult.data && queryResult.data.length > 0
+      ? queryResult.data.reduce((sum, w) => sum + w.confianca, 0) / queryResult.data.length
       : 0
   };
 
   return {
-    lexicon,
+    lexicon: queryResult.data || [],
     stats,
-    isLoading,
-    error,
-    refetch: fetchLexicon
+    isLoading: queryResult.isLoading,
+    error: queryResult.error?.message || null,
+    refetch: queryResult.refetch
   };
 }

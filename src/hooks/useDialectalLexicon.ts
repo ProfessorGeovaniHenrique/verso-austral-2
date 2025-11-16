@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface DialectalEntry {
@@ -45,15 +45,9 @@ interface DialectalFilters {
 }
 
 export function useDialectalLexicon(filters?: DialectalFilters) {
-  const [entries, setEntries] = useState<DialectalEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchEntries = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
+  const queryResult = useQuery({
+    queryKey: ['dialectal-lexicon', filters],
+    queryFn: async () => {
       let query = supabase
         .from('dialectal_lexicon')
         .select('*')
@@ -71,83 +65,66 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
         query = query.ilike('verbete_normalizado', `%${filters.searchTerm.toLowerCase()}%`);
       }
 
-      const { data, error: fetchError } = await query.limit(100);
+      const { data, error } = await query.limit(100);
 
-      if (fetchError) throw fetchError;
+      if (error) throw error;
 
-      setEntries((data || []) as DialectalEntry[]);
-    } catch (err) {
-      console.error('Erro ao buscar léxico dialectal:', err);
-      setError(err instanceof Error ? err.message : 'Erro desconhecido');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchEntries();
-  }, [filters?.origem, filters?.categoria, filters?.searchTerm]);
+      return (data || []) as DialectalEntry[];
+    },
+    // ✅ CACHE TTL: Dicionário dialectal muda raramente
+    staleTime: 24 * 60 * 60 * 1000, // 24 horas
+    gcTime: 48 * 60 * 60 * 1000, // 48 horas
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  });
 
   const stats = {
-    total: entries.length,
-    porOrigem: entries.reduce((acc, e) => {
+    total: queryResult.data?.length || 0,
+    porOrigem: queryResult.data?.reduce((acc, e) => {
       acc[e.origem_primaria] = (acc[e.origem_primaria] || 0) + 1;
       return acc;
-    }, {} as Record<string, number>),
-    comInfluenciaPlatina: entries.filter(e => e.influencia_platina).length,
-    categorias: entries.reduce((acc, e) => {
+    }, {} as Record<string, number>) || {},
+    comInfluenciaPlatina: queryResult.data?.filter(e => e.influencia_platina).length || 0,
+    categorias: queryResult.data?.reduce((acc, e) => {
       e.categorias_tematicas.forEach(cat => {
         acc[cat] = (acc[cat] || 0) + 1;
       });
       return acc;
-    }, {} as Record<string, number>)
+    }, {} as Record<string, number>) || {}
   };
 
   return {
-    entries,
+    entries: queryResult.data || [],
     stats,
-    isLoading,
-    error,
-    refetch: fetchEntries
+    isLoading: queryResult.isLoading,
+    error: queryResult.error?.message || null,
+    refetch: queryResult.refetch
   };
 }
 
 export function useDialectalEntry(palavra: string) {
-  const [entry, setEntry] = useState<DialectalEntry | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  return useQuery({
+    queryKey: ['dialectal-entry', palavra],
+    queryFn: async () => {
+      if (!palavra) return null;
 
-  useEffect(() => {
-    const fetchEntry = async () => {
-      if (!palavra) return;
+      const normalizedWord = palavra.toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
 
-      setIsLoading(true);
-      setError(null);
+      const { data, error } = await supabase
+        .from('dialectal_lexicon')
+        .select('*')
+        .eq('verbete_normalizado', normalizedWord)
+        .single();
 
-      try {
-        const normalizedWord = palavra.toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '');
+      if (error && error.code !== 'PGRST116') throw error;
 
-        const { data, error: fetchError } = await supabase
-          .from('dialectal_lexicon')
-          .select('*')
-          .eq('verbete_normalizado', normalizedWord)
-          .single();
-
-        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
-
-        setEntry(data as DialectalEntry | null);
-      } catch (err) {
-        console.error('Erro ao buscar verbete dialectal:', err);
-        setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEntry();
-  }, [palavra]);
-
-  return { entry, isLoading, error };
+      return data as DialectalEntry | null;
+    },
+    // ✅ CACHE: Verbete específico raramente muda
+    staleTime: 24 * 60 * 60 * 1000,
+    gcTime: 48 * 60 * 60 * 1000,
+    enabled: !!palavra,
+  });
 }
