@@ -10,6 +10,7 @@ import { Download, Search, Loader2, ChevronDown, ChevronUp, MousePointerClick } 
 import { CorpusType, CORPUS_CONFIG } from "@/data/types/corpus-tools.types";
 import { useTools } from "@/contexts/ToolsContext";
 import { toast } from "sonner";
+import { parseTSVCorpus, calculateTotalTokens } from "@/lib/corpusParser";
 
 interface WordEntry {
   palavra: string;
@@ -33,20 +34,23 @@ export function WordlistTool() {
       const response = await fetch(config.estudoPath);
       const text = await response.text();
       
-      const lines = text.split('\n').filter(line => line.trim());
-      const words: WordEntry[] = lines.map(line => {
-        const [palavra, freq] = line.split('\t');
-        return {
-          palavra: palavra.trim(),
-          frequencia: parseInt(freq) || 0,
-          frequenciaNormalizada: 0
-        };
-      });
+      // Usar parser correto do corpusParser.ts
+      const parsedCorpus = parseTSVCorpus(text);
+      const totalTokens = calculateTotalTokens(parsedCorpus);
+      
+      // Converter para formato WordEntry com normalização
+      const words: WordEntry[] = parsedCorpus.map(word => ({
+        palavra: word.headword,
+        frequencia: word.freq,
+        frequenciaNormalizada: (word.freq / totalTokens) * 10000
+      }));
 
-      // Calculate normalized frequencies (per 10,000 words)
-      const totalWords = words.reduce((sum, w) => sum + w.frequencia, 0);
-      words.forEach(w => {
-        w.frequenciaNormalizada = (w.frequencia / totalWords) * 10000;
+      console.log(`📊 Wordlist ${corpusType}:`, {
+        totalPalavras: words.length,
+        totalTokens: totalTokens,
+        primeirasPalavras: words.slice(0, 5).map(w => 
+          `${w.palavra}: ${w.frequencia} (${w.frequenciaNormalizada.toFixed(2)}/10k)`
+        )
       });
 
       setWordlist(words);
