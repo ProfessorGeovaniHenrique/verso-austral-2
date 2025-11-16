@@ -47,12 +47,12 @@ export default function AdvancedMode() {
             </TabsList>
           </div>
 
-          <TabsContent value="pos"><POSAnalysisTool selectedCorpus={selectedCorpus} /></TabsContent>
-          <TabsContent value="semantic"><TabSemanticAnnotation selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="pos"><POSAnalysisTool /></TabsContent>
+          <TabsContent value="semantic"><TabSemanticAnnotation /></TabsContent>
           <TabsContent value="grammar"><TabGrammarRules /></TabsContent>
-          <TabsContent value="lexicon"><TabBackendLexicon selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="lexicon"><TabBackendLexicon /></TabsContent>
           <TabsContent value="test"><AnnotationTestInterface /></TabsContent>
-          <TabsContent value="lexical"><TabLexicalProfile selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="lexical"><TabLexicalProfile /></TabsContent>
         </Tabs>
       </main>
       <MVPFooter />
