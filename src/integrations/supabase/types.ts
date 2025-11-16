@@ -28,6 +28,8 @@ export type Database = {
           posicao_no_corpus: number | null
           prosody: number | null
           tagset_codigo: string | null
+          tagset_primario: string | null
+          tagsets: Json | null
         }
         Insert: {
           confianca?: number | null
@@ -42,6 +44,8 @@ export type Database = {
           posicao_no_corpus?: number | null
           prosody?: number | null
           tagset_codigo?: string | null
+          tagset_primario?: string | null
+          tagsets?: Json | null
         }
         Update: {
           confianca?: number | null
@@ -56,6 +60,8 @@ export type Database = {
           posicao_no_corpus?: number | null
           prosody?: number | null
           tagset_codigo?: string | null
+          tagset_primario?: string | null
+          tagsets?: Json | null
         }
         Relationships: [
           {
@@ -179,6 +185,84 @@ export type Database = {
           },
         ]
       }
+      lexical_definitions: {
+        Row: {
+          area_conhecimento: string | null
+          criado_em: string | null
+          definicao: string | null
+          etimologia: string | null
+          exemplos: string[] | null
+          fonte: string | null
+          id: string
+          palavra: string
+          pos: string | null
+          registro_uso: string | null
+        }
+        Insert: {
+          area_conhecimento?: string | null
+          criado_em?: string | null
+          definicao?: string | null
+          etimologia?: string | null
+          exemplos?: string[] | null
+          fonte?: string | null
+          id?: string
+          palavra: string
+          pos?: string | null
+          registro_uso?: string | null
+        }
+        Update: {
+          area_conhecimento?: string | null
+          criado_em?: string | null
+          definicao?: string | null
+          etimologia?: string | null
+          exemplos?: string[] | null
+          fonte?: string | null
+          id?: string
+          palavra?: string
+          pos?: string | null
+          registro_uso?: string | null
+        }
+        Relationships: []
+      }
+      lexical_synonyms: {
+        Row: {
+          acepcao_descricao: string | null
+          acepcao_numero: number | null
+          antonimos: string[] | null
+          contexto_uso: string | null
+          criado_em: string | null
+          fonte: string | null
+          id: string
+          palavra: string
+          pos: string | null
+          sinonimos: string[] | null
+        }
+        Insert: {
+          acepcao_descricao?: string | null
+          acepcao_numero?: number | null
+          antonimos?: string[] | null
+          contexto_uso?: string | null
+          criado_em?: string | null
+          fonte?: string | null
+          id?: string
+          palavra: string
+          pos?: string | null
+          sinonimos?: string[] | null
+        }
+        Update: {
+          acepcao_descricao?: string | null
+          acepcao_numero?: number | null
+          antonimos?: string[] | null
+          contexto_uso?: string | null
+          criado_em?: string | null
+          fonte?: string | null
+          id?: string
+          palavra?: string
+          pos?: string | null
+          sinonimos?: string[] | null
+        }
+        Relationships: []
+      }
       semantic_lexicon: {
         Row: {
           atualizado_em: string | null
@@ -191,7 +275,9 @@ export type Database = {
           palavra: string
           pos: string | null
           prosody: number
-          tagset_codigo: string
+          tagset_codigo: string | null
+          tagset_primario: string | null
+          tagsets: Json | null
           validado: boolean | null
         }
         Insert: {
@@ -205,7 +291,9 @@ export type Database = {
           palavra: string
           pos?: string | null
           prosody: number
-          tagset_codigo: string
+          tagset_codigo?: string | null
+          tagset_primario?: string | null
+          tagsets?: Json | null
           validado?: boolean | null
         }
         Update: {
@@ -219,7 +307,9 @@ export type Database = {
           palavra?: string
           pos?: string | null
           prosody?: number
-          tagset_codigo?: string
+          tagset_codigo?: string | null
+          tagset_primario?: string | null
+          tagsets?: Json | null
           validado?: boolean | null
         }
         Relationships: [
@@ -232,19 +322,96 @@ export type Database = {
           },
         ]
       }
+      semantic_networks: {
+        Row: {
+          contexto: string | null
+          criado_em: string | null
+          fonte: string | null
+          id: string
+          palavra_destino: string
+          palavra_origem: string
+          peso_relacao: number | null
+          tipo_relacao: string | null
+        }
+        Insert: {
+          contexto?: string | null
+          criado_em?: string | null
+          fonte?: string | null
+          id?: string
+          palavra_destino: string
+          palavra_origem: string
+          peso_relacao?: number | null
+          tipo_relacao?: string | null
+        }
+        Update: {
+          contexto?: string | null
+          criado_em?: string | null
+          fonte?: string | null
+          id?: string
+          palavra_destino?: string
+          palavra_origem?: string
+          peso_relacao?: number | null
+          tipo_relacao?: string | null
+        }
+        Relationships: []
+      }
+      semantic_patterns: {
+        Row: {
+          atualizado_em: string | null
+          contexto_tipo: string | null
+          criado_em: string | null
+          frequencia_validacoes: number | null
+          id: string
+          palavra: string
+          pos: string | null
+          tagsets_sugeridos: Json
+          taxa_acerto: number | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          contexto_tipo?: string | null
+          criado_em?: string | null
+          frequencia_validacoes?: number | null
+          id?: string
+          palavra: string
+          pos?: string | null
+          tagsets_sugeridos: Json
+          taxa_acerto?: number | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          contexto_tipo?: string | null
+          criado_em?: string | null
+          frequencia_validacoes?: number | null
+          id?: string
+          palavra?: string
+          pos?: string | null
+          tagsets_sugeridos?: Json
+          taxa_acerto?: number | null
+        }
+        Relationships: []
+      }
       semantic_tagset: {
         Row: {
           aprovado_em: string | null
           aprovado_por: string | null
           categoria_pai: string | null
           codigo: string
+          codigo_nivel_1: string | null
+          codigo_nivel_2: string | null
+          codigo_nivel_3: string | null
+          codigo_nivel_4: string | null
           criado_em: string | null
           criado_por: string | null
           descricao: string | null
           exemplos: string[] | null
+          hierarquia_completa: string | null
           id: string
+          nivel_profundidade: number | null
           nome: string
           status: string
+          tagset_pai: string | null
+          tagsets_filhos: string[] | null
           validacoes_humanas: number | null
         }
         Insert: {
@@ -252,13 +419,21 @@ export type Database = {
           aprovado_por?: string | null
           categoria_pai?: string | null
           codigo: string
+          codigo_nivel_1?: string | null
+          codigo_nivel_2?: string | null
+          codigo_nivel_3?: string | null
+          codigo_nivel_4?: string | null
           criado_em?: string | null
           criado_por?: string | null
           descricao?: string | null
           exemplos?: string[] | null
+          hierarquia_completa?: string | null
           id?: string
+          nivel_profundidade?: number | null
           nome: string
           status?: string
+          tagset_pai?: string | null
+          tagsets_filhos?: string[] | null
           validacoes_humanas?: number | null
         }
         Update: {
@@ -266,14 +441,57 @@ export type Database = {
           aprovado_por?: string | null
           categoria_pai?: string | null
           codigo?: string
+          codigo_nivel_1?: string | null
+          codigo_nivel_2?: string | null
+          codigo_nivel_3?: string | null
+          codigo_nivel_4?: string | null
           criado_em?: string | null
           criado_por?: string | null
           descricao?: string | null
           exemplos?: string[] | null
+          hierarquia_completa?: string | null
           id?: string
+          nivel_profundidade?: number | null
           nome?: string
           status?: string
+          tagset_pai?: string | null
+          tagsets_filhos?: string[] | null
           validacoes_humanas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_tagset_tagset_pai_fkey"
+            columns: ["tagset_pai"]
+            isOneToOne: false
+            referencedRelation: "semantic_tagset"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      user_visualization_preferences: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          modo_visualizacao: string | null
+          mostrar_hierarquia_completa: boolean | null
+          nivel_detalhamento: number | null
+          user_id: string
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          modo_visualizacao?: string | null
+          mostrar_hierarquia_completa?: boolean | null
+          nivel_detalhamento?: number | null
+          user_id: string
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          modo_visualizacao?: string | null
+          mostrar_hierarquia_completa?: boolean | null
+          nivel_detalhamento?: number | null
+          user_id?: string
         }
         Relationships: []
       }
