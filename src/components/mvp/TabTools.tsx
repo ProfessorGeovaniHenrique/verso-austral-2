@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench } from "lucide-react";
 import { ToolsProvider, useTools } from "@/contexts/ToolsContext";
+import { CorpusProvider } from "@/contexts/CorpusContext";
 import { WordlistTool } from "./tools/WordlistTool";
 import { KeywordsTool } from "./tools/KeywordsTool";
 import { KWICTool } from "./tools/KWICTool";
@@ -70,10 +71,12 @@ function TabToolsContent() {
 
 export function TabTools() {
   return (
-    <ToolsProvider>
-      <div className="space-y-6">
-        <TabToolsContent />
-      </div>
-    </ToolsProvider>
+    <CorpusProvider>
+      <ToolsProvider>
+        <div className="space-y-6">
+          <TabToolsContent />
+        </div>
+      </ToolsProvider>
+    </CorpusProvider>
   );
 }
