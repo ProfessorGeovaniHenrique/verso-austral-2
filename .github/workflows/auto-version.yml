@@ -1,0 +1,137 @@
+name: 🔢 Auto Version
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run (não cria tag)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  version:
+    name: 📦 Calcular e Atualizar Versão
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.version }}
+      previous_version: ${{ steps.bump.outputs.previous_version }}
+      bump_type: ${{ steps.bump.outputs.bump_type }}
+      
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Necessário para acessar histórico completo
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependências
+        run: npm ci
+
+      - name: 🔢 Executar bump de versão
+        id: bump
+        run: |
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            npm run version:bump -- --dry-run
+          else
+            npm run version:bump -- --tag
+          fi
+        env:
+          CI: true
+
+      - name: 📝 Commit e Push da nova versão
+        if: steps.bump.outputs.version != ''
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add VERSION
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git push
+          
+          # Push tags
+          git push --tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Resumo da versão
+        if: steps.bump.outputs.version != ''
+        run: |
+          echo "## 🎉 Nova Versão Publicada" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Versão Anterior:** ${{ steps.bump.outputs.previous_version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Nova Versão:** ${{ steps.bump.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tipo de Bump:** ${{ steps.bump.outputs.bump_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🏷️ Tag \`v${{ steps.bump.outputs.version }}\` criada e enviada ao GitHub" >> $GITHUB_STEP_SUMMARY
+
+  create-release:
+    name: 📝 Criar GitHub Release
+    needs: version
+    runs-on: ubuntu-latest
+    if: needs.version.outputs.new_version != ''
+    
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📝 Gerar notas de release
+        id: release_notes
+        run: |
+          PREVIOUS_TAG="v${{ needs.version.outputs.previous_version }}"
+          NEW_TAG="v${{ needs.version.outputs.new_version }}"
+          
+          # Gerar changelog entre tags
+          CHANGELOG=$(git log $PREVIOUS_TAG..$NEW_TAG --pretty=format:"- %s (%h)" --no-merges)
+          
+          # Separar por tipo
+          FEATURES=$(echo "$CHANGELOG" | grep "^- feat" || echo "")
+          FIXES=$(echo "$CHANGELOG" | grep "^- fix" || echo "")
+          BREAKING=$(echo "$CHANGELOG" | grep "BREAKING" || echo "")
+          
+          # Criar release notes
+          NOTES="## 🎉 Release $NEW_TAG"
+          NOTES="$NOTES\n\n**Tipo de Release:** ${{ needs.version.outputs.bump_type }}"
+          
+          if [ -n "$BREAKING" ]; then
+            NOTES="$NOTES\n\n### 💥 Breaking Changes\n$BREAKING"
+          fi
+          
+          if [ -n "$FEATURES" ]; then
+            NOTES="$NOTES\n\n### ✨ Features\n$FEATURES"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            NOTES="$NOTES\n\n### 🐛 Bug Fixes\n$FIXES"
+          fi
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo -e "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Criar GitHub Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.version.outputs.new_version }}
+          release_name: Release v${{ needs.version.outputs.new_version }}
+          body: ${{ steps.release_notes.outputs.notes }}
+          draft: false
+          prerelease: ${{ needs.version.outputs.bump_type == 'major' && contains(needs.version.outputs.new_version, '0.') }}

@@ -18,6 +18,9 @@ Abra `package.json` e adicione na seção `"scripts"`:
 "test:corpus:audit": "tsx scripts/audit-corpus.ts",
 "test:corpus:report": "tsx scripts/generate-test-report.ts",
 "test:corpus:report-html": "npm run test:corpus:report",
+"version:bump": "tsx scripts/bump-version.ts",
+"version:dry-run": "tsx scripts/bump-version.ts --dry-run",
+"version:current": "cat VERSION",
 "precommit": "npm run test:corpus:audit",
 "predeploy": "npm run test:corpus"
 ```

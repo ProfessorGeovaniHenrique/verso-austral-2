@@ -23,6 +23,9 @@ Abra o arquivo `package.json` e adicione os seguintes scripts na seção `"scrip
     "test:corpus:audit": "tsx scripts/audit-corpus.ts",
     "test:corpus:report": "tsx scripts/generate-test-report.ts",
     "test:corpus:report-html": "npm run test:corpus:report",
+    "version:bump": "tsx scripts/bump-version.ts",
+    "version:dry-run": "tsx scripts/bump-version.ts --dry-run",
+    "version:current": "cat VERSION",
     "precommit": "npm run test:corpus:audit",
     "predeploy": "npm run test:corpus"
   }
@@ -55,7 +58,36 @@ As seguintes dependências já foram instaladas automaticamente:
 
 ## 🎯 Scripts Explicados
 
-### `typecheck`
+### Versionamento
+
+#### `version:bump`
+Analisa commits e atualiza a versão automaticamente.
+
+**Quando usar:** Manualmente ou no CI/CD
+
+```bash
+npm run version:bump
+```
+
+#### `version:dry-run`
+Testa o bump sem fazer mudanças.
+
+**Quando usar:** Antes de criar release
+
+```bash
+npm run version:dry-run
+```
+
+#### `version:current`
+Mostra a versão atual do projeto.
+
+```bash
+npm run version:current
+```
+
+### Testes e Qualidade
+
+#### `typecheck`
 Verifica erros de tipagem TypeScript sem gerar build.
 
 **Quando usar:** Antes de commit, no CI/CD

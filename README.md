@@ -1,5 +1,10 @@
 # Welcome to your Lovable project
 
+[![Quality Gate](https://github.com/your-username/your-repo/workflows/Quality%20Gate/badge.svg)](https://github.com/your-username/your-repo/actions)
+[![Test Corpus](https://github.com/your-username/your-repo/workflows/Test%20Corpus/badge.svg)](https://github.com/your-username/your-repo/actions)
+[![Version](https://img.shields.io/github/v/release/your-username/your-repo?label=version)](https://github.com/your-username/your-repo/releases)
+[![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/)
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/fc1bf733-4b9c-4a2a-a7f4-ecf8aa116226
@@ -71,3 +76,15 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## 🔢 Versioning
+
+This project uses **Semantic Versioning 2.0.0** with automatic version bumping based on commit types:
+
+- `feat:` → Minor version (0.x.0)
+- `fix:` → Patch version (0.0.x)
+- `feat!:` or `BREAKING CHANGE` → Major version (x.0.0)
+
+Current version: See [VERSION](VERSION) file or [Releases](https://github.com/your-username/your-repo/releases)
+
+Read more: [Version Guide](.github/VERSION_GUIDE.md)
