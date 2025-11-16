@@ -4,3 +4,5 @@ export { GrammarIntegration } from './GrammarIntegration';
 export { TechnicalDecisions } from './TechnicalDecisions';
 export { MetricsEvolution } from './MetricsEvolution';
 export { SearchBar } from './SearchBar';
+export { CorrectionsLog } from './CorrectionsLog';
+export { AuditReport } from './AuditReport';

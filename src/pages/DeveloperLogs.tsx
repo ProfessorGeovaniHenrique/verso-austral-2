@@ -8,9 +8,10 @@ import { TechnicalDecisions } from "@/components/devlogs/TechnicalDecisions";
 import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
 import { SearchBar } from "@/components/devlogs/SearchBar";
 import { AuditReport } from "@/components/devlogs/AuditReport";
+import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
-import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download } from "lucide-react";
+import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState, useMemo } from "react";
@@ -145,6 +146,10 @@ export default function DeveloperLogs() {
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">🔍 Auditoria</span>
             </TabsTrigger>
+            <TabsTrigger value="corrections" className="gap-2">
+              <Bug className="w-4 h-4" />
+              <span className="hidden sm:inline">🐛 Correções</span>
+            </TabsTrigger>
             <TabsTrigger value="timeline" className="gap-2">
               <Target className="w-4 h-4" />
               <span className="hidden sm:inline">Timeline</span>
@@ -172,7 +177,12 @@ export default function DeveloperLogs() {
             <AuditReport />
           </TabsContent>
 
-          {/* TAB 1: Timeline de Fases */}
+          {/* TAB 1: Changelog de Correções */}
+          <TabsContent value="corrections">
+            <CorrectionsLog />
+          </TabsContent>
+
+          {/* TAB 2: Timeline de Fases */}
           <TabsContent value="timeline" className="space-y-6">
             <Card>
               <CardHeader>
