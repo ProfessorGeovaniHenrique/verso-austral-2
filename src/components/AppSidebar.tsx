@@ -1,6 +1,8 @@
-import { LayoutDashboard, FolderOpen, Sparkles, FileText, CircuitBoard } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Sparkles, FileText, CircuitBoard, Info } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Sidebar,
   SidebarContent,
@@ -32,12 +34,13 @@ const mainItems = [
 const projectItems: any[] = [];
 
 const advancedItems = [
-  { title: "Modo Avançado", url: "/avancado", icon: Sparkles, disabled: true },
+  { title: "Modo Avançado", url: "/advanced-mode", icon: Sparkles, disabled: false },
 ];
 
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
+  const { advancedModeEnabled } = useFeatureAccess();
   const isProjectActive = projectItems.some(item => location.pathname === item.url);
 
   return (
@@ -70,23 +73,43 @@ export function AppSidebar() {
 
               {advancedItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild disabled={item.disabled}>
-                    {item.disabled ? (
-                      <div className="flex items-center gap-2 opacity-50 cursor-not-allowed">
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </div>
-                    ) : (
-                      <NavLink 
-                        to={item.url} 
-                        className="flex items-center gap-2 hover:bg-muted/50"
-                        activeClassName="bg-muted text-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    )}
-                  </SidebarMenuButton>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <SidebarMenuButton asChild disabled={!advancedModeEnabled}>
+                          {!advancedModeEnabled ? (
+                            <div className="flex items-center gap-2 opacity-50 cursor-not-allowed">
+                              <item.icon className="h-4 w-4" />
+                              {open && <span>{item.title}</span>}
+                            </div>
+                          ) : (
+                            <NavLink 
+                              to={item.url} 
+                              className="flex items-center gap-2 hover:bg-muted/50"
+                              activeClassName="bg-muted text-primary font-medium"
+                            >
+                              <item.icon className="h-4 w-4" />
+                              {open && <span>{item.title}</span>}
+                            </NavLink>
+                          )}
+                        </SidebarMenuButton>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <div className="space-y-1">
+                          <p className="font-medium">Análise Estilística - Leech & Short</p>
+                          <p className="text-xs text-muted-foreground">
+                            Perfil Léxico, Sintático, Figuras de Linguagem, Coesão Textual
+                          </p>
+                          {!advancedModeEnabled && (
+                            <p className="text-xs text-orange-500 flex items-center gap-1 mt-2">
+                              <Info className="w-3 h-3" />
+                              Bloqueado na versão Demo
+                            </p>
+                          )}
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
