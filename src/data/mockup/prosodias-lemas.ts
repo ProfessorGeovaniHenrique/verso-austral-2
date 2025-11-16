@@ -56,6 +56,11 @@ export const prosodiasLemasMap: Record<string, ProsodiaInfo> = {
     prosody: "Positiva",
     justificativa: "A \"luz de candeeiro\" cria uma atmosfera de intimidade, aconchego e simplicidade."
   },
+  "casa": {
+    lema: "casa",
+    prosody: "Positiva",
+    justificativa: "No contexto do título 'Quando o verso vem pras casa', representa retorno, acolhimento e pertencimento ao lar."
+  },
   "caseiro": {
     lema: "caseiro",
     prosody: "Positiva",
@@ -519,6 +524,11 @@ export const prosodiasLemasMap: Record<string, ProsodiaInfo> = {
     lema: "queimar",
     prosody: "Positiva",
     justificativa: "Usado poeticamente em 'queimando em fogo de chão', evoca calor, vida e energia."
+  },
+  "vir": {
+    lema: "vir",
+    prosody: "Positiva",
+    justificativa: "Em 'quando o verso vem pras casa', verbo de movimento que indica aproximação, retorno e chegada ao lar, com conotação positiva de pertencimento."
   }
 };
 

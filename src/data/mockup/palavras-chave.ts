@@ -75,6 +75,7 @@ export const palavrasChaveData: PalavraChave[] = [
   { palavra: "candeeiro", lema: "candeeiro", ll: 10.8, mi: 4.6, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "cansado", lema: "cansado", ll: 6.5, mi: 2.8, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "cantos", lema: "canto", ll: 5.9, mi: 2.5, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "casa", lema: "casa", ll: 9.2, mi: 4.0, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "caseiro", lema: "caseiro", ll: 9.6, mi: 4.2, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "cerne", lema: "cerne", ll: 8.4, mi: 3.7, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "cevou", lema: "cevar", ll: 12.1, mi: 5.0, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
@@ -142,6 +143,7 @@ export const palavrasChaveData: PalavraChave[] = [
   { palavra: "primavera", lema: "primavera", ll: 9.7, mi: 4.2, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "pura-folha", lema: "pura-folha", ll: 12.3, mi: 5.1, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "quarto", lema: "quarto", ll: 7.1, mi: 3.0, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "quando", lema: "quando", ll: 0, mi: 0, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Funcional", efeito: "Neutro", efeitoIcon: TrendingUp },
   { palavra: "querência", lema: "querência", ll: 11.4, mi: 4.7, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "queimando", lema: "queimar", ll: 8.1, mi: 3.6, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "ramada", lema: "ramada", ll: 10.9, mi: 4.6, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
@@ -162,6 +164,7 @@ export const palavrasChaveData: PalavraChave[] = [
   { palavra: "trazendo", lema: "trazer", ll: 6.8, mi: 2.9, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "tropa", lema: "tropa", ll: 9.1, mi: 4.1, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "trouxe", lema: "trazer", ll: 6.2, mi: 2.6, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
+  { palavra: "vem", lema: "vir", ll: 8.7, mi: 3.8, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "ventito", lema: "ventito", ll: 12.6, mi: 5.2, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "vestidos", lema: "vestido", ll: 7.6, mi: 3.3, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp }
 ];

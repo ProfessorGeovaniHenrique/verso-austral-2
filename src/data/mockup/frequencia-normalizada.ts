@@ -49,6 +49,7 @@ export const frequenciaNormalizadaData = [
   { palavra: "candeeiro", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "candeeiro" },
   { palavra: "cansado", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "cansado" },
   { palavra: "cantos", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "canto" },
+  { palavra: "casa", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "casa" },
   { palavra: "caseiro", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "caseiro" },
   { palavra: "cevou", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "cevar" },
   { palavra: "chão", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "chão" },
@@ -116,6 +117,7 @@ export const frequenciaNormalizadaData = [
   { palavra: "primavera", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "primavera" },
   { palavra: "pura-folha", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "pura-folha" },
   { palavra: "quarto", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "quarto" },
+  { palavra: "quando", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "quando" },
   { palavra: "querência", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "querência" },
   { palavra: "queimando", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "queimar" },
   { palavra: "ramada", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "ramada" },
@@ -137,5 +139,6 @@ export const frequenciaNormalizadaData = [
   { palavra: "tropa", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "tropa" },
   { palavra: "trouxe", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "trazer" },
   { palavra: "ventito", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "ventito" },
+  { palavra: "vem", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "vir" },
   { palavra: "vestidos", frequenciaBruta: 1, frequenciaNormalizada: 0.47, lema: "vestido" }
 ];
