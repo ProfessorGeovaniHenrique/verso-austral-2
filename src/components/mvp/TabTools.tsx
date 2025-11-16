@@ -46,7 +46,7 @@ export function TabTools() {
             </TabsContent>
             
             <TabsContent value="keywords" className="mt-6">
-              <KeywordsTool corpus="gaúcho" />
+              <KeywordsTool />
             </TabsContent>
             
             <TabsContent value="dispersion" className="mt-6">

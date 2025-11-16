@@ -1,61 +1,65 @@
-import { useState, useEffect } from "react";
-import { KeywordEntry } from "@/data/types/corpus-tools.types";
+import { useState } from "react";
+import { KeywordEntry, CorpusType } from "@/data/types/corpus-tools.types";
 import { parseTSVCorpus } from "@/lib/corpusParser";
 import { generateKeywords } from "@/services/keywordService";
 
-export function useKeywords(
-  corpusEstudo: 'canção' | 'gaúcho',
-  corpusReferencia: 'nordestino' | 'gaúcho'
-) {
+export function useKeywords() {
   const [keywords, setKeywords] = useState<KeywordEntry[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isProcessed, setIsProcessed] = useState(false);
   
-  useEffect(() => {
-    async function loadKeywords() {
-      setIsLoading(true);
-      setError(null);
-      
-      try {
-        // Load reference corpus
-        let referenciaData;
-        if (corpusReferencia === 'nordestino') {
-          const referenciaResponse = await fetch('/src/data/corpus/corpus-referencia-nordestino.txt');
-          const referenciaText = await referenciaResponse.text();
-          referenciaData = parseTSVCorpus(referenciaText);
-        } else {
-          const referenciaResponse = await fetch('/src/data/corpus/corpus-estudo-gaucho.txt');
-          const referenciaText = await referenciaResponse.text();
-          referenciaData = parseTSVCorpus(referenciaText);
-        }
-        
-        // Load study corpus
-        let estudoData;
-        if (corpusEstudo === 'gaúcho') {
-          const estudoResponse = await fetch('/src/data/corpus/corpus-estudo-gaucho.txt');
-          const estudoText = await estudoResponse.text();
-          estudoData = parseTSVCorpus(estudoText);
-        } else {
-          // TODO: Implement "canção" corpus when available
-          setError('Corpus de canção individual ainda não implementado');
-          setIsLoading(false);
-          return;
-        }
-        
-        // Generate keywords
-        const kws = generateKeywords(estudoData, referenciaData);
-        
-        setKeywords(kws);
-      } catch (err) {
-        console.error('Error loading keywords:', err);
-        setError('Erro ao carregar dados do corpus');
-      } finally {
-        setIsLoading(false);
-      }
+  const processKeywords = async (
+    corpusEstudo: CorpusType,
+    corpusReferencia: CorpusType
+  ) => {
+    // Validação: corpus diferentes
+    if (corpusEstudo === corpusReferencia) {
+      setError('Os corpus de estudo e referência devem ser diferentes');
+      return;
     }
     
-    loadKeywords();
-  }, [corpusEstudo, corpusReferencia]);
+    setIsLoading(true);
+    setError(null);
+    setKeywords([]);
+    setIsProcessed(false);
+    
+    try {
+      // Carregar corpus de estudo
+      const estudoPath = corpusEstudo === 'gaucho' 
+        ? '/src/data/corpus/corpus-estudo-gaucho.txt'
+        : '/src/data/corpus/corpus-referencia-nordestino.txt';
+      
+      // Carregar corpus de referência
+      const referenciaPath = corpusReferencia === 'gaucho'
+        ? '/src/data/corpus/corpus-estudo-gaucho.txt'
+        : '/src/data/corpus/corpus-referencia-nordestino.txt';
+      
+      const [estudoResponse, referenciaResponse] = await Promise.all([
+        fetch(estudoPath),
+        fetch(referenciaPath)
+      ]);
+      
+      const [estudoText, referenciaText] = await Promise.all([
+        estudoResponse.text(),
+        referenciaResponse.text()
+      ]);
+      
+      const estudoData = parseTSVCorpus(estudoText);
+      const referenciaData = parseTSVCorpus(referenciaText);
+      
+      // Gerar keywords
+      const kws = generateKeywords(estudoData, referenciaData);
+      
+      setKeywords(kws);
+      setIsProcessed(true);
+    } catch (err) {
+      console.error('Error processing keywords:', err);
+      setError('Erro ao processar corpus. Verifique os arquivos.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
-  return { keywords, isLoading, error };
+  return { keywords, isLoading, error, isProcessed, processKeywords };
 }

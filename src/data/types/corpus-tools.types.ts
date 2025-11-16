@@ -1,5 +1,20 @@
 import { LucideIcon } from "lucide-react";
 
+export type CorpusType = 'gaucho' | 'nordestino';
+
+export const CORPUS_CONFIG = {
+  gaucho: {
+    label: 'Corpus de Música Gaúcha',
+    icon: '🎸',
+    description: 'Letras de músicas gaúchas tradicionais'
+  },
+  nordestino: {
+    label: 'Corpus de Música Nordestina',
+    icon: '🪘',
+    description: 'Letras de forró e música nordestina'
+  }
+} as const;
+
 export interface CorpusWord {
   headword: string;
   rank: number;
