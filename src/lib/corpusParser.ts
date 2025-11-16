@@ -41,20 +41,28 @@ export function parseTSVCorpus(tsvContent: string): CorpusWord[] {
       
       // Auto-detect format based on number of columns
       if (columns.length >= 5) {
-        // Format: type,pos,headword,freq,range
-        headword = columns[2]?.trim() || '';
-        freq = parseInt(columns[3]) || 0;
-        range = parseInt(columns[4]) || 0;
+        // Detect if format is "headword,,,freq,range" or "type,pos,headword,freq,range"
+        if (columns[1] === '' && columns[2] === '') {
+          // Format: headword,,,freq,range (middle columns empty)
+          headword = columns[0]?.trim() || '';
+          freq = parseInt(columns[3]) || 0;
+          range = parseInt(columns[4]?.replace(/\r$/, '')) || 0;
+        } else {
+          // Format AntConc: type,pos,headword,freq,range
+          headword = columns[2]?.trim() || '';
+          freq = parseInt(columns[3]) || 0;
+          range = parseInt(columns[4]?.replace(/\r$/, '')) || 0;
+        }
       } else if (columns.length === 3) {
         // Format: headword,freq,range
         headword = columns[0]?.trim() || '';
         freq = parseInt(columns[1]) || 0;
-        range = parseInt(columns[2]) || 0;
+        range = parseInt(columns[2]?.replace(/\r$/, '')) || 0;
       } else {
         // Fallback: assume simple format
         headword = columns[0]?.trim() || '';
         freq = parseInt(columns[1]) || 0;
-        range = parseInt(columns[2]) || 0;
+        range = parseInt(columns[2]?.replace(/\r$/, '')) || 0;
       }
       
       if (index < 5) {
