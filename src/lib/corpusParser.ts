@@ -13,7 +13,8 @@ export function parseTSVCorpus(tsvContent: string): CorpusWord[] {
       const columns = line.split(',');
       
       // CSV format: type, pos, headword, freq, range
-      const headword = columns[2]?.trim() || '';
+      // Note: type and pos are often empty, so headword is in columns[0]
+      const headword = columns[0]?.trim() || '';
       const rank = index + 1; // Use line number as rank
       const freq = parseInt(columns[3]) || 0;
       const range = parseInt(columns[4]) || 0;
