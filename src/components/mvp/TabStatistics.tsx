@@ -247,16 +247,62 @@ export function TabStatistics() {
   );
 
   const sentimentStats = useMemo(() => {
-    const total = palavrasEnriquecidas.length;
-    const positivas = palavrasEnriquecidas.filter(p => p.prosodia === 'Positiva').length;
-    const negativas = palavrasEnriquecidas.filter(p => p.prosodia === 'Negativa').length;
-    const neutras = palavrasEnriquecidas.filter(p => p.prosodia === 'Neutra').length;
-    return {
-      positivas: { count: positivas, percent: ((positivas / total) * 100).toFixed(1) },
-      negativas: { count: negativas, percent: ((negativas / total) * 100).toFixed(1) },
-      neutras: { count: neutras, percent: ((neutras / total) * 100).toFixed(1) },
-      razao: (positivas / (negativas || 1)).toFixed(2)
+    // Filtrar palavras temáticas (excluir funcionais)
+    const palavrasTematicas = palavrasEnriquecidas.filter(p => 
+      p.significancia !== 'Funcional'
+    );
+    
+    // Calcular total ponderado por frequência bruta
+    const total = palavrasTematicas.reduce((acc, p) => acc + p.frequenciaBruta, 0);
+    
+    const positivasOcorrencias = palavrasTematicas
+      .filter(p => p.prosodia === 'Positiva')
+      .reduce((acc, p) => acc + p.frequenciaBruta, 0);
+    
+    const negativasOcorrencias = palavrasTematicas
+      .filter(p => p.prosodia === 'Negativa')
+      .reduce((acc, p) => acc + p.frequenciaBruta, 0);
+    
+    const neutrasOcorrencias = palavrasTematicas
+      .filter(p => p.prosodia === 'Neutra')
+      .reduce((acc, p) => acc + p.frequenciaBruta, 0);
+    
+    const stats = {
+      positivas: { 
+        count: positivasOcorrencias, 
+        percent: ((positivasOcorrencias / total) * 100).toFixed(1) 
+      },
+      negativas: { 
+        count: negativasOcorrencias, 
+        percent: ((negativasOcorrencias / total) * 100).toFixed(1) 
+      },
+      neutras: { 
+        count: neutrasOcorrencias, 
+        percent: ((neutrasOcorrencias / total) * 100).toFixed(1) 
+      },
+      razao: (positivasOcorrencias / (negativasOcorrencias || 1)).toFixed(2)
     };
+
+    // 🔍 LOG DE VALIDAÇÃO DAS MÉTRICAS
+    console.group('📊 VALIDAÇÃO DE MÉTRICAS DE PROSÓDIA');
+    console.log('Total de palavras temáticas (tipos):', palavrasTematicas.length);
+    console.log('Total de ocorrências (tokens):', total);
+    console.log('Positivas:', positivasOcorrencias, `(${stats.positivas.percent}%)`);
+    console.log('Negativas:', negativasOcorrencias, `(${stats.negativas.percent}%)`);
+    console.log('Neutras:', neutrasOcorrencias, `(${stats.neutras.percent}%)`);
+    console.log('Razão Pos/Neg:', stats.razao);
+    console.log('\n🔍 Top 10 palavras por prosódia (freq. bruta):');
+    const topPorProsodia = {
+      Positiva: palavrasTematicas.filter(p => p.prosodia === 'Positiva').sort((a, b) => b.frequenciaBruta - a.frequenciaBruta).slice(0, 10),
+      Negativa: palavrasTematicas.filter(p => p.prosodia === 'Negativa').sort((a, b) => b.frequenciaBruta - a.frequenciaBruta).slice(0, 10),
+      Neutra: palavrasTematicas.filter(p => p.prosodia === 'Neutra').sort((a, b) => b.frequenciaBruta - a.frequenciaBruta).slice(0, 10)
+    };
+    console.log('Positivas:', topPorProsodia.Positiva.map(p => `${p.lema}(${p.frequenciaBruta})`).join(', '));
+    console.log('Negativas:', topPorProsodia.Negativa.map(p => `${p.lema}(${p.frequenciaBruta})`).join(', '));
+    console.log('Neutras:', topPorProsodia.Neutra.map(p => `${p.lema}(${p.frequenciaBruta})`).join(', '));
+    console.groupEnd();
+
+    return stats;
   }, [palavrasEnriquecidas]);
 
   const prosodiaByDomain = useMemo(() => {
