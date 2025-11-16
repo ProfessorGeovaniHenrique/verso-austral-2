@@ -1,164 +1,60 @@
 import { useState } from "react";
-import { useFeatureAccess } from "@/hooks/useFeatureAccess";
-import { DemoModeBlocker } from "@/components/advanced/DemoModeBlocker";
-import { TabLexicalProfile } from "@/components/advanced/TabLexicalProfile";
-import { TabSemanticAnnotation } from "@/components/advanced/TabSemanticAnnotation";
-import { TabGrammarRules } from "@/components/advanced/TabGrammarRules";
-import { TabBackendLexicon } from "@/components/advanced/TabBackendLexicon";
-import { DictionaryImportInterface } from "@/components/advanced/DictionaryImportInterface";
-import { AnnotationTestInterface } from "@/components/advanced/AnnotationTestInterface";
-import { POSAnalysisTool } from "@/components/mvp/tools/POSAnalysisTool";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BookOpen, Network, Sparkles, Link2, FileBarChart, Layers, Database, Brain, BookMarked } from "lucide-react";
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
-import { CorpusType } from "@/data/types/corpus-tools.types";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, Tag, Sparkles, Database, BookOpen, TestTube, Network, FlaskConical, GitBranch, Activity } from "lucide-react";
+import { POSAnalysisTool } from "@/components/mvp/tools/POSAnalysisTool";
+import { TabSemanticAnnotation, TabGrammarRules, TabBackendLexicon, TabLexicalProfile, AnnotationTestInterface, DemoModeBlocker } from "@/components/advanced";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function AdvancedMode() {
   const { advancedModeEnabled } = useFeatureAccess();
-  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
+  const [selectedCorpus, setSelectedCorpus] = useState('gaucho');
 
-  if (!advancedModeEnabled) {
-    return <DemoModeBlocker />;
-  }
+  if (!advancedModeEnabled) return <DemoModeBlocker />;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background" data-theme="academic">
+    <div className="min-h-screen flex flex-col bg-background">
       <MVPHeader />
-
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">Novas Funcionalidades (Beta)</h1>
-          <p className="text-lg text-muted-foreground mb-4">
-            Análise Estilística baseada em Leech & Short (2007)
-          </p>
-          
-          <div className="flex items-center gap-3">
-            <Database className="w-5 h-5 text-muted-foreground" />
-            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
-              <SelectTrigger className="w-[280px] bg-card border-border">
-                <SelectValue placeholder="Selecionar Corpus" />
-              </SelectTrigger>
-              <SelectContent className="bg-popover border-border z-50">
-                <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
-                <SelectItem value="nordestino">Corpus Nordestino (Referência)</SelectItem>
-                <SelectItem value="marenco-verso">Luiz Marenco - Verso Austral</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <h1 className="text-4xl font-bold mb-2">Modo Avançado</h1>
+          <Select value={selectedCorpus} onValueChange={setSelectedCorpus}>
+            <SelectTrigger className="w-[280px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
+              <SelectItem value="nordestino">Corpus Nordestino</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <Tabs defaultValue="pos" className="w-full">
-          <TabsList className="grid w-full grid-cols-11 mb-6">
-            <TabsTrigger value="pos" className="gap-2">
-              <Layers className="w-4 h-4" />
-              <span className="hidden sm:inline">POS Tagging</span>
-            </TabsTrigger>
-            <TabsTrigger value="semantic" className="gap-2">
-              <Brain className="w-4 h-4" />
-              <span className="hidden sm:inline">Anotação IA</span>
-            </TabsTrigger>
-            <TabsTrigger value="grammar" className="gap-2">
-              <BookMarked className="w-4 h-4" />
-              <span className="hidden sm:inline">Regras Gramaticais</span>
-            </TabsTrigger>
-            <TabsTrigger value="backend" className="gap-2">
-              <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">Backend Lexicon</span>
-            </TabsTrigger>
-            <TabsTrigger value="import" className="gap-2">
-              <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">Importar Dicionários</span>
-            </TabsTrigger>
-            <TabsTrigger value="test" className="gap-2">
-              <Sparkles className="w-4 h-4" />
-              <span className="hidden sm:inline">Testar Anotação</span>
-            </TabsTrigger>
-            <TabsTrigger value="lexical" className="gap-2">
-              <BookOpen className="w-4 h-4" />
-              <span className="hidden sm:inline">Perfil Léxico</span>
-            </TabsTrigger>
-            <TabsTrigger value="syntactic" className="gap-2" disabled>
-              <Network className="w-4 h-4" />
-              <span className="hidden sm:inline">Perfil Sintático</span>
-            </TabsTrigger>
-            <TabsTrigger value="rhetorical" className="gap-2" disabled>
-              <Sparkles className="w-4 h-4" />
-              <span className="hidden sm:inline">Figuras de Linguagem</span>
-            </TabsTrigger>
-            <TabsTrigger value="cohesion" className="gap-2" disabled>
-              <Link2 className="w-4 h-4" />
-              <span className="hidden sm:inline">Coesão Textual</span>
-            </TabsTrigger>
-            <TabsTrigger value="report" className="gap-2" disabled>
-              <FileBarChart className="w-4 h-4" />
-              <span className="hidden sm:inline">Relatório</span>
-            </TabsTrigger>
-          </TabsList>
+          <div className="space-y-2 mb-6">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="pos"><FileText className="w-4 h-4 mr-2" />POS</TabsTrigger>
+              <TabsTrigger value="semantic"><Tag className="w-4 h-4 mr-2" />Anotação</TabsTrigger>
+              <TabsTrigger value="lexical"><Sparkles className="w-4 h-4 mr-2" />Lexical</TabsTrigger>
+              <TabsTrigger value="grammar"><BookOpen className="w-4 h-4 mr-2" />Regras</TabsTrigger>
+              <TabsTrigger value="test"><TestTube className="w-4 h-4 mr-2" />Testar</TabsTrigger>
+            </TabsList>
+            <TabsList className="grid w-full grid-cols-5 bg-muted/50">
+              <TabsTrigger value="lexicon"><Database className="w-4 h-4 mr-2" />Backend</TabsTrigger>
+              <TabsTrigger value="syntactic" disabled><Network className="w-4 h-4 mr-2" />Sintático</TabsTrigger>
+              <TabsTrigger value="rhetorical" disabled><FlaskConical className="w-4 h-4 mr-2" />Retórico</TabsTrigger>
+              <TabsTrigger value="cohesion" disabled><GitBranch className="w-4 h-4 mr-2" />Coesão</TabsTrigger>
+              <TabsTrigger value="report" disabled><Activity className="w-4 h-4 mr-2" />Relatório</TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="pos">
-            <POSAnalysisTool />
-          </TabsContent>
-
-          <TabsContent value="semantic">
-            <TabSemanticAnnotation />
-          </TabsContent>
-
-          <TabsContent value="grammar">
-            <TabGrammarRules />
-          </TabsContent>
-
-          <TabsContent value="backend">
-            <TabBackendLexicon />
-          </TabsContent>
-
-          <TabsContent value="import">
-            <DictionaryImportInterface />
-          </TabsContent>
-
-          <TabsContent value="test">
-            <AnnotationTestInterface />
-          </TabsContent>
-
-          <TabsContent value="lexical">
-            <TabLexicalProfile />
-          </TabsContent>
-
-          <TabsContent value="syntactic">
-            <div className="text-center py-12">
-              <Network className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Perfil Sintático</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="rhetorical">
-            <div className="text-center py-12">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Figuras de Linguagem</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="cohesion">
-            <div className="text-center py-12">
-              <Link2 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Coesão Textual</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="report">
-            <div className="text-center py-12">
-              <FileBarChart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold mb-2">Relatório Completo</h3>
-              <p className="text-muted-foreground">Em desenvolvimento</p>
-            </div>
-          </TabsContent>
+          <TabsContent value="pos"><POSAnalysisTool selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="semantic"><TabSemanticAnnotation selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="grammar"><TabGrammarRules /></TabsContent>
+          <TabsContent value="lexicon"><TabBackendLexicon selectedCorpus={selectedCorpus} /></TabsContent>
+          <TabsContent value="test"><AnnotationTestInterface /></TabsContent>
+          <TabsContent value="lexical"><TabLexicalProfile selectedCorpus={selectedCorpus} /></TabsContent>
         </Tabs>
       </main>
-
       <MVPFooter />
     </div>
   );

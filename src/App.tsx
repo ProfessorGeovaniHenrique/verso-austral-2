@@ -17,6 +17,7 @@ import DashboardMVP from "./pages/DashboardMVP";
 import AdvancedMode from "./pages/AdvancedMode";
 import DevOpsMetrics from "./pages/DevOpsMetrics";
 import DeveloperLogs from "./pages/DeveloperLogs";
+import AdminLexiconSetup from "./pages/AdminLexiconSetup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             </Route>
             <Route path="/devops-metrics" element={<DevOpsMetrics />} />
             <Route path="/developer-logs" element={<DeveloperLogs />} />
+            <Route path="/admin/lexicon-setup" element={<AdminLexiconSetup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
