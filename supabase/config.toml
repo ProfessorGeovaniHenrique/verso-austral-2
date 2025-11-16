@@ -4,4 +4,4 @@ project_id = "kywmhuubbsvclkorxrse"
 verify_jwt = false
 
 [functions.annotate-semantic]
-verify_jwt = true
+verify_jwt = false

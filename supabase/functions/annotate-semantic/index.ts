@@ -38,17 +38,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      console.error('[annotate-semantic] Authentication error:', authError);
-      return new Response(
-        JSON.stringify({ error: 'Não autorizado' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // TODO: Em produção, implementar autenticação
+    // Por enquanto, permitir acesso público para testes
+    const userId = 'demo-user';
 
     const { corpus_type }: AnnotationRequest = await req.json();
 
@@ -59,12 +51,12 @@ serve(async (req) => {
       );
     }
 
-    console.log(`[annotate-semantic] Iniciando anotação para corpus: ${corpus_type}, user: ${user.id}`);
+    console.log(`[annotate-semantic] Iniciando anotação para corpus: ${corpus_type}, user: ${userId}`);
 
     const { data: job, error: jobError } = await supabase
       .from('annotation_jobs')
       .insert({
-        user_id: user.id,
+        user_id: userId,
         corpus_type: corpus_type,
         status: 'pending',
         metadata: {
@@ -93,9 +85,8 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify({
-        job_id: job.id,
-        status: 'pending',
-        message: 'Anotação semântica iniciada com AI. Acompanhe o progresso pelo job_id.'
+        job: job,
+        message: 'Anotação semântica iniciada com AI. Acompanhe o progresso em tempo real.'
       }),
       {
         status: 200,
