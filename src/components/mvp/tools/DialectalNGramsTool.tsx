@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Download, 
   Search, 
@@ -62,6 +63,8 @@ import {
 import { useFullTextCorpus } from '@/hooks/useFullTextCorpus';
 import { generateNGrams } from '@/services/ngramsService';
 import { analyzeDialectalNGrams, filterByCategory, filterByType, getDialectalNGramsStats, DialectalNGram } from '@/services/dialectalNGramsService';
+import { analyzeCoOccurrences, buildCoOccurrenceNetwork, CoOccurrence, CoOccurrenceNetwork } from '@/services/coOccurrenceService';
+import { CoOccurrenceNetworkVisualization } from './CoOccurrenceNetwork';
 import { toast } from 'sonner';
 import { CorpusType, CORPUS_CONFIG } from '@/data/types/corpus-tools.types';
 
@@ -98,6 +101,8 @@ export function DialectalNGramsTool() {
   const [filterTipo, setFilterTipo] = useState('todos');
   const [filterTamanho, setFilterTamanho] = useState('todos');
   const [dialectalNGrams, setDialectalNGrams] = useState<DialectalNGram[]>([]);
+  const [coOccurrences, setCoOccurrences] = useState<CoOccurrence[]>([]);
+  const [coOccurrenceNetwork, setCoOccurrenceNetwork] = useState<CoOccurrenceNetwork | null>(null);
   const [isProcessed, setIsProcessed] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showCharts, setShowCharts] = useState(false);
@@ -126,9 +131,19 @@ export function DialectalNGramsTool() {
     // Analisa N-grams dialetais
     const dialectal = analyzeDialectalNGrams(allNGrams);
     setDialectalNGrams(dialectal);
+
+    // Análise de co-ocorrência
+    const texts = corpus.musicas.map(m => m.letra);
+    const coOcc = analyzeCoOccurrences(texts, 5, 2);
+    setCoOccurrences(coOcc);
+    
+    // Construir rede de co-ocorrência
+    const network = buildCoOccurrenceNetwork(coOcc, 2);
+    setCoOccurrenceNetwork(network);
+
     setIsProcessed(true);
 
-    toast.success(`${dialectal.length} expressões dialetais identificadas!`);
+    toast.success(`${dialectal.length} expressões dialetais e ${coOcc.length} co-ocorrências identificadas!`);
   };
 
   // Filtros aplicados
@@ -325,7 +340,14 @@ export function DialectalNGramsTool() {
 
       {/* Resultados */}
       {isProcessed && (
-        <>
+        <Tabs defaultValue="ngrams" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="ngrams">N-grams Dialetais</TabsTrigger>
+            <TabsTrigger value="network">Rede de Co-ocorrência</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="ngrams" className="space-y-6">
+            <>
           {/* Header com corpus info */}
           <Card>
             <CardContent className="pt-6">
@@ -734,6 +756,18 @@ export function DialectalNGramsTool() {
             </AlertDescription>
           </Alert>
         </>
+          </TabsContent>
+
+          {/* Tab de Co-ocorrência */}
+          <TabsContent value="network">
+            {coOccurrenceNetwork && (
+              <CoOccurrenceNetworkVisualization 
+                network={coOccurrenceNetwork} 
+                coOccurrences={coOccurrences} 
+              />
+            )}
+          </TabsContent>
+        </Tabs>
       )}
     </div>
   );

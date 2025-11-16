@@ -236,3 +236,10 @@ export function getDictionaryStats() {
     percentualPlatinismos: ((platinismos / total) * 100).toFixed(1)
   };
 }
+
+/**
+ * Retorna todas as palavras do dicionário dialetal
+ */
+export function getDialectalWords() {
+  return DIALECTAL_DICTIONARY;
+}
