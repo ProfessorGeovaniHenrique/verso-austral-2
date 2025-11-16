@@ -1,14 +1,18 @@
+import { useState } from "react";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { DemoModeBlocker } from "@/components/advanced/DemoModeBlocker";
 import { TabLexicalProfile } from "@/components/advanced/TabLexicalProfile";
 import { POSAnalysisTool } from "@/components/mvp/tools/POSAnalysisTool";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Network, Sparkles, Link2, FileBarChart, Layers } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BookOpen, Network, Sparkles, Link2, FileBarChart, Layers, Database } from "lucide-react";
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
+import { CorpusType } from "@/data/types/corpus-tools.types";
 
 export default function AdvancedMode() {
   const { advancedModeEnabled } = useFeatureAccess();
+  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
 
   if (!advancedModeEnabled) {
     return <DemoModeBlocker />;
@@ -21,9 +25,23 @@ export default function AdvancedMode() {
       <main className="flex-1 container mx-auto py-8 px-4">
         <div className="mb-8">
           <h1 className="text-4xl font-bold mb-2">Novas Funcionalidades (Beta)</h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-lg text-muted-foreground mb-4">
             Análise Estilística baseada em Leech & Short (2007)
           </p>
+          
+          <div className="flex items-center gap-3">
+            <Database className="w-5 h-5 text-muted-foreground" />
+            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
+              <SelectTrigger className="w-[280px] bg-card border-border">
+                <SelectValue placeholder="Selecionar Corpus" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border z-50">
+                <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
+                <SelectItem value="nordestino">Corpus Nordestino (Referência)</SelectItem>
+                <SelectItem value="marenco-verso">Luiz Marenco - Verso Austral</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <Tabs defaultValue="pos" className="w-full">
