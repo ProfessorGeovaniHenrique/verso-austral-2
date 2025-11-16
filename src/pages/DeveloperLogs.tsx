@@ -9,9 +9,10 @@ import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
 import { SearchBar } from "@/components/devlogs/SearchBar";
 import { AuditReport } from "@/components/devlogs/AuditReport";
 import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
+import { AIAssistant } from "@/components/devlogs/AIAssistant";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
-import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug } from "lucide-react";
+import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState, useMemo } from "react";
@@ -140,8 +141,12 @@ export default function DeveloperLogs() {
           onClear={handleClearFilters}
         />
 
-        <Tabs defaultValue="audit" className="space-y-6 mt-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
+        <Tabs defaultValue="ai-assistant" className="space-y-6 mt-6">
+          <TabsList className="grid w-full grid-cols-7 lg:w-auto">
+            <TabsTrigger value="ai-assistant" className="gap-2">
+              <Bot className="w-4 h-4" />
+              <span className="hidden sm:inline">🤖 IA</span>
+            </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">🔍 Auditoria</span>
@@ -171,6 +176,11 @@ export default function DeveloperLogs() {
               <span className="hidden sm:inline">Roadmap</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* TAB AI: IA Assistant */}
+          <TabsContent value="ai-assistant">
+            <AIAssistant />
+          </TabsContent>
 
           {/* TAB 0: Auditoria e Debugging */}
           <TabsContent value="audit">
