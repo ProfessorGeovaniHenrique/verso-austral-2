@@ -1,5 +1,5 @@
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
-import logoUfrgs from "@/assets/logo-ufrgs.png";
+import logoUfrgs from "@/assets/logo-ufrgs-compacto.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
 
 const Header = () => {
