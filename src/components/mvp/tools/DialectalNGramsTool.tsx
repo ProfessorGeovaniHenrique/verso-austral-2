@@ -40,8 +40,25 @@ import {
   BookOpen,
   TrendingUp,
   Award,
-  Info
+  Info,
+  ChevronLeft,
+  ChevronRight,
+  BarChart3,
+  PieChart
 } from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  PieChart as RechartsPie, 
+  Pie, 
+  Cell, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  Legend, 
+  ResponsiveContainer 
+} from 'recharts';
 import { useFullTextCorpus } from '@/hooks/useFullTextCorpus';
 import { generateNGrams } from '@/services/ngramsService';
 import { analyzeDialectalNGrams, filterByCategory, filterByType, getDialectalNGramsStats, DialectalNGram } from '@/services/dialectalNGramsService';
@@ -82,6 +99,9 @@ export function DialectalNGramsTool() {
   const [filterTamanho, setFilterTamanho] = useState('todos');
   const [dialectalNGrams, setDialectalNGrams] = useState<DialectalNGram[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showCharts, setShowCharts] = useState(false);
+  const itemsPerPage = 50;
 
   const { corpus, isLoading, error } = useFullTextCorpus(corpusEstudo);
 
@@ -136,6 +156,57 @@ export function DialectalNGramsTool() {
 
     return filtered;
   }, [dialectalNGrams, searchTerm, filterCategoria, filterTipo, filterTamanho]);
+
+  // Paginação
+  const totalPages = Math.ceil(filteredNGrams.length / itemsPerPage);
+  const paginatedNGrams = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredNGrams.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredNGrams, currentPage, itemsPerPage]);
+
+  // Reset página quando filtros mudam
+  useMemo(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategoria, filterTipo, filterTamanho]);
+
+  // Dados para gráficos
+  const chartData = useMemo(() => {
+    if (dialectalNGrams.length === 0) return null;
+
+    // Distribuição por tipo
+    const tipoData = [
+      { 
+        name: 'Expressão Fixa', 
+        value: dialectalNGrams.filter(ng => ng.tipo === 'expressao_fixa').length,
+        fill: '#a855f7'
+      },
+      { 
+        name: 'Colocação Forte', 
+        value: dialectalNGrams.filter(ng => ng.tipo === 'colocacao_forte').length,
+        fill: '#3b82f6'
+      },
+      { 
+        name: 'Colocação Média', 
+        value: dialectalNGrams.filter(ng => ng.tipo === 'colocacao_media').length,
+        fill: '#64748b'
+      },
+    ];
+
+    // Distribuição por categoria
+    const categoriaData = Object.entries(CATEGORIA_LABELS).map(([key, label]) => ({
+      name: label,
+      value: dialectalNGrams.filter(ng => ng.categoria === key).length,
+    })).filter(item => item.value > 0);
+
+    // Distribuição por tamanho
+    const tamanhoData = [
+      { name: 'Bigramas (2)', value: dialectalNGrams.filter(ng => ng.ngram.split(' ').length === 2).length },
+      { name: 'Trigramas (3)', value: dialectalNGrams.filter(ng => ng.ngram.split(' ').length === 3).length },
+      { name: 'Quadrigramas (4)', value: dialectalNGrams.filter(ng => ng.ngram.split(' ').length === 4).length },
+    ].filter(item => item.value > 0);
+
+    return { tipoData, categoriaData, tamanhoData };
+  }, [dialectalNGrams]);
 
   const stats = useMemo(() => {
     if (dialectalNGrams.length === 0) return null;
@@ -346,6 +417,100 @@ export function DialectalNGramsTool() {
           </div>
           )}
 
+          {/* Gráficos de Visualização */}
+          {isProcessed && chartData && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Visualizações
+                  </CardTitle>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowCharts(!showCharts)}
+                  >
+                    {showCharts ? 'Ocultar' : 'Mostrar'} Gráficos
+                  </Button>
+                </div>
+              </CardHeader>
+              {showCharts && (
+                <CardContent className="space-y-6">
+                  {/* Gráfico de Distribuição por Tipo */}
+                  <div>
+                    <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Distribuição por Tipo de Expressão
+                    </h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <BarChart data={chartData.tipoData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <RechartsTooltip />
+                        <Legend />
+                        <Bar dataKey="value" name="Quantidade" radius={[8, 8, 0, 0]}>
+                          {chartData.tipoData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Gráfico de Pizza por Categoria */}
+                  {chartData.categoriaData.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                        <PieChart className="h-4 w-4" />
+                        Distribuição por Categoria Semântica
+                      </h4>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsPie>
+                          <Pie
+                            data={chartData.categoriaData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                            outerRadius={80}
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {chartData.categoriaData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={`hsl(${index * 360 / chartData.categoriaData.length}, 70%, 50%)`} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip />
+                          <Legend />
+                        </RechartsPie>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+
+                  {/* Gráfico de Tamanho de N-grams */}
+                  {chartData.tamanhoData.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-semibold mb-4">
+                        Distribuição por Tamanho (N-grams)
+                      </h4>
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={chartData.tamanhoData}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="name" />
+                          <YAxis />
+                          <RechartsTooltip />
+                          <Bar dataKey="value" name="Quantidade" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </CardContent>
+              )}
+            </Card>
+          )}
+
           {/* Tabela */}
           <Card>
             <CardHeader>
@@ -428,7 +593,7 @@ export function DialectalNGramsTool() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredNGrams.map((ng, idx) => (
+                      paginatedNGrams.map((ng, idx) => (
                         <TableRow key={idx}>
                           <TableCell className="font-medium">{ng.ngram}</TableCell>
                           <TableCell>
@@ -500,6 +665,60 @@ export function DialectalNGramsTool() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Controles de Paginação */}
+              {filteredNGrams.length > itemsPerPage && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {((currentPage - 1) * itemsPerPage) + 1} a {Math.min(currentPage * itemsPerPage, filteredNGrams.length)} de {filteredNGrams.length} expressões
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-9"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Próxima
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
