@@ -3,12 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { CheckCircle2, Clock, Calendar, Target, AlertCircle } from "lucide-react";
 import { ConstructionPhase } from "@/data/developer-logs/construction-log";
+import { highlightText } from "@/utils/highlightText";
 
 interface PhaseTimelineProps {
   phases: ConstructionPhase[];
+  searchTerm?: string;
 }
 
-export function PhaseTimeline({ phases }: PhaseTimelineProps) {
+export function PhaseTimeline({ phases, searchTerm = '' }: PhaseTimelineProps) {
   const getStatusIcon = (status: ConstructionPhase['status']) => {
     switch (status) {
       case 'completed':
@@ -56,7 +58,7 @@ export function PhaseTimeline({ phases }: PhaseTimelineProps) {
               <CardHeader>
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1">
-                    <CardTitle className="text-lg">{phase.phase}</CardTitle>
+                    <CardTitle className="text-lg">{highlightText(phase.phase, searchTerm)}</CardTitle>
                     <CardDescription className="mt-2 flex items-center gap-4 text-sm">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
@@ -76,7 +78,7 @@ export function PhaseTimeline({ phases }: PhaseTimelineProps) {
                     <Target className="w-4 h-4 text-muted-foreground" />
                     <span className="text-sm font-semibold text-muted-foreground">Objetivo</span>
                   </div>
-                  <p className="text-sm">{phase.objective}</p>
+                  <p className="text-sm">{highlightText(phase.objective, searchTerm)}</p>
                 </div>
 
                 {/* Decisões técnicas */}

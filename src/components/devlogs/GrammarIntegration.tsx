@@ -4,12 +4,14 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BookOpen, CheckCircle2, FileText } from "lucide-react";
 import { ConstructionPhase } from "@/data/developer-logs/construction-log";
+import { highlightText } from "@/utils/highlightText";
 
 interface GrammarIntegrationProps {
   phases: ConstructionPhase[];
+  searchTerm?: string;
 }
 
-export function GrammarIntegration({ phases }: GrammarIntegrationProps) {
+export function GrammarIntegration({ phases, searchTerm = '' }: GrammarIntegrationProps) {
   // Extrair todas as referências científicas de Castilho
   const castilhoReferences = phases
     .flatMap(p => p.scientificBasis)

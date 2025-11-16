@@ -6,16 +6,53 @@ import { PhaseTimeline } from "@/components/devlogs/PhaseTimeline";
 import { GrammarIntegration } from "@/components/devlogs/GrammarIntegration";
 import { TechnicalDecisions } from "@/components/devlogs/TechnicalDecisions";
 import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
+import { SearchBar } from "@/components/devlogs/SearchBar";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
 import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
+import { useState, useMemo } from "react";
+import { matchesSearch } from "@/utils/highlightText";
 
 export default function DeveloperLogs() {
   const navigate = useNavigate();
   const completedPhases = getCompletedPhases();
   const inProgressPhases = getInProgressPhases();
+
+  // Estados de busca e filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [phaseFilter, setPhaseFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+
+  // Filtrar fases baseado nos filtros
+  const filteredPhases = useMemo(() => {
+    return constructionLog.filter(phase => {
+      // Filtro de status
+      if (statusFilter !== 'all' && phase.status !== statusFilter) return false;
+
+      // Filtro de fase
+      if (phaseFilter !== 'all') {
+        const phaseNumber = phase.phase.match(/Fase (\d+)/)?.[1];
+        if (phaseNumber !== phaseFilter) return false;
+      }
+
+      // Filtro de busca
+      if (searchTerm.trim()) {
+        const searchLower = searchTerm.toLowerCase();
+        const phaseText = `${phase.phase} ${phase.objective} ${phase.decisions.map(d => d.decision).join(' ')}`;
+        return phaseText.toLowerCase().includes(searchLower);
+      }
+
+      return true;
+    });
+  }, [searchTerm, phaseFilter, statusFilter]);
+
+  const handleClearFilters = () => {
+    setSearchTerm('');
+    setPhaseFilter('all');
+    setStatusFilter('all');
+  };
 
   const handleExportReport = () => {
     exportDeveloperLogsToPDF();
@@ -89,7 +126,19 @@ export default function DeveloperLogs() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8">
-        <Tabs defaultValue="timeline" className="space-y-6">
+        {/* Search Bar */}
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          phaseFilter={phaseFilter}
+          onPhaseFilterChange={setPhaseFilter}
+          statusFilter={statusFilter}
+          onStatusFilterChange={setStatusFilter}
+          resultsCount={filteredPhases.length}
+          onClear={handleClearFilters}
+        />
+
+        <Tabs defaultValue="timeline" className="space-y-6 mt-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-auto">
             <TabsTrigger value="timeline" className="gap-2">
               <Target className="w-4 h-4" />
@@ -123,24 +172,24 @@ export default function DeveloperLogs() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <PhaseTimeline phases={constructionLog} />
+                <PhaseTimeline phases={filteredPhases} searchTerm={searchTerm} />
               </CardContent>
             </Card>
           </TabsContent>
 
           {/* TAB 2: Integração da Gramática de Castilho */}
           <TabsContent value="grammar" className="space-y-6">
-            <GrammarIntegration phases={constructionLog} />
+            <GrammarIntegration phases={filteredPhases} searchTerm={searchTerm} />
           </TabsContent>
 
           {/* TAB 3: Decisões Técnicas */}
           <TabsContent value="decisions" className="space-y-6">
-            <TechnicalDecisions phases={constructionLog} />
+            <TechnicalDecisions phases={filteredPhases} searchTerm={searchTerm} />
           </TabsContent>
 
           {/* TAB 4: Evolução de Métricas */}
           <TabsContent value="metrics" className="space-y-6">
-            <MetricsEvolution phases={constructionLog} />
+            <MetricsEvolution phases={filteredPhases} />
           </TabsContent>
 
           {/* TAB 5: Roadmap */}

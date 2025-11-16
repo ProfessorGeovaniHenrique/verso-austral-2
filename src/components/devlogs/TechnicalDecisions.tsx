@@ -3,12 +3,14 @@ import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Lightbulb, GitBranch, TrendingUp, AlertTriangle } from "lucide-react";
 import { ConstructionPhase, TechnicalDecision } from "@/data/developer-logs/construction-log";
+import { highlightText } from "@/utils/highlightText";
 
 interface TechnicalDecisionsProps {
   phases: ConstructionPhase[];
+  searchTerm?: string;
 }
 
-export function TechnicalDecisions({ phases }: TechnicalDecisionsProps) {
+export function TechnicalDecisions({ phases, searchTerm = '' }: TechnicalDecisionsProps) {
   // Agrupar decisões por categoria
   const categorizedDecisions = phases.reduce((acc, phase) => {
     phase.decisions.forEach(decision => {
@@ -81,7 +83,7 @@ export function TechnicalDecisions({ phases }: TechnicalDecisionsProps) {
                       <Card key={index} className="border-l-4 border-l-primary">
                         <CardHeader className="pb-3">
                           <div className="flex items-start justify-between gap-4">
-                            <CardTitle className="text-base">{decision.decision}</CardTitle>
+                            <CardTitle className="text-base">{highlightText(decision.decision, searchTerm)}</CardTitle>
                             <Badge variant="secondary" className="shrink-0">
                               {decision.phase.split(':')[0]}
                             </Badge>
