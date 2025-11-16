@@ -8,16 +8,26 @@ import { calculateTotalTokens } from "@/lib/corpusParser";
  * 
  * @param corpusEstudo - Study corpus words
  * @param corpusReferencia - Reference corpus words
- * @param minLL - Minimum Log-Likelihood threshold (default 6.63 = p < 0.01)
+ * @param minLL - Minimum Log-Likelihood threshold (optional, adapts to corpus size)
  * @returns Array of keyword entries sorted by LL
  */
 export function generateKeywords(
   corpusEstudo: CorpusWord[],
   corpusReferencia: CorpusWord[],
-  minLL: number = 6.63
+  minLL?: number
 ): KeywordEntry[] {
   const totalEstudo = calculateTotalTokens(corpusEstudo);
   const totalReferencia = calculateTotalTokens(corpusReferencia);
+  
+  // Adaptive threshold: use lower LL for small corpora
+  const effectiveMinLL = minLL ?? (
+    (totalEstudo < 5000 || totalReferencia < 5000)
+      ? 3.84  // p < 0.05 for small corpora
+      : 6.63  // p < 0.01 for large corpora
+  );
+  
+  console.log(`📊 Corpus Sizes - Study: ${totalEstudo} tokens | Reference: ${totalReferencia} tokens`);
+  console.log(`🎯 Effective LL Threshold: ${effectiveMinLL.toFixed(2)} (${effectiveMinLL === 3.84 ? 'p < 0.05' : 'p < 0.01'})`)
   
   // Create lookup map for reference corpus
   const refMap = new Map(
@@ -56,8 +66,8 @@ export function generateKeywords(
     
     const efeitoIcon = efeito === 'super-representado' ? TrendingUp : TrendingDown;
     
-    // Only include words that meet minimum LL threshold
-    if (ll >= minLL) {
+    // Only include words that meet effective LL threshold
+    if (ll >= effectiveMinLL) {
       keywords.push({
         palavra: wordEstudo.headword,
         freqEstudo: wordEstudo.freq,
