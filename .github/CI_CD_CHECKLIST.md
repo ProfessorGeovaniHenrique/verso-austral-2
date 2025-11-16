@@ -21,6 +21,7 @@ Abra `package.json` e adicione na seção `"scripts"`:
 "version:bump": "tsx scripts/bump-version.ts",
 "version:dry-run": "tsx scripts/bump-version.ts --dry-run",
 "version:current": "cat VERSION",
+"badge:generate": "tsx scripts/generate-badge-data.ts",
 "precommit": "npm run test:corpus:audit",
 "predeploy": "npm run test:corpus"
 ```
