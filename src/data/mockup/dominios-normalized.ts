@@ -14,13 +14,13 @@ import { DominioSemantico } from '../types/corpus.types';
 export const dominiosNormalizados: DominioSemantico[] = [
   {
     dominio: "Cultura e Lida Gaúcha",
-    riquezaLexical: 27,
-    ocorrencias: 28,
+    riquezaLexical: 28,
+    ocorrencias: 29,
     percentual: 13.21,       // Frequência absoluta (sobre 212)
     percentualTematico: 23.93, // Frequência normalizada (sobre 117)
     palavras: [
       "gateado", "arreio", "bomba", "brasa", "cambona", "campereada", 
-      "cancela", "candeeiro", "caseiro", "copla", "cuia", "espora", 
+      "cancela", "candeeiro", "casa", "caseiro", "copla", "cuia", "espora", 
       "galpão", "galponeiro", "jujado", "lombo", "lonjura", "maragato", 
       "mate", "pañuelo", "prenda", "pura-folha", "quarto", "querência", 
       "ramada", "templado", "tropa"
@@ -34,6 +34,7 @@ export const dominiosNormalizados: DominioSemantico[] = [
       { palavra: "campereada", ocorrencias: 1 },
       { palavra: "cancela", ocorrencias: 1 },
       { palavra: "candeeiro", ocorrencias: 1 },
+      { palavra: "casa", ocorrencias: 1 },
       { palavra: "caseiro", ocorrencias: 1 },
       { palavra: "copla", ocorrencias: 1 },
       { palavra: "cuia", ocorrencias: 1 },
@@ -104,15 +105,15 @@ export const dominiosNormalizados: DominioSemantico[] = [
   },
   {
     dominio: "Ações e Processos",
-    riquezaLexical: 24,
-    ocorrencias: 29,
+    riquezaLexical: 25,
+    ocorrencias: 30,
     percentual: 13.68,
     percentualTematico: 24.79,
     palavras: [
       "trazer", "ser", "sonhar", "abrir", "aquerenciar", "cair", "cevar", 
       "chegar", "deixar", "desencilhar", "desgarrar", "encilhar", "espichar",
       "estampar", "fazer", "ficar", "frente", "ganhar", "ir", "pontear", 
-      "queimar", "rondar", "ter", "vestir"
+      "queimar", "rondar", "ter", "vestir", "vir"
     ],
     palavrasComFrequencia: [
       { palavra: "trazer", ocorrencias: 3 },
@@ -138,7 +139,8 @@ export const dominiosNormalizados: DominioSemantico[] = [
       { palavra: "queimar", ocorrencias: 1 },
       { palavra: "rondar", ocorrencias: 1 },
       { palavra: "ter", ocorrencias: 1 },
-      { palavra: "vestir", ocorrencias: 1 }
+      { palavra: "vestir", ocorrencias: 1 },
+      { palavra: "vir", ocorrencias: 1 }
     ],
     cor: "hsl(280, 65%, 60%)",
     corTexto: "hsl(0, 0%, 100%)",
