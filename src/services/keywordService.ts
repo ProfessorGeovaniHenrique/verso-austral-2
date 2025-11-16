@@ -29,7 +29,10 @@ export function generateKeywords(
   for (const wordEstudo of corpusEstudo) {
     const wordRef = refMap.get(wordEstudo.headword.toLowerCase());
     const freqRef = wordRef?.freq || 0;
-    const normFreqRef = wordRef?.normFreq || 0;
+    
+    // Calculate normalized frequencies per million words
+    const normFreqEstudo = (wordEstudo.freq / totalEstudo) * 1000000;
+    const normFreqRef = freqRef > 0 ? (freqRef / totalReferencia) * 1000000 : 0;
     
     // Calculate statistics
     const ll = calculateLogLikelihood(
@@ -47,7 +50,7 @@ export function generateKeywords(
     );
     
     // Determine effect (super vs sub-representado)
-    const efeito = wordEstudo.normFreq > normFreqRef 
+    const efeito = normFreqEstudo > normFreqRef 
       ? 'super-representado' 
       : 'sub-representado';
     
@@ -59,7 +62,7 @@ export function generateKeywords(
         palavra: wordEstudo.headword,
         freqEstudo: wordEstudo.freq,
         freqReferencia: freqRef,
-        normFreqEstudo: wordEstudo.normFreq,
+        normFreqEstudo,
         normFreqReferencia: normFreqRef,
         ll,
         mi,
