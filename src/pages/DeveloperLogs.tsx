@@ -12,7 +12,7 @@ import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
 import { AIAssistant } from "@/components/devlogs/AIAssistant";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
-import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot } from "lucide-react";
+import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState, useMemo } from "react";
@@ -27,6 +27,10 @@ export default function DeveloperLogs() {
   const [searchTerm, setSearchTerm] = useState('');
   const [phaseFilter, setPhaseFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Estado para controlar análise rápida e aba ativa
+  const [triggerAnalysis, setTriggerAnalysis] = useState<'audit' | 'performance' | 'errors' | null>(null);
+  const [activeTab, setActiveTab] = useState('ai-assistant');
 
   // Filtrar fases baseado nos filtros
   const filteredPhases = useMemo(() => {
@@ -61,6 +65,15 @@ export default function DeveloperLogs() {
     exportDeveloperLogsToPDF();
   };
 
+  const handleQuickAnalysis = (type: 'audit' | 'performance' | 'errors') => {
+    setActiveTab('ai-assistant'); // Muda para aba IA
+    setTriggerAnalysis(type); // Dispara análise
+  };
+
+  const handleAnalysisComplete = () => {
+    setTriggerAnalysis(null); // Limpa o trigger após análise
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Header */}
@@ -88,6 +101,26 @@ export default function DeveloperLogs() {
               <Badge variant="outline" className="text-sm">
                 Atualizado em: {new Date().toLocaleDateString('pt-BR')}
               </Badge>
+              
+              {/* Botões de análise rápida */}
+              <Button 
+                onClick={() => handleQuickAnalysis('audit')} 
+                variant="default"
+                className="gap-2"
+              >
+                <Bot className="w-4 h-4" />
+                Analisar Auditoria
+              </Button>
+              
+              <Button 
+                onClick={() => handleQuickAnalysis('performance')} 
+                variant="secondary"
+                className="gap-2"
+              >
+                <Zap className="w-4 h-4" />
+                Analisar Performance
+              </Button>
+              
               <Button onClick={handleExportReport} variant="outline" className="gap-2">
                 <Download className="w-4 h-4" />
                 Exportar Relatório
@@ -141,7 +174,7 @@ export default function DeveloperLogs() {
           onClear={handleClearFilters}
         />
 
-        <Tabs defaultValue="ai-assistant" className="space-y-6 mt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-6">
           <TabsList className="grid w-full grid-cols-7 lg:w-auto">
             <TabsTrigger value="ai-assistant" className="gap-2">
               <Bot className="w-4 h-4" />
@@ -179,7 +212,10 @@ export default function DeveloperLogs() {
 
           {/* TAB AI: IA Assistant */}
           <TabsContent value="ai-assistant">
-            <AIAssistant />
+            <AIAssistant 
+              triggerAnalysis={triggerAnalysis}
+              onAnalysisComplete={handleAnalysisComplete}
+            />
           </TabsContent>
 
           {/* TAB 0: Auditoria e Debugging */}

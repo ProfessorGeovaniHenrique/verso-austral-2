@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Bot, Sparkles, AlertTriangle, Zap, Bug, Shield, TrendingUp, Clock, Copy, CheckCircle2, Loader2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,7 +41,12 @@ interface AnalysisResult {
   nextSteps: string[];
 }
 
-export function AIAssistant() {
+interface AIAssistantProps {
+  triggerAnalysis?: 'audit' | 'performance' | 'errors' | null;
+  onAnalysisComplete?: () => void;
+}
+
+export function AIAssistant({ triggerAnalysis, onAnalysisComplete }: AIAssistantProps) {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -51,6 +56,14 @@ export function AIAssistant() {
   const { stats: historyStats } = useAIAnalysisHistory();
   const { suggestions: suggestionStatuses, stats: suggestionStats, markAsResolved, markAsDismissed, isUpdating } = 
     useSuggestionStatus(analysisResult?.analysisId);
+
+  // ✅ Efeito para disparar análise quando trigger externo for recebido
+  useEffect(() => {
+    if (triggerAnalysis && !isAnalyzing) {
+      handleAnalyze(triggerAnalysis);
+      onAnalysisComplete?.();
+    }
+  }, [triggerAnalysis]);
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
