@@ -39,8 +39,8 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // TODO: Em produção, implementar autenticação
-    // Por enquanto, permitir acesso público para testes
-    const userId = 'demo-user';
+    // Por enquanto, usar UUID fixo para modo demo
+    const userId = '00000000-0000-0000-0000-000000000001';
 
     const { corpus_type }: AnnotationRequest = await req.json();
 
