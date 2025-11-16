@@ -1,4 +1,4 @@
-import logoVersoAustral from "@/assets/logo-versoaustral-hq.png";
+import logoVersoAustral from "@/assets/logo-versoaustral-texto.png";
 import logoUfrgs from "@/assets/logo-ufrgs.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
 
