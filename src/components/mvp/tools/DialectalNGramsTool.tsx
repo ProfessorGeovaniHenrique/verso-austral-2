@@ -11,6 +11,12 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -73,6 +79,7 @@ export function DialectalNGramsTool() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategoria, setFilterCategoria] = useState('todos');
   const [filterTipo, setFilterTipo] = useState('todos');
+  const [filterTamanho, setFilterTamanho] = useState('todos');
   const [dialectalNGrams, setDialectalNGrams] = useState<DialectalNGram[]>([]);
   const [isProcessed, setIsProcessed] = useState(false);
 
@@ -121,8 +128,14 @@ export function DialectalNGramsTool() {
     // Filtro por tipo
     filtered = filterByType(filtered, filterTipo);
 
+    // Filtro por tamanho (quantidade de palavras)
+    if (filterTamanho !== 'todos') {
+      const tamanho = parseInt(filterTamanho);
+      filtered = filtered.filter(ng => ng.ngram.split(' ').length === tamanho);
+    }
+
     return filtered;
-  }, [dialectalNGrams, searchTerm, filterCategoria, filterTipo]);
+  }, [dialectalNGrams, searchTerm, filterCategoria, filterTipo, filterTamanho]);
 
   const stats = useMemo(() => {
     if (dialectalNGrams.length === 0) return null;
@@ -345,7 +358,7 @@ export function DialectalNGramsTool() {
               </div>
 
               {/* Filtros */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mt-4">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -355,6 +368,18 @@ export function DialectalNGramsTool() {
                     className="pl-9"
                   />
                 </div>
+
+                <Select value={filterTamanho} onValueChange={setFilterTamanho}>
+                  <SelectTrigger className="bg-background">
+                    <SelectValue placeholder="Tamanho" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background z-50">
+                    <SelectItem value="todos">Todos os tamanhos</SelectItem>
+                    <SelectItem value="2">Bigramas (2 palavras)</SelectItem>
+                    <SelectItem value="3">Trigramas (3 palavras)</SelectItem>
+                    <SelectItem value="4">Quadrigramas (4 palavras)</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <Select value={filterCategoria} onValueChange={setFilterCategoria}>
                   <SelectTrigger className="bg-background">
@@ -403,13 +428,39 @@ export function DialectalNGramsTool() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredNGrams.slice(0, 50).map((ng, idx) => (
+                      filteredNGrams.map((ng, idx) => (
                         <TableRow key={idx}>
                           <TableCell className="font-medium">{ng.ngram}</TableCell>
                           <TableCell>
-                            <Badge variant="outline" className={TIPO_COLORS[ng.tipo]}>
-                              {TIPO_LABELS[ng.tipo]}
-                            </Badge>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Badge variant="outline" className={TIPO_COLORS[ng.tipo]}>
+                                    {TIPO_LABELS[ng.tipo]}
+                                  </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" className="max-w-xs">
+                                  {ng.tipo === 'expressao_fixa' && (
+                                    <p className="text-xs">
+                                      <strong>Expressão Fixa:</strong> Fórmula consolidada que consta no Dicionário Pampeano. 
+                                      Exemplo: "tomar um mate", "fazer rodeio".
+                                    </p>
+                                  )}
+                                  {ng.tipo === 'colocacao_forte' && (
+                                    <p className="text-xs">
+                                      <strong>Colocação Forte:</strong> Combinação com alta frequência e forte associação estatística. 
+                                      As palavras aparecem juntas muito mais do que o esperado ao acaso.
+                                    </p>
+                                  )}
+                                  {ng.tipo === 'colocacao_media' && (
+                                    <p className="text-xs">
+                                      <strong>Colocação Média:</strong> Combinação com frequência moderada que contém palavras dialetais. 
+                                      A associação é relevante, mas menos consistente.
+                                    </p>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           </TableCell>
                           <TableCell className="text-right font-mono text-sm">
                             {ng.frequencia}
@@ -449,12 +500,6 @@ export function DialectalNGramsTool() {
                   </TableBody>
                 </Table>
               </div>
-
-              {filteredNGrams.length > 50 && (
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  Mostrando 50 de {filteredNGrams.length} resultados
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -462,10 +507,11 @@ export function DialectalNGramsTool() {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <strong>Sobre a Análise:</strong> Esta ferramenta identifica expressões multi-palavra 
-              típicas da cultura gaúcha usando o Dicionário Pampeano e análise estatística. 
-              <strong> Expressões Fixas</strong> são fórmulas conhecidas do dicionário. 
-              <strong> Colocações</strong> são combinações frequentes com palavras dialetais.
+              <strong>Como funciona:</strong> A ferramenta gera N-grams de 2, 3 e 4 palavras 
+              a partir do corpus selecionado e identifica aqueles que contêm marcas dialetais gaúchas. 
+              <strong> Expressões Fixas</strong> são fórmulas que constam no Dicionário Pampeano. 
+              <strong> Colocações</strong> são combinações frequentes com palavras dialetais, 
+              classificadas pela força da associação estatística.
             </AlertDescription>
           </Alert>
         </>

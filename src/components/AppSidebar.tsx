@@ -21,14 +21,15 @@ import { ChevronDown } from "lucide-react";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Console de Controle", action: "toggle-console", icon: CircuitBoard },
 ];
 
-const projectItems = [
-  { title: "Análise de Estilística de Corpus", url: "/dashboard2", icon: FileText },
-  { title: "Nuvem Semântica 3D (Three.js)", url: "/dashboard4", icon: Sparkles },
-  { title: "FOG & PLANETS Visualization", url: "/dashboard5", icon: Sparkles },
-];
+// Dashboards obsoletos - mantidos para referência mas ocultos da UI
+// const projectItems = [
+//   { title: "Análise de Estilística de Corpus", url: "/dashboard2", icon: FileText },
+//   { title: "Nuvem Semântica 3D (Three.js)", url: "/dashboard4", icon: Sparkles },
+//   { title: "FOG & PLANETS Visualization", url: "/dashboard5", icon: Sparkles },
+// ];
+const projectItems: any[] = [];
 
 const advancedItems = [
   { title: "Modo Avançado", url: "/avancado", icon: Sparkles, disabled: true },
@@ -52,65 +53,20 @@ export function AppSidebar() {
             <SidebarMenu>
               {mainItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  {item.action === 'toggle-console' ? (
-                    <SidebarMenuButton 
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent('toggle-control-console'));
-                      }}
-                      className="flex items-center gap-2 hover:bg-muted/50 cursor-pointer"
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-2 hover:bg-muted/50"
+                      activeClassName="bg-muted text-primary font-medium"
                     >
                       <item.icon className="h-4 w-4" />
                       {open && <span>{item.title}</span>}
-                    </SidebarMenuButton>
-                  ) : (
-                    <SidebarMenuButton asChild>
-                      <NavLink 
-                        to={item.url} 
-                        className="flex items-center gap-2 hover:bg-muted/50"
-                        activeClassName="bg-muted text-primary font-medium"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        {open && <span>{item.title}</span>}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  )}
+                    </NavLink>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
 
-              {/* Meus Projetos - Collapsible */}
-              <Collapsible defaultOpen={isProjectActive} className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="flex items-center gap-2 hover:bg-muted/50">
-                      <FolderOpen className="h-4 w-4" />
-                      {open && (
-                        <>
-                          <span>Meus Projetos</span>
-                          <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                        </>
-                      )}
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {projectItems.map((item) => (
-                        <SidebarMenuSubItem key={item.title}>
-                          <SidebarMenuSubButton asChild>
-                            <NavLink 
-                              to={item.url} 
-                              className="flex items-center gap-2 hover:bg-muted/50 pl-8"
-                              activeClassName="bg-muted text-primary font-medium"
-                            >
-                              <item.icon className="h-3 w-3" />
-                              {open && <span className="text-sm">{item.title}</span>}
-                            </NavLink>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {/* Meus Projetos - Seção removida (dashboards obsoletos) */}
 
               {advancedItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
