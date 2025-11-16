@@ -6,17 +6,23 @@ export const CORPUS_CONFIG = {
   gaucho: {
     label: 'Corpus de Música Gaúcha',
     icon: '🎸',
-    description: 'Letras de músicas gaúchas tradicionais'
+    description: 'Letras de músicas gaúchas tradicionais',
+    estudoPath: '/src/data/corpus/corpus-estudo-gaucho.txt',
+    referenciaPath: '/src/data/corpus/corpus-referencia-nordestino.txt'
   },
   nordestino: {
     label: 'Corpus de Música Nordestina',
     icon: '🪘',
-    description: 'Letras de forró e música nordestina'
+    description: 'Letras de forró e música nordestina',
+    estudoPath: '/src/data/corpus/corpus-referencia-nordestino.txt',
+    referenciaPath: '/src/data/corpus/corpus-estudo-gaucho.txt'
   },
   'marenco-verso': {
     label: 'Luiz Marenco - Quando o verso vem pras casa',
     icon: '🎵',
-    description: 'Letra individual para análise estilística'
+    description: 'Letra individual para análise estilística',
+    estudoPath: '/src/data/corpus/corpus-luiz-marenco-verso.txt',
+    referenciaPath: '/src/data/corpus/corpus-estudo-gaucho.txt'
   }
 } as const;
 

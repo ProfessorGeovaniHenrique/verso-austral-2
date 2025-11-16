@@ -8,13 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, Search, Play, Loader2, FileSearch, AlertCircle, ChevronDown, ChevronUp, TrendingUp, TrendingDown } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Download, Search, Play, Loader2, FileSearch, AlertCircle, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick } from "lucide-react";
 import { KeywordEntry, CorpusType, CORPUS_CONFIG } from "@/data/types/corpus-tools.types";
+import { useTools } from "@/contexts/ToolsContext";
+import { toast } from "sonner";
 
 export function KeywordsTool() {
   const [corpusEstudo, setCorpusEstudo] = useState<CorpusType>('gaucho');
   const [corpusReferencia, setCorpusReferencia] = useState<CorpusType>('nordestino');
   const { keywords, isLoading, error, isProcessed, processKeywords } = useKeywords();
+  const { navigateToKWIC } = useTools();
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSignificancia, setFilterSignificancia] = useState({
@@ -102,6 +106,11 @@ export function KeywordsTool() {
     link.href = URL.createObjectURL(blob);
     link.download = `keywords_${corpusEstudo}_vs_${corpusReferencia}_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
+  };
+
+  const handleWordClick = (palavra: string) => {
+    navigateToKWIC(palavra);
+    toast.success(`Buscando "${palavra}" no KWIC...`);
   };
   
   const isValidSelection = corpusEstudo !== corpusReferencia;

@@ -92,10 +92,16 @@ export function parseFullTextCorpus(
 }
 
 /**
- * Load and parse multiple corpus files
+ * Load and parse multiple corpus files with optional filters
  */
 export async function loadFullTextCorpus(
-  tipo: 'gaucho' | 'nordestino'
+  tipo: 'gaucho' | 'nordestino',
+  filters?: {
+    artistas?: string[];
+    albuns?: string[];
+    anoInicio?: number;
+    anoFim?: number;
+  }
 ): Promise<CorpusCompleto> {
   const paths = tipo === 'gaucho' 
     ? ['/src/data/corpus/full-text/gaucho-completo.txt']
@@ -111,5 +117,33 @@ export async function loadFullTextCorpus(
   const texts = await Promise.all(responses.map(r => r.text()));
   const fullText = texts.join('\n---------------\n');
   
-  return parseFullTextCorpus(fullText, tipo);
+  const corpus = parseFullTextCorpus(fullText, tipo);
+  
+  // Apply filters if provided
+  if (filters) {
+    const filteredMusicas = corpus.musicas.filter(musica => {
+      if (filters.artistas && filters.artistas.length > 0 && !filters.artistas.includes(musica.metadata.artista)) {
+        return false;
+      }
+      if (filters.albuns && filters.albuns.length > 0 && !filters.albuns.includes(musica.metadata.album)) {
+        return false;
+      }
+      if (filters.anoInicio && musica.metadata.ano && parseInt(musica.metadata.ano) < filters.anoInicio) {
+        return false;
+      }
+      if (filters.anoFim && musica.metadata.ano && parseInt(musica.metadata.ano) > filters.anoFim) {
+        return false;
+      }
+      return true;
+    });
+    
+    return {
+      ...corpus,
+      musicas: filteredMusicas,
+      totalMusicas: filteredMusicas.length,
+      totalPalavras: filteredMusicas.reduce((sum, m) => sum + m.palavras.length, 0)
+    };
+  }
+  
+  return corpus;
 }

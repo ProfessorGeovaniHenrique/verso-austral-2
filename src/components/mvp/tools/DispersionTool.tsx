@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Search, Download, Loader2, TrendingUp } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Search, Download, Loader2, TrendingUp, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useFullTextCorpus } from "@/hooks/useFullTextCorpus";
 import { generateDispersion, exportDispersionToCSV } from "@/services/dispersionService";
 import { DispersionAnalysis } from "@/data/types/full-text-corpus.types";
@@ -18,8 +19,30 @@ export function DispersionTool() {
   const [palavra, setPalavra] = useState('');
   const [analysis, setAnalysis] = useState<DispersionAnalysis | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [selectedArtistas, setSelectedArtistas] = useState<string[]>([]);
+  const [selectedAlbuns, setSelectedAlbuns] = useState<string[]>([]);
+  const [anoInicio, setAnoInicio] = useState<string>('');
+  const [anoFim, setAnoFim] = useState<string>('');
   
-  const { corpus, isLoading, error, progress } = useFullTextCorpus(corpusType);
+  const filters = useMemo(() => ({
+    artistas: selectedArtistas.length > 0 ? selectedArtistas : undefined,
+    albuns: selectedAlbuns.length > 0 ? selectedAlbuns : undefined,
+    anoInicio: anoInicio ? parseInt(anoInicio) : undefined,
+    anoFim: anoFim ? parseInt(anoFim) : undefined,
+  }), [selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
+  
+  const { corpus, isLoading, error, progress } = useFullTextCorpus(corpusType, filters);
+  
+  const artistasDisponiveis = useMemo(() => {
+    if (!corpus) return [];
+    return Array.from(new Set(corpus.musicas.map(m => m.metadata.artista))).sort();
+  }, [corpus]);
+  
+  const albunsDisponiveis = useMemo(() => {
+    if (!corpus) return [];
+    return Array.from(new Set(corpus.musicas.map(m => m.metadata.album))).sort();
+  }, [corpus]);
   
   const handleAnalyze = () => {
     if (!palavra.trim()) {
@@ -129,6 +152,93 @@ export function DispersionTool() {
               />
             </div>
           </div>
+          
+          <Collapsible open={showFilters} onOpenChange={setShowFilters}>
+            <CollapsibleTrigger asChild>
+              <Button variant="outline" className="w-full">
+                <Filter className="mr-2 h-4 w-4" />
+                Filtros Avançados
+                {(selectedArtistas.length > 0 || selectedAlbuns.length > 0 || anoInicio || anoFim) && (
+                  <span className="ml-2 text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">
+                    Ativos
+                  </span>
+                )}
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="space-y-4 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Filtrar por Artista</Label>
+                  <Select 
+                    value={selectedArtistas[0] || ''} 
+                    onValueChange={(v) => setSelectedArtistas(v ? [v] : [])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os artistas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os artistas</SelectItem>
+                      {artistasDisponiveis.map(artista => (
+                        <SelectItem key={artista} value={artista}>{artista}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Filtrar por Álbum</Label>
+                  <Select 
+                    value={selectedAlbuns[0] || ''} 
+                    onValueChange={(v) => setSelectedAlbuns(v ? [v] : [])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos os álbuns" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Todos os álbuns</SelectItem>
+                      {albunsDisponiveis.map(album => (
+                        <SelectItem key={album} value={album}>{album}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Ano Início</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ex: 1990"
+                    value={anoInicio}
+                    onChange={(e) => setAnoInicio(e.target.value)}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Ano Fim</Label>
+                  <Input
+                    type="number"
+                    placeholder="Ex: 2020"
+                    value={anoFim}
+                    onChange={(e) => setAnoFim(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSelectedArtistas([]);
+                  setSelectedAlbuns([]);
+                  setAnoInicio('');
+                  setAnoFim('');
+                }}
+                className="w-full"
+              >
+                Limpar Filtros
+              </Button>
+            </CollapsibleContent>
+          </Collapsible>
           
           <div className="flex gap-2">
             <Button 

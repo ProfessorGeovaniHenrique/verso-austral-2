@@ -6,7 +6,15 @@ import { loadFullTextCorpus } from "@/lib/fullTextParser";
  * Hook to load and manage full-text corpus
  * Implements lazy loading and caching
  */
-export function useFullTextCorpus(tipo: 'gaucho' | 'nordestino') {
+export function useFullTextCorpus(
+  tipo: 'gaucho' | 'nordestino',
+  filters?: {
+    artistas?: string[];
+    albuns?: string[];
+    anoInicio?: number;
+    anoFim?: number;
+  }
+) {
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +34,7 @@ export function useFullTextCorpus(tipo: 'gaucho' | 'nordestino') {
           setProgress(prev => Math.min(prev + 10, 90));
         }, 200);
         
-        const parsed = await loadFullTextCorpus(tipo);
+        const parsed = await loadFullTextCorpus(tipo, filters);
         
         clearInterval(progressInterval);
         
@@ -51,7 +59,7 @@ export function useFullTextCorpus(tipo: 'gaucho' | 'nordestino') {
     return () => {
       isMounted = false;
     };
-  }, [tipo]);
+  }, [tipo, JSON.stringify(filters)]);
   
   return { 
     corpus, 
