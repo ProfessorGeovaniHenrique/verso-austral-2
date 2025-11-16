@@ -32,6 +32,8 @@ export { frequenciaNormalizadaData } from './frequencia-normalizada';
 
 // 🔍 Validação e auditoria
 export { auditCorpusData } from './validation/auditCorpusData';
+export { runAllTests, runTestsWithConsoleOutput } from './validation/corpusTests';
+export type { TestResult, TestSuite } from './validation/corpusTests';
 
 // Re-exportar types para conveniência
 export type {
