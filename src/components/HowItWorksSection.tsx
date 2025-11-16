@@ -1,5 +1,7 @@
-import { Upload, Network, Download } from "lucide-react";
+import { Upload, Network, Download, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const HowItWorksSection = () => {
   const steps = [
@@ -26,14 +28,14 @@ const HowItWorksSection = () => {
   return (
     <section className="py-20 px-4">
       <div className="container max-w-6xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold text-center mb-4">
+        <h2 className="text-3xl md:text-5xl font-bold font-heading text-center mb-4">
           Seu Fluxo de Análise
         </h2>
         <p className="text-xl text-muted-foreground text-center mb-16">
           De Textos Brutos a Dados Visuais em 3 Passos
         </p>
         
-        <div className="grid md:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           {steps.map((step) => (
             <Card 
               key={step.title}
@@ -51,6 +53,15 @@ const HowItWorksSection = () => {
               </div>
             </Card>
           ))}
+        </div>
+
+        <div className="text-center">
+          <Button asChild size="lg" className="text-lg px-8 py-6">
+            <Link to="/dashboard-mvp">
+              <Sparkles className="mr-2 h-5 w-5" />
+              Testar Agora Gratuitamente
+            </Link>
+          </Button>
         </div>
       </div>
     </section>

@@ -7,7 +7,7 @@ export function MVPHeader() {
     <header className="header-academic">
       <div className="container-academic">
         <div className="flex items-center justify-between">
-          <div className="h-24 w-auto">
+          <div className="h-20 w-auto">
             <img 
               src={logoUfrgs} 
               alt="UFRGS Logo" 
@@ -17,7 +17,7 @@ export function MVPHeader() {
           
           <div className="text-center flex-1 px-6">
             <h1 className="text-3xl font-bold text-primary font-heading">
-              SCOPE - Análise Linguística de Corpus
+              VersoAustral - Análise de Estilística de Corpus
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Corpus de Estudo: Clássicos da Música Gaúcha
@@ -33,7 +33,7 @@ export function MVPHeader() {
             </Badge>
           </div>
 
-          <div className="h-24 w-auto ml-4">
+          <div className="h-20 w-auto ml-4">
             <img 
               src={logoPpglet} 
               alt="PPGLET Logo" 

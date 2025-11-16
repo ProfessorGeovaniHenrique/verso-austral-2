@@ -16,7 +16,7 @@ const BenefitsSection = () => {
   }];
   return <section className="py-20 px-4 bg-secondary/30">
       <div className="container max-w-6xl mx-auto">
-        <h2 className="text-3xl md:text-5xl font-bold text-center mb-4">
+        <h2 className="text-3xl md:text-5xl font-bold font-heading text-center mb-4">
           Desenvolvido para a Comunidade Acadêmica
         </h2>
         

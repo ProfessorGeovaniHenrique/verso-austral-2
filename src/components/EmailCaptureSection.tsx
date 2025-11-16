@@ -61,7 +61,7 @@ const EmailCaptureSection = () => {
         <Card className="p-8 md:p-12 bg-card border-border shadow-xl">
           {!isSubmitted ? (
             <>
-              <h2 className="text-3xl md:text-4xl font-bold text-center mb-6">
+              <h2 className="text-3xl md:text-4xl font-bold font-heading text-center mb-6">
                 Faça Parte do Lançamento
               </h2>
               <p className="text-muted-foreground text-center mb-8 leading-relaxed">
@@ -95,7 +95,7 @@ const EmailCaptureSection = () => {
                   Ou experimente a plataforma agora
                 </p>
                 <Button
-                  onClick={() => navigate("/dashboard")}
+                  onClick={() => navigate("/dashboard-mvp")}
                   variant="outline"
                   size="lg"
                   className="w-full h-12 text-lg font-semibold"

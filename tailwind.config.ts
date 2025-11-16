@@ -15,7 +15,8 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        heading: ['var(--font-heading)', 'system-ui', 'sans-serif'],
+        heading: ['Garamond', 'Georgia', 'Cambria', 'serif'],
+        body: ['Inter', 'Open Sans', 'sans-serif'],
         orbitron: ['Orbitron', 'sans-serif'],
         audiowide: ['Audiowide', 'sans-serif'],
         rajdhani: ['Rajdhani', 'sans-serif'],

@@ -24,7 +24,7 @@ interface ThemeProviderProps {
 export const ThemeProvider = ({ children }: ThemeProviderProps) => {
   const [mode, setMode] = useState<ThemeMode>(() => {
     const stored = localStorage.getItem('theme-mode');
-    return (stored === 'academic' || stored === 'cosmic') ? stored : 'cosmic';
+    return (stored === 'academic' || stored === 'cosmic') ? stored : 'academic';
   });
 
   useEffect(() => {

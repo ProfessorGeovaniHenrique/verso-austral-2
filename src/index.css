@@ -4,6 +4,7 @@
 
 /* Importar estilos do tema acadêmico */
 @import './styles/academic-theme.css';
+@import './styles/versoaustral-theme.css';
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.

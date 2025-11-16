@@ -1,0 +1,104 @@
+/* VersoAustral - Tema Acadêmico baseado no Manual de Identidade Visual */
+
+:root[data-theme="academic"] {
+  /* ===== CORES PRIMÁRIAS VERSOAUSTRAL ===== */
+  /* Baseadas na bandeira do Rio Grande do Sul e na identidade da lira dourada */
+  
+  --va-verde-pampa: 142 52% 30%;      /* Verde da bandeira RS - hsl(142, 52%, 30%) = #24824A */
+  --va-vermelho-rs: 0 69% 50%;        /* Vermelho da bandeira RS - hsl(0, 69%, 50%) = #D62828 */
+  --va-dourado-lira: 45 100% 39%;     /* Dourado da lira - hsl(45, 100%, 39%) = #C79400 */
+  
+  /* ===== CORES SECUNDÁRIAS (Tons Claros) ===== */
+  --va-verde-claro: 142 52% 95%;      /* Background suave verde */
+  --va-vermelho-claro: 0 69% 96%;     /* Background suave vermelho */
+  --va-amarelo-claro: 45 100% 96%;    /* Background suave dourado */
+  
+  /* ===== APLICAÇÃO NO SISTEMA DE DESIGN ===== */
+  --primary: var(--va-vermelho-rs);
+  --primary-foreground: 0 0% 100%;
+  
+  --secondary: var(--va-verde-pampa);
+  --secondary-foreground: 0 0% 100%;
+  
+  --accent: var(--va-dourado-lira);
+  --accent-foreground: 0 0% 100%;
+  
+  /* Success usa o verde da bandeira */
+  --success: var(--va-verde-pampa);
+  --success-foreground: 0 0% 100%;
+  
+  /* Muted mantém tons neutros */
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  
+  /* Border suave */
+  --border: 214.3 31.8% 91.4%;
+  
+  /* Background principal */
+  --background: 0 0% 100%;
+  --foreground: 222.2 84% 4.9%;
+  
+  /* Card */
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 84% 4.9%;
+  
+  /* Popover */
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 84% 4.9%;
+  
+  /* Destructive */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  
+  /* Input */
+  --input: 214.3 31.8% 91.4%;
+  
+  /* Ring */
+  --ring: var(--va-vermelho-rs);
+  
+  /* Radius */
+  --radius: 0.5rem;
+}
+
+/* ===== APLICAÇÕES ESPECÍFICAS VERSOAUSTRAL ===== */
+
+/* Badges com cores da bandeira */
+.badge-verde-va {
+  @apply bg-[hsl(var(--va-verde-pampa))] text-white border-[hsl(var(--va-verde-pampa))];
+}
+
+.badge-vermelho-va {
+  @apply bg-[hsl(var(--va-vermelho-rs))] text-white border-[hsl(var(--va-vermelho-rs))];
+}
+
+.badge-dourado-va {
+  @apply bg-[hsl(var(--va-dourado-lira))] text-white border-[hsl(var(--va-dourado-lira))];
+}
+
+/* Botões VersoAustral */
+.btn-versoaustral-primary {
+  @apply bg-[hsl(var(--va-vermelho-rs))] text-white hover:bg-[hsl(var(--va-vermelho-rs))]/90;
+}
+
+.btn-versoaustral-secondary {
+  @apply bg-[hsl(var(--va-verde-pampa))] text-white hover:bg-[hsl(var(--va-verde-pampa))]/90;
+}
+
+.btn-versoaustral-accent {
+  @apply bg-[hsl(var(--va-dourado-lira))] text-white hover:bg-[hsl(var(--va-dourado-lira))]/90;
+}
+
+/* Cards com destaque VersoAustral */
+.card-versoaustral {
+  @apply border-[hsl(var(--va-verde-pampa))]/20 hover:border-[hsl(var(--va-vermelho-rs))]/40 transition-all;
+}
+
+/* Headers com identidade VersoAustral */
+.header-versoaustral {
+  @apply bg-background border-b-2 border-[hsl(var(--va-verde-pampa))];
+}
+
+/* Tipografia Garamond para títulos */
+.font-versoaustral-title {
+  @apply font-heading text-[hsl(var(--va-vermelho-rs))];
+}

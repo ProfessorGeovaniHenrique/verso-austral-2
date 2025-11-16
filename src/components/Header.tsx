@@ -1,33 +1,39 @@
 import logoUfrgs from "@/assets/logo-ufrgs.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
-import { Sparkles, Briefcase, BarChart3 } from "lucide-react";
+import logoVersoAustral from "@/assets/logo-versoaustral.png";
+import { BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/contexts/ThemeContext";
 import { Link } from "react-router-dom";
 
 const Header = () => {
-  const { mode, toggleTheme } = useTheme();
-  
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background">
-      <div className="container mx-auto px-4 py-2 flex items-center justify-between">
-        <div className="h-32 w-auto">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b-2 border-primary bg-background shadow-sm">
+      <div className="container mx-auto px-4 py-3 flex items-center justify-between gap-6">
+        <div className="h-20 w-auto flex-shrink-0">
           <img 
             src={logoUfrgs} 
             alt="UFRGS Logo" 
-            className="h-full w-auto object-contain opacity-90 hover:opacity-100 transition-opacity"
+            className="h-full w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+          />
+        </div>
+        
+        <div className="h-24 w-auto flex-shrink-0">
+          <img 
+            src={logoVersoAustral} 
+            alt="VersoAustral Logo" 
+            className="h-full w-auto object-contain"
           />
         </div>
         
         <div className="flex items-center gap-3">
           <Button
             asChild
-            variant="ghost"
+            variant="default"
             size="sm"
             className="flex items-center gap-2"
           >
             <Link to="/dashboard-mvp">
-              Ver Demo
+              Ver Demonstração
             </Link>
           </Button>
 
@@ -42,32 +48,13 @@ const Header = () => {
               DevOps
             </Link>
           </Button>
-
-          <Button
-            onClick={toggleTheme}
-            variant="outline"
-            size="lg"
-            className="flex items-center gap-2 font-medium transition-all hover:scale-105"
-          >
-            {mode === 'cosmic' ? (
-              <>
-                <Briefcase className="h-5 w-5" />
-                Modo Acadêmico
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-5 w-5" />
-                Modo Exploratório
-              </>
-            )}
-          </Button>
         </div>
 
-        <div className="h-32 w-auto">
+        <div className="h-20 w-auto flex-shrink-0">
           <img 
             src={logoPpglet} 
             alt="PPGLET Logo" 
-            className="h-full w-auto object-contain opacity-90 hover:opacity-100 transition-opacity"
+            className="h-full w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
           />
         </div>
       </div>
