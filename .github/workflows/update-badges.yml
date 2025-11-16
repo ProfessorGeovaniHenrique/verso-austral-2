@@ -1,0 +1,73 @@
+name: 🎨 Update Badges
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  schedule:
+    # Atualizar badges diariamente às 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-badges:
+    name: 📊 Atualizar Métricas e Badges
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout do código
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: 📦 Instalar dependências
+        run: npm ci
+
+      - name: 🎨 Gerar dados dos badges
+        run: npm run badge:generate
+
+      - name: 📊 Verificar mudanças
+        id: check_changes
+        run: |
+          if git diff --quiet public/badges/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: 📝 Commit e Push
+        if: steps.check_changes.outputs.changed == 'true'
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          
+          git add public/badges/
+          git commit -m "chore: update badge data [skip ci]"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📊 Resumo
+        run: |
+          echo "## 🎨 Badges Atualizados" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f public/badges/metrics.json ]; then
+            echo "### Métricas Atuais" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat public/badges/metrics.json >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Badges gerados em: \`public/badges/\`" >> $GITHUB_STEP_SUMMARY

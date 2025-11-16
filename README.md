@@ -1,9 +1,23 @@
 # Welcome to your Lovable project
 
-[![Quality Gate](https://github.com/your-username/your-repo/workflows/Quality%20Gate/badge.svg)](https://github.com/your-username/your-repo/actions)
-[![Test Corpus](https://github.com/your-username/your-repo/workflows/Test%20Corpus/badge.svg)](https://github.com/your-username/your-repo/actions)
-[![Version](https://img.shields.io/github/v/release/your-username/your-repo?label=version)](https://github.com/your-username/your-repo/releases)
-[![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue)](https://semver.org/)
+<!-- Badges de Status - Atualizados em tempo real -->
+[![Quality Gate](https://github.com/your-username/your-repo/workflows/Quality%20Gate/badge.svg)](https://github.com/your-username/your-repo/actions/workflows/pre-deployment-check.yml)
+[![Test Corpus](https://github.com/your-username/your-repo/workflows/Test%20Corpus/badge.svg)](https://github.com/your-username/your-repo/actions/workflows/test-corpus-integrity.yml)
+[![Auto Version](https://github.com/your-username/your-repo/workflows/Auto%20Version/badge.svg)](https://github.com/your-username/your-repo/actions/workflows/auto-version.yml)
+[![Update Badges](https://github.com/your-username/your-repo/workflows/Update%20Badges/badge.svg)](https://github.com/your-username/your-repo/actions/workflows/update-badges.yml)
+
+<!-- Badges de Métricas - Via shields.io endpoint -->
+[![Version](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/public/badges/version.json)](https://github.com/your-username/your-repo/releases)
+[![Tests](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/public/badges/tests.json)](https://github.com/your-username/your-repo/actions)
+[![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/public/badges/coverage.json)](https://github.com/your-username/your-repo)
+[![Corpus](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/your-username/your-repo/main/public/badges/corpus.json)](https://github.com/your-username/your-repo)
+
+<!-- Badges Estáticos -->
+[![Semantic Versioning](https://img.shields.io/badge/semver-2.0.0-blue?logo=semanticrelease)](https://semver.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.3+-61DAFB?logo=react)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0+-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Vite](https://img.shields.io/badge/Vite-5.0+-646CFF?logo=vite)](https://vitejs.dev/)
 
 ## Project info
 
@@ -88,3 +102,18 @@ This project uses **Semantic Versioning 2.0.0** with automatic version bumping b
 Current version: See [VERSION](VERSION) file or [Releases](https://github.com/your-username/your-repo/releases)
 
 Read more: [Version Guide](.github/VERSION_GUIDE.md)
+
+## 🎨 Badges & Metrics
+
+The badges at the top of this README are **updated in real-time**:
+
+- **Workflow Badges**: Updated automatically by GitHub Actions
+- **Metric Badges**: Generated daily and on every push via custom endpoint
+- **Static Badges**: Show technology stack and standards
+
+To update badges manually:
+```bash
+npm run badge:generate
+```
+
+Read more: [Badges Documentation](public/badges/README.md)
