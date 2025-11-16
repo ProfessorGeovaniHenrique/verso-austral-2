@@ -1,4 +1,4 @@
-import { LayoutDashboard, FolderOpen, Sparkles, FileText, CircuitBoard, Info } from "lucide-react";
+import { LayoutDashboard, FolderOpen, Sparkles, FileText, CircuitBoard, Info, BookOpen } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
@@ -35,6 +35,11 @@ const projectItems: any[] = [];
 
 const advancedItems = [
   { title: "Novas Funcionalidades (Beta)", url: "/advanced-mode", icon: Sparkles, disabled: false },
+];
+
+const devItems = [
+  { title: "Developer Logs", url: "/developer-logs", icon: BookOpen },
+  { title: "DevOps Metrics", url: "/devops-metrics", icon: CircuitBoard },
 ];
 
 export function AppSidebar() {
@@ -110,6 +115,31 @@ export function AppSidebar() {
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Developer Tools */}
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground">
+            Documentação
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {devItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild>
+                    <NavLink 
+                      to={item.url} 
+                      className="flex items-center gap-2 hover:bg-muted/50"
+                      activeClassName="bg-muted text-primary font-medium"
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {open && <span>{item.title}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

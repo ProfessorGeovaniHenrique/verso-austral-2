@@ -1,0 +1,315 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { PhaseTimeline } from "@/components/devlogs/PhaseTimeline";
+import { GrammarIntegration } from "@/components/devlogs/GrammarIntegration";
+import { TechnicalDecisions } from "@/components/devlogs/TechnicalDecisions";
+import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
+import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
+import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
+import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+export default function DeveloperLogs() {
+  const navigate = useNavigate();
+  const completedPhases = getCompletedPhases();
+  const inProgressPhases = getInProgressPhases();
+
+  const handleExportReport = () => {
+    // TODO: Implementar exportação para PDF/Markdown
+    console.log("Exportar relatório");
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/dashboard-mvp")}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Voltar
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight">📋 Developer Logs</h1>
+                <p className="text-muted-foreground mt-1">
+                  Documentação completa do processo de construção da plataforma
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm">
+                Atualizado em: {new Date().toLocaleDateString('pt-BR')}
+              </Badge>
+              <Button onClick={handleExportReport} variant="outline" className="gap-2">
+                <Download className="w-4 h-4" />
+                Exportar Relatório
+              </Button>
+            </div>
+          </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-4 gap-4 mt-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardDescription className="text-xs">Fases Totais</CardDescription>
+                <CardTitle className="text-2xl">{projectStats.totalPhases}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardDescription className="text-xs">Fases Concluídas</CardDescription>
+                <CardTitle className="text-2xl text-green-600">
+                  {projectStats.completedPhases}
+                </CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardDescription className="text-xs">Linhas de Código</CardDescription>
+                <CardTitle className="text-2xl">{projectStats.totalLinesOfCode.toLocaleString()}</CardTitle>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader className="pb-3">
+                <CardDescription className="text-xs">Decisões Técnicas</CardDescription>
+                <CardTitle className="text-2xl">{projectStats.totalDecisions}</CardTitle>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="timeline" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+            <TabsTrigger value="timeline" className="gap-2">
+              <Target className="w-4 h-4" />
+              <span className="hidden sm:inline">Timeline</span>
+            </TabsTrigger>
+            <TabsTrigger value="grammar" className="gap-2">
+              <BookOpen className="w-4 h-4" />
+              <span className="hidden sm:inline">Gramática</span>
+            </TabsTrigger>
+            <TabsTrigger value="decisions" className="gap-2">
+              <GitBranch className="w-4 h-4" />
+              <span className="hidden sm:inline">Decisões</span>
+            </TabsTrigger>
+            <TabsTrigger value="metrics" className="gap-2">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">Métricas</span>
+            </TabsTrigger>
+            <TabsTrigger value="roadmap" className="gap-2">
+              <FileText className="w-4 h-4" />
+              <span className="hidden sm:inline">Roadmap</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* TAB 1: Timeline de Fases */}
+          <TabsContent value="timeline" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Timeline de Desenvolvimento</CardTitle>
+                <CardDescription>
+                  Histórico cronológico das fases de construção da plataforma
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PhaseTimeline phases={constructionLog} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* TAB 2: Integração da Gramática de Castilho */}
+          <TabsContent value="grammar" className="space-y-6">
+            <GrammarIntegration phases={constructionLog} />
+          </TabsContent>
+
+          {/* TAB 3: Decisões Técnicas */}
+          <TabsContent value="decisions" className="space-y-6">
+            <TechnicalDecisions phases={constructionLog} />
+          </TabsContent>
+
+          {/* TAB 4: Evolução de Métricas */}
+          <TabsContent value="metrics" className="space-y-6">
+            <MetricsEvolution phases={constructionLog} />
+          </TabsContent>
+
+          {/* TAB 5: Roadmap */}
+          <TabsContent value="roadmap" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Roadmap de Desenvolvimento</CardTitle>
+                <CardDescription>
+                  Planejamento futuro e próximas implementações
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Fases Concluídas */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-600" />
+                      Concluído ({completedPhases.length} fases)
+                    </h3>
+                    <div className="space-y-3 pl-6">
+                      {completedPhases.map((phase, index) => (
+                        <div key={index} className="flex items-start gap-3 p-3 bg-green-50 dark:bg-green-950/20 rounded-lg border border-green-200 dark:border-green-900">
+                          <div className="w-2 h-2 rounded-full bg-green-600 mt-2" />
+                          <div className="flex-1">
+                            <div className="font-semibold text-green-900 dark:text-green-300">
+                              {phase.phase}
+                            </div>
+                            <div className="text-sm text-green-700 dark:text-green-400 mt-1">
+                              {phase.objective}
+                            </div>
+                            <Badge variant="outline" className="mt-2 text-xs">
+                              {phase.dateStart} - {phase.dateEnd}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Fases Em Progresso */}
+                  {inProgressPhases.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full bg-blue-600 animate-pulse" />
+                        Em Progresso ({inProgressPhases.length} fase{inProgressPhases.length > 1 ? 's' : ''})
+                      </h3>
+                      <div className="space-y-3 pl-6">
+                        {inProgressPhases.map((phase, index) => (
+                          <div key={index} className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-900">
+                            <div className="w-2 h-2 rounded-full bg-blue-600 mt-2 animate-pulse" />
+                            <div className="flex-1">
+                              <div className="font-semibold text-blue-900 dark:text-blue-300">
+                                {phase.phase}
+                              </div>
+                              <div className="text-sm text-blue-700 dark:text-blue-400 mt-1">
+                                {phase.objective}
+                              </div>
+                              {phase.nextSteps && phase.nextSteps.length > 0 && (
+                                <div className="mt-3 space-y-1">
+                                  <span className="text-xs font-semibold text-blue-900 dark:text-blue-300">
+                                    Próximos Passos:
+                                  </span>
+                                  <ul className="text-xs text-blue-800 dark:text-blue-400 space-y-1">
+                                    {phase.nextSteps.map((step, i) => (
+                                      <li key={i} className="flex items-start gap-2">
+                                        <span>→</span>
+                                        {step}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Fases Planejadas */}
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-muted-foreground" />
+                      Planejado ({constructionLog.filter(p => p.status === 'planned').length} fases)
+                    </h3>
+                    <div className="space-y-3 pl-6">
+                      {constructionLog
+                        .filter(p => p.status === 'planned')
+                        .map((phase, index) => (
+                          <div key={index} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg border border-border">
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground mt-2" />
+                            <div className="flex-1">
+                              <div className="font-semibold">
+                                {phase.phase}
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1">
+                                {phase.objective}
+                              </div>
+                              {phase.nextSteps && phase.nextSteps.length > 0 && (
+                                <div className="mt-3 space-y-1">
+                                  <span className="text-xs font-semibold text-muted-foreground">
+                                    A Implementar:
+                                  </span>
+                                  <ul className="text-xs text-muted-foreground space-y-1">
+                                    {phase.nextSteps.map((step, i) => (
+                                      <li key={i} className="flex items-start gap-2">
+                                        <span>•</span>
+                                        {step}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Changelog Científico */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Changelog Científico</CardTitle>
+                <CardDescription>
+                  Evolução dos fundamentos linguísticos da plataforma
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {scientificChangelog.map((version, index) => (
+                    <div key={index} className="border-l-2 border-primary pl-4 pb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="default">{version.version}</Badge>
+                        <span className="text-sm text-muted-foreground">{version.date}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground mb-2">
+                        <strong>Metodologia:</strong> {version.methodology}
+                      </div>
+                      <div className="space-y-2 mt-3">
+                        {version.scientificAdvances.map((advance, i) => (
+                          <div key={i} className="p-3 bg-muted/50 rounded-lg">
+                            <div className="font-semibold text-sm">{advance.feature}</div>
+                            <div className="text-xs text-muted-foreground mt-1">
+                              {advance.linguisticBasis}
+                            </div>
+                            {advance.accuracy && (
+                              <Badge variant="secondary" className="mt-2 text-xs">
+                                Precisão: {(advance.accuracy * 100).toFixed(0)}%
+                              </Badge>
+                            )}
+                            {advance.improvement && (
+                              <Badge variant="outline" className="mt-2 ml-2 text-xs text-green-600">
+                                {advance.improvement}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}

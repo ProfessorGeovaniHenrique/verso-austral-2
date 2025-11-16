@@ -16,6 +16,7 @@ import Dashboard8 from "./pages/Dashboard8";
 import DashboardMVP from "./pages/DashboardMVP";
 import AdvancedMode from "./pages/AdvancedMode";
 import DevOpsMetrics from "./pages/DevOpsMetrics";
+import DeveloperLogs from "./pages/DeveloperLogs";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
               <Route path="/advanced-mode" element={<AdvancedMode />} />
             </Route>
             <Route path="/devops-metrics" element={<DevOpsMetrics />} />
+            <Route path="/developer-logs" element={<DeveloperLogs />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
