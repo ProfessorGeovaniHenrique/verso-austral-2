@@ -18,7 +18,7 @@ export const grammarKnowledgeMetadata = {
   coverage: {
     verbos: {
       regulares: '100%',
-      irregulares: '50+ formas mais comuns',
+      irregulares: '50+ formas (incluindo regionais gauchescos)',
     },
     substantivos: {
       plural: 'Regras principais',
