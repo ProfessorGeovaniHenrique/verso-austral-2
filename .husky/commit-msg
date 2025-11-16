@@ -1,0 +1,43 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Validar formato de mensagem de commit (Conventional Commits)
+commit_msg_file=$1
+commit_msg=$(cat "$commit_msg_file")
+
+# Regex para Conventional Commits
+commit_regex='^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert)(\(.+\))?: .{1,}'
+
+if ! echo "$commit_msg" | grep -qE "$commit_regex"; then
+  echo ""
+  echo "❌ Mensagem de commit inválida!"
+  echo ""
+  echo "📝 Use o formato Conventional Commits:"
+  echo ""
+  echo "   <tipo>(<escopo>): <descrição>"
+  echo ""
+  echo "Tipos válidos:"
+  echo "   feat:     Nova funcionalidade"
+  echo "   fix:      Correção de bug"
+  echo "   docs:     Documentação"
+  echo "   style:    Formatação (não afeta lógica)"
+  echo "   refactor: Refatoração de código"
+  echo "   test:     Adicionar/corrigir testes"
+  echo "   chore:    Manutenção/config"
+  echo "   perf:     Melhoria de performance"
+  echo "   ci:       Configuração CI/CD"
+  echo "   build:    Sistema de build"
+  echo "   revert:   Reverter commit anterior"
+  echo ""
+  echo "Exemplos válidos:"
+  echo "   feat: adicionar análise de prosódia"
+  echo "   fix(corpus): corrigir lema de 'saudade'"
+  echo "   docs: atualizar README com instruções"
+  echo "   refactor: simplificar componente TabStatistics"
+  echo ""
+  echo "Sua mensagem: '$commit_msg'"
+  echo ""
+  echo "⚠️  Para bypass: git commit --no-verify"
+  echo ""
+  exit 1
+fi

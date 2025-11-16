@@ -1,0 +1,8 @@
+# Ignorar arquivo de configuração local do usuário
+.huskyrc
+
+# Manter os hooks versionados
+!pre-commit
+!pre-push
+!commit-msg
+!_/husky.sh

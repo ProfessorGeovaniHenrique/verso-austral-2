@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🚀 Executando validação pré-push..."
+echo ""
+
+# Executar suite completa de testes
+echo "🧪 Executando suite completa de testes..."
+npm run test:corpus
+
+# Se passou, continuar
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "✅ Todos os testes passaram! Push permitido."
+  echo ""
+else
+  echo ""
+  echo "❌ Testes falharam! Push bloqueado."
+  echo ""
+  echo "🔧 Para corrigir:"
+  echo "   1. Revise os erros acima"
+  echo "   2. Execute: npm run test:corpus para ver detalhes"
+  echo "   3. Corrija os problemas encontrados"
+  echo "   4. Tente push novamente"
+  echo ""
+  echo "⚠️  Para bypass (emergência): git push --no-verify"
+  echo ""
+  exit 1
+fi

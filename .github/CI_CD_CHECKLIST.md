@@ -78,7 +78,24 @@ npm run test:corpus:report
 5. Verificar que passou
 6. Criar PR e ver comentário automático
 
-### 6️⃣ Configurações Adicionais (⚙️ Opcional)
+### 6️⃣ Configurar Git Hooks Locais (🔒 Altamente Recomendado)
+
+**Husky já está configurado!** Apenas execute:
+
+```bash
+chmod +x scripts/setup-husky.sh
+./scripts/setup-husky.sh
+```
+
+**O que faz:**
+- ✅ Executa testes antes de cada commit (~5s)
+- ✅ Executa suite completa antes de push (~30s)
+- ✅ Valida formato de mensagem de commit
+- ✅ Bloqueia commit/push se houver falhas
+
+[Ver documentação completa do Husky](../.husky/SETUP_GUIDE.md)
+
+### 7️⃣ Configurações Adicionais (⚙️ Opcional)
 
 #### Notificações por Email
 - [ ] `Settings` → `Notifications` → Ativar para Actions
@@ -98,6 +115,8 @@ Após completar todos os itens:
 - ✅ **Workflows no GitHub funcionam**
 - ✅ **Branch protection ativo**
 - ✅ **Deploy bloqueado em caso de falha**
+- ✅ **Git hooks locais configurados (Husky)**
+- ✅ **Validação em 3 camadas:** Local → CI → Deploy
 
 ## 📊 Verificação de Funcionamento
 

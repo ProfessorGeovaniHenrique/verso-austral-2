@@ -1,0 +1,29 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Executando validação pré-commit..."
+echo ""
+
+# Executar auditoria rápida do corpus
+echo "📊 Auditando integridade do corpus..."
+npm run test:corpus:audit
+
+# Se passou, continuar
+if [ $? -eq 0 ]; then
+  echo ""
+  echo "✅ Auditoria passou! Commit permitido."
+  echo ""
+else
+  echo ""
+  echo "❌ Auditoria falhou! Commit bloqueado."
+  echo ""
+  echo "🔧 Para corrigir:"
+  echo "   1. Revise os erros acima"
+  echo "   2. Corrija os dados do corpus"
+  echo "   3. Execute: npm run test:corpus:audit"
+  echo "   4. Tente commitar novamente"
+  echo ""
+  echo "⚠️  Para bypass (emergência): git commit --no-verify"
+  echo ""
+  exit 1
+fi

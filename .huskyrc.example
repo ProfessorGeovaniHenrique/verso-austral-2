@@ -1,0 +1,25 @@
+# Exemplo de configuração personalizada do Husky
+# Copie para ~/.huskyrc para configuração global
+
+# Desabilitar Husky completamente
+# export HUSKY=0
+
+# Ativar modo debug
+# export HUSKY_DEBUG=1
+
+# Configurar timeout personalizado (em segundos)
+# export HUSKY_TIMEOUT=60
+
+# Adicionar Node/NPM ao PATH (se necessário)
+# export PATH="/usr/local/bin:$PATH"
+
+# Pular hooks em branches específicas
+# if [ "$(git rev-parse --abbrev-ref HEAD)" = "wip" ]; then
+#   export HUSKY=0
+# fi
+
+# Executar apenas em horário comercial (exemplo)
+# hour=$(date +%H)
+# if [ $hour -lt 9 ] || [ $hour -gt 18 ]; then
+#   export HUSKY=0
+# fi
