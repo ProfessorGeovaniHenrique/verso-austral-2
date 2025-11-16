@@ -18,8 +18,9 @@ interface ImportJob {
 }
 
 export function DictionaryImportInterface() {
-  const [jobs, setJobs] = useState<ImportJob[]>([]);
   const [isImporting, setIsImporting] = useState(false);
+  const { data: jobs, isLoading: jobsLoading } = useDictionaryImportJobs();
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   const importDialectalVolume = async (volumeNum: 'I' | 'II') => {
     setIsImporting(true);

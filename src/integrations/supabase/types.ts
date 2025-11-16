@@ -203,6 +203,57 @@ export type Database = {
         }
         Relationships: []
       }
+      dictionary_import_jobs: {
+        Row: {
+          atualizado_em: string | null
+          criado_em: string | null
+          erro_mensagem: string | null
+          erros: number | null
+          id: string
+          metadata: Json | null
+          progresso: number | null
+          status: string
+          tempo_fim: string | null
+          tempo_inicio: string | null
+          tipo_dicionario: string
+          total_verbetes: number | null
+          verbetes_inseridos: number | null
+          verbetes_processados: number | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          erro_mensagem?: string | null
+          erros?: number | null
+          id?: string
+          metadata?: Json | null
+          progresso?: number | null
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          tipo_dicionario: string
+          total_verbetes?: number | null
+          verbetes_inseridos?: number | null
+          verbetes_processados?: number | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          criado_em?: string | null
+          erro_mensagem?: string | null
+          erros?: number | null
+          id?: string
+          metadata?: Json | null
+          progresso?: number | null
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          tipo_dicionario?: string
+          total_verbetes?: number | null
+          verbetes_inseridos?: number | null
+          verbetes_processados?: number | null
+        }
+        Relationships: []
+      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null

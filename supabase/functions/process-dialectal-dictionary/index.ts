@@ -73,34 +73,129 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
   }
 }
 
+async function processInBackground(jobId: string, verbetes: string[], volumeNum: string) {
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
+
+  console.log(`[JOB ${jobId}] Iniciando processamento em background de ${verbetes.length} verbetes`);
+
+  await supabase
+    .from("dictionary_import_jobs")
+    .update({ 
+      status: 'processando',
+      total_verbetes: verbetes.length 
+    })
+    .eq('id', jobId);
+
+  let processados = 0, inseridos = 0, erros = 0;
+  const batchSize = 50;
+  
+  for (let i = 0; i < verbetes.length; i += batchSize) {
+    const batch = verbetes.slice(i, i + batchSize);
+    const verbetesParsed = [];
+    
+    for (const verbeteRaw of batch) {
+      if (!verbeteRaw || verbeteRaw.trim().length < 10) continue;
+      const verbete = parseVerbete(verbeteRaw.trim(), volumeNum);
+      if (verbete) {
+        verbetesParsed.push(verbete);
+      } else {
+        erros++;
+      }
+      processados++;
+    }
+
+    if (verbetesParsed.length > 0) {
+      const { error } = await supabase.from("dialectal_lexicon").insert(verbetesParsed);
+      if (error) {
+        console.error(`[JOB ${jobId}] Erro no batch ${i}-${i + batchSize}:`, error);
+        erros += verbetesParsed.length;
+      } else {
+        inseridos += verbetesParsed.length;
+      }
+    }
+
+    // Atualizar progresso a cada batch
+    await supabase
+      .from("dictionary_import_jobs")
+      .update({ 
+        verbetes_processados: processados,
+        verbetes_inseridos: inseridos,
+        erros: erros
+      })
+      .eq('id', jobId);
+
+    console.log(`[JOB ${jobId}] Progresso: ${processados}/${verbetes.length} (${Math.round(processados/verbetes.length*100)}%)`);
+  }
+
+  // Marcar como concluído
+  await supabase
+    .from("dictionary_import_jobs")
+    .update({ 
+      status: 'concluido',
+      verbetes_processados: processados,
+      verbetes_inseridos: inseridos,
+      erros: erros
+    })
+    .eq('id', jobId);
+
+  console.log(`[JOB ${jobId}] Concluído: ${inseridos} inseridos, ${erros} erros`);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const { fileContent, volumeNum } = await req.json();
-    console.log(`[VOLUME ${volumeNum}] Processando ${fileContent.length} caracteres`);
+    console.log(`[VOLUME ${volumeNum}] Recebendo ${fileContent.length} caracteres`);
 
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-    const verbetes = fileContent.split(/\n(?=[A-ZÁÀÃÉÊÍÓÔÚÇ\-]{3,}\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT)\))/);
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
     
+    const verbetes = fileContent.split(/\n(?=[A-ZÁÀÃÉÊÍÓÔÚÇ\-]{3,}\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT)\))/);
     console.log(`${verbetes.length} verbetes identificados`);
 
-    let processados = 0, erros = 0;
-    for (const verbeteRaw of verbetes) {
-      if (!verbeteRaw || verbeteRaw.trim().length < 10) continue;
-      const verbete = parseVerbete(verbeteRaw.trim(), volumeNum);
-      if (!verbete) { erros++; continue; }
+    // Criar job de importação
+    const { data: job, error: jobError } = await supabase
+      .from("dictionary_import_jobs")
+      .insert({
+        tipo_dicionario: `dialectal_${volumeNum}`,
+        status: 'iniciado',
+        total_verbetes: verbetes.length
+      })
+      .select()
+      .single();
 
-      const { error } = await supabase.from("dialectal_lexicon").insert(verbete);
-      if (error) erros++; else processados++;
+    if (jobError || !job) {
+      throw new Error(`Erro ao criar job: ${jobError?.message}`);
     }
 
-    console.log(`[VOLUME ${volumeNum}] Concluído: ${processados} inseridos, ${erros} erros`);
-    return new Response(JSON.stringify({ success: true, processados, erros }), 
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    console.log(`[JOB ${job.id}] Criado para Volume ${volumeNum}`);
+
+    // Processar em background (Deno Deploy suporta nativamente background tasks)
+    processInBackground(job.id, verbetes, volumeNum).catch(err => 
+      console.error(`[JOB ${job.id}] Erro no background:`, err)
+    );
+
+    // Retornar resposta imediata
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        jobId: job.id,
+        message: `Processamento iniciado em background. ${verbetes.length} verbetes serão processados.`
+      }), 
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
+    console.error("Erro:", error);
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return new Response(JSON.stringify({ error: errorMessage }), 
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(
+      JSON.stringify({ error: errorMessage }), 
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });
