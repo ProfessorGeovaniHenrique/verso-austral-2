@@ -10,18 +10,21 @@ const HowItWorksSection = () => {
       title: "1. Envie seu Corpus",
       description: "Faça upload de letras de músicas gaúchas ou obras literárias que deseja analisar, ou utilize nossa base de dados.",
       color: "text-success",
+      screenshot: "corpus",
     },
     {
       icon: Network,
       title: "2. Visualize os Temas",
       description: "Navegue por redes semânticas e nuvens de palavras que revelam os temas centrais do seu texto.",
       color: "text-primary",
+      screenshot: "dominios",
     },
     {
       icon: Download,
       title: "3. Exporte seus Dados",
       description: "Exporte planilhas e gráficos de alta qualidade, prontos para suas aulas, artigos ou apresentações.",
       color: "text-accent",
+      screenshot: "ferramentas",
     },
   ];
 
@@ -48,8 +51,12 @@ const HowItWorksSection = () => {
               <p className="text-muted-foreground leading-relaxed">
                 {step.description}
               </p>
-              <div className="mt-6 h-32 bg-muted/30 rounded-lg flex items-center justify-center text-muted-foreground text-sm italic">
-                Screenshot do protótipo será inserido aqui
+              <div className="mt-6 h-48 rounded-lg overflow-hidden border border-border">
+                <img 
+                  src={`/screenshots/dashboard-${step.screenshot}.png`}
+                  alt={`Screenshot - ${step.title}`}
+                  className="w-full h-full object-cover"
+                />
               </div>
             </Card>
           ))}

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Sparkles } from "lucide-react";
+import logoVersoAustral from "@/assets/logo-versoaustral.png";
 
 interface HeroSectionProps {
   onCtaClick: () => void;
@@ -10,6 +11,13 @@ const HeroSection = ({ onCtaClick }: HeroSectionProps) => {
   return (
     <section className="min-h-screen flex items-center justify-center px-4 pt-20">
       <div className="container max-w-5xl text-center">
+        <div className="mb-8 flex justify-center">
+          <img 
+            src={logoVersoAustral} 
+            alt="VersoAustral" 
+            className="h-32 w-auto object-contain"
+          />
+        </div>
         <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold font-heading mb-6 leading-tight">
           Descubra Padrões Culturais Gaúchos com{" "}
           <span className="text-primary">VersoAustral</span>
