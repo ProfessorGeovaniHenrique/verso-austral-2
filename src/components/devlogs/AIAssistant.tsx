@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Bot, Sparkles, AlertTriangle, Zap, Bug, Shield, TrendingUp, Clock, Copy, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Bot, Sparkles, AlertTriangle, Zap, Bug, Shield, TrendingUp, Clock, Copy, CheckCircle2, Loader2, X, Download, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
+import { exportAnalysisReport } from '@/utils/exportAnalysisReport';
 import { useAIAnalysisHistory, useSuggestionStatus } from '@/hooks/useAIAnalysisHistory';
 import { 
   backendBugs, 
@@ -313,10 +315,43 @@ export function AIAssistant({ triggerAnalysis, onAnalysisComplete }: AIAssistant
                   <Clock className="w-3 h-3 inline" /> {new Date(analysisResult.timestamp).toLocaleString('pt-BR')}
                 </CardDescription>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Badge variant="destructive">{analysisResult.summary.critical} Críticos</Badge>
                 <Badge variant="default">{analysisResult.summary.high} Altos</Badge>
                 <Badge variant="secondary">{analysisResult.summary.medium} Médios</Badge>
+                
+                {/* ✅ Dropdown de Download */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2">
+                      <Download className="w-4 h-4" />
+                      Exportar
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => exportAnalysisReport({ 
+                      format: 'pdf', 
+                      analysisResult 
+                    })}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      PDF (com código)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportAnalysisReport({ 
+                      format: 'markdown', 
+                      analysisResult 
+                    })}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      Markdown
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => exportAnalysisReport({ 
+                      format: 'json', 
+                      analysisResult 
+                    })}>
+                      <FileText className="w-4 h-4 mr-2" />
+                      JSON (dados brutos)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
           </CardHeader>

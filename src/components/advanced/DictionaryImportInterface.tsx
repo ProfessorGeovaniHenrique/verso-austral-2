@@ -20,10 +20,30 @@ export function DictionaryImportInterface() {
         ? '/src/data/dictionaries/dialectal-volume-I-raw.txt' 
         : '/src/data/dictionaries/dialectal-volume-II-raw.txt';
       
+      // ✅ VALIDAÇÃO 1: Verificar existência do arquivo
       const response = await fetch(fileName);
-      if (!response.ok) throw new Error('Falha ao carregar arquivo');
+      if (!response.ok) {
+        if (response.status === 404) {
+          toast.error(`Arquivo não encontrado: Volume ${volumeNum} não existe no diretório`);
+          setIsImporting(false);
+          return;
+        }
+        throw new Error(`Erro ${response.status}: ${response.statusText}`);
+      }
       
+      // ✅ VALIDAÇÃO 2: Verificar arquivo vazio
       const rawContent = await response.text();
+      if (!rawContent || rawContent.trim().length === 0) {
+        toast.error(`Arquivo vazio: O Volume ${volumeNum} não contém dados para importação`);
+        setIsImporting(false);
+        return;
+      }
+      
+      // ✅ VALIDAÇÃO 3: Verificar tamanho mínimo
+      if (rawContent.length < 100) {
+        toast.warning(`Arquivo muito pequeno: O Volume ${volumeNum} pode estar incompleto ou corrompido`);
+      }
+      
       const { preprocessDialectalText, getPreprocessingStats } = await import('@/lib/preprocessDialectalText');
       const processedContent = preprocessDialectalText(rawContent, volumeNum);
       const stats = getPreprocessingStats(processedContent);

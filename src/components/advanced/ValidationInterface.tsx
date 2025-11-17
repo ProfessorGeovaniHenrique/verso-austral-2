@@ -8,10 +8,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useHumanValidation } from '@/hooks/useHumanValidation';
 import { useTagsets } from '@/hooks/useTagsets';
 import { LexiconEntry } from '@/hooks/useBackendLexicon';
 import { Loader2 } from 'lucide-react';
+import { notifications } from '@/lib/notifications';
 
 interface ValidationInterfaceProps {
   entry: LexiconEntry | null;
@@ -26,12 +28,38 @@ export function ValidationInterface({ entry, open, onOpenChange, onSuccess }: Va
   const [prosodiaCorrigida, setProsodiaCorrigida] = useState('');
   const [justificativa, setJustificativa] = useState('');
   const [sugestaoNovoDS, setSugestaoNovoDS] = useState('');
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const { submitValidation, isSubmitting } = useHumanValidation();
   const { tagsets } = useTagsets();
 
+  const validateFields = (): boolean => {
+    const errors: string[] = [];
+    
+    if (status === 'incorrect') {
+      if (!tagsetCorrigido || tagsetCorrigido.trim() === '') {
+        errors.push('Selecione o tagset corrigido');
+      }
+      if (!prosodiaCorrigida || prosodiaCorrigida === '') {
+        errors.push('Informe a prosódia corrigida (-3 a +3)');
+      }
+      if (!justificativa || justificativa.trim().length < 10) {
+        errors.push('Justificativa deve ter pelo menos 10 caracteres');
+      }
+    }
+    
+    setValidationErrors(errors);
+    return errors.length === 0;
+  };
+
   const handleSubmit = async () => {
     if (!entry) return;
+
+    // ✅ Validar campos antes de submeter
+    if (!validateFields()) {
+      notifications.warning('Campos obrigatórios', 'Preencha todos os campos marcados como obrigatórios');
+      return;
+    }
 
     const success = await submitValidation({
       palavra: entry.palavra,
@@ -195,6 +223,19 @@ export function ValidationInterface({ entry, open, onOpenChange, onSuccess }: Va
             </CardContent>
           </Card>
         </div>
+
+        {/* ✅ Exibição de erros de validação */}
+        {validationErrors.length > 0 && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              <ul className="list-disc list-inside space-y-1">
+                {validationErrors.map((error, idx) => (
+                  <li key={idx}>{error}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
