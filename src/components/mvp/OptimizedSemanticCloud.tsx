@@ -1,8 +1,10 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import ReactWordcloud from 'react-wordcloud';
+import tippy from 'tippy.js';
 import 'tippy.js/dist/tippy.css';
 import 'tippy.js/animations/scale.css';
 import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -75,6 +77,7 @@ export function OptimizedSemanticCloud({
   const [isComparisonMode, setIsComparisonMode] = useState(false);
   const [comparisonDomains, setComparisonDomains] = useState<[string, string] | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [wordPadding, setWordPadding] = useState(4);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const { isOpen, closeModal, selectedWord, kwicData, isLoading, openModal } = useKWICModal();
@@ -152,20 +155,14 @@ export function OptimizedSemanticCloud({
       fontSizes: [14, 72] as [number, number],
       fontFamily: 'var(--font-sans), Inter, sans-serif',
       fontWeight: 'bold' as const,
-      padding: 4,
+      padding: wordPadding,
       scale: 'sqrt' as const,
       spiral: 'archimedean' as const,
       deterministic: false,
-      enableTooltip: true,
-      tooltipOptions: {
-        theme: 'light' as const,
-        animation: 'scale' as const,
-        arrow: true,
-        placement: 'top' as const,
-      },
+      enableTooltip: false,
       colors: words.map((w) => w.color),
     }),
-    [words]
+    [words, wordPadding]
   );
 
   const callbacks = useMemo(
@@ -183,6 +180,88 @@ export function OptimizedSemanticCloud({
           openModal(word.text);
           onWordClick?.(word.text);
         }
+      },
+      onWordMouseOver: (word: any, event: any) => {
+        const element = event.target;
+        const node = filteredNodes.find((n) => n.label === word.text);
+        if (!node) return;
+
+        const prosodyEmoji = (node.tooltip.prosody ?? 0) > 0 ? '😊' : (node.tooltip.prosody ?? 0) < 0 ? '😔' : '😐';
+
+        const content = viewMode === 'domains' ? `
+          <div style="padding: 12px; max-width: 300px; font-family: Inter;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+              <strong style="font-size: 17px; color: ${node.color};">${node.tooltip.nome || node.label}</strong>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">Ocorrências</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.ocorrencias || 0}</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">Percentual</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.percentual?.toFixed(1) || 0}%</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">Riqueza Lexical</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.riquezaLexical?.toFixed(2) || 0}</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">LL Médio</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.avgLL?.toFixed(2) || 'N/A'}</div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
+              💡 Clique para filtrar palavras-chave deste domínio
+            </div>
+          </div>
+        ` : `
+          <div style="padding: 12px; max-width: 300px; font-family: Inter;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+              <strong style="font-size: 17px;">${node.tooltip.palavra || node.label}</strong>
+              <span style="font-size: 20px;">${prosodyEmoji}</span>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background-color: ${node.color};"></div>
+              <span style="font-size: 13px; color: #666; font-weight: 500;">${node.tooltip.dominio || node.domain}</span>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">Frequência</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.frequencia || 0}</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">LL Score</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.ll?.toFixed(2) || 0}</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">MI Score</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.mi?.toFixed(2) || 'N/A'}</div>
+              </div>
+              <div>
+                <div style="color: #999; font-size: 10px; text-transform: uppercase; margin-bottom: 4px;">Significância</div>
+                <div style="font-weight: 700; color: #333; font-size: 15px;">${node.tooltip.significancia || 'N/A'}</div>
+              </div>
+            </div>
+            
+            <div style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #eee; font-size: 11px; color: #666;">
+              💡 Clique para ver concordância (KWIC)
+            </div>
+          </div>
+        `;
+
+        tippy(element, {
+          content,
+          allowHTML: true,
+          theme: 'light',
+          animation: 'scale',
+          arrow: true,
+          placement: 'top',
+        });
       },
       getWordTooltip: (word: any) => {
         const node = filteredNodes.find((n) => n.label === word.text);
@@ -327,7 +406,7 @@ export function OptimizedSemanticCloud({
   return (
     <div className="space-y-4">
       {/* Comparison Mode Toggle */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tour="cloud-comparison">
         <Switch
           checked={isComparisonMode}
           onCheckedChange={(checked) => {
@@ -395,7 +474,7 @@ export function OptimizedSemanticCloud({
       {!isComparisonMode && (
         <>
           {/* Filter Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3" data-tour="cloud-filters">
             {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -514,8 +593,34 @@ export function OptimizedSemanticCloud({
             </div>
           )}
 
+          {/* Spacing Slider Control */}
+          <div className="flex items-center gap-4 p-4 bg-secondary/10 rounded-lg" data-tour="cloud-spacing-slider">
+            <Label className="text-sm font-medium whitespace-nowrap">
+              Espaçamento entre palavras:
+            </Label>
+            <Slider
+              value={[wordPadding]}
+              onValueChange={(value) => setWordPadding(value[0])}
+              min={1}
+              max={15}
+              step={1}
+              className="flex-1"
+            />
+            <Badge variant="secondary" className="min-w-[60px] justify-center">
+              {wordPadding}px
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setWordPadding(4)}
+              className="whitespace-nowrap"
+            >
+              Restaurar
+            </Button>
+          </div>
+
           {/* View Mode Controls */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3" data-tour="cloud-toggle">
             <div className="flex gap-2">
               <Button
                 variant={viewMode === 'domains' ? 'default' : 'outline'}
@@ -654,12 +759,14 @@ export function OptimizedSemanticCloud({
                   </div>
                 </div>
               ) : (
-                <ReactWordcloud
-                  words={words}
-                  options={options}
-                  callbacks={callbacks}
-                  size={[dimensions.width, dimensions.height]}
-                />
+                <div className="h-[700px] flex items-center justify-center" data-tour="cloud-canvas">
+                  <ReactWordcloud
+                    words={words}
+                    options={options}
+                    callbacks={callbacks}
+                    size={[dimensions.width, dimensions.height]}
+                  />
+                </div>
               )}
             </motion.div>
           </AnimatePresence>

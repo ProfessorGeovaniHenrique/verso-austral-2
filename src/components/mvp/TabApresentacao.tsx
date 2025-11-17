@@ -8,10 +8,22 @@ import { TabDomains } from "./TabDomains";
 import { TabStatistics } from "./TabStatistics";
 import { TabGalaxy } from "./TabGalaxy";
 import { useApresentacaoTour } from "@/hooks/useApresentacaoTour";
+import { useDomainsTour } from "@/hooks/useDomainsTour";
+import { useCloudTour } from "@/hooks/useCloudTour";
+import { useStatisticsTour } from "@/hooks/useStatisticsTour";
 
 export function TabApresentacao() {
   const [currentTab, setCurrentTab] = useState("intro");
   const { startTour } = useApresentacaoTour({ autoStart: true });
+  
+  // Tour hooks para cada aba
+  const [showDomainsTour, setShowDomainsTour] = useState(false);
+  const [showCloudTour, setShowCloudTour] = useState(false);
+  const [showStatsTour, setShowStatsTour] = useState(false);
+  
+  useDomainsTour(showDomainsTour);
+  useCloudTour(showCloudTour);
+  useStatisticsTour(showStatsTour);
 
   return (
     <Card className="card-academic">
