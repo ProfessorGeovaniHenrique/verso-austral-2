@@ -253,17 +253,27 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Validação do body primeiro para verificar demo_mode
+    // Parsing e logging do body recebido
     const rawBody = await req.json();
+    console.log('[annotate-semantic] 📥 Payload recebido:', {
+      corpus_type: rawBody.corpus_type,
+      demo_mode: rawBody.demo_mode,
+      demo_mode_type: typeof rawBody.demo_mode,
+      has_auth_header: !!req.headers.get('authorization')
+    });
+    
     const validatedRequest = validateRequest(rawBody);
-    const { corpus_type, custom_text, artist_filter, start_line, end_line, demo_mode } = validatedRequest;
-
+    const { corpus_type, custom_text, artist_filter, start_line, end_line } = validatedRequest;
+    
+    // VERIFICAR DEMO_MODE ANTES DE QUALQUER COISA
+    const demo_mode = rawBody.demo_mode === true || rawBody.demo_mode === 'true';
+    
     let userId: string;
 
     // Modo DEMO: não requer autenticação - PRIORIDADE MÁXIMA
-    if (demo_mode === true) {
+    if (demo_mode) {
       userId = '00000000-0000-0000-0000-000000000000';
-      console.log('[annotate-semantic] 🎭 MODO DEMO ativado - processamento sem autenticação');
+      console.log('[annotate-semantic] 🎭 MODO DEMO ATIVADO - Bypass de autenticação');
     } else {
       // Modo normal: REQUER autenticação válida
       const authHeader = req.headers.get('authorization');
