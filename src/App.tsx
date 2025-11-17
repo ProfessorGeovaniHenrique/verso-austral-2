@@ -43,25 +43,26 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/dashboard2" element={<Dashboard2 />} />
-              <Route path="/dashboard3" element={<Dashboard3 />} />
-              <Route path="/dashboard4" element={<Dashboard4 />} />
-              <Route path="/dashboard5" element={<Dashboard5 />} />
-              <Route path="/dashboard7" element={<Dashboard7 />} />
-              <Route path="/dashboard8" element={<Dashboard8 />} />
-              <Route path="/dashboard-mvp" element={<DashboardMVP />} />
-              <Route path="/dashboard" element={<DashboardMVP />} />
-              <Route 
-                path="/advanced-mode" 
-                element={
-                  <ProtectedRoute>
-                    <AdvancedMode />
-                  </ProtectedRoute>
-                } 
-              />
-            </Route>
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard2" element={<Dashboard2 />} />
+          <Route path="/dashboard3" element={<Dashboard3 />} />
+          <Route path="/dashboard4" element={<Dashboard4 />} />
+          <Route path="/dashboard5" element={<Dashboard5 />} />
+          <Route path="/dashboard7" element={<Dashboard7 />} />
+          <Route path="/dashboard8" element={<Dashboard8 />} />
+          <Route 
+            path="/advanced-mode" 
+            element={
+              <ProtectedRoute>
+                <AdvancedMode />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+
+        {/* Rota independente para DashboardMVP (sem AppLayout para evitar duplo header) */}
+        <Route path="/dashboard-mvp" element={<DashboardMVP />} />
             <Route 
               path="/admin/dashboard" 
               element={

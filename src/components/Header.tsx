@@ -27,6 +27,7 @@ import {
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
 import logoUfrgs from "@/assets/logo-ufrgs-oficial.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
+import { MobileMenu } from "@/components/MobileMenu";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -43,23 +44,23 @@ const Header = () => {
     return user.email.charAt(0).toUpperCase();
   };
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b-2 border-primary bg-background shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b-2 border-primary bg-background shadow-sm header-animated">
       <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-4">
-        <div className="hidden md:flex h-14 w-auto">
+        <div className="hidden md:flex h-14 w-auto logo-animated">
           <img 
             src={logoUfrgs} 
             alt="UFRGS - Universidade Federal do Rio Grande do Sul" 
             className="h-full w-auto object-contain"
           />
         </div>
-        <div className="h-20 w-auto">
+        <div className="h-20 w-auto logo-animated">
           <img 
             src={logoVersoAustral} 
             alt="VersoAustral - Análise de Estilística de Corpus" 
             className="h-full w-auto object-contain"
           />
         </div>
-        <div className="hidden md:flex h-14 w-auto">
+        <div className="hidden md:flex h-14 w-auto logo-animated">
           <img 
             src={logoPpglet} 
             alt="PPGLET" 
@@ -68,6 +69,8 @@ const Header = () => {
         </div>
         
         <div className="flex items-center gap-2">
+          {/* Desktop Controls */}
+          <div className="hidden md:flex items-center gap-2">
           <Button
             variant="ghost"
             size="icon"

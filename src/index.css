@@ -16,6 +16,51 @@ All colors MUST be HSL.
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
   }
 
+  /* Header Entry Animations */
+  @keyframes slide-down {
+    from {
+      opacity: 0;
+      transform: translateY(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in-scale {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .header-animated {
+    animation: slide-down 0.6s ease-out;
+  }
+
+  .logo-animated {
+    animation: fade-in-scale 0.8s ease-out;
+    opacity: 0;
+    animation-fill-mode: forwards;
+  }
+
+  .logo-animated:nth-child(1) {
+    animation-delay: 0.1s;
+  }
+
+  .logo-animated:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .logo-animated:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
   /* Tema Cosmic (Sci-Fi Espacial) - Padrão */
   :root, [data-theme="cosmic"] {
     /* Cores Base - Espaço Profundo */
