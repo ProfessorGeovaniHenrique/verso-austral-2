@@ -6,7 +6,7 @@ export default function AppLayout() {
     <>
       <Header />
       <div className="min-h-screen w-full">
-        <main className="pt-36">
+        <main className="pt-32">
           <Outlet />
         </main>
       </div>

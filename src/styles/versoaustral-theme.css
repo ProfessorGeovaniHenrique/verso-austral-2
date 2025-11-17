@@ -102,3 +102,8 @@
 .font-versoaustral-title {
   @apply font-heading text-[hsl(var(--va-vermelho-rs))];
 }
+
+/* Subtítulo do Corpus - Melhor contraste */
+.corpus-subtitle {
+  @apply text-foreground/70 font-medium;
+}

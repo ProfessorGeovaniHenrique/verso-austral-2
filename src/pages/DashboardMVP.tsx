@@ -11,7 +11,7 @@ export default function DashboardMVP() {
     <div className="min-h-screen bg-background" data-theme="academic">
       <MVPHeader />
 
-      <main className="container-academic py-8">
+      <main className="container-academic py-8 mt-40">
         <Tabs defaultValue="apresentacao" className="space-y-6">
           <TabsList className="tabs-academic grid w-full max-w-3xl mx-auto grid-cols-3">
             <TabsTrigger value="apresentacao" className="flex items-center gap-2">
