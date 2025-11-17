@@ -6,10 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb } from "lucide-react";
+import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb, HelpCircle } from "lucide-react";
 import { getDemoAnalysisResults, DemoDomain } from "@/services/demoCorpusService";
 import { palavrasChaveData } from "@/data/mockup/palavras-chave";
 import { toast } from "sonner";
+import { useDomainsTour } from "@/hooks/useDomainsTour";
+import { exportDomainsToPDF } from "@/utils/exportDomainsPDF";
+import { DomainComparison } from "./DomainComparison";
 
 interface TabDomainsProps {
   demo?: boolean;
@@ -20,6 +23,9 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
   const [demoKeywords, setDemoKeywords] = useState<any[] | null>(null);
   const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [showTour, setShowTour] = useState(false);
+  
+  useDomainsTour(showTour);
 
   useEffect(() => {
     if (demo) {
@@ -123,7 +129,28 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
   };
 
   const handleGenerateReport = () => {
-    toast.info('Funcionalidade de relatório PDF em desenvolvimento');
+    if (!demoData || !insights) {
+      toast.error('Carregue os dados primeiro');
+      return;
+    }
+
+    try {
+      exportDomainsToPDF({
+        dominios: demoData,
+        estatisticas: {
+          totalDominios: demoData.length,
+          dominante: {
+            nome: insights.dominante.dominio,
+            percentual: insights.dominante.percentual
+          },
+          densidadeLexical: insights.densidadeLexical
+        }
+      });
+      toast.success('Relatório PDF gerado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao gerar PDF:', error);
+      toast.error('Erro ao gerar relatório');
+    }
   };
 
   if (isLoadingDemo) {
@@ -173,7 +200,11 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                 Análise pré-processada com suporte computacional, utilizando métricas de keyness (Log-Likelihood e Mutual Information)
               </CardDescription>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-tour="domains-export">
+              <Button variant="outline" size="sm" onClick={() => setShowTour(true)}>
+                <HelpCircle className="w-4 h-4 mr-2" />
+                Tour Guiado
+              </Button>
               <Button variant="outline" size="sm" onClick={handleExportCSV}>
                 <Download className="w-4 h-4 mr-2" />
                 Exportar CSV
@@ -188,6 +219,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
         <CardContent>
           <div className="flex items-center gap-2">
             <Input 
+              data-tour="domains-search"
               placeholder="Buscar domínio..." 
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -199,7 +231,8 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Cards de Domínios (2/3 da largura) */}
-        <div className="xl:col-span-2 space-y-4">
+        <div className="xl:col-span-2 space-y-4" data-tour="domains-table">
+          <TooltipProvider delayDuration={300}>
           {dominiosFiltrados.map((dominio) => (
             <Card key={dominio.dominio} className="card-academic overflow-hidden">
               {/* Header do Card */}
@@ -264,8 +297,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                       const wordData = findWordData(palavra);
                       
                       return (
-                        <TooltipProvider key={idx}>
-                          <Tooltip>
+                        <Tooltip key={idx}>
                             <TooltipTrigger asChild>
                               <Badge 
                                 variant="outline"
@@ -333,18 +365,18 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                               </TooltipContent>
                             )}
                           </Tooltip>
-                        </TooltipProvider>
                       );
                     })}
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+            ))}
+          </TooltipProvider>
         </div>
 
         {/* Painel Lateral de Insights (1/3 da largura) */}
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="domains-insights">
           <Card className="card-academic">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -417,6 +449,11 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
           </Card>
         </div>
       </div>
+      
+      {/* Componente de Comparação de Domínios */}
+      {demoData && demoData.length >= 2 && (
+        <DomainComparison dominios={demoData} />
+      )}
     </div>
   );
 }

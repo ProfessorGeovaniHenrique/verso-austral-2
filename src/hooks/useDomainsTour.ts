@@ -131,11 +131,39 @@ export function useDomainsTour(enabled: boolean = false) {
       ]
     });
 
-    // Passo 6: Conclusão
+    // Passo 6: Tooltips Interativos
+    tour.addStep({
+      id: 'tooltips',
+      title: '🔍 Tooltips Interativos',
+      text: `<p>Passe o mouse sobre <strong>qualquer palavra-chave</strong> nos cards de domínios para ver estatísticas detalhadas:</p>
+             <ul style="margin-top: 8px; padding-left: 20px;">
+               <li><strong>Frequência Normalizada</strong>: Percentual de uso no corpus</li>
+               <li><strong>Prosódia Semântica</strong>: Conotação (Positiva/Negativa/Neutra)</li>
+               <li><strong>Log-Likelihood (LL)</strong>: Medida estatística de keyness</li>
+               <li><strong>Mutual Information (MI)</strong>: Força de associação com o domínio</li>
+             </ul>
+             <p style="margin-top: 8px;"><em>Experimente agora: passe o mouse sobre a palavra "pampa" ou "gateada"!</em></p>`,
+      attachTo: {
+        element: '[data-tour="domains-table"]',
+        on: 'top'
+      },
+      buttons: [
+        {
+          text: 'Voltar',
+          action: tour.back
+        },
+        {
+          text: 'Próximo',
+          action: tour.next
+        }
+      ]
+    });
+
+    // Passo 7: Conclusão
     tour.addStep({
       id: 'conclusion',
       title: 'Pronto para Explorar! ✅',
-      text: `Você agora conhece todas as ferramentas da aba de Domínios Semânticos. 
+      text: `Você agora conhece todas as ferramentas da aba de Domínios Semânticos.
              <p style="margin-top: 8px;">Use a análise comparativa para entender quais temas 
              são mais representativos da música gaúcha em relação ao corpus de referência.</p>
              <p style="margin-top: 8px;"><strong>Dica:</strong> Combine a visualização desta aba 
