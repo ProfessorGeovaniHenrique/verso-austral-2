@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo } from "react";
 import { getDemoAnalysisResults } from "@/services/demoCorpusService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { DemoSemanticCloud, CloudNode } from "./DemoSemanticCloud";
+import { OptimizedSemanticCloud } from "./OptimizedSemanticCloud";
 
 interface TabGalaxyProps {
   demo?: boolean;
@@ -161,33 +161,15 @@ export function TabGalaxy({ demo = false }: TabGalaxyProps) {
         </CardHeader>
 
         <CardContent>
-          <DemoSemanticCloud 
+          <OptimizedSemanticCloud 
             nodes={cloudNodes}
-            onWordClick={(node) => {
-              console.log('Palavra clicada:', node);
-              toast.info(`Clicou em: ${node.label}`);
-              // TODO: Abrir modal KWIC
+            onWordClick={(word) => {
+              console.log('Palavra clicada:', word);
             }}
             onDomainClick={(domain) => {
-              console.log('Domínio clicado:', domain);
-              toast.info(`Filtrar por domínio: ${domain}`);
-              // TODO: Implementar filtro por domínio
+              console.log('Domínio clicado para filtro:', domain);
             }}
           />
-          
-          <div className="flex items-center gap-2 text-sm text-muted-foreground justify-center mt-4">
-            {viewMode === 'domains' ? (
-              <>
-                <Layers className="w-4 h-4" />
-                <span>{cloudNodes.length} domínios semânticos identificados</span>
-              </>
-            ) : (
-              <>
-                <Tag className="w-4 h-4" />
-                <span>{cloudNodes.length} palavras-chave estatisticamente significativas</span>
-              </>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>
