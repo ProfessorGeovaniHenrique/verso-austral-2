@@ -107,3 +107,19 @@
 .corpus-subtitle {
   @apply text-foreground/70 font-medium;
 }
+
+/* Botões de navegação customizados para DashboardMVP */
+.tabs-academic-trigger {
+  @apply inline-flex items-center justify-center gap-2 rounded-sm px-4 py-2.5;
+  @apply text-sm font-medium text-muted-foreground;
+  @apply transition-all duration-200;
+  @apply hover:bg-accent/10 hover:text-accent-foreground;
+  @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  @apply disabled:pointer-events-none disabled:opacity-50;
+}
+
+.tabs-academic-trigger.active {
+  @apply bg-background text-foreground shadow-sm;
+  @apply border-b-2 border-[hsl(var(--va-verde-pampa))];
+  @apply font-semibold;
+}
