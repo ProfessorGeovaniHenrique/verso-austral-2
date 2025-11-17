@@ -60,6 +60,11 @@ export function TagsetEditor({ tagset, allTagsets, onSave, onClose }: TagsetEdit
     t.status === 'ativo'
   ).sort((a, b) => (a.hierarquia_completa || a.nome).localeCompare(b.hierarquia_completa || b.nome));
 
+  // Validar código único (exceto o próprio tagset)
+  const isCodeUnique = (code: string): boolean => {
+    return !allTagsets.some(t => t.codigo === code && t.id !== tagset.id);
+  };
+
   const handleSubmit = async () => {
     try {
       setErrors({});
@@ -76,6 +81,12 @@ export function TagsetEditor({ tagset, allTagsets, onSave, onClose }: TagsetEdit
           .map(e => e.trim())
           .filter(e => e.length > 0)
       };
+
+      // Validar código único
+      if (!isCodeUnique(dataToValidate.codigo)) {
+        setErrors({ codigo: 'Este código já existe. Escolha outro código.' });
+        return;
+      }
 
       // Validar código hierárquico
       const codeParts = dataToValidate.codigo.split('.');

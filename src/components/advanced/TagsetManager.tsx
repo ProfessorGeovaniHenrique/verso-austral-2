@@ -4,15 +4,17 @@ import { Button } from '@/components/ui/button';
 import { useTagsets, Tagset } from '@/hooks/useTagsets';
 import { TagsetHierarchyTree } from './TagsetHierarchyTree';
 import { TagsetEditor } from './TagsetEditor';
-import { RefreshCw, CheckSquare, Square, ListChecks } from 'lucide-react';
+import { TagsetCreator } from './TagsetCreator';
+import { RefreshCw, CheckSquare, Square, ListChecks, Plus } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
 export function TagsetManager() {
-  const { tagsets, stats, isLoading, refetch, approveTagsets, rejectTagsets, updateTagset } = useTagsets();
+  const { tagsets, stats, isLoading, refetch, approveTagsets, rejectTagsets, updateTagset, proposeTagset } = useTagsets();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [editingTagset, setEditingTagset] = useState<Tagset | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -109,6 +111,12 @@ export function TagsetManager() {
     setEditingTagset(null);
   };
 
+  const handleCreateTagset = async (newTagset: Partial<Tagset>) => {
+    await proposeTagset(newTagset as any);
+    await refetch();
+    setIsCreating(false);
+  };
+
   const pendingCount = tagsets.filter(t => t.status !== 'ativo' && !t.aprovado_por).length;
 
   if (isLoading) {
@@ -132,15 +140,26 @@ export function TagsetManager() {
                 {pendingCount > 0 && ` | ${pendingCount} pendentes`}
               </CardDescription>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => setIsCreating(true)}
+                className="gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Novo DS Geral (Nível 1)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetch()}
+                disabled={isLoading}
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Atualizar
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -232,6 +251,16 @@ export function TagsetManager() {
           allTagsets={tagsets}
           onSave={handleSaveTagset}
           onClose={() => setEditingTagset(null)}
+        />
+      )}
+
+      {/* Modal de Criação */}
+      {isCreating && (
+        <TagsetCreator
+          allTagsets={tagsets}
+          onSave={handleCreateTagset}
+          onClose={() => setIsCreating(false)}
+          defaultLevel={1}
         />
       )}
     </>

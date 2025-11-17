@@ -10,6 +10,7 @@ export { ValidationInterface } from './ValidationInterface';
 export { TagsetManager } from './TagsetManager';
 export { TagsetHierarchyTree } from './TagsetHierarchyTree';
 export { TagsetEditor } from './TagsetEditor';
+export { TagsetCreator } from './TagsetCreator';
 export { JobsMonitor } from './JobsMonitor';
 export { DictionaryImportTester } from './DictionaryImportTester';
 
