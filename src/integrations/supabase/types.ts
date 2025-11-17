@@ -1226,6 +1226,16 @@ export type Database = {
     Functions: {
       calculate_tagset_hierarchy: { Args: never; Returns: undefined }
       generate_invite_key: { Args: never; Returns: string }
+      get_users_with_roles: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          last_sign_in_at: string
+          role: Database["public"]["Enums"]["app_role"]
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -4,6 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -36,15 +43,21 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 type InviteKey = Database["public"]["Tables"]["invite_keys"]["Row"];
+type AppRole = Database["public"]["Enums"]["app_role"];
+
+interface InviteWithUser extends InviteKey {
+  used_by_email?: string;
+}
 
 export default function AdminDashboard() {
-  const [invites, setInvites] = useState<InviteKey[]>([]);
+  const [invites, setInvites] = useState<InviteWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [creatingInvite, setCreatingInvite] = useState(false);
   const [expiresAt, setExpiresAt] = useState("");
   const [notes, setNotes] = useState("");
+  const [roleForInvite, setRoleForInvite] = useState<AppRole>("evaluator");
   const [filterTab, setFilterTab] = useState("all");
 
   useEffect(() => {
@@ -53,13 +66,27 @@ export default function AdminDashboard() {
 
   const fetchInvites = async () => {
     try {
+      // Buscar convites com informação do usuário que usou
       const { data, error } = await supabase
         .from("invite_keys")
         .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setInvites(data || []);
+
+      // Buscar emails dos usuários que usaram os convites
+      const invitesWithUsers = await Promise.all(
+        (data || []).map(async (invite) => {
+          if (invite.used_by) {
+            const { data: userData } = await supabase.rpc("get_users_with_roles");
+            const user = userData?.find((u) => u.id === invite.used_by);
+            return { ...invite, used_by_email: user?.email };
+          }
+          return invite;
+        })
+      );
+
+      setInvites(invitesWithUsers);
     } catch (error: any) {
       toast.error("Erro ao carregar convites");
       console.error(error);
@@ -84,6 +111,7 @@ export default function AdminDashboard() {
           key_code: keyCode,
           expires_at: expiresAt || null,
           notes: notes || null,
+          role: roleForInvite,
         });
 
       if (insertError) throw insertError;
@@ -92,6 +120,7 @@ export default function AdminDashboard() {
       setIsDialogOpen(false);
       setExpiresAt("");
       setNotes("");
+      setRoleForInvite("evaluator");
       fetchInvites();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar convite");
@@ -166,10 +195,22 @@ export default function AdminDashboard() {
               <DialogHeader>
                 <DialogTitle>Criar Novo Convite</DialogTitle>
                 <DialogDescription>
-                  Gere um código de convite para novos avaliadores
+                  Gere um código de convite para novos usuários
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role a Atribuir</Label>
+                  <Select value={roleForInvite} onValueChange={(value) => setRoleForInvite(value as AppRole)}>
+                    <SelectTrigger id="role">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="evaluator">Avaliador</SelectItem>
+                      <SelectItem value="admin">Administrador</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="expires">Data de Expiração (Opcional)</Label>
                   <Input
@@ -281,6 +322,7 @@ export default function AdminDashboard() {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Código</TableHead>
+                          <TableHead>Role</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Criado em</TableHead>
                           <TableHead>Expira em</TableHead>
@@ -302,6 +344,17 @@ export default function AdminDashboard() {
                             <TableRow key={invite.id}>
                               <TableCell className="font-mono font-bold">
                                 {invite.key_code}
+                              </TableCell>
+                              <TableCell>
+                                {invite.role === "admin" ? (
+                                  <Badge className="bg-red-500/10 text-red-500">
+                                    Admin
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-blue-500/10 text-blue-500">
+                                    Avaliador
+                                  </Badge>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {isUsed ? (
@@ -344,13 +397,21 @@ export default function AdminDashboard() {
                                 )}
                               </TableCell>
                               <TableCell className="text-sm">
-                                {invite.used_at
-                                  ? format(
-                                      new Date(invite.used_at),
-                                      "dd/MM/yyyy HH:mm",
-                                      { locale: ptBR }
-                                    )
-                                  : "-"}
+                                {invite.used_by_email ? (
+                                  <div className="flex flex-col">
+                                    <span className="font-medium">{invite.used_by_email}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {invite.used_at &&
+                                        format(
+                                          new Date(invite.used_at),
+                                          "dd/MM/yyyy HH:mm",
+                                          { locale: ptBR }
+                                        )}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  "-"
+                                )}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">
                                 {invite.notes || "-"}

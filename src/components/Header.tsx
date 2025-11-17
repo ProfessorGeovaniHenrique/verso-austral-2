@@ -10,7 +10,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, LogOut, Shield } from "lucide-react";
+import { 
+  User, 
+  LogOut, 
+  Shield, 
+  Users, 
+  Key, 
+  BarChart3, 
+  Database,
+  BookOpen,
+  CircuitBoard
+} from "lucide-react";
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
 import logoUfrgs from "@/assets/logo-ufrgs-oficial.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
@@ -82,13 +92,45 @@ const Header = () => {
               </DropdownMenuItem>
               {isAdmin() && (
                 <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Administração
+                  </DropdownMenuLabel>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/admin/users")}>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Gerenciar Usuários</span>
+                  </DropdownMenuItem>
+                  
                   <DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-                    <Shield className="mr-2 h-4 w-4" />
+                    <Key className="mr-2 h-4 w-4" />
                     <span>Gerenciar Convites</span>
                   </DropdownMenuItem>
+                  
                   <DropdownMenuItem onClick={() => navigate("/admin/metrics")}>
-                    <Shield className="mr-2 h-4 w-4" />
+                    <BarChart3 className="mr-2 h-4 w-4" />
                     <span>Métricas do Sistema</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/admin/lexicon-setup")}>
+                    <Database className="mr-2 h-4 w-4" />
+                    <span>Configuração de Léxico</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuSeparator />
+                  
+                  <DropdownMenuLabel className="text-xs text-muted-foreground">
+                    Desenvolvimento
+                  </DropdownMenuLabel>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/developer-logs")}>
+                    <BookOpen className="mr-2 h-4 w-4" />
+                    <span>Developer Logs</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/devops-metrics")}>
+                    <CircuitBoard className="mr-2 h-4 w-4" />
+                    <span>DevOps Metrics</span>
                   </DropdownMenuItem>
                 </>
               )}
