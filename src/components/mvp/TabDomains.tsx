@@ -347,23 +347,25 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                 <div>
                   <p className="text-sm font-medium mb-2">Palavras-chave identificadas ({dominio.palavras.length}):</p>
                   <div className="flex flex-wrap gap-2">
-                    {dominio.palavras.map((palavra, idx) => {
+                     {dominio.palavras.map((palavra, idx) => {
                       const wordData = findWordData(palavra);
                       
                       return (
                         <Tooltip key={idx}>
                             <TooltipTrigger asChild>
-                              <Badge 
-                                variant="outline"
-                                className="cursor-help hover:scale-105 transition-all"
-                                style={{ 
-                                  borderColor: dominio.cor,
-                                  color: dominio.cor,
-                                  backgroundColor: `${dominio.cor}10`
-                                }}
-                              >
-                                {palavra}
-                              </Badge>
+                              <span className="inline-block">
+                                <Badge 
+                                  variant="outline"
+                                  className="cursor-help hover:scale-105 transition-all"
+                                  style={{ 
+                                    borderColor: dominio.cor,
+                                    color: dominio.cor,
+                                    backgroundColor: `${dominio.cor}10`
+                                  }}
+                                >
+                                  {palavra}
+                                </Badge>
+                              </span>
                             </TooltipTrigger>
                             {wordData ? (
                               <TooltipContent side="top" className="w-80 p-4 z-[9999]" sideOffset={5}>
