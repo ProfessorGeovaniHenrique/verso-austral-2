@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AppLayout from "./pages/AppLayout";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/AdminDashboard";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import Dashboard2 from "./pages/Dashboard2";
 import Dashboard3 from "./pages/Dashboard3";
 import Dashboard4 from "./pages/Dashboard4";
@@ -45,11 +47,33 @@ const App = () => (
               <Route path="/dashboard8" element={<Dashboard8 />} />
               <Route path="/dashboard-mvp" element={<DashboardMVP />} />
               <Route path="/dashboard" element={<DashboardMVP />} />
-              <Route path="/advanced-mode" element={<AdvancedMode />} />
+              <Route 
+                path="/advanced-mode" 
+                element={
+                  <ProtectedRoute>
+                    <AdvancedMode />
+                  </ProtectedRoute>
+                } 
+              />
             </Route>
+            <Route 
+              path="/admin/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/lexicon-setup" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminLexiconSetup />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/devops-metrics" element={<DevOpsMetrics />} />
             <Route path="/developer-logs" element={<DeveloperLogs />} />
-            <Route path="/admin/lexicon-setup" element={<AdminLexiconSetup />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
