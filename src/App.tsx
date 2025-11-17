@@ -29,6 +29,7 @@ import AdminLexiconSetup from "./pages/AdminLexiconSetup";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
+import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -112,6 +113,14 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminAccessRequests />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/edge-functions" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminEdgeFunctions />
                 </ProtectedRoute>
               } 
             />

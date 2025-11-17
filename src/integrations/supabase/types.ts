@@ -737,6 +737,141 @@ export type Database = {
         }
         Relationships: []
       }
+      edge_function_logs: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          error_stack: string | null
+          function_name: string
+          id: string
+          rate_limit_remaining: number | null
+          rate_limited: boolean | null
+          referer: string | null
+          request_ip: string | null
+          request_method: string
+          request_path: string | null
+          request_payload: Json | null
+          response_payload: Json | null
+          response_time_ms: number | null
+          status_code: number
+          user_agent: string | null
+          user_id: string | null
+          user_role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          function_name: string
+          id?: string
+          rate_limit_remaining?: number | null
+          rate_limited?: boolean | null
+          referer?: string | null
+          request_ip?: string | null
+          request_method: string
+          request_path?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          response_time_ms?: number | null
+          status_code: number
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          function_name?: string
+          id?: string
+          rate_limit_remaining?: number | null
+          rate_limited?: boolean | null
+          referer?: string | null
+          request_ip?: string | null
+          request_method?: string
+          request_path?: string | null
+          request_payload?: Json | null
+          response_payload?: Json | null
+          response_time_ms?: number | null
+          status_code?: number
+          user_agent?: string | null
+          user_id?: string | null
+          user_role?: string | null
+        }
+        Relationships: []
+      }
+      edge_function_metrics: {
+        Row: {
+          avg_response_time_ms: number | null
+          created_at: string | null
+          failed_requests: number | null
+          function_name: string
+          id: string
+          max_response_time_ms: number | null
+          min_response_time_ms: number | null
+          p50_response_time_ms: number | null
+          p95_response_time_ms: number | null
+          p99_response_time_ms: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          rate_limited_requests: number | null
+          status_2xx: number | null
+          status_4xx: number | null
+          status_5xx: number | null
+          successful_requests: number | null
+          total_requests: number | null
+          unique_ips: number | null
+          unique_users: number | null
+        }
+        Insert: {
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          failed_requests?: number | null
+          function_name: string
+          id?: string
+          max_response_time_ms?: number | null
+          min_response_time_ms?: number | null
+          p50_response_time_ms?: number | null
+          p95_response_time_ms?: number | null
+          p99_response_time_ms?: number | null
+          period_end: string
+          period_start: string
+          period_type: string
+          rate_limited_requests?: number | null
+          status_2xx?: number | null
+          status_4xx?: number | null
+          status_5xx?: number | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          unique_ips?: number | null
+          unique_users?: number | null
+        }
+        Update: {
+          avg_response_time_ms?: number | null
+          created_at?: string | null
+          failed_requests?: number | null
+          function_name?: string
+          id?: string
+          max_response_time_ms?: number | null
+          min_response_time_ms?: number | null
+          p50_response_time_ms?: number | null
+          p95_response_time_ms?: number | null
+          p99_response_time_ms?: number | null
+          period_end?: string
+          period_start?: string
+          period_type?: string
+          rate_limited_requests?: number | null
+          status_2xx?: number | null
+          status_4xx?: number | null
+          status_5xx?: number | null
+          successful_requests?: number | null
+          total_requests?: number | null
+          unique_ips?: number | null
+          unique_users?: number | null
+        }
+        Relationships: []
+      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null
