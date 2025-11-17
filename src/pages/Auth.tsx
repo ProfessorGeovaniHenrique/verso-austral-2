@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuthContext } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,8 +38,16 @@ type InviteFormData = z.infer<typeof inviteSchema>;
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { user, signIn, signUp, signInWithInvite } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+
+  // Redirect se já estiver logado
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard-mvp");
+    }
+  }, [user, navigate]);
 
   const loginForm = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -56,11 +64,7 @@ export default function Auth() {
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: data.email,
-        password: data.password,
-      });
-
+      const { error } = await signIn(data.email, data.password);
       if (error) throw error;
 
       toast.success("Login realizado com sucesso!");
@@ -75,14 +79,7 @@ export default function Auth() {
   const handleSignup = async (data: SignupFormData) => {
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard-mvp`,
-        },
-      });
-
+      const { error } = await signUp(data.email, data.password);
       if (error) throw error;
 
       toast.success("Conta criada! Você já pode fazer login.");
@@ -98,47 +95,13 @@ export default function Auth() {
   const handleInviteSignup = async (data: InviteFormData) => {
     setIsLoading(true);
     try {
-      // Primeiro, criar a conta
-      const { data: authData, error: signupError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/dashboard-mvp`,
-        },
-      });
+      const { error } = await signInWithInvite(
+        data.email,
+        data.password,
+        data.inviteKey
+      );
 
-      if (signupError) throw signupError;
-      if (!authData.user) throw new Error("Erro ao criar usuário");
-
-      // Validar e usar o convite
-      const { data: inviteData, error: inviteError } = await supabase
-        .from("invite_keys")
-        .select("*")
-        .eq("key_code", data.inviteKey)
-        .eq("is_active", true)
-        .is("used_at", null)
-        .single();
-
-      if (inviteError || !inviteData) {
-        throw new Error("Código de convite inválido ou já utilizado");
-      }
-
-      // Verificar expiração
-      if (inviteData.expires_at && new Date(inviteData.expires_at) < new Date()) {
-        throw new Error("Código de convite expirado");
-      }
-
-      // Marcar convite como usado
-      const { error: updateError } = await supabase
-        .from("invite_keys")
-        .update({
-          used_at: new Date().toISOString(),
-          used_by: authData.user.id,
-          is_active: false,
-        })
-        .eq("id", inviteData.id);
-
-      if (updateError) throw updateError;
+      if (error) throw error;
 
       toast.success("Conta criada com sucesso! Faça login para continuar.");
       setActiveTab("login");
