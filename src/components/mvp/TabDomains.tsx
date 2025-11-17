@@ -32,15 +32,22 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
       setIsLoadingDemo(true);
       getDemoAnalysisResults()
         .then(result => {
+          console.group('📊 [TabDomains] Estrutura Completa Retornada');
+          console.log('✅ Total domínios:', result.dominios.length);
+          console.log('✅ Total keywords:', result.keywords.length);
+          console.log('📄 Exemplo keyword:', result.keywords[0]);
+          console.log('📄 Exemplo domínio:', result.dominios[0]);
+          console.log('📋 Estrutura keyword:', Object.keys(result.keywords[0] || {}));
+          console.groupEnd();
+          
           setDemoData(result.dominios);
           setDemoKeywords(result.keywords);
           
           // 🔍 DEBUG: Verificar correspondência de palavras
-          console.group('🔍 [TabDomains] Validação de Dados');
-          console.log('Total domínios:', result.dominios.length);
-          console.log('Total keywords:', result.keywords.length);
-          
+          console.group('🔍 [TabDomains] Validação de Correspondências');
           const todasPalavras = result.dominios.flatMap(d => d.palavras);
+          console.log('Total palavras nos domínios:', todasPalavras.length);
+          
           const palavrasSemDados = todasPalavras.filter(p => 
             !result.keywords.find(k => k.palavra.toLowerCase() === p.toLowerCase())
           );
@@ -55,41 +62,88 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
           toast.success(`${result.dominios.length} domínios carregados`);
         })
         .catch(error => {
-          console.error('Erro ao carregar dados demo:', error);
+          console.error('❌ Erro ao carregar dados demo:', error);
           toast.error('Erro ao carregar análise demo');
         })
         .finally(() => setIsLoadingDemo(false));
     }
   }, [demo]);
 
-  // 🔍 Função de lookup inteligente de palavras
+  // 🔍 Função de normalização de texto (remove acentos)
+  const normalizeText = (text: string): string => {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+      .trim();
+  };
+
+  // 🔍 Função de lookup inteligente de palavras com fallback robusto
   const findWordData = (palavra: string) => {
-    if (!demoKeywords) return null;
+    console.group(`🔍 Buscando dados para: "${palavra}"`);
+    console.log('   Total keywords disponíveis:', demoKeywords?.length || 0);
     
-    // 1. Tentativa exata (case insensitive)
+    if (!demoKeywords) {
+      console.warn('   ❌ demoKeywords ainda não carregado!');
+      console.groupEnd();
+      return null;
+    }
+    
+    const normalizedPalavra = normalizeText(palavra);
+    console.log('   Palavra normalizada:', normalizedPalavra);
+    
+    // 1. Tentativa exata (case insensitive + sem acentos)
     let match = demoKeywords.find(k => 
-      k.palavra.toLowerCase() === palavra.toLowerCase()
+      normalizeText(k.palavra) === normalizedPalavra
     );
     
-    if (match) return match;
+    if (match) {
+      console.log('   ✅ Match exato encontrado:', match.palavra);
+      console.groupEnd();
+      return match;
+    }
     
     // 2. Tentativa por lema (buscar em palavrasChaveData)
     const wordInfo = palavrasChaveData.find(p => 
-      p.palavra.toLowerCase() === palavra.toLowerCase()
+      normalizeText(p.palavra) === normalizedPalavra
     );
     
     if (wordInfo?.lema) {
+      console.log('   🔄 Tentando buscar por lema:', wordInfo.lema);
       match = demoKeywords.find(k => 
-        k.palavra.toLowerCase() === wordInfo.lema.toLowerCase()
+        normalizeText(k.palavra) === normalizeText(wordInfo.lema)
       );
+      
+      if (match) {
+        console.log('   ✅ Match por lema encontrado:', match.palavra);
+        console.groupEnd();
+        return match;
+      }
     }
     
-    // 3. Log de debug se não encontrar
-    if (!match) {
-      console.warn(`[TabDomains] Palavra sem dados: "${palavra}"`);
+    // 3. FALLBACK: Usar dados estáticos de palavrasChaveData
+    if (wordInfo) {
+      console.warn('   ⚠️ Usando fallback com dados estáticos');
+      const fallbackData = {
+        palavra: wordInfo.palavra,
+        frequencia: wordInfo.frequenciaNormalizada,
+        ll: wordInfo.ll,
+        mi: wordInfo.mi,
+        prosody: wordInfo.efeito === 'Sobre-uso' ? 'Positiva' : 
+                 wordInfo.efeito === 'Sub-uso' ? 'Negativa' : 'Neutra',
+        significancia: wordInfo.significancia,
+        dominio: 'Indefinido',
+        cor: '#6B7280'
+      };
+      console.log('   ✅ Fallback aplicado:', fallbackData);
+      console.groupEnd();
+      return fallbackData;
     }
     
-    return match;
+    // 4. Log de debug se não encontrar nada
+    console.error(`   ❌ Palavra "${palavra}" não encontrada em nenhuma fonte`);
+    console.groupEnd();
+    return null;
   };
 
   const dominiosFiltrados = useMemo(() => {
@@ -312,7 +366,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                               </Badge>
                             </TooltipTrigger>
                             {wordData ? (
-                              <TooltipContent side="top" className="w-80 p-4">
+                              <TooltipContent side="top" className="w-80 p-4 z-[9999]" sideOffset={5}>
                                 <div className="space-y-3">
                                   <h4 className="font-semibold text-base">{palavra}</h4>
                                   <div className="grid grid-cols-2 gap-3 text-xs">
@@ -352,7 +406,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                                 </div>
                               </TooltipContent>
                             ) : (
-                              <TooltipContent side="top" className="w-60 p-3">
+                              <TooltipContent side="top" className="w-60 p-3 z-[9999]" sideOffset={5}>
                                 <div className="space-y-2">
                                   <h4 className="font-semibold text-sm">{palavra}</h4>
                                   <p className="text-xs text-muted-foreground">
