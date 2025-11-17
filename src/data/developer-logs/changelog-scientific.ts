@@ -195,15 +195,15 @@ export const scientificChangelog: ScientificChangelog[] = [
   {
     version: "v1.2.0 (planejado)",
     date: "2025-02-20",
-    methodology: "Anotação semântica automática com IA + validação humana",
+    methodology: "Anotação semântica automática com processamento computacional + validação humana",
     keyReferences: [
       "BERBER SARDINHA, Tony. Linguística de Corpus. São Paulo: Manole, 2004.",
       "LANDIS, J. Richard; KOCH, Gary G. The Measurement of Observer Agreement for Categorical Data. 1977."
     ],
     scientificAdvances: [
       {
-        feature: "Anotação Semântica com Gemini 2.0 Flash",
-        linguisticBasis: "Transfer learning de LLM para domínios semânticos específicos",
+      feature: "Anotação Semântica Automática",
+      linguisticBasis: "Aprendizado de máquina aplicado a domínios semânticos específicos",
         concepts: [
           "Classificação automática de palavras em 18+ domínios",
           "Análise de prosodia semântica via contexto",

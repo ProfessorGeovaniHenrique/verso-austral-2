@@ -81,8 +81,8 @@ export function AITagsetCurator({
     setEditedPai(aiSuggestion.paiRecomendado);
     setEditedNivel(aiSuggestion.nivelSugerido);
     
-    toast.success("Sugestão IA aplicada", {
-      description: "Campos preenchidos com sugestões da IA"
+    toast.success("Sugestão algorítmica aplicada", {
+      description: "Campos preenchidos com sugestões do sistema"
     });
   };
 
@@ -127,10 +127,10 @@ export function AITagsetCurator({
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            Curadoria Manual com Assistência IA
+            Curadoria Manual com Suporte Computacional
           </SheetTitle>
           <SheetDescription>
-            Edite e refine as sugestões da IA antes de aplicar ao tagset
+            Edite e refine as sugestões algorítmicas antes de aplicar ao tagset
           </SheetDescription>
         </SheetHeader>
 
@@ -144,7 +144,7 @@ export function AITagsetCurator({
               className="flex-1"
             >
               <Copy className="h-4 w-4 mr-2" />
-              Copiar Sugestão IA
+              Copiar Sugestão do Sistema
             </Button>
             <Button
               variant="outline"
@@ -185,7 +185,7 @@ export function AITagsetCurator({
             {aiSuggestion.melhorias?.nomeSugerido && 
              aiSuggestion.melhorias.nomeSugerido !== tagsetOriginal.nome && (
               <div className="text-xs text-muted-foreground bg-primary/5 p-2 rounded">
-                <strong>💡 IA sugere:</strong> "{aiSuggestion.melhorias.nomeSugerido}"
+                <strong>💡 Sistema sugere:</strong> "{aiSuggestion.melhorias.nomeSugerido}"
                 <br />
                 {aiSuggestion.melhorias.justificativaNome}
               </div>
@@ -204,7 +204,7 @@ export function AITagsetCurator({
             {aiSuggestion.melhorias?.codigoSugerido && 
              aiSuggestion.melhorias.codigoSugerido !== tagsetOriginal.codigo && (
               <div className="text-xs text-muted-foreground bg-primary/5 p-2 rounded">
-                <strong>💡 IA sugere:</strong> {aiSuggestion.melhorias.codigoSugerido}
+                <strong>💡 Sistema sugere:</strong> {aiSuggestion.melhorias.codigoSugerido}
               </div>
             )}
           </div>
@@ -221,7 +221,7 @@ export function AITagsetCurator({
             />
             {aiSuggestion.melhorias?.descricao && (
               <div className="text-xs text-muted-foreground bg-primary/5 p-2 rounded">
-                <strong>💡 IA propõe:</strong> {aiSuggestion.melhorias.descricao}
+                <strong>💡 Sistema propõe:</strong> {aiSuggestion.melhorias.descricao}
               </div>
             )}
           </div>
@@ -239,7 +239,7 @@ export function AITagsetCurator({
             {aiSuggestion.melhorias?.exemplosAdicionais && 
              aiSuggestion.melhorias.exemplosAdicionais.length > 0 && (
               <div className="text-xs text-muted-foreground bg-primary/5 p-2 rounded">
-                <strong>💡 IA adiciona:</strong> {aiSuggestion.melhorias.exemplosAdicionais.join(", ")}
+                <strong>💡 Sistema adiciona:</strong> {aiSuggestion.melhorias.exemplosAdicionais.join(", ")}
               </div>
             )}
           </div>
@@ -271,7 +271,7 @@ export function AITagsetCurator({
           {/* AI Confidence */}
           <div className="bg-muted/30 p-3 rounded space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Confiança da IA</span>
+              <span className="text-sm font-medium">Confiança Algorítmica</span>
               <Badge variant={aiSuggestion.confianca >= 75 ? "default" : "secondary"}>
                 {aiSuggestion.confianca}%
               </Badge>

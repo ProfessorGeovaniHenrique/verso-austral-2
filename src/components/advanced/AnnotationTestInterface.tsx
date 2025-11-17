@@ -150,7 +150,7 @@ export function AnnotationTestInterface() {
         <CardDescription>
           {demoMode 
             ? 'Testando sem autenticação - dados temporários' 
-            : 'Teste a anotação automática com IA'}
+            : 'Teste a anotação automática'}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

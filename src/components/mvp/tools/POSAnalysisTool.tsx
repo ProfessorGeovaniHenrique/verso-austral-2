@@ -188,7 +188,7 @@ export function POSAnalysisTool() {
             <div className="space-y-2">
               <Progress value={50} />
               <p className="text-sm text-muted-foreground text-center">
-                Processando corpus com IA... Isso pode levar alguns minutos.
+                Processando corpus com análise computacional... Isso pode levar alguns minutos.
               </p>
             </div>
           )}
@@ -347,7 +347,7 @@ export function POSAnalysisTool() {
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <strong>Sobre a Análise:</strong> A anotação POS utiliza Inteligência Artificial para identificar
+              <strong>Sobre a Análise:</strong> A anotação POS utiliza processamento automático avançado para identificar
               automaticamente classes gramaticais, lemas e características morfológicas. Os resultados são
               salvos em cache para consulta rápida. Esta análise é fundamental para estudos estilísticos avançados.
             </AlertDescription>

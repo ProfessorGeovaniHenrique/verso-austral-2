@@ -272,7 +272,7 @@ export function HierarchySuggester({
                 </div>
                 <div className="flex gap-2">
                   <Button size="sm" variant="ghost" onClick={() => refineWithAI(pendente)} disabled={loadingAI.has(pendente.id)}>
-                    <Zap className="h-4 w-4" /> {loadingAI.has(pendente.id) ? "..." : "IA"}
+                    <Zap className="h-4 w-4" /> {loadingAI.has(pendente.id) ? "..." : "Analisar"}
                   </Button>
                   <Button size="sm" variant="ghost" onClick={() => handleReject(pendente.id)}>
                     <XCircle className="h-4 w-4" />
@@ -304,7 +304,7 @@ export function HierarchySuggester({
                   <Zap className="h-5 w-5" />
                   <AlertDescription className="space-y-3">
                     <div className="flex justify-between">
-                      <strong>Análise IA</strong>
+                      <strong>Análise Computacional</strong>
                       <Badge>{aiSugg.confianca}%</Badge>
                     </div>
                     <div><strong>Pai:</strong> {aiSugg.paiRecomendado} | <strong>Nível:</strong> {aiSugg.nivelSugerido}</div>
@@ -332,7 +332,7 @@ export function HierarchySuggester({
 
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => handleAccept(pendente.id, aiSugg.paiRecomendado)} className="flex-1">
-                        <CheckCircle2 className="h-4 w-4" /> Aceitar IA
+                        <CheckCircle2 className="h-4 w-4" /> Aceitar Sugestão
                       </Button>
                       <Button size="sm" variant="outline" onClick={() => {
                         setSelectedForCuration({ tagset: pendente, aiSuggestion: aiSugg });

@@ -138,9 +138,9 @@ export function TabSemanticAnnotation() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Anotação Semântica com IA</CardTitle>
+          <CardTitle>Anotação Semântica Automática</CardTitle>
           <CardDescription>
-            Processa o corpus selecionado e atribui automaticamente domínios semânticos e prosódia a cada palavra usando Gemini 2.5 Flash
+            Processa o corpus selecionado e atribui automaticamente domínios semânticos e prosódia a cada palavra através de algoritmos de processamento de linguagem natural
           </CardDescription>
         </CardHeader>
 
@@ -228,7 +228,7 @@ export function TabSemanticAnnotation() {
             {isAnnotating ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Anotando com IA...
+                Processamento em andamento...
               </>
             ) : (
               <>

@@ -243,12 +243,12 @@ export function MetricsEvolution({ phases }: MetricsEvolutionProps) {
 
             <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
               <div className="flex items-center justify-between mb-2">
-                <span className="font-semibold">Anotação Semântica (IA)</span>
+                <span className="font-semibold">Anotação Semântica Automática</span>
                 <Badge variant="outline">Atual: 70%</Badge>
               </div>
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Meta com Gemini 2.0:</span>
+                  <span className="text-muted-foreground">Meta com processamento avançado:</span>
                   <span className="font-semibold text-blue-600">80%</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">

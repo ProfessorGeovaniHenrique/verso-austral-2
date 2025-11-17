@@ -93,7 +93,7 @@ export function AIAnalysisReview() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>🔍 Review de Análises da IA</CardTitle>
+          <CardTitle>🔍 Review de Análises Automáticas</CardTitle>
           <CardDescription>Nenhuma análise disponível para review</CardDescription>
         </CardHeader>
       </Card>
@@ -107,10 +107,10 @@ export function AIAnalysisReview() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="w-5 h-5" />
-            Review de Análise da IA
+            Review de Análise Automática
           </CardTitle>
           <CardDescription>
-            Validação humana das sugestões geradas pela IA
+            Validação humana das sugestões geradas pelo sistema
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -186,7 +186,7 @@ export function AIAnalysisReview() {
           <DialogHeader>
             <DialogTitle>Review da Sugestão</DialogTitle>
             <DialogDescription>
-              Valide se esta sugestão da IA é precisa e relevante
+              Valide se esta sugestão computacional é precisa e relevante
             </DialogDescription>
           </DialogHeader>
 

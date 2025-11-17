@@ -118,7 +118,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                 Domínios Semânticos - "Quando o Verso Vem pras Casa"
               </CardTitle>
               <CardDescription className="section-description-academic mt-2">
-                Análise processada via IA com métricas de keyness (Log-Likelihood e Mutual Information)
+                Análise pré-processada com suporte computacional, utilizando métricas de keyness (Log-Likelihood e Mutual Information)
               </CardDescription>
             </div>
             <div className="flex gap-2">

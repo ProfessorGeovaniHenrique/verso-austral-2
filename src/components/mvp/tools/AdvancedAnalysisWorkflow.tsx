@@ -34,7 +34,7 @@ const WORKFLOW_STEPS: StepConfig[] = [
     id: 'annotation',
     label: 'Etiquetagem Semântica',
     icon: Sparkles,
-    description: 'Processe o corpus com IA para identificar domínios',
+    description: 'Processe o corpus automaticamente para identificar domínios',
     requiresPrevious: false
   },
   {

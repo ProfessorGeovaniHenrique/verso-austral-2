@@ -10,7 +10,7 @@ export function CreditsSavingsIndicator() {
   // Calcular créditos usados (1 crédito por scan)
   const totalCreditsUsed = scans?.length || 0;
   
-  // Calcular créditos economizados (baseado nas sugestões da IA)
+  // Calcular créditos economizados (baseado nas sugestões automáticas)
   const totalCreditsSaved = aiStats.totalEstimatedSavings || 0;
   
   // Calcular ROI
@@ -113,7 +113,7 @@ export function CreditsSavingsIndicator() {
             )}
             {roi === 0 && totalCreditsUsed > 0 && (
               <span className="text-red-600 dark:text-red-400">
-                🔴 <strong>Sem Retorno.</strong> Implemente as sugestões da IA para economizar créditos.
+                🔴 <strong>Sem Retorno.</strong> Implemente as sugestões do sistema para economizar créditos.
               </span>
             )}
             {totalCreditsUsed === 0 && (

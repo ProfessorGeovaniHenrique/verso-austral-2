@@ -291,7 +291,7 @@ export const constructionLog: ConstructionPhase[] = [
     ]
   },
   {
-    phase: "Fase 4: Análise Semântica com IA",
+    phase: "Fase 4: Análise Semântica Automática",
     dateStart: "2025-02-10",
     status: "planned",
     objective: "Implementar anotação semântica automática usando Gemini 2.0 Flash",
@@ -307,7 +307,7 @@ export const constructionLog: ConstructionPhase[] = [
     ],
     nextSteps: [
       "Criar Edge Function annotate-semantic",
-      "Integrar Gemini 2.0 Flash via Lovable AI",
+      "Integrar sistema de processamento de linguagem natural via Lovable AI",
       "Implementar sistema de validação humana"
     ]
   },

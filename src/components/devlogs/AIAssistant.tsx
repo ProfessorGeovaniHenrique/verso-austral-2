@@ -241,10 +241,10 @@ export function AIAssistant({ triggerAnalysis, onAnalysisComplete }: AIAssistant
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bot className="w-5 h-5" />
-            IA Assistant - Análise Inteligente
+            Assistente de Análise - Sistema Automatizado
           </CardTitle>
           <CardDescription>
-            Análise automatizada de logs com sugestões de correção via Gemini 2.5 Flash
+            Análise automatizada de logs com sugestões de correção através de processamento computacional
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
