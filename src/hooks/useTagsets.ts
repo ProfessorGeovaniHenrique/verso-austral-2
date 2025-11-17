@@ -135,6 +135,35 @@ export function useTagsets() {
     }
   };
 
+  const updateTagset = async (tagsetId: string, updates: Partial<Tagset>) => {
+    try {
+      await retrySupabaseOperation(async () => {
+        const { error } = await supabase
+          .from('semantic_tagset')
+          .update(updates)
+          .eq('id', tagsetId);
+
+        if (error) throw error;
+      });
+
+      notifications.success(
+        'Tagset atualizado com sucesso',
+        'As alterações foram salvas.'
+      );
+
+      // Recalcular hierarquia após atualização
+      await retrySupabaseOperation(async () => {
+        const { error } = await supabase.rpc('calculate_tagset_hierarchy');
+        if (error) throw error;
+      });
+
+      await queryClient.invalidateQueries({ queryKey: ['semantic-tagsets'] });
+    } catch (err) {
+      notifications.error('Erro ao atualizar tagset', err as Error);
+      throw err;
+    }
+  };
+
   const stats = {
     totalTagsets: queryResult.data?.length || 0,
     activeTagsets: queryResult.data?.filter(t => t.status === 'ativo').length || 0,
@@ -149,6 +178,7 @@ export function useTagsets() {
     refetch: queryResult.refetch,
     proposeTagset,
     approveTagsets,
-    rejectTagsets
+    rejectTagsets,
+    updateTagset
   };
 }

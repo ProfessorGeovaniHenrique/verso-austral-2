@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useTagsets } from '@/hooks/useTagsets';
+import { useTagsets, Tagset } from '@/hooks/useTagsets';
 import { TagsetHierarchyTree } from './TagsetHierarchyTree';
-import { Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { TagsetEditor } from './TagsetEditor';
+import { RefreshCw, CheckSquare, Square, ListChecks } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 
 export function TagsetManager() {
-  const { tagsets, stats, isLoading, approveTagsets, rejectTagsets, refetch } = useTagsets();
+  const { tagsets, stats, isLoading, refetch, approveTagsets, rejectTagsets, updateTagset } = useTagsets();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [editingTagset, setEditingTagset] = useState<Tagset | null>(null);
 
   const handleToggleSelect = (id: string) => {
     setSelectedIds(prev =>
@@ -42,6 +45,7 @@ export function TagsetManager() {
     try {
       await approveTagsets(selectedIds);
       setSelectedIds([]);
+      await refetch();
       toast.success(`${selectedIds.length} tagset(s) aprovados com sucesso`);
     } catch (err) {
       console.error('Erro ao aprovar:', err);
@@ -60,6 +64,7 @@ export function TagsetManager() {
     try {
       await rejectTagsets(selectedIds);
       setSelectedIds([]);
+      await refetch();
       toast.success(`${selectedIds.length} tagset(s) rejeitados`);
     } catch (err) {
       console.error('Erro ao rejeitar:', err);
@@ -72,6 +77,7 @@ export function TagsetManager() {
     setIsProcessing(true);
     try {
       await approveTagsets([id]);
+      await refetch();
       toast.success('Tagset aprovado');
     } catch (err) {
       console.error('Erro ao aprovar:', err);
@@ -84,6 +90,7 @@ export function TagsetManager() {
     setIsProcessing(true);
     try {
       await rejectTagsets([id]);
+      await refetch();
       toast.success('Tagset rejeitado');
     } catch (err) {
       console.error('Erro ao rejeitar:', err);
@@ -92,109 +99,141 @@ export function TagsetManager() {
     }
   };
 
+  const handleEdit = (tagset: Tagset) => {
+    setEditingTagset(tagset);
+  };
+
+  const handleSaveTagset = async (id: string, updates: Partial<Tagset>) => {
+    await updateTagset(id, updates);
+    await refetch();
+    setEditingTagset(null);
+  };
+
   const pendingCount = tagsets.filter(t => t.status !== 'ativo' && !t.aprovado_por).length;
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Taxonomia Semântica</CardTitle>
-            <CardDescription>
-              {stats.totalTagsets} categorias | {stats.activeTagsets} ativas | {stats.approvedTagsets} aprovadas
-              {pendingCount > 0 && ` | ${pendingCount} pendentes`}
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Atualizar
-          </Button>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
-        {/* Barra de ações */}
-        <div className="flex items-center gap-2 p-3 bg-accent/30 rounded-lg border">
-          <div className="flex-1 flex items-center gap-2">
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Taxonomia Semântica</CardTitle>
+              <CardDescription>
+                {stats.totalTagsets} categorias | {stats.activeTagsets} ativas | {stats.approvedTagsets} aprovadas
+                {pendingCount > 0 && ` | ${pendingCount} pendentes`}
+              </CardDescription>
+            </div>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSelectAll}
+              onClick={() => refetch()}
+              disabled={isLoading}
             >
-              {selectedIds.length === tagsets.length ? 'Desmarcar Todos' : 'Marcar Todos'}
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Atualizar
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSelectPending}
-              disabled={pendingCount === 0}
-            >
-              Marcar Pendentes ({pendingCount})
-            </Button>
-            {selectedIds.length > 0 && (
-              <span className="text-sm text-muted-foreground">
-                {selectedIds.length} selecionado(s)
-              </span>
-            )}
           </div>
+        </CardHeader>
 
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleApproveSelected}
-              disabled={selectedIds.length === 0 || isProcessing}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="w-4 h-4 mr-2" />
+        <CardContent className="space-y-4">
+          {/* Barra de ações */}
+          {tagsets.length > 0 && (
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSelectAll}
+                className="gap-2"
+              >
+                {selectedIds.length === tagsets.length ? (
+                  <>
+                    <Square className="w-4 h-4" />
+                    Desmarcar Todos
+                  </>
+                ) : (
+                  <>
+                    <CheckSquare className="w-4 h-4" />
+                    Selecionar Todos
+                  </>
+                )}
+              </Button>
+
+              {pendingCount > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectPending}
+                  className="gap-2"
+                >
+                  <ListChecks className="w-4 h-4" />
+                  Selecionar Pendentes ({pendingCount})
+                </Button>
               )}
-              Aprovar Selecionados
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleRejectSelected}
-              disabled={selectedIds.length === 0 || isProcessing}
-            >
-              <XCircle className="w-4 h-4 mr-2" />
-              Rejeitar Selecionados
-            </Button>
-          </div>
-        </div>
 
-        {/* Árvore hierárquica */}
-        {tagsets.length > 0 ? (
-          <TagsetHierarchyTree
-            tagsets={tagsets}
-            selectedIds={selectedIds}
-            onToggleSelect={handleToggleSelect}
-            onApprove={handleApproveOne}
-            onReject={handleRejectOne}
-          />
-        ) : (
-          <div className="text-center py-8 text-muted-foreground">
-            <p>Nenhum tagset cadastrado ainda.</p>
-            <p className="text-sm mt-2">
-              Execute o script de seed para popular a taxonomia base.
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+              <div className="flex-1" />
+
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.length} selecionado{selectedIds.length !== 1 ? 's' : ''}
+                  </span>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={handleApproveSelected}
+                    disabled={isProcessing}
+                  >
+                    Aprovar Selecionados
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRejectSelected}
+                    disabled={isProcessing}
+                  >
+                    Rejeitar Selecionados
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Árvore de tagsets */}
+          {tagsets.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Nenhum tagset encontrado.
+            </div>
+          ) : (
+            <TagsetHierarchyTree
+              tagsets={tagsets}
+              selectedIds={selectedIds}
+              onToggleSelect={handleToggleSelect}
+              onApprove={handleApproveOne}
+              onReject={handleRejectOne}
+              onEdit={handleEdit}
+            />
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Modal de Edição */}
+      {editingTagset && (
+        <TagsetEditor
+          tagset={editingTagset}
+          allTagsets={tagsets}
+          onSave={handleSaveTagset}
+          onClose={() => setEditingTagset(null)}
+        />
+      )}
+    </>
   );
 }

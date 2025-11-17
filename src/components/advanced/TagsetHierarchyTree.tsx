@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronRight, ChevronDown, Check, X, Info, Users } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, X, Info, Users, Edit } from 'lucide-react';
 import { Tagset } from '@/hooks/useTagsets';
 
 interface TagsetNode extends Tagset {
@@ -16,6 +16,7 @@ interface TagsetHierarchyTreeProps {
   onToggleSelect: (id: string) => void;
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onEdit?: (tagset: Tagset) => void;
 }
 
 export function TagsetHierarchyTree({
@@ -23,7 +24,8 @@ export function TagsetHierarchyTree({
   selectedIds,
   onToggleSelect,
   onApprove,
-  onReject
+  onReject,
+  onEdit
 }: TagsetHierarchyTreeProps) {
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
 
@@ -188,26 +190,50 @@ export function TagsetHierarchyTree({
           )}
 
           {/* Ações rápidas */}
-          {needsApproval && onApprove && onReject && (
-            <div className="flex gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 p-0"
-                onClick={() => onApprove(node.id)}
-              >
-                <Check className="w-4 h-4 text-green-600" />
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 w-7 p-0"
-                onClick={() => onReject(node.id)}
-              >
-                <X className="w-4 h-4 text-red-600" />
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-1">
+            {/* Botão de edição */}
+            {onEdit && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 w-7 p-0"
+                      onClick={() => onEdit(node)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">Editar tagset</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            
+            {/* Aprovação/Rejeição */}
+            {needsApproval && onApprove && onReject && (
+              <>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => onApprove(node.id)}
+                >
+                  <Check className="w-4 h-4 text-green-600" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 w-7 p-0"
+                  onClick={() => onReject(node.id)}
+                >
+                  <X className="w-4 h-4 text-red-600" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Breadcrumb e Descrição (quando expandido) */}
