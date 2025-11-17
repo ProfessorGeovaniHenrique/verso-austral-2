@@ -4,13 +4,23 @@ import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
 import { MobileMenu } from "@/components/MobileMenu";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "lucide-react";
+import { Moon, Sun, Sparkles, Wrench, FlaskConical } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export function MVPHeader() {
+type TabType = 'apresentacao' | 'tools' | 'validation';
+
+interface MVPHeaderProps {
+  activeTab?: TabType;
+  onTabChange?: (tab: TabType) => void;
+}
+
+export function MVPHeader({ activeTab, onTabChange }: MVPHeaderProps) {
   const { mode, toggleTheme } = useTheme();
+  const showNavigation = activeTab !== undefined && onTabChange !== undefined;
   
   return (
-    <header className="header-academic fixed top-0 left-0 right-0 z-50 header-animated border-b-2 border-primary">
+    <header className="header-academic fixed top-0 left-0 right-0 z-50 header-animated border-b-2 border-primary bg-background">
+      {/* Seção 1: Logos */}
       <div className="container-academic">
         <div className="flex items-center justify-between gap-4 py-4">
           <div className="hidden md:flex h-14 w-auto logo-animated">
@@ -57,6 +67,48 @@ export function MVPHeader() {
           </div>
         </div>
       </div>
+
+      {/* Seção 2: Navegação (apenas se props forem fornecidas) */}
+      {showNavigation && (
+        <div className="border-t border-border/50">
+          <nav className="container-academic py-2 md:py-3">
+            <div className="grid w-full max-w-3xl mx-auto grid-cols-3 gap-2">
+              <button 
+                onClick={() => onTabChange('apresentacao')}
+                className={cn(
+                  "tabs-academic-trigger",
+                  activeTab === 'apresentacao' && "active"
+                )}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Apresentação</span>
+              </button>
+              
+              <button 
+                onClick={() => onTabChange('tools')}
+                className={cn(
+                  "tabs-academic-trigger",
+                  activeTab === 'tools' && "active"
+                )}
+              >
+                <Wrench className="w-4 h-4" />
+                <span className="hidden sm:inline">Ferramentas</span>
+              </button>
+              
+              <button 
+                onClick={() => onTabChange('validation')}
+                className={cn(
+                  "tabs-academic-trigger",
+                  activeTab === 'validation' && "active"
+                )}
+              >
+                <FlaskConical className="w-4 h-4" />
+                <span className="hidden sm:inline">Testes</span>
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
