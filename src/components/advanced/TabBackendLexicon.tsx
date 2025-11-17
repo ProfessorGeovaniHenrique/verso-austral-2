@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, BookOpen, Activity, CheckSquare } from 'lucide-react';
+import { Database, BookOpen, Activity, CheckSquare, TestTube2 } from 'lucide-react';
 import { LexiconViewer } from './LexiconViewer';
 import { ValidationInterface } from './ValidationInterface';
 import { TagsetManager } from './TagsetManager';
 import { JobsMonitor } from './JobsMonitor';
+import { DictionaryImportTester } from './DictionaryImportTester';
 import { LexiconEntry } from '@/hooks/useBackendLexicon';
 
 export function TabBackendLexicon() {
@@ -25,8 +26,12 @@ export function TabBackendLexicon() {
         </p>
       </div>
 
-      <Tabs defaultValue="lexicon" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto">
+      <Tabs defaultValue="tests" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
+          <TabsTrigger value="tests" className="gap-2">
+            <TestTube2 className="w-4 h-4" />
+            <span className="hidden sm:inline">Testes</span>
+          </TabsTrigger>
           <TabsTrigger value="lexicon" className="gap-2">
             <Database className="w-4 h-4" />
             <span className="hidden sm:inline">Léxico</span>
@@ -40,6 +45,10 @@ export function TabBackendLexicon() {
             <span className="hidden sm:inline">Jobs</span>
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="tests" className="space-y-4">
+          <DictionaryImportTester />
+        </TabsContent>
 
         <TabsContent value="lexicon" className="space-y-4">
           <LexiconViewer onValidate={handleValidate} />

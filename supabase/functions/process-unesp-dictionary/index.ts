@@ -90,9 +90,11 @@ async function processInBackground(
   supabaseKey: string
 ) {
   const supabaseClient = createClient(supabaseUrl, supabaseKey);
+  const BATCH_SIZE = 1000;
   let processed = 0;
   let errors = 0;
   const errorLog: string[] = [];
+  const definitionBatches: any[] = [];
 
   console.log(`[Job ${jobId}] Processando ${entries.length} entradas do Dicionário UNESP...`);
 
@@ -102,6 +104,7 @@ async function processInBackground(
       .update({ status: 'processando' })
       .eq('id', jobId);
 
+    // ✅ OTIMIZAÇÃO #2: Coletar entradas em batches
     for (let i = 0; i < entries.length; i++) {
       const entryText = entries[i];
       
@@ -112,44 +115,53 @@ async function processInBackground(
           continue;
         }
 
-        // Inserir na tabela lexical_definitions
-        const { error: insertError } = await supabaseClient
-          .from('lexical_definitions')
-          .insert({
-            palavra: entry.palavra,
-            pos: entry.pos,
-            definicao: entry.definicao,
-            exemplos: entry.exemplos,
-            registro_uso: entry.registro || null,
-            fonte: 'unesp'
-          });
+        definitionBatches.push({
+          palavra: entry.palavra,
+          pos: entry.pos,
+          definicao: entry.definicao,
+          exemplos: entry.exemplos,
+          registro_uso: entry.registro || null,
+          fonte: 'unesp'
+        });
 
-        if (insertError) {
-          console.error('Erro ao inserir definição:', insertError);
-          errors++;
-          errorLog.push(`Entrada ${i}: ${insertError.message}`);
-          continue;
-        }
-
-        processed++;
-        
-        // Atualizar progresso a cada 50 entradas
-        if (processed % 50 === 0) {
-          console.log(`[Job ${jobId}] Processadas ${processed} definições...`);
-          await supabaseClient
-            .from('dictionary_import_jobs')
-            .update({ 
-              verbetes_processados: processed,
-              verbetes_inseridos: processed,
-              erros: errors
-            })
-            .eq('id', jobId);
-        }
       } catch (err) {
         console.error(`[Job ${jobId}] Erro processando entrada ${i}:`, err);
         errors++;
         errorLog.push(`Entrada ${i}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+
+    // ✅ OTIMIZAÇÃO #2: Inserir em batches de 1000
+    console.log(`[Job ${jobId}] Inserindo ${definitionBatches.length} definições em batches...`);
+    
+    for (let i = 0; i < definitionBatches.length; i += BATCH_SIZE) {
+      const batch = definitionBatches.slice(i, Math.min(i + BATCH_SIZE, definitionBatches.length));
+      
+      const { error: insertError } = await supabaseClient
+        .from('lexical_definitions')
+        .insert(batch);
+
+      if (insertError) {
+        console.error(`[Job ${jobId}] Erro ao inserir batch:`, insertError);
+        errors += batch.length;
+        errorLog.push(`Batch ${i}-${i + batch.length}: ${insertError.message}`);
+      } else {
+        processed += batch.length;
+      }
+
+      // Atualizar progresso após cada batch
+      const progressPercent = Math.round((processed / definitionBatches.length) * 100);
+      await supabaseClient
+        .from('dictionary_import_jobs')
+        .update({ 
+          verbetes_processados: processed,
+          verbetes_inseridos: processed,
+          erros: errors,
+          progresso: progressPercent
+        })
+        .eq('id', jobId);
+
+      console.log(`[Job ${jobId}] Progresso: ${processed}/${definitionBatches.length} (${progressPercent}%)`);
     }
 
     console.log(`[Job ${jobId}] Processamento concluído: ${processed} definições, ${errors} erros`);
@@ -162,6 +174,7 @@ async function processInBackground(
         verbetes_processados: processed,
         verbetes_inseridos: processed,
         erros: errors,
+        progresso: 100,
         metadata: { errorLog: errorLog.slice(0, 10) }
       })
       .eq('id', jobId);

@@ -97,9 +97,14 @@ async function processInBackground(
   supabaseKey: string
 ) {
   const supabaseClient = createClient(supabaseUrl, supabaseKey);
+  const BATCH_SIZE = 1000;
   let processed = 0;
   let errors = 0;
   const errorLog: string[] = [];
+  
+  // Preparar batches para lexical_synonyms
+  const synonymBatches: any[] = [];
+  const networkBatches: any[] = [];
 
   console.log(`[Job ${jobId}] Processando ${lines.length} linhas do Dicionário Houaiss...`);
 
@@ -109,6 +114,7 @@ async function processInBackground(
       .update({ status: 'processando' })
       .eq('id', jobId);
 
+    // ✅ OTIMIZAÇÃO #1: Coletar entradas em batches
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].trim();
       if (!line || line.startsWith('#')) continue;
@@ -120,76 +126,91 @@ async function processInBackground(
           continue;
         }
 
-        // Inserir na tabela lexical_synonyms
-        const { error: insertError } = await supabaseClient
-          .from('lexical_synonyms')
-          .insert({
-            palavra: entry.palavra,
-            pos: entry.pos,
-            acepcao_numero: entry.acepcao_numero,
-            acepcao_descricao: entry.acepcao_descricao,
-            sinonimos: entry.sinonimos,
-            antonimos: entry.antonimos,
-            contexto_uso: entry.contexto,
+        // Adicionar ao batch de sinônimos
+        synonymBatches.push({
+          palavra: entry.palavra,
+          pos: entry.pos,
+          acepcao_numero: entry.acepcao_numero,
+          acepcao_descricao: entry.acepcao_descricao,
+          sinonimos: entry.sinonimos,
+          antonimos: entry.antonimos,
+          contexto_uso: entry.contexto,
+          fonte: 'houaiss'
+        });
+
+        // Adicionar relações de sinônimos ao batch
+        for (const sinonimo of entry.sinonimos) {
+          networkBatches.push({
+            palavra_origem: entry.palavra,
+            palavra_destino: sinonimo.toLowerCase(),
+            tipo_relacao: 'sinonimo',
+            contexto: entry.acepcao_descricao,
             fonte: 'houaiss'
           });
-
-        if (insertError) {
-          console.error('Erro ao inserir sinônimos:', insertError);
-          errors++;
-          errorLog.push(`Linha ${i}: ${insertError.message}`);
-          continue;
         }
 
-        // Criar relações na semantic_networks (sinônimos)
-        for (const sinonimo of entry.sinonimos) {
-          await supabaseClient
-            .from('semantic_networks')
-            .upsert({
-              palavra_origem: entry.palavra,
-              palavra_destino: sinonimo.toLowerCase(),
-              tipo_relacao: 'sinonimo',
-              contexto: entry.acepcao_descricao,
-              fonte: 'houaiss'
-            }, {
-              onConflict: 'palavra_origem,palavra_destino,tipo_relacao'
-            });
-        }
-
-        // Criar relações na semantic_networks (antônimos)
+        // Adicionar relações de antônimos ao batch
         for (const antonimo of entry.antonimos) {
-          await supabaseClient
-            .from('semantic_networks')
-            .upsert({
-              palavra_origem: entry.palavra,
-              palavra_destino: antonimo.toLowerCase(),
-              tipo_relacao: 'antonimo',
-              contexto: entry.acepcao_descricao,
-              fonte: 'houaiss'
-            }, {
-              onConflict: 'palavra_origem,palavra_destino,tipo_relacao'
-            });
+          networkBatches.push({
+            palavra_origem: entry.palavra,
+            palavra_destino: antonimo.toLowerCase(),
+            tipo_relacao: 'antonimo',
+            contexto: entry.acepcao_descricao,
+            fonte: 'houaiss'
+          });
         }
 
-        processed++;
-        
-        // Atualizar progresso a cada 100 entradas
-        if (processed % 100 === 0) {
-          console.log(`[Job ${jobId}] Processadas ${processed} entradas...`);
-          await supabaseClient
-            .from('dictionary_import_jobs')
-            .update({ 
-              verbetes_processados: processed,
-              verbetes_inseridos: processed,
-              erros: errors
-            })
-            .eq('id', jobId);
-        }
       } catch (err) {
-        console.error(`[Job ${jobId}] Erro processando linha ${i}:`, err);
+        console.error(`[Job ${jobId}] Erro parseando linha ${i}:`, err);
         errors++;
         errorLog.push(`Linha ${i}: ${err instanceof Error ? err.message : String(err)}`);
       }
+    }
+
+    // ✅ OTIMIZAÇÃO #1: Inserir em batches de 1000
+    console.log(`[Job ${jobId}] Inserindo ${synonymBatches.length} verbetes em batches...`);
+    
+    for (let i = 0; i < synonymBatches.length; i += BATCH_SIZE) {
+      const batch = synonymBatches.slice(i, Math.min(i + BATCH_SIZE, synonymBatches.length));
+      
+      const { error: insertError } = await supabaseClient
+        .from('lexical_synonyms')
+        .insert(batch);
+
+      if (insertError) {
+        console.error(`[Job ${jobId}] Erro ao inserir batch:`, insertError);
+        errors += batch.length;
+        errorLog.push(`Batch ${i}-${i + batch.length}: ${insertError.message}`);
+      } else {
+        processed += batch.length;
+      }
+
+      // Atualizar progresso após cada batch
+      const progressPercent = Math.round((processed / synonymBatches.length) * 100);
+      await supabaseClient
+        .from('dictionary_import_jobs')
+        .update({ 
+          verbetes_processados: processed,
+          verbetes_inseridos: processed,
+          erros: errors,
+          progresso: progressPercent
+        })
+        .eq('id', jobId);
+
+      console.log(`[Job ${jobId}] Progresso: ${processed}/${synonymBatches.length} (${progressPercent}%)`);
+    }
+
+    // ✅ OTIMIZAÇÃO #1: Inserir redes semânticas em batches
+    console.log(`[Job ${jobId}] Inserindo ${networkBatches.length} relações semânticas...`);
+    
+    for (let i = 0; i < networkBatches.length; i += BATCH_SIZE) {
+      const batch = networkBatches.slice(i, Math.min(i + BATCH_SIZE, networkBatches.length));
+      
+      await supabaseClient
+        .from('semantic_networks')
+        .upsert(batch, {
+          onConflict: 'palavra_origem,palavra_destino,tipo_relacao'
+        });
     }
 
     console.log(`[Job ${jobId}] Processamento concluído: ${processed} entradas, ${errors} erros`);
@@ -202,6 +223,7 @@ async function processInBackground(
         verbetes_processados: processed,
         verbetes_inseridos: processed,
         erros: errors,
+        progresso: 100,
         metadata: { errorLog: errorLog.slice(0, 10) }
       })
       .eq('id', jobId);

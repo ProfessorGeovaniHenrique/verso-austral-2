@@ -9,6 +9,7 @@ export { LexiconViewer } from './LexiconViewer';
 export { ValidationInterface } from './ValidationInterface';
 export { TagsetManager } from './TagsetManager';
 export { JobsMonitor } from './JobsMonitor';
+export { DictionaryImportTester } from './DictionaryImportTester';
 
 // Hierarchical and Dictionary Components
 export { HierarchyViewSelector } from './HierarchyViewSelector';
