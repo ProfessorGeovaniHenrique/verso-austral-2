@@ -169,7 +169,7 @@ function processDemoCorpus() {
 
   console.log(`✅ ${processedKeywords.length} keywords processadas`);
 
-  // FASE 2: Agregar domínios semânticos
+  // FASE 2: Agregar domínios semânticos com métricas completas
   const dominioMap = new Map<string, {
     dominio: string;
     riquezaLexical: number;
@@ -177,6 +177,8 @@ function processDemoCorpus() {
     percentual: number;
     palavras: string[];
     cor: string;
+    llScores: number[];
+    miScores: number[];
   }>();
 
   processedKeywords.forEach(k => {
@@ -187,7 +189,9 @@ function processDemoCorpus() {
         ocorrencias: 0,
         percentual: 0,
         palavras: [],
-        cor: k.cor
+        cor: k.cor,
+        llScores: [],
+        miScores: []
       });
     }
     
@@ -195,16 +199,35 @@ function processDemoCorpus() {
     dom.riquezaLexical += 1;
     dom.ocorrencias += k.frequencia;
     dom.palavras.push(k.palavra);
+    dom.llScores.push(k.ll);
+    dom.miScores.push(k.mi);
   });
 
-  // Calcular percentuais
+  // Calcular percentuais e médias
   const totalOcorrencias = Array.from(dominioMap.values())
     .reduce((sum, d) => sum + d.ocorrencias, 0);
 
-  const dominios = Array.from(dominioMap.values()).map(d => ({
-    ...d,
-    percentual: parseFloat(((d.ocorrencias / totalOcorrencias) * 100).toFixed(1))
-  })).sort((a, b) => b.percentual - a.percentual);
+  const dominios = Array.from(dominioMap.values()).map(d => {
+    const avgLL = d.llScores.length > 0 
+      ? parseFloat((d.llScores.reduce((a, b) => a + b, 0) / d.llScores.length).toFixed(2))
+      : 0;
+    
+    const avgMI = d.miScores.length > 0
+      ? parseFloat((d.miScores.reduce((a, b) => a + b, 0) / d.miScores.length).toFixed(2))
+      : 0;
+
+    return {
+      dominio: d.dominio,
+      descricao: DOMAIN_DESCRIPTIONS[d.dominio] || "Domínio semântico",
+      cor: d.cor,
+      palavras: d.palavras,
+      ocorrencias: d.ocorrencias,
+      avgLL: avgLL,
+      avgMI: avgMI,
+      riquezaLexical: d.riquezaLexical,
+      percentual: parseFloat(((d.ocorrencias / totalOcorrencias) * 100).toFixed(1))
+    };
+  }).sort((a, b) => b.percentual - a.percentual);
 
   console.log(`✅ ${dominios.length} domínios agregados`);
 

@@ -15,7 +15,7 @@ export interface DemoKeyword {
   significancia: string;
   dominio: string;
   cor: string;
-  prosody: number;
+  prosody: string; // ✅ Agora string: "Positiva", "Negativa", "Neutra"
 }
 
 export interface DemoDomain {

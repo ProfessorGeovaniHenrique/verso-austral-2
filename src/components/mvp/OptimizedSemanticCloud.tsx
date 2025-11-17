@@ -36,7 +36,7 @@ interface CloudNode {
     ll?: number;
     mi?: number;
     significancia?: string;
-    prosody?: number;
+    prosody?: number | string; // ✅ Aceita número (mockup) ou string (demo)
     avgLL?: number;
   };
 }
@@ -46,6 +46,24 @@ interface OptimizedSemanticCloudProps {
   onDomainClick?: (domain: string) => void;
 }
 type ViewMode = 'domains' | 'keywords';
+
+// Helper para lidar com prosody como string ou número
+function getProsodyInfo(prosody: number | string | undefined | null) {
+  if (typeof prosody === 'string') {
+    // Já é string: "Positiva", "Negativa", "Neutra"
+    const emoji = prosody === 'Positiva' ? '😊' : prosody === 'Negativa' ? '😔' : '😐';
+    const bg = prosody === 'Positiva' ? '#dcfce7' : prosody === 'Negativa' ? '#fee2e2' : '#f3f4f6';
+    return { emoji, label: prosody, bg };
+  } else {
+    // É número (dados mockup)
+    const value = prosody ?? 0;
+    const emoji = value > 0 ? '😊' : value < 0 ? '😔' : '😐';
+    const label = value > 0 ? 'Positiva' : value < 0 ? 'Negativa' : 'Neutra';
+    const bg = value > 0 ? '#dcfce7' : value < 0 ? '#fee2e2' : '#f3f4f6';
+    return { emoji, label, bg };
+  }
+}
+
 export function OptimizedSemanticCloud({
   nodes,
   onWordClick,
@@ -169,7 +187,7 @@ export function OptimizedSemanticCloud({
       const element = event.target;
       const node = filteredNodes.find(n => n.label === word.text);
       if (!node) return;
-      const prosodyEmoji = (node.tooltip.prosody ?? 0) > 0 ? '😊' : (node.tooltip.prosody ?? 0) < 0 ? '😔' : '😐';
+      const prosodyInfo = getProsodyInfo(node.tooltip.prosody); // ✅ Usa helper
       const content = viewMode === 'domains' ? `
           <div style="padding: 12px; max-width: 300px; font-family: Inter;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
@@ -203,7 +221,7 @@ export function OptimizedSemanticCloud({
           <div style="padding: 12px; max-width: 300px; font-family: Inter;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
               <strong style="font-size: 17px;">${node.tooltip.palavra || node.label}</strong>
-              <span style="font-size: 20px;">${prosodyEmoji}</span>
+              <span style="font-size: 20px;">${prosodyInfo.emoji}</span>
             </div>
             
             <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
@@ -247,9 +265,7 @@ export function OptimizedSemanticCloud({
     getWordTooltip: (word: any) => {
       const node = filteredNodes.find(n => n.label === word.text);
       if (!node) return word.text;
-      const prosodyEmoji = (node.tooltip.prosody ?? 0) > 0 ? '😊' : (node.tooltip.prosody ?? 0) < 0 ? '😔' : '😐';
-      const prosodyLabel = (node.tooltip.prosody ?? 0) > 0 ? 'Positiva' : (node.tooltip.prosody ?? 0) < 0 ? 'Negativa' : 'Neutra';
-      const prosodyBg = (node.tooltip.prosody ?? 0) > 0 ? '#dcfce7' : (node.tooltip.prosody ?? 0) < 0 ? '#fee2e2' : '#f3f4f6';
+      const prosodyInfo = getProsodyInfo(node.tooltip.prosody); // ✅ Usa helper
       if (viewMode === 'domains') {
         return `
             <div style="padding: 12px; max-width: 300px; font-family: Inter;">
@@ -286,7 +302,7 @@ export function OptimizedSemanticCloud({
             <div style="padding: 12px; max-width: 300px; font-family: Inter;">
               <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
                 <strong style="font-size: 17px;">${node.tooltip.palavra || node.label}</strong>
-                <span style="font-size: 20px;">${prosodyEmoji}</span>
+                <span style="font-size: 20px;">${prosodyInfo.emoji}</span>
               </div>
               
               <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 10px;">
@@ -315,7 +331,7 @@ export function OptimizedSemanticCloud({
               
               <div style="margin-top: 12px; padding: 8px; background: ${prosodyBg}; border-radius: 6px;">
                 <span style="font-size: 12px; color: #555; font-weight: 500;">
-                  ${prosodyEmoji} Prosódia <strong>${prosodyLabel}</strong>
+                  ${prosodyInfo.emoji} Prosódia <strong>${prosodyInfo.label}</strong>
                 </span>
               </div>
               

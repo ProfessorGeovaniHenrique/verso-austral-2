@@ -145,7 +145,7 @@ export function TabStatistics({ demo = false }: TabStatisticsProps) {
         mi: d.mi,
         significancia: d.significancia,
         efeito: d.ll > 15.13 ? 'Forte' : d.ll > 6.63 ? 'Moderado' : 'Fraco',
-        prosodia: (d.prosody > 0 ? 'Positiva' : d.prosody < 0 ? 'Negativa' : 'Neutra') as ProsodiaType,
+        prosodia: d.prosody as ProsodiaType, // ✅ Já vem como string
         dominio: d.dominio,
         cor: d.cor
       }));
