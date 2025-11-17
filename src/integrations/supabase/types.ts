@@ -723,6 +723,45 @@ export type Database = {
           },
         ]
       }
+      invite_keys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          key_code: string
+          notes: string | null
+          role: Database["public"]["Enums"]["app_role"] | null
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_code: string
+          notes?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          key_code?: string
+          notes?: string | null
+          role?: Database["public"]["Enums"]["app_role"] | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
       lexical_definitions: {
         Row: {
           area_conhecimento: string | null
@@ -1132,6 +1171,27 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_visualization_preferences: {
         Row: {
           atualizado_em: string | null
@@ -1165,9 +1225,17 @@ export type Database = {
     }
     Functions: {
       calculate_tagset_hierarchy: { Args: never; Returns: undefined }
+      generate_invite_key: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "evaluator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1294,6 +1362,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "evaluator"],
+    },
   },
 } as const
