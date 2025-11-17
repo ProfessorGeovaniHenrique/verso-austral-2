@@ -1,0 +1,123 @@
+name: Code Quality Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  scan-code:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Code Quality Scan
+        id: scan
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          echo "🔍 Iniciando scan de qualidade do código..."
+          
+          # Chamar edge function de scan
+          RESPONSE=$(curl -X POST "${SUPABASE_URL}/functions/v1/scan-codebase-realtime" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}" \
+            -H "Content-Type: application/json" \
+            -d '{"scanType": "full", "compareWithBaseline": true}' \
+            --silent \
+            --show-error)
+          
+          echo "Response: $RESPONSE"
+          
+          # Extrair dados do JSON
+          TOTAL_ISSUES=$(echo $RESPONSE | jq -r '.totalIssues // 0')
+          CRITICAL_ISSUES=$(echo $RESPONSE | jq -r '.comparison.new | map(select(.severidade == "crítica")) | length // 0')
+          NEW_ISSUES=$(echo $RESPONSE | jq -r '.comparison.new | length // 0')
+          IMPROVEMENT=$(echo $RESPONSE | jq -r '.improvementPercentage // 0')
+          
+          echo "📊 Resultados do Scan:"
+          echo "  - Total de Issues: $TOTAL_ISSUES"
+          echo "  - Issues Críticos: $CRITICAL_ISSUES"
+          echo "  - Novos Issues: $NEW_ISSUES"
+          echo "  - Melhoria: $IMPROVEMENT%"
+          
+          # Exportar para próximos steps
+          echo "total_issues=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "critical_issues=$CRITICAL_ISSUES" >> $GITHUB_OUTPUT
+          echo "new_issues=$NEW_ISSUES" >> $GITHUB_OUTPUT
+          echo "improvement=$IMPROVEMENT" >> $GITHUB_OUTPUT
+      
+      - name: Check Critical Issues
+        if: steps.scan.outputs.critical_issues > 3
+        run: |
+          echo "❌ BLOQUEADO: ${{ steps.scan.outputs.critical_issues }} bugs críticos detectados!"
+          echo ""
+          echo "🚫 Este PR não pode ser mergeado até que os bugs críticos sejam corrigidos."
+          echo ""
+          echo "📋 Acesse /developer-logs na aplicação para ver os detalhes completos."
+          exit 1
+      
+      - name: Quality Gate Passed
+        if: steps.scan.outputs.critical_issues <= 3
+        run: |
+          echo "✅ Code Quality Check Passed!"
+          echo ""
+          echo "📊 Métricas:"
+          echo "  ✓ Issues Críticos: ${{ steps.scan.outputs.critical_issues }} (limite: 3)"
+          echo "  ℹ️ Total de Issues: ${{ steps.scan.outputs.total_issues }}"
+          echo "  📈 Taxa de Melhoria: ${{ steps.scan.outputs.improvement }}%"
+      
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const criticalIssues = ${{ steps.scan.outputs.critical_issues }};
+            const totalIssues = ${{ steps.scan.outputs.total_issues }};
+            const improvement = ${{ steps.scan.outputs.improvement }};
+            
+            const status = criticalIssues <= 3 ? '✅' : '❌';
+            const statusText = criticalIssues <= 3 ? 'APROVADO' : 'BLOQUEADO';
+            const color = criticalIssues <= 3 ? '🟢' : '🔴';
+            
+            const body = `## ${status} Code Quality Check - ${statusText}
+            
+            ${color} **Status:** ${statusText}
+            
+            ### 📊 Métricas do Scan
+            
+            | Métrica | Valor | Status |
+            |---------|-------|--------|
+            | Issues Críticos | ${criticalIssues} | ${criticalIssues <= 3 ? '✅ OK' : '❌ Limite excedido'} |
+            | Total de Issues | ${totalIssues} | ℹ️ |
+            | Taxa de Melhoria | ${improvement}% | ${improvement >= 50 ? '✅' : '⚠️'} |
+            
+            ${criticalIssues > 3 ? `
+            ### 🚫 Ação Necessária
+            
+            Este PR possui **${criticalIssues} bugs críticos** (limite: 3).
+            
+            Por favor, corrija os bugs críticos antes de fazer merge.
+            
+            📋 Acesse \`/developer-logs\` na aplicação para ver os detalhes completos.
+            ` : `
+            ### ✨ Próximos Passos
+            
+            - Continue implementando as sugestões de otimização da IA
+            - Mantenha a qualidade do código alta
+            - Monitore a taxa de melhoria no dashboard
+            `}
+            
+            ---
+            
+            💡 **Dica:** Use o Dashboard de DevLogs para análise detalhada e sugestões de correção automatizadas.
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

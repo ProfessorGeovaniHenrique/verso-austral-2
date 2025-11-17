@@ -928,6 +928,47 @@ export type Database = {
           },
         ]
       }
+      system_alerts: {
+        Row: {
+          acknowledged: boolean
+          alert_type: string
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          scan_id: string | null
+          sent_to: string | null
+        }
+        Insert: {
+          acknowledged?: boolean
+          alert_type: string
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          scan_id?: string | null
+          sent_to?: string | null
+        }
+        Update: {
+          acknowledged?: boolean
+          alert_type?: string
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          scan_id?: string | null
+          sent_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_alerts_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "code_scan_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       technical_decisions: {
         Row: {
           alternatives: Json | null

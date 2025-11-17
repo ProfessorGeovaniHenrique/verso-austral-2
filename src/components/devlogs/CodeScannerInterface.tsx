@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCodeScanHistory } from "@/hooks/useCodeScanHistory";
+import { useRealtimeAlerts } from "@/hooks/useRealtimeAlerts";
 import { useState } from "react";
 import { 
   Bug, 
@@ -15,14 +16,18 @@ import {
   TrendingDown,
   FileCode,
   Zap,
-  Activity
+  Activity,
+  Bell,
+  BellOff
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export function CodeScannerInterface() {
   const { scans, isLoading, isScanning, runScan, latestScan, stats } = useCodeScanHistory();
+  const { alerts, unacknowledgedCount, acknowledgeAlert, acknowledgeAll } = useRealtimeAlerts();
   const [scanType, setScanType] = useState<'full' | 'edge-functions' | 'components' | 'hooks'>('full');
 
   const handleRunScan = () => {
@@ -49,6 +54,47 @@ export function CodeScannerInterface() {
 
   return (
     <div className="space-y-6">
+      {/* Alertas em Tempo Real */}
+      {unacknowledgedCount > 0 && (
+        <Alert variant="destructive" className="border-red-500/50 bg-red-500/10">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <Bell className="h-5 w-5 mt-0.5" />
+              <div className="space-y-2 flex-1">
+                <AlertDescription className="font-semibold">
+                  {unacknowledgedCount} alerta(s) não reconhecido(s)
+                </AlertDescription>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {alerts.slice(0, 3).map(alert => (
+                    <div key={alert.id} className="text-sm border-l-2 border-red-500 pl-3 py-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="whitespace-pre-line">{alert.message}</span>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => acknowledgeAlert(alert.id)}
+                          className="shrink-0"
+                        >
+                          <BellOff className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={acknowledgeAll}
+              className="shrink-0"
+            >
+              Reconhecer Todos
+            </Button>
+          </div>
+        </Alert>
+      )}
+
       {/* Header e Controles */}
       <Card className="border-primary/20">
         <CardHeader>
@@ -63,6 +109,13 @@ export function CodeScannerInterface() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-3">
+              {/* Badge de Alertas */}
+              {unacknowledgedCount > 0 && (
+                <Badge variant="destructive" className="gap-2">
+                  <Bell className="w-3 h-3" />
+                  {unacknowledgedCount}
+                </Badge>
+              )}
               <Select value={scanType} onValueChange={(value: any) => setScanType(value)}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue />

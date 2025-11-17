@@ -40,6 +40,17 @@ export function ConstructionLogManager() {
     });
   };
 
+  const createTestPhase = async () => {
+    await createPhase.mutateAsync({
+      phase_number: (phases?.length || 0) + 1,
+      phase_name: "Sistema de DevLogs Inteligentes - Sprint Consolidado",
+      date_start: new Date().toISOString().split('T')[0],
+      date_end: new Date().toISOString().split('T')[0],
+      status: 'completed',
+      objective: "Implementar análise contextual da IA + sistema de alertas realtime + GitHub Actions CI/CD + indicador de ROI em um único sprint para economia de créditos",
+    });
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
@@ -79,14 +90,24 @@ export function ConstructionLogManager() {
                 Registre fases, decisões técnicas e métricas dinamicamente
               </CardDescription>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Nova Fase
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={createTestPhase}
+                disabled={createPhase.isPending}
+                className="gap-2"
+              >
+                🧪 Criar Fase de Teste
+              </Button>
+              
+              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Nova Fase
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Criar Nova Fase de Construção</DialogTitle>
                   <DialogDescription>

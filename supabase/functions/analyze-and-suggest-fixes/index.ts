@@ -52,7 +52,53 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
+    // ✅ BUSCAR CONTEXTO HISTÓRICO ANTES DA ANÁLISE
+    console.log('📚 Buscando contexto histórico...');
+    const { data: previousAnalyses } = await supabaseClient
+      .from('ai_analysis_history')
+      .select('suggestions, applied_fixes, created_at')
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    const { data: resolvedSuggestions } = await supabaseClient
+      .from('ai_suggestion_status')
+      .select('suggestion_id, title, resolved_at, category')
+      .eq('status', 'resolved');
+
+    // Construir contexto histórico
+    const previousBugs = previousAnalyses?.flatMap(a => 
+      Array.isArray(a.suggestions) ? a.suggestions.map(s => ({
+        id: s.id,
+        title: s.title,
+        category: s.category
+      })) : []
+    ) || [];
+
+    const resolvedBugIds = resolvedSuggestions?.map(s => s.suggestion_id) || [];
+    const appliedFixes = previousAnalyses?.flatMap(a => a.applied_fixes || []) || [];
+
+    console.log(`📊 Contexto: ${previousBugs.length} bugs anteriores, ${resolvedBugIds.length} resolvidos, ${appliedFixes.length} fixes aplicados`);
+
     const systemPrompt = `Você é um especialista em debugging e otimização de código React/TypeScript/Supabase.
+Analise os logs fornecidos e sugira correções priorizadas.
+
+⚠️ CONTEXTO HISTÓRICO IMPORTANTE:
+- Bugs já identificados anteriormente: ${previousBugs.length}
+- Bugs já resolvidos: ${resolvedBugIds.length}
+- Fixes aplicados: ${appliedFixes.length}
+
+🔍 INSTRUÇÕES CRÍTICAS DE ANÁLISE CONTEXTUAL:
+1. NÃO reporte bugs que já foram RESOLVIDOS (IDs: ${resolvedBugIds.slice(0, 10).join(', ')})
+2. Se um bug estava em análises anteriores mas não aparece mais no código atual, marque-o como "Corrigido recentemente" e NÃO o inclua nas sugestões
+3. Identifique APENAS problemas NOVOS ou problemas que AINDA PERSISTEM
+4. Compare o código atual com os fixes aplicados para validar implementações
+5. Priorize bugs NOVOS sobre os que já foram identificados anteriormente
+
+📋 BUGS JÁ RESOLVIDOS (NÃO REPORTAR):
+${resolvedSuggestions?.slice(0, 5).map(s => `- ${s.title} (${s.category})`).join('\n') || 'Nenhum'}
+
+🔧 FIXES JÁ APLICADOS:
+${appliedFixes.slice(0, 5).join('\n') || 'Nenhum'}
 Analise os logs fornecidos e sugira correções priorizadas.
 
 DIRETRIZES OBRIGATÓRIAS:
@@ -169,6 +215,29 @@ Retorne um objeto JSON com esta estrutura exata:
       suggestions: analysisResult.suggestions.length
     });
 
+    // ✅ AUTO-RESOLUÇÃO: Detectar bugs que sumiram
+    const currentBugIds = analysisResult.suggestions.map(s => s.id);
+    const previousBugIds = previousBugs.map(b => b.id);
+    const autoResolvedIds = previousBugIds.filter(id => !currentBugIds.includes(id));
+
+    if (autoResolvedIds.length > 0) {
+      console.log(`✨ Auto-resolvendo ${autoResolvedIds.length} bugs que não aparecem mais...`);
+      
+      const { error: autoResolveError } = await supabaseClient
+        .from('ai_suggestion_status')
+        .update({ 
+          status: 'resolved',
+          resolved_at: new Date().toISOString(),
+          implementation_notes: 'Auto-resolved: bug no longer detected in latest scan'
+        })
+        .in('suggestion_id', autoResolvedIds)
+        .eq('status', 'pending');
+
+      if (!autoResolveError) {
+        console.log(`✅ ${autoResolvedIds.length} bugs auto-resolvidos com sucesso`);
+      }
+    }
+
     // ✅ PERSISTIR ANÁLISE NO BANCO
     const { data: savedAnalysis, error: saveError } = await supabaseClient
       .from('ai_analysis_history')
@@ -182,7 +251,14 @@ Retorne um objeto JSON com esta estrutura exata:
         ),
         metadata: {
           summary: analysisResult.summary,
-          nextSteps: analysisResult.nextSteps
+          nextSteps: analysisResult.nextSteps,
+          contextLength: context?.length || 0,
+          autoResolvedCount: autoResolvedIds.length,
+          historicalContext: {
+            previousBugs: previousBugs.length,
+            resolvedBugs: resolvedBugIds.length,
+            appliedFixes: appliedFixes.length
+          }
         }
       })
       .select()
@@ -213,7 +289,7 @@ Retorne um objeto JSON com esta estrutura exata:
       console.log(`Saved analysis ${savedAnalysis.id} with ${statusInserts.length} suggestions`);
     }
 
-    // ✅ NOVO: Verificar se há problemas críticos e disparar alerta
+    // ✅ DISPARAR ALERTA CRÍTICO SE NECESSÁRIO
     const criticalIssues = analysisResult.suggestions.filter(
       (s: AnalysisSuggestion) => s.priority <= 2
     );
@@ -222,6 +298,44 @@ Retorne um objeto JSON com esta estrutura exata:
       console.log(`🚨 ${criticalIssues.length} problemas críticos detectados, enviando alerta...`);
       
       try {
+        // Buscar último scan para enviar contexto completo
+        const { data: latestScan } = await supabaseClient
+          .from('code_scan_history')
+          .select('id, improvement_percentage, total_issues, resolved_issues, new_issues, pending_issues')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const alertPayload = {
+          scanId: latestScan?.id || savedAnalysis.id,
+          criticalCount: criticalIssues.length,
+          improvementRate: latestScan?.improvement_percentage || 0,
+          analysisDetails: {
+            totalIssues: analysisResult.summary.totalIssues,
+            resolvedIssues: latestScan?.resolved_issues || 0,
+            newIssues: latestScan?.new_issues || 0,
+            pendingIssues: latestScan?.pending_issues || 0,
+            criticalIssues: criticalIssues.map(issue => ({
+              title: issue.title,
+              category: issue.category,
+              affectedFiles: issue.affectedFiles
+            }))
+          }
+        };
+
+        const { error: alertError } = await supabaseClient.functions.invoke('send-critical-alert', {
+          body: alertPayload
+        });
+
+        if (alertError) {
+          console.error('⚠️ Erro ao enviar alerta (não crítico):', alertError);
+        } else {
+          console.log('✅ Alerta enviado com sucesso');
+        }
+      } catch (alertErr) {
+        console.error('⚠️ Erro ao processar alerta:', alertErr);
+      }
+    }
         const alertResponse = await supabaseClient.functions.invoke(
           'send-critical-alert',
           {

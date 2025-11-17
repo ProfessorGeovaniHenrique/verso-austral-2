@@ -10,3 +10,4 @@ export { AIAssistant } from './AIAssistant';
 export { CodeScannerInterface } from './CodeScannerInterface';
 export { ConstructionLogManager } from './ConstructionLogManager';
 export { TemporalEvolutionDashboard } from './TemporalEvolutionDashboard';
+export { CreditsSavingsIndicator } from './CreditsSavingsIndicator';

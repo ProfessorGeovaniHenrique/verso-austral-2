@@ -13,6 +13,7 @@ import { AIAssistant } from "@/components/devlogs/AIAssistant";
 import { CodeScannerInterface } from "@/components/devlogs/CodeScannerInterface";
 import { ConstructionLogManager } from "@/components/devlogs/ConstructionLogManager";
 import { TemporalEvolutionDashboard } from "@/components/devlogs/TemporalEvolutionDashboard";
+import { CreditsSavingsIndicator } from "@/components/devlogs/CreditsSavingsIndicator";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
 import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap, Wrench, BarChart3 } from "lucide-react";
@@ -185,6 +186,11 @@ export default function DeveloperLogs() {
           resultsCount={filteredPhases.length}
           onClear={handleClearFilters}
         />
+
+        {/* ROI Indicator */}
+        <div className="mt-6">
+          <CreditsSavingsIndicator />
+        </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-6">
           <TabsList className="grid w-full grid-cols-8 lg:w-auto">
