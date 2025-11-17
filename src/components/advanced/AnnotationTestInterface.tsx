@@ -67,13 +67,14 @@ export function AnnotationTestInterface() {
 
       if (demoMode) {
         // Em modo demo, fazer chamada direta via fetch para evitar header de auth inválido
+        console.log('🎭 Iniciando anotação em MODO DEMO');
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/annotate-semantic`,
           {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '',
             },
             body: JSON.stringify({
               corpus_type: 'marenco-verso',
@@ -83,12 +84,16 @@ export function AnnotationTestInterface() {
           }
         );
 
+        console.log('Demo response status:', response.status);
+
         if (!response.ok) {
           const errorData = await response.json();
+          console.error('Demo error:', errorData);
           throw new Error(errorData.error || 'Erro na requisição');
         }
 
         data = await response.json();
+        console.log('Demo success:', data);
       } else {
         // Modo normal com autenticação
         const result = await supabase.functions.invoke('annotate-semantic', {
