@@ -5,7 +5,8 @@ import { useState, useEffect, useMemo } from "react";
 import { getDemoAnalysisResults } from "@/services/demoCorpusService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { OptimizedSemanticCloud } from "./OptimizedSemanticCloud";
+import { D3SemanticCloud } from "./D3SemanticCloud";
+import { D3CloudControls } from "./D3CloudControls";
 import { getDomainColor } from "@/config/domainColors";
 
 interface TabGalaxyProps {
@@ -18,6 +19,11 @@ export function TabGalaxy({ demo = false }: TabGalaxyProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('domains');
   const [isLoading, setIsLoading] = useState(false);
   const [demoData, setDemoData] = useState<any>(null);
+  
+  // D3 Cloud Controls State
+  const [padding, setPadding] = useState(6);
+  const [spiral, setSpiral] = useState<'archimedean' | 'rectangular'>('archimedean');
+  const [rotation, setRotation] = useState(0);
 
   useEffect(() => {
     if (demo) {
@@ -161,14 +167,30 @@ export function TabGalaxy({ demo = false }: TabGalaxyProps) {
           </div>
         </CardHeader>
 
-        <CardContent>
-          <OptimizedSemanticCloud 
+        <CardContent className="space-y-4">
+          <D3CloudControls
+            padding={padding}
+            spiral={spiral}
+            rotation={rotation}
+            onPaddingChange={setPadding}
+            onSpiralChange={setSpiral}
+            onRotationChange={setRotation}
+          />
+          
+          <D3SemanticCloud 
             nodes={cloudNodes}
+            width={1200}
+            height={700}
+            padding={padding}
+            spiral={spiral}
+            rotation={rotation}
             onWordClick={(word) => {
               console.log('Palavra clicada:', word);
+              toast.info(`Palavra: ${word}`);
             }}
             onDomainClick={(domain) => {
-              console.log('Domínio clicado para filtro:', domain);
+              console.log('Domínio clicado:', domain);
+              toast.info(`Domínio: ${domain}`);
             }}
           />
         </CardContent>
