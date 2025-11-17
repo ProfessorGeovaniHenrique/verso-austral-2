@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useTagsets, Tagset } from '@/hooks/useTagsets';
+import { useTagsets, Tagset, TagsetStatus } from '@/hooks/useTagsets';
 import { TagsetHierarchyTree } from './TagsetHierarchyTree';
 import { TagsetEditor } from './TagsetEditor';
 import { TagsetCreator } from './TagsetCreator';
@@ -11,7 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, XCircle, Clock, BarChart3 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { CheckCircle2, XCircle, Clock, BarChart3, Lightbulb } from 'lucide-react';
 
 export function TagsetManager() {
   const { tagsets, stats, isLoading, refetch, approveTagsets, rejectTagsets, updateTagset, proposeTagset } = useTagsets();
@@ -153,10 +154,10 @@ export function TagsetManager() {
     }
   };
 
-  const pendingCount = tagsets.filter(t => t.status !== 'ativo' && !t.aprovado_por).length;
-  const tagsetsAtivos = tagsets.filter(t => t.status === 'ativo');
-  const tagsetsPendentes = tagsets.filter(t => t.status === 'pendente');
-  const tagsetsRejeitados = tagsets.filter(t => t.status === 'rejeitado');
+  const pendingCount = tagsets.filter(t => t.status !== TagsetStatus.ATIVO && !t.aprovado_por).length;
+  const tagsetsAtivos = tagsets.filter(t => t.status === TagsetStatus.ATIVO);
+  const tagsetsPendentes = tagsets.filter(t => t.status === TagsetStatus.PROPOSTO);
+  const tagsetsRejeitados = tagsets.filter(t => t.status === TagsetStatus.REJEITADO);
 
   if (isLoading) {
     return (
@@ -212,7 +213,7 @@ export function TagsetManager() {
               </TabsTrigger>
               <TabsTrigger value="pendentes" className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Pendentes
+                Propostos
                 <Badge variant="secondary">{tagsetsPendentes.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="sugestoes" className="flex items-center gap-2">
@@ -291,9 +292,12 @@ export function TagsetManager() {
               )}
 
               {tagsetsAtivos.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Nenhum tagset ativo encontrado.
-                </div>
+                <Alert>
+                  <CheckCircle2 className="h-4 w-4" />
+                  <AlertDescription>
+                    Nenhum tagset ativo encontrado.
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <TagsetHierarchyTree
                   tagsets={tagsetsAtivos}
@@ -309,9 +313,12 @@ export function TagsetManager() {
             {/* Tab Pendentes */}
             <TabsContent value="pendentes" className="space-y-4">
               {tagsetsPendentes.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Nenhum tagset pendente.
-                </div>
+                <Alert>
+                  <Clock className="h-4 w-4" />
+                  <AlertDescription>
+                    Nenhum tagset proposto aguardando aprovação.
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <TagsetHierarchyTree
                   tagsets={tagsetsPendentes}
@@ -337,9 +344,12 @@ export function TagsetManager() {
             {/* Tab Rejeitados */}
             <TabsContent value="rejeitados" className="space-y-4">
               {tagsetsRejeitados.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  Nenhum tagset rejeitado.
-                </div>
+                <Alert>
+                  <XCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Nenhum tagset foi rejeitado ainda.
+                  </AlertDescription>
+                </Alert>
               ) : (
                 <TagsetHierarchyTree
                   tagsets={tagsetsRejeitados}

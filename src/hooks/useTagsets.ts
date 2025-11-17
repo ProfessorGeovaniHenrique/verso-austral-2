@@ -3,6 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { retrySupabaseOperation } from '@/lib/retryUtils';
 import { notifications } from '@/lib/notifications';
 
+// Enum de Status para evitar erros de typo
+export enum TagsetStatus {
+  ATIVO = 'ativo',
+  PROPOSTO = 'proposto',
+  REJEITADO = 'rejeitado'
+}
+
 export interface Tagset {
   id: string;
   codigo: string;
