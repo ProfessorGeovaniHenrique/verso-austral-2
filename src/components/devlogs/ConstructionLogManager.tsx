@@ -189,6 +189,7 @@ export function ConstructionLogManager() {
               </DialogContent>
             </Dialog>
           </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
