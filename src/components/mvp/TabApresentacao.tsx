@@ -148,15 +148,15 @@ E uma saudade redomona pelos cantos do galpão`}
           </TabsContent>
 
           <TabsContent value="dominios" className="mt-6">
-            <TabDomains />
+            <TabDomains demo={true} />
           </TabsContent>
 
           <TabsContent value="estatisticas" className="mt-6">
-            <TabStatistics />
+            <TabStatistics demo={true} />
           </TabsContent>
 
           <TabsContent value="nuvem" className="mt-6">
-            <TabGalaxy />
+            <TabGalaxy demo={true} />
           </TabsContent>
         </Tabs>
       </CardContent>

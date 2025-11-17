@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,6 +51,8 @@ import { getProsodiaByLema } from "@/data/mockup/prosodias-lemas";
 import { kwicDataMap } from "@/data/mockup/kwic";
 import { ACADEMIC_RS_COLORS } from "@/config/themeColors";
 import { KWICModal } from "@/components/KWICModal";
+import { getDemoAnalysisResults, DemoKeyword } from "@/services/demoCorpusService";
+import { toast } from "sonner";
 
 type SortColumn = 'palavra' | 'lema' | 'frequenciaBruta' | 'frequenciaNormalizada' | 'prosodia' | 'll' | 'mi' | 'significancia' | 'efeito' | null;
 type SortDirection = 'asc' | 'desc' | null;
@@ -69,17 +72,23 @@ interface EnrichedWord {
 
 // Paleta de 8 cores distintas para os domínios (prioriza legibilidade)
 const DOMAIN_COLORS: Record<string, string> = {
-  "Natureza e Paisagem": "hsl(142, 71%, 45%)",      // Verde
-  "Cultura e Lida Gaúcha": "hsl(210, 100%, 50%)",  // Azul
-  "Sentimentos e Abstrações": "hsl(280, 70%, 55%)", // Roxo
-  "Ações e Processos": "hsl(30, 100%, 50%)",       // Laranja
-  "Qualidades e Estados": "hsl(340, 75%, 55%)",    // Rosa
-  "Partes do Corpo": "hsl(0, 72%, 51%)",           // Vermelho
-  "Seres Vivos": "hsl(120, 60%, 40%)",             // Verde escuro
-  "Palavras Funcionais": "hsl(0, 0%, 60%)"         // Cinza
+  "Natureza e Paisagem": "hsl(142, 71%, 45%)",
+  "Cultura e Lida Gaúcha": "hsl(210, 100%, 50%)",
+  "Sentimentos e Abstrações": "hsl(280, 70%, 55%)",
+  "Ações e Processos": "hsl(30, 100%, 50%)",
+  "Qualidades e Estados": "hsl(340, 75%, 55%)",
+  "Partes do Corpo": "hsl(0, 72%, 51%)",
+  "Seres Vivos": "hsl(120, 60%, 40%)",
+  "Palavras Funcionais": "hsl(0, 0%, 60%)"
 };
 
-export function TabStatistics() {
+interface TabStatisticsProps {
+  demo?: boolean;
+}
+
+export function TabStatistics({ demo = false }: TabStatisticsProps) {
+  const [demoData, setDemoData] = useState<DemoKeyword[] | null>(null);
+  const [isLoadingDemo, setIsLoadingDemo] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<SortColumn>('frequenciaNormalizada');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -98,8 +107,41 @@ export function TabStatistics() {
 
   const itemsPerPage = 100;
 
+  // Carregar dados demo
+  useEffect(() => {
+    if (demo) {
+      setIsLoadingDemo(true);
+      getDemoAnalysisResults()
+        .then(result => {
+          setDemoData(result.keywords);
+          toast.success(`${result.keywords.length} palavras-chave carregadas`);
+        })
+        .catch(error => {
+          console.error('Erro ao carregar dados demo:', error);
+          toast.error('Erro ao carregar análise demo');
+        })
+        .finally(() => setIsLoadingDemo(false));
+    }
+  }, [demo]);
+
   // Enriquecer palavras-chave com prosódia
   const palavrasEnriquecidas: EnrichedWord[] = useMemo(() => {
+    // Se modo demo, usar dados da edge function
+    if (demo && demoData) {
+      return demoData.map(d => ({
+        palavra: d.palavra,
+        lema: d.palavra,
+        frequenciaBruta: d.frequencia,
+        frequenciaNormalizada: d.frequencia,
+        ll: d.ll,
+        mi: d.mi,
+        significancia: d.significancia,
+        efeito: d.ll > 15.13 ? 'Forte' : d.ll > 6.63 ? 'Moderado' : 'Fraco',
+        prosodia: (d.prosody > 0 ? 'Positiva' : d.prosody < 0 ? 'Negativa' : 'Neutra') as ProsodiaType
+      }));
+    }
+
+    // Caso contrário, usar dados mockup
     return palavrasChaveData.map(p => ({
       palavra: p.palavra,
       lema: p.lema || p.palavra,
@@ -111,7 +153,7 @@ export function TabStatistics() {
       efeito: p.efeito,
       prosodia: getProsodiaByLema(p.lema || p.palavra)
     }));
-  }, []);
+  }, [demo, demoData]);
 
   // Filtrar por busca + ranges
   const filteredWords = useMemo(() => {
