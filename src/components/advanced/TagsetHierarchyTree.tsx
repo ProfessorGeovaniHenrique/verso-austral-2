@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronRight, ChevronDown, Check, X } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ChevronRight, ChevronDown, Check, X, Info, Users } from 'lucide-react';
 import { Tagset } from '@/hooks/useTagsets';
 
 interface TagsetNode extends Tagset {
@@ -71,11 +72,21 @@ export function TagsetHierarchyTree({
     const hasChildren = node.children.length > 0;
     const isSelected = selectedIds.includes(node.id);
     const needsApproval = node.status !== 'ativo' && !node.aprovado_por;
+    
+    // Cores por nível hierárquico
+    const levelColors: Record<number, string> = {
+      1: 'border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20',
+      2: 'border-l-4 border-l-green-500 bg-green-50/50 dark:bg-green-950/20',
+      3: 'border-l-4 border-l-yellow-500 bg-yellow-50/50 dark:bg-yellow-950/20',
+      4: 'border-l-4 border-l-purple-500 bg-purple-50/50 dark:bg-purple-950/20'
+    };
+    
+    const levelColor = levelColors[node.nivel_profundidade || 1] || levelColors[1];
 
     return (
       <div key={node.id} className="select-none">
         <div
-          className={`flex items-center gap-2 py-2 px-3 hover:bg-accent/50 rounded-md transition-colors ${
+          className={`flex items-center gap-2 py-2 px-3 hover:bg-accent/50 rounded-md transition-colors ${levelColor} ${
             level > 0 ? 'ml-6' : ''
           }`}
         >
@@ -105,9 +116,61 @@ export function TagsetHierarchyTree({
           <Badge variant="outline" className="font-mono text-xs">
             {node.codigo}
           </Badge>
+          
+          {/* Badge de Nível */}
+          <Badge variant="secondary" className="text-xs">
+            N{node.nivel_profundidade || '?'}
+          </Badge>
+          
+          {/* Badge de Filhos */}
+          {hasChildren && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Users className="w-3 h-3" />
+                    {node.children.length}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs">
+                    {node.children.length} {node.children.length === 1 ? 'filho' : 'filhos'}
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
 
-          {/* Nome */}
-          <span className="font-semibold flex-1">{node.nome}</span>
+          {/* Nome com Tooltip de Hierarquia */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <span className="font-semibold truncate">{node.nome}</span>
+                  {node.hierarquia_completa && (
+                    <Info className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                  )}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-md">
+                <div className="space-y-1">
+                  {node.hierarquia_completa && (
+                    <div className="text-xs font-medium">
+                      Hierarquia: {node.hierarquia_completa}
+                    </div>
+                  )}
+                  {node.tagset_pai && (
+                    <div className="text-xs text-muted-foreground">
+                      Pai: {node.tagset_pai}
+                    </div>
+                  )}
+                  <div className="text-xs text-muted-foreground">
+                    Profundidade: Nível {node.nivel_profundidade || 'não definido'}
+                  </div>
+                </div>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           {/* Status */}
           {node.status === 'ativo' && (
@@ -147,13 +210,32 @@ export function TagsetHierarchyTree({
           )}
         </div>
 
-        {/* Descrição e exemplos (quando expandido) */}
+        {/* Breadcrumb e Descrição (quando expandido) */}
         {isExpanded && (
-          <div className="ml-14 mb-2 text-sm text-muted-foreground space-y-1">
-            {node.descricao && <p>{node.descricao}</p>}
+          <div className="ml-14 mb-2 space-y-2">
+            {/* Breadcrumb hierárquico */}
+            {node.hierarquia_completa && (
+              <div className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
+                {node.hierarquia_completa.split(' > ').map((part, i, arr) => (
+                  <span key={i} className="flex items-center gap-1">
+                    <span className="font-medium text-foreground/70">{part}</span>
+                    {i < arr.length - 1 && (
+                      <ChevronRight className="w-3 h-3" />
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {/* Descrição */}
+            {node.descricao && (
+              <p className="text-sm text-muted-foreground">{node.descricao}</p>
+            )}
+            
+            {/* Exemplos */}
             {node.exemplos && node.exemplos.length > 0 && (
               <div className="flex flex-wrap gap-1">
-                <span className="text-xs font-semibold">Exemplos:</span>
+                <span className="text-xs font-semibold text-muted-foreground">Exemplos:</span>
                 {node.exemplos.map((ex, i) => (
                   <Badge key={i} variant="secondary" className="font-mono text-xs">
                     {ex}

@@ -16,6 +16,13 @@ export interface Tagset {
   criado_em: string;
   aprovado_por: string | null;
   aprovado_em: string | null;
+  nivel_profundidade: number | null;
+  hierarquia_completa: string | null;
+  tagset_pai: string | null;
+  codigo_nivel_1: string | null;
+  codigo_nivel_2: string | null;
+  codigo_nivel_3: string | null;
+  codigo_nivel_4: string | null;
 }
 
 export function useTagsets() {
