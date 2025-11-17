@@ -10,6 +10,7 @@ import { SearchBar } from "@/components/devlogs/SearchBar";
 import { AuditReport } from "@/components/devlogs/AuditReport";
 import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
 import { AIAssistant } from "@/components/devlogs/AIAssistant";
+import { CodeScannerInterface } from "@/components/devlogs/CodeScannerInterface";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
 import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap } from "lucide-react";
@@ -125,6 +126,15 @@ export default function DeveloperLogs() {
                 <Download className="w-4 h-4" />
                 Exportar Relatório
               </Button>
+              
+              <Button 
+                onClick={() => setActiveTab('code-scanner')}
+                variant="destructive" 
+                className="gap-2"
+              >
+                <Bug className="w-4 h-4" />
+                🔍 Escanear Código
+              </Button>
             </div>
           </div>
 
@@ -175,14 +185,18 @@ export default function DeveloperLogs() {
         />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-6">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto">
             <TabsTrigger value="ai-assistant" className="gap-2">
               <Bot className="w-4 h-4" />
               <span className="hidden sm:inline">🤖 IA</span>
             </TabsTrigger>
+            <TabsTrigger value="code-scanner" className="gap-2">
+              <Bug className="w-4 h-4" />
+              <span className="hidden sm:inline">🔍 Scanner</span>
+            </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <FileText className="w-4 h-4" />
-              <span className="hidden sm:inline">🔍 Auditoria</span>
+              <span className="hidden sm:inline">Auditoria</span>
             </TabsTrigger>
             <TabsTrigger value="corrections" className="gap-2">
               <Bug className="w-4 h-4" />
@@ -216,6 +230,11 @@ export default function DeveloperLogs() {
               triggerAnalysis={triggerAnalysis}
               onAnalysisComplete={handleAnalysisComplete}
             />
+          </TabsContent>
+
+          {/* TAB CODE SCANNER: Real-time Code Scanner */}
+          <TabsContent value="code-scanner">
+            <CodeScannerInterface />
           </TabsContent>
 
           {/* TAB 0: Auditoria e Debugging */}

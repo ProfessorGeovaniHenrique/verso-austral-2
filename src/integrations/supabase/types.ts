@@ -232,6 +232,54 @@ export type Database = {
         }
         Relationships: []
       }
+      code_scan_history: {
+        Row: {
+          comparison_baseline: string | null
+          created_at: string
+          files_analyzed: number
+          id: string
+          improvement_percentage: number | null
+          new_issues: number
+          pending_issues: number
+          resolved_issues: number
+          scan_data: Json
+          scan_duration_ms: number | null
+          scan_type: string
+          scanned_by: string | null
+          total_issues: number
+        }
+        Insert: {
+          comparison_baseline?: string | null
+          created_at?: string
+          files_analyzed?: number
+          id?: string
+          improvement_percentage?: number | null
+          new_issues?: number
+          pending_issues?: number
+          resolved_issues?: number
+          scan_data?: Json
+          scan_duration_ms?: number | null
+          scan_type: string
+          scanned_by?: string | null
+          total_issues?: number
+        }
+        Update: {
+          comparison_baseline?: string | null
+          created_at?: string
+          files_analyzed?: number
+          id?: string
+          improvement_percentage?: number | null
+          new_issues?: number
+          pending_issues?: number
+          resolved_issues?: number
+          scan_data?: Json
+          scan_duration_ms?: number | null
+          scan_type?: string
+          scanned_by?: string | null
+          total_issues?: number
+        }
+        Relationships: []
+      }
       dialectal_lexicon: {
         Row: {
           atualizado_em: string | null

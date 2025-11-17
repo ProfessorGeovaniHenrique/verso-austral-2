@@ -7,3 +7,4 @@ export { SearchBar } from './SearchBar';
 export { CorrectionsLog } from './CorrectionsLog';
 export { AuditReport } from './AuditReport';
 export { AIAssistant } from './AIAssistant';
+export { CodeScannerInterface } from './CodeScannerInterface';
