@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb } from "lucide-react";
 import { getDemoAnalysisResults, DemoDomain } from "@/services/demoCorpusService";
+import { palavrasChaveData } from "@/data/mockup/palavras-chave";
 import { toast } from "sonner";
 
 interface TabDomainsProps {
@@ -27,6 +28,24 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
         .then(result => {
           setDemoData(result.dominios);
           setDemoKeywords(result.keywords);
+          
+          // 🔍 DEBUG: Verificar correspondência de palavras
+          console.group('🔍 [TabDomains] Validação de Dados');
+          console.log('Total domínios:', result.dominios.length);
+          console.log('Total keywords:', result.keywords.length);
+          
+          const todasPalavras = result.dominios.flatMap(d => d.palavras);
+          const palavrasSemDados = todasPalavras.filter(p => 
+            !result.keywords.find(k => k.palavra.toLowerCase() === p.toLowerCase())
+          );
+          
+          if (palavrasSemDados.length > 0) {
+            console.warn('⚠️ Palavras sem dados estatísticos:', palavrasSemDados);
+          } else {
+            console.log('✅ Todas as palavras têm dados estatísticos');
+          }
+          console.groupEnd();
+          
           toast.success(`${result.dominios.length} domínios carregados`);
         })
         .catch(error => {
@@ -36,6 +55,36 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
         .finally(() => setIsLoadingDemo(false));
     }
   }, [demo]);
+
+  // 🔍 Função de lookup inteligente de palavras
+  const findWordData = (palavra: string) => {
+    if (!demoKeywords) return null;
+    
+    // 1. Tentativa exata (case insensitive)
+    let match = demoKeywords.find(k => 
+      k.palavra.toLowerCase() === palavra.toLowerCase()
+    );
+    
+    if (match) return match;
+    
+    // 2. Tentativa por lema (buscar em palavrasChaveData)
+    const wordInfo = palavrasChaveData.find(p => 
+      p.palavra.toLowerCase() === palavra.toLowerCase()
+    );
+    
+    if (wordInfo?.lema) {
+      match = demoKeywords.find(k => 
+        k.palavra.toLowerCase() === wordInfo.lema.toLowerCase()
+      );
+    }
+    
+    // 3. Log de debug se não encontrar
+    if (!match) {
+      console.warn(`[TabDomains] Palavra sem dados: "${palavra}"`);
+    }
+    
+    return match;
+  };
 
   const dominiosFiltrados = useMemo(() => {
     if (!demoData) return [];
@@ -212,9 +261,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                   <p className="text-sm font-medium mb-2">Palavras-chave identificadas ({dominio.palavras.length}):</p>
                   <div className="flex flex-wrap gap-2">
                     {dominio.palavras.map((palavra, idx) => {
-                      const wordData = demoKeywords?.find(k => 
-                        k.palavra.toLowerCase() === palavra.toLowerCase()
-                      );
+                      const wordData = findWordData(palavra);
                       
                       return (
                         <TooltipProvider key={idx}>
@@ -232,7 +279,7 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                                 {palavra}
                               </Badge>
                             </TooltipTrigger>
-                            {wordData && (
+                            {wordData ? (
                               <TooltipContent side="top" className="w-80 p-4">
                                 <div className="space-y-3">
                                   <h4 className="font-semibold text-base">{palavra}</h4>
@@ -270,6 +317,18 @@ export function TabDomains({ demo = false }: TabDomainsProps) {
                                       {wordData.significancia}
                                     </Badge>
                                   </div>
+                                </div>
+                              </TooltipContent>
+                            ) : (
+                              <TooltipContent side="top" className="w-60 p-3">
+                                <div className="space-y-2">
+                                  <h4 className="font-semibold text-sm">{palavra}</h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    Dados estatísticos não disponíveis para esta palavra.
+                                  </p>
+                                  <Badge variant="outline" className="text-xs">
+                                    {dominio.dominio}
+                                  </Badge>
                                 </div>
                               </TooltipContent>
                             )}

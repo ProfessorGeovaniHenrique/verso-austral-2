@@ -67,12 +67,6 @@ export const kwicDataMap: KWICDataMap = {
     rightContext: "prá rondar na madrugada",
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }],
-  "gateada": [{
-    leftContext: "No lombo de uma",
-    keyword: "gateada",
-    rightContext: "frente aberta de respeito",
-    source: "Luiz Marenco - Quando o verso vem pras casa"
-  }],
   "mate": [{
     leftContext: "Cevou um",
     keyword: "mate",
@@ -162,7 +156,7 @@ export const kwicDataMap: KWICDataMap = {
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }],
   "encilha": [{
-    leftContext: "Ser um galo prás manhãs, ou um gateado prá",
+    leftContext: "Ser um galo prás manhãs, ou um gateada prá",
     keyword: "encilha",
     rightContext: "",
     source: "Luiz Marenco - Quando o verso vem pras casa"
@@ -218,14 +212,14 @@ export const kwicDataMap: KWICDataMap = {
     rightContext: "se aquerenciou",
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }],
-  "gateado": [{
+  "gateada": [{
     leftContext: "No lombo de uma",
-    keyword: "gateado",
+    keyword: "gateada",
     rightContext: "frente aberta de respeito",
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }, {
     leftContext: "Ser um galo prás manhãs, ou um",
-    keyword: "gateado",
+    keyword: "gateada",
     rightContext: "prá encilha",
     source: "Luiz Marenco - Quando o verso vem pras casa"
   }],

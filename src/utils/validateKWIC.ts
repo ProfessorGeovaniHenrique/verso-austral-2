@@ -6,6 +6,7 @@
 
 import { palavrasChaveData } from '@/data/mockup/palavras-chave';
 import { kwicDataMap } from '@/data/mockup/kwic';
+import { getProsodiaByLema } from '@/data/mockup/prosodias-lemas';
 
 export interface KWICValidationResult {
   totalWords: number;
@@ -94,4 +95,90 @@ export function getKWICForWord(palavra: string): any[] {
   }
   
   return [];
+}
+
+/**
+ * 🔍 VALIDAÇÃO DE CONSISTÊNCIA COMPLETA DO CORPUS DEMO
+ */
+export function validateDemoConsistency() {
+  console.group('🔍 VALIDAÇÃO DE CONSISTÊNCIA - CORPUS DEMO');
+  
+  // 1. Verificar cobertura KWIC
+  const kwicResult = validateAllKWIC();
+  console.log(`\n📊 Cobertura KWIC: ${kwicResult.coverage.toFixed(2)}%`);
+  
+  if (kwicResult.wordsWithoutKWIC.length > 0) {
+    console.error('❌ Palavras sem KWIC:', kwicResult.wordsWithoutKWIC);
+  } else {
+    console.log('✅ Todas as palavras-chave têm entradas KWIC!');
+  }
+  
+  // 2. Verificar palavras-chave têm prosódia
+  const palavrasSemProsodia = palavrasChaveData.filter(p => {
+    const prosody = getProsodiaByLema(p.lema);
+    return !prosody || prosody === 'Neutra';
+  });
+  
+  console.log(`\n📊 Palavras sem prosódia explícita: ${palavrasSemProsodia.length}`);
+  if (palavrasSemProsodia.length > 0) {
+    console.warn('⚠️ Palavras sem prosódia:', palavrasSemProsodia.map(p => p.palavra));
+  }
+  
+  // 3. Verificar duplicatas
+  const palavrasUnicas = new Set(palavrasChaveData.map(p => p.palavra));
+  const duplicatas = palavrasChaveData.length - palavrasUnicas.size;
+  
+  if (duplicatas > 0) {
+    console.warn(`⚠️ ${duplicatas} palavras duplicadas encontradas`);
+    
+    // Listar palavras duplicadas
+    const palavrasVistas = new Map<string, number>();
+    palavrasChaveData.forEach(p => {
+      const count = palavrasVistas.get(p.palavra) || 0;
+      palavrasVistas.set(p.palavra, count + 1);
+    });
+    
+    const duplicadasList = Array.from(palavrasVistas.entries())
+      .filter(([_, count]) => count > 1)
+      .map(([palavra, count]) => `${palavra} (${count}x)`);
+      
+    console.warn('Palavras duplicadas:', duplicadasList);
+  } else {
+    console.log('✅ Sem duplicatas detectadas');
+  }
+  
+  // 4. Verificar consistência de lemas
+  const palavrasSemLema = palavrasChaveData.filter(p => !p.lema);
+  console.log(`\n📊 Palavras sem lema: ${palavrasSemLema.length}`);
+  if (palavrasSemLema.length > 0) {
+    console.warn('⚠️ Palavras sem lema:', palavrasSemLema.map(p => p.palavra));
+  }
+  
+  // 5. Resumo final
+  console.log('\n' + '='.repeat(50));
+  console.log('📊 RESUMO FINAL');
+  console.log('='.repeat(50));
+  console.log(`Total de palavras: ${palavrasChaveData.length}`);
+  console.log(`Cobertura KWIC: ${kwicResult.coverage.toFixed(2)}%`);
+  console.log(`Duplicatas: ${duplicatas}`);
+  console.log(`Sem prosódia: ${palavrasSemProsodia.length}`);
+  console.log(`Sem lema: ${palavrasSemLema.length}`);
+  
+  const allGood = kwicResult.coverage === 100 && duplicatas === 0 && palavrasSemProsodia.length === 0;
+  if (allGood) {
+    console.log('\n✅ CORPUS DEMO: VALIDAÇÃO COMPLETA APROVADA!');
+  } else {
+    console.log('\n⚠️ CORPUS DEMO: VALIDAÇÃO COM AVISOS - REVISAR ACIMA');
+  }
+  
+  console.groupEnd();
+  
+  return {
+    kwicCoverage: kwicResult.coverage,
+    missingKWIC: kwicResult.wordsWithoutKWIC,
+    duplicates: duplicatas,
+    withoutProsody: palavrasSemProsodia.length,
+    withoutLemma: palavrasSemLema.length,
+    isValid: allGood
+  };
 }

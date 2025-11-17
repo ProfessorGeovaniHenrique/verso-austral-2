@@ -30,7 +30,7 @@ const DEMO_CORPUS = [
   { palavra: "verso", freq: 5 }, { palavra: "campo", freq: 2 }, { palavra: "coxilha", freq: 2 },
   { palavra: "saudade", freq: 2 }, { palavra: "tarumã", freq: 2 }, { palavra: "várzea", freq: 2 },
   { palavra: "sombra", freq: 2 }, { palavra: "galpão", freq: 2 }, { palavra: "sol", freq: 2 },
-  { palavra: "gateado", freq: 2 }, { palavra: "casa", freq: 1 }, { palavra: "calma", freq: 1 },
+  { palavra: "gateada", freq: 2 }, { palavra: "casa", freq: 1 }, { palavra: "calma", freq: 1 },
   { palavra: "pañuelo", freq: 1 }, { palavra: "maragato", freq: 1 }, { palavra: "horizonte", freq: 1 },
   { palavra: "campereada", freq: 1 }, { palavra: "lombo", freq: 1 }, { palavra: "mate", freq: 1 }, 
   { palavra: "maçanilha", freq: 1 }, { palavra: "coplas", freq: 1 }, { palavra: "querência", freq: 1 }, 
@@ -46,7 +46,7 @@ const TOTAL_TOKENS_NORDESTINO = 50000; // Corpus de referência estimado
 // Frequências estimadas no corpus nordestino
 const NORDESTINO_FREQS: Record<string, number> = {
   "verso": 8, "campo": 15, "coxilha": 0, "saudade": 25, "tarumã": 0,
-  "várzea": 2, "sombra": 18, "galpão": 0, "sol": 30, "gateado": 0,
+  "várzea": 2, "sombra": 18, "galpão": 0, "sol": 30, "gateada": 0,
   "casa": 45, "calma": 12, "pañuelo": 0, "maragato": 0, "horizonte": 8,
   "campereada": 0, "lombo": 3, "mate": 1, "maçanilha": 0, "coplas": 0,
   "querência": 0, "galponeira": 0, "candeeiro": 2, "campanha": 4, "açoite": 0,
@@ -58,7 +58,7 @@ const NORDESTINO_FREQS: Record<string, number> = {
 const DOMAIN_MAPPING: Record<string, { domain: string; color: string; prosody: string }> = {
   // CULTURA E LIDA GAÚCHA (Verde) - 16 palavras
   "galpão": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
-  "gateado": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "gateada": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
   "arreios": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
   "esporas": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
   "mate": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },

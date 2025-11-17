@@ -8,7 +8,7 @@ export const dominiosData: DominioSemantico[] = [
     ocorrencias: 28,
     percentual: 23.93,
     palavras: [
-      "gateado", "gateada", "arreio", "arreios", "bomba", "brasa", 
+      "gateada", "arreio", "arreios", "bomba", "brasa",
       "cambona", "campereada", "cancela", "candeeiro", "caseiro", 
       "copla", "coplas", "cuia", "espora", "esporas", "galpão", 
       "galponeiro", "galponeira", "jujado", "lombo", "lonjura", 
@@ -16,7 +16,7 @@ export const dominiosData: DominioSemantico[] = [
       "pura-folha", "quarto", "querência", "ramada", "templado", "tropa"
     ],
     palavrasComFrequencia: [
-      { palavra: "gateado", ocorrencias: 2 },
+      { palavra: "gateada", ocorrencias: 2 },
       { palavra: "arreio", ocorrencias: 1 }, { palavra: "bomba", ocorrencias: 1 }, { palavra: "brasa", ocorrencias: 1 },
       { palavra: "cambona", ocorrencias: 1 }, { palavra: "campereada", ocorrencias: 1 }, { palavra: "cancela", ocorrencias: 1 },
       { palavra: "candeeiro", ocorrencias: 1 }, { palavra: "caseiro", ocorrencias: 1 }, { palavra: "copla", ocorrencias: 1 },

@@ -16,14 +16,14 @@ export const dominiosSeparated: DominioSemantico[] = [
     percentual: 13.21,
     percentualTematico: 23.93,
     palavras: [
-      "gateado", "arreio", "bomba", "brasa", "cambona", "campereada", 
+      "gateada", "arreio", "bomba", "brasa", "cambona", "campereada",
       "cancela", "candeeiro", "caseiro", "copla", "cuia", "espora", 
       "galpão", "galponeiro", "jujado", "lombo", "lonjura", "maragato", 
       "mate", "pañuelo", "prenda", "pura-folha", "quarto", "querência", 
       "ramada", "templado", "tropa"
     ],
     palavrasComFrequencia: [
-      { palavra: "gateado", ocorrencias: 2 },
+      { palavra: "gateada", ocorrencias: 2 },
       { palavra: "arreio", ocorrencias: 1 },
       { palavra: "bomba", ocorrencias: 1 },
       { palavra: "brasa", ocorrencias: 1 },

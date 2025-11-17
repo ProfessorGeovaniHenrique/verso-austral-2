@@ -20,14 +20,14 @@ export const dominiosNormalizados: DominioSemantico[] = [
     percentual: 13.21,       // Frequência absoluta (sobre 212)
     percentualTematico: 23.93, // Frequência normalizada (sobre 117)
     palavras: [
-      "gateado", "arreio", "bomba", "brasa", "cambona", "campereada", 
+      "gateada", "arreio", "bomba", "brasa", "cambona", "campereada",
       "cancela", "candeeiro", "casa", "caseiro", "copla", "cuia", "espora", 
       "galpão", "galponeiro", "jujado", "lombo", "lonjura", "maragato", 
       "mate", "pañuelo", "prenda", "pura-folha", "quarto", "querência", 
       "ramada", "templado", "tropa"
     ],
     palavrasComFrequencia: [
-      { palavra: "gateado", ocorrencias: 2 },
+      { palavra: "gateada", ocorrencias: 2 },
       { palavra: "arreio", ocorrencias: 1 },
       { palavra: "bomba", ocorrencias: 1 },
       { palavra: "brasa", ocorrencias: 1 },

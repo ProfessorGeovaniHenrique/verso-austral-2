@@ -111,7 +111,6 @@ export const palavrasChaveData: PalavraChave[] = [
   { palavra: "galponeira", lema: "galponeiro", ll: 11.5, mi: 4.8, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "ganhou", lema: "ganhar", ll: 6.7, mi: 2.8, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "gateada", lema: "gateado", ll: 10.4, mi: 4.5, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
-  { palavra: "gateado", lema: "gateado", ll: 10.6, mi: 4.5, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "gordo", lema: "gordo", ll: 7.8, mi: 3.4, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "horizonte", lema: "horizonte", ll: 8.3, mi: 3.2, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Baixa", efeito: "Sobre-uso", efeitoIcon: TrendingUp },
   { palavra: "já", lema: "já", ll: 0, mi: 0, frequenciaBruta: 1, frequenciaNormalizada: 0.47, significancia: "Funcional", efeito: "Neutro", efeitoIcon: TrendingUp },
