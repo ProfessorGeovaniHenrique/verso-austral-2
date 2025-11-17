@@ -21,6 +21,50 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Verificar autenticação e permissão de admin
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado. Token de autenticação ausente.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Criar cliente Supabase com o token do usuário
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+
+    // Verificar se o usuário é admin
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    
+    if (userError || !user) {
+      console.error('Error getting user:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Não autorizado. Usuário inválido.' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verificar se o usuário tem role de admin
+    const { data: roles, error: rolesError } = await supabaseClient
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .single();
+
+    if (rolesError || !roles) {
+      console.error('User is not admin:', user.id);
+      return new Response(
+        JSON.stringify({ error: 'Acesso negado. Esta função requer privilégios de administrador.' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { recipientEmail, recipientName, inviteCode, role }: SendInviteRequest = await req.json();
 
     const baseUrl = Deno.env.get("VITE_SUPABASE_URL") || "http://localhost:5173";
