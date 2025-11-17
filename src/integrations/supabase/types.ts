@@ -280,6 +280,66 @@ export type Database = {
         }
         Relationships: []
       }
+      construction_phases: {
+        Row: {
+          artifacts: Json | null
+          challenges: Json | null
+          created_at: string | null
+          created_by: string | null
+          date_end: string | null
+          date_start: string
+          decisions: Json | null
+          id: string
+          is_synced_to_static: boolean | null
+          metrics: Json | null
+          next_steps: Json | null
+          objective: string
+          phase_name: string
+          phase_number: number
+          scientific_basis: Json | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          artifacts?: Json | null
+          challenges?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          date_end?: string | null
+          date_start: string
+          decisions?: Json | null
+          id?: string
+          is_synced_to_static?: boolean | null
+          metrics?: Json | null
+          next_steps?: Json | null
+          objective: string
+          phase_name: string
+          phase_number: number
+          scientific_basis?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          artifacts?: Json | null
+          challenges?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          date_end?: string | null
+          date_start?: string
+          decisions?: Json | null
+          id?: string
+          is_synced_to_static?: boolean | null
+          metrics?: Json | null
+          next_steps?: Json | null
+          objective?: string
+          phase_name?: string
+          phase_number?: number
+          scientific_basis?: Json | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       dialectal_lexicon: {
         Row: {
           atualizado_em: string | null
@@ -622,6 +682,47 @@ export type Database = {
         }
         Relationships: []
       }
+      phase_metrics: {
+        Row: {
+          created_at: string | null
+          id: string
+          improvement_percentage: number | null
+          metric_name: string
+          phase_id: string | null
+          unit: string | null
+          value_after: number | null
+          value_before: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          improvement_percentage?: number | null
+          metric_name: string
+          phase_id?: string | null
+          unit?: string | null
+          value_after?: number | null
+          value_before?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          improvement_percentage?: number | null
+          metric_name?: string
+          phase_id?: string | null
+          unit?: string | null
+          value_after?: number | null
+          value_before?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "phase_metrics_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "construction_phases"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       semantic_lexicon: {
         Row: {
           atualizado_em: string | null
@@ -824,6 +925,47 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "semantic_tagset"
             referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      technical_decisions: {
+        Row: {
+          alternatives: Json | null
+          chosen_because: string
+          created_at: string | null
+          decision: string
+          id: string
+          impact: string | null
+          phase_id: string | null
+          rationale: string
+        }
+        Insert: {
+          alternatives?: Json | null
+          chosen_because: string
+          created_at?: string | null
+          decision: string
+          id?: string
+          impact?: string | null
+          phase_id?: string | null
+          rationale: string
+        }
+        Update: {
+          alternatives?: Json | null
+          chosen_because?: string
+          created_at?: string | null
+          decision?: string
+          id?: string
+          impact?: string | null
+          phase_id?: string | null
+          rationale?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_decisions_phase_id_fkey"
+            columns: ["phase_id"]
+            isOneToOne: false
+            referencedRelation: "construction_phases"
+            referencedColumns: ["id"]
           },
         ]
       }

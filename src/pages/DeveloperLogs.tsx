@@ -11,9 +11,11 @@ import { AuditReport } from "@/components/devlogs/AuditReport";
 import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
 import { AIAssistant } from "@/components/devlogs/AIAssistant";
 import { CodeScannerInterface } from "@/components/devlogs/CodeScannerInterface";
+import { ConstructionLogManager } from "@/components/devlogs/ConstructionLogManager";
+import { TemporalEvolutionDashboard } from "@/components/devlogs/TemporalEvolutionDashboard";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
-import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap } from "lucide-react";
+import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap, Wrench, BarChart3 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState, useMemo } from "react";
@@ -194,6 +196,14 @@ export default function DeveloperLogs() {
               <Bug className="w-4 h-4" />
               <span className="hidden sm:inline">🔍 Scanner</span>
             </TabsTrigger>
+            <TabsTrigger value="construction-manager" className="gap-2">
+              <Wrench className="w-4 h-4" />
+              <span className="hidden sm:inline">📝 Log Manager</span>
+            </TabsTrigger>
+            <TabsTrigger value="temporal-evolution" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">📊 Evolução</span>
+            </TabsTrigger>
             <TabsTrigger value="audit" className="gap-2">
               <FileText className="w-4 h-4" />
               <span className="hidden sm:inline">Auditoria</span>
@@ -235,6 +245,16 @@ export default function DeveloperLogs() {
           {/* TAB CODE SCANNER: Real-time Code Scanner */}
           <TabsContent value="code-scanner">
             <CodeScannerInterface />
+          </TabsContent>
+
+          {/* TAB CONSTRUCTION MANAGER: Construction Log Manager */}
+          <TabsContent value="construction-manager">
+            <ConstructionLogManager />
+          </TabsContent>
+
+          {/* TAB TEMPORAL EVOLUTION: Dashboard de Evolução */}
+          <TabsContent value="temporal-evolution">
+            <TemporalEvolutionDashboard />
           </TabsContent>
 
           {/* TAB 0: Auditoria e Debugging */}
