@@ -6,6 +6,48 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============ SISTEMA DE DETECÇÃO DE LOCUÇÕES ============
+const LOCUTIONS = [
+  { pattern: ['a', 'fim', 'de'], unified: 'a_fim_de', tag: 'MG.CON.REL.FIN' },
+  { pattern: ['por', 'causa', 'de'], unified: 'por_causa_de', tag: 'MG.CON.REL.CAU' },
+  { pattern: ['à', 'medida', 'que'], unified: 'à_medida_que', tag: 'MG.CON.ORA.TEM.SIM' },
+  { pattern: ['apesar', 'de'], unified: 'apesar_de', tag: 'MG.CON.ORA.OPO.CON' },
+  { pattern: ['já', 'que'], unified: 'já_que', tag: 'MG.CON.ORA.CAU' },
+  { pattern: ['para', 'que'], unified: 'para_que', tag: 'MG.CON.ORA.FIN' },
+  { pattern: ['de', 'repente'], unified: 'de_repente', tag: 'MG.MOD.CIR.TEM' },
+  { pattern: ['às', 'vezes'], unified: 'às_vezes', tag: 'MG.MOD.CIR.TEM' },
+].sort((a, b) => b.pattern.length - a.pattern.length);
+
+function detectLocutions(words: string[]): Map<number, {unified: string; tag: string; length: number}> {
+  const locutionMap = new Map();
+  for (let i = 0; i < words.length; i++) {
+    for (const loc of LOCUTIONS) {
+      if (i + loc.pattern.length <= words.length) {
+        const match = loc.pattern.every((w, idx) => 
+          words[i + idx]?.toLowerCase() === w.toLowerCase()
+        );
+        if (match) {
+          locutionMap.set(i, {unified: loc.unified, tag: loc.tag, length: loc.pattern.length});
+          i += loc.pattern.length - 1;
+          break;
+        }
+      }
+    }
+  }
+  return locutionMap;
+}
+
+function isPropername(word: string): boolean {
+  return word.length > 0 && word[0] === word[0].toUpperCase();
+}
+
+function classifyPropername(word: string): string {
+  const lw = word.toLowerCase();
+  if (['deus', 'cristo', 'são', 'santa'].some(r => lw.includes(r))) return 'MG.NPR.REL';
+  if (['brasil', 'rio', 'bahia', 'pampas'].some(p => lw.includes(p))) return 'MG.NPR.LOC';
+  return 'MG.NPR.PES';
+}
+
 interface AnnotationRequest {
   corpus_type: 'gaucho' | 'nordestino' | 'marenco-verso';
   custom_text?: string;
@@ -93,32 +135,44 @@ function parseRealCorpus(
       if (startLine && linhaNumero < startLine) continue;
       if (endLine && linhaNumero > endLine) continue;
 
-      // Extrair palavras do verso
+      // Extrair palavras do verso (SEM lowercase para preservar case de nomes próprios)
       const palavras = line
-        .toLowerCase()
         .replace(/[.,!?;:()"""'…]/g, ' ')
         .split(/\s+/)
         .filter(p => p.length > 2);
+      
+      const locutionMap = detectLocutions(palavras);
 
       for (let j = 0; j < palavras.length; j++) {
-        const palavra = palavras[j];
-        
-        // Contexto esquerdo (até 5 palavras antes)
-        const contextoEsq = palavras.slice(Math.max(0, j - 5), j).join(' ');
-        
-        // Contexto direito (até 5 palavras depois)
-        const contextoDir = palavras.slice(j + 1, Math.min(palavras.length, j + 6)).join(' ');
-
-        words.push({
-          palavra,
-          artista: currentArtista,
-          musica: currentMusica,
-          linha_numero: linhaNumero,
-          verso_completo: line,
-          contexto_esquerdo: contextoEsq,
-          contexto_direito: contextoDir,
-          posicao_no_corpus: posicao++
-        });
+        const locution = locutionMap.get(j);
+        if (locution) {
+          words.push({
+            palavra: locution.unified,
+            artista: currentArtista,
+            musica: currentMusica,
+            linha_numero: linhaNumero,
+            verso_completo: line,
+            contexto_esquerdo: palavras.slice(Math.max(0, j - 5), j).join(' '),
+            contexto_direito: palavras.slice(j + locution.length, j + locution.length + 5).join(' '),
+            posicao_no_corpus: posicao++,
+            isLocution: true,
+            locutionTag: locution.tag
+          } as any);
+          j += locution.length - 1;
+        } else {
+          const palavra = palavras[j];
+          words.push({
+            palavra: isPropername(palavra) ? palavra : palavra.toLowerCase(),
+            artista: currentArtista,
+            musica: currentMusica,
+            linha_numero: linhaNumero,
+            verso_completo: line,
+            contexto_esquerdo: palavras.slice(Math.max(0, j - 5), j).join(' '),
+            contexto_direito: palavras.slice(j + 1, Math.min(palavras.length, j + 6)).join(' '),
+            posicao_no_corpus: posicao++,
+            isPropername: isPropername(palavra)
+          } as any);
+        }
       }
     }
   }
