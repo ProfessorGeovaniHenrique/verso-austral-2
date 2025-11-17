@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { useFullTextCorpus } from './useFullTextCorpus';
 import { generateKWIC } from '@/services/kwicService';
 import { toast } from 'sonner';
+import { CorpusType } from '@/data/types/corpus-tools.types';
 
 export interface KWICData {
   leftContext: string;
@@ -18,13 +19,13 @@ export interface KWICModalData {
   source: string;
 }
 
-export function useKWICModal() {
+export function useKWICModal(corpusType: CorpusType = 'gaucho') {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedWord, setSelectedWord] = useState('');
   const [kwicData, setKwicData] = useState<KWICData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   
-  const { corpus, isReady } = useFullTextCorpus('gaucho');
+  const { corpus, isReady } = useFullTextCorpus(corpusType);
   
   const openModal = useCallback(async (word: string) => {
     setSelectedWord(word);
