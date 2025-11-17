@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEffect, useRef } from 'react';
 import { retrySupabaseOperation } from '@/lib/retryUtils';
 import { notifications } from '@/lib/notifications';
+import { toast } from 'sonner';
 
 export interface DictionaryImportJob {
   id: string;
@@ -19,6 +20,7 @@ export interface DictionaryImportJob {
   metadata: any;
   criado_em: string;
   atualizado_em: string;
+  offset_inicial?: number;
 }
 
 export function useDictionaryImportJobs(refetchInterval: number = 2000) {
@@ -46,7 +48,6 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
       });
     },
     refetchInterval: (query) => {
-      // ✅ FIX MEMORY LEAK: Pausar polling se não há jobs ativos
       const hasActiveJobs = query.state.data?.some(
         job => job.status === 'iniciado' || job.status === 'processando' || job.status === 'pendente'
       );
@@ -56,7 +57,6 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
     gcTime: 5 * 60 * 1000,
   });
 
-  // ✅ FIX MEMORY LEAK: Realtime com cleanup
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   useEffect(() => {
@@ -84,4 +84,72 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
   }, []);
 
   return queryResult;
+}
+
+// ✅ NOVO: Verificar integridade de um dicionário
+export async function verifyDictionaryIntegrity(tipoDicionario: string) {
+  try {
+    const { count, error } = await supabase
+      .from('dialectal_lexicon')
+      .select('*', { count: 'exact', head: true })
+      .ilike('volume_fonte', `%${tipoDicionario.replace('dialectal_', '')}%`);
+
+    if (error) throw error;
+
+    return {
+      success: true,
+      totalEntries: count || 0,
+      message: `Encontradas ${count || 0} entradas para ${tipoDicionario}`
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      totalEntries: 0,
+      message: `Erro ao verificar: ${error.message}`
+    };
+  }
+}
+
+// ✅ NOVO: Limpar e reimportar dicionário
+export async function clearAndReimport(tipoDicionario: string) {
+  try {
+    const volumeNum = tipoDicionario.includes('_I') ? 'I' : 'II';
+    
+    const { error: deleteError } = await supabase
+      .from('dialectal_lexicon')
+      .delete()
+      .ilike('volume_fonte', `%${volumeNum}%`);
+
+    if (deleteError) throw deleteError;
+
+    toast.success(`Entradas do Volume ${volumeNum} removidas. Reimporte manualmente.`);
+    return { success: true };
+  } catch (error: any) {
+    toast.error(`Erro ao limpar: ${error.message}`);
+    return { success: false, error: error.message };
+  }
+}
+
+// ✅ NOVO: Retomar importação de onde parou
+export async function resumeImport(job: DictionaryImportJob, fileContent: string) {
+  try {
+    const volumeNum = job.tipo_dicionario.includes('_I') ? 'I' : 'II';
+    const offsetInicial = job.verbetes_processados || 0;
+
+    const { data, error } = await supabase.functions.invoke('process-dialectal-dictionary', {
+      body: { 
+        fileContent, 
+        volumeNum,
+        offsetInicial
+      }
+    });
+
+    if (error) throw error;
+
+    toast.success(`Retomando importação do Volume ${volumeNum} de onde parou (${offsetInicial} verbetes)`);
+    return { success: true, jobId: data.jobId };
+  } catch (error: any) {
+    toast.error(`Erro ao retomar: ${error.message}`);
+    return { success: false, error: error.message };
+  }
 }

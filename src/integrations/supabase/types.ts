@@ -482,6 +482,7 @@ export type Database = {
           erros: number | null
           id: string
           metadata: Json | null
+          offset_inicial: number | null
           progresso: number | null
           status: string
           tempo_fim: string | null
@@ -498,6 +499,7 @@ export type Database = {
           erros?: number | null
           id?: string
           metadata?: Json | null
+          offset_inicial?: number | null
           progresso?: number | null
           status?: string
           tempo_fim?: string | null
@@ -514,6 +516,7 @@ export type Database = {
           erros?: number | null
           id?: string
           metadata?: Json | null
+          offset_inicial?: number | null
           progresso?: number | null
           status?: string
           tempo_fim?: string | null
