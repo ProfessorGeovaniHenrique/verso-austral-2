@@ -3,7 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Sparkles, TrendingUp, CheckCircle2, XCircle, Edit, Zap } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Sparkles, TrendingUp, CheckCircle2, XCircle, Edit, Zap, PlayCircle } from "lucide-react";
 import { Tagset } from "@/hooks/useTagsets";
 import { generateHierarchySuggestions, HierarchySuggestion } from "@/lib/semanticSimilarity";
 import { supabase } from "@/integrations/supabase/client";
@@ -48,6 +49,11 @@ export function HierarchySuggester({
   const [processing, setProcessing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Map<string, AIRefinedSuggestion>>(new Map());
   const [loadingAI, setLoadingAI] = useState<Set<string>>(new Set());
+  const [batchProgress, setBatchProgress] = useState<{
+    total: number;
+    completed: number;
+    isRunning: boolean;
+  }>({ total: 0, completed: 0, isRunning: false });
 
   useEffect(() => {
     if (tagsetsPendentes.length === 0 || tagsetsAtivos.length === 0) {
@@ -123,6 +129,79 @@ export function HierarchySuggester({
     }
   };
 
+  const analyzeBatchWithAI = async () => {
+    if (tagsetsPendentes.length === 0) {
+      toast.info("Não há tagsets pendentes para analisar");
+      return;
+    }
+
+    const totalTagsets = tagsetsPendentes.length;
+    setBatchProgress({ total: totalTagsets, completed: 0, isRunning: true });
+    
+    console.log(`[Batch AI Analysis] Starting batch analysis of ${totalTagsets} tagsets`);
+    toast.info(`Iniciando análise em lote de ${totalTagsets} tagsets...`);
+
+    let completed = 0;
+    const errors: string[] = [];
+
+    // Processar em lotes de 3 para evitar sobrecarga
+    const batchSize = 3;
+    for (let i = 0; i < tagsetsPendentes.length; i += batchSize) {
+      const batch = tagsetsPendentes.slice(i, i + batchSize);
+      
+      await Promise.all(
+        batch.map(async (tagset) => {
+          try {
+            setLoadingAI(prev => new Set(prev).add(tagset.id));
+            
+            const { data, error } = await supabase.functions.invoke('refine-tagset-suggestions', {
+              body: {
+                tagsetPendente: tagset,
+                tagsetsAtivos: tagsetsAtivos
+              }
+            });
+            
+            if (error) throw error;
+            if (!data) throw new Error('No data returned');
+            
+            setAiSuggestions(prev => new Map(prev).set(tagset.id, data));
+            completed++;
+            setBatchProgress(prev => ({ ...prev, completed }));
+            
+            console.log(`[Batch AI] ${completed}/${totalTagsets} - Success: ${tagset.codigo}`);
+            
+          } catch (error) {
+            console.error(`[Batch AI] Error analyzing ${tagset.codigo}:`, error);
+            errors.push(tagset.nome);
+          } finally {
+            setLoadingAI(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(tagset.id);
+              return newSet;
+            });
+          }
+        })
+      );
+
+      // Pequeno delay entre lotes para evitar rate limiting
+      if (i + batchSize < tagsetsPendentes.length) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+
+    setBatchProgress({ total: 0, completed: 0, isRunning: false });
+    
+    if (errors.length === 0) {
+      toast.success(`✨ Análise em lote concluída! ${completed} tagsets analisados com sucesso.`);
+    } else {
+      toast.warning(
+        `Análise concluída: ${completed - errors.length}/${totalTagsets} com sucesso. ${errors.length} com erro: ${errors.slice(0, 3).join(', ')}${errors.length > 3 ? '...' : ''}`
+      );
+    }
+    
+    console.log(`[Batch AI Analysis] Completed: ${completed}/${totalTagsets}, Errors: ${errors.length}`);
+  };
+
   if (tagsetsPendentes.length === 0) {
     return (
       <Card>
@@ -142,13 +221,48 @@ export function HierarchySuggester({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          Sugestões Inteligentes de Hierarquia
-        </CardTitle>
-        <CardDescription>
-          Sistema de análise semântica para posicionamento hierárquico de tagsets pendentes
-        </CardDescription>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1.5">
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              Sugestões Inteligentes de Hierarquia
+            </CardTitle>
+            <CardDescription>
+              Sistema de análise semântica para posicionamento hierárquico de tagsets pendentes
+            </CardDescription>
+          </div>
+          
+          <Button
+            onClick={analyzeBatchWithAI}
+            disabled={batchProgress.isRunning || tagsetsPendentes.length === 0}
+            className="gap-2"
+            variant="default"
+          >
+            <PlayCircle className="h-4 w-4" />
+            {batchProgress.isRunning 
+              ? `Analisando... (${batchProgress.completed}/${batchProgress.total})`
+              : `Analisar Todos (${tagsetsPendentes.length})`
+            }
+          </Button>
+        </div>
+        
+        {/* Progress Bar para Batch Analysis */}
+        {batchProgress.isRunning && (
+          <div className="space-y-2 pt-4">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Progresso da análise em lote
+              </span>
+              <span className="font-medium">
+                {batchProgress.completed} / {batchProgress.total}
+              </span>
+            </div>
+            <Progress 
+              value={(batchProgress.completed / batchProgress.total) * 100} 
+              className="h-2"
+            />
+          </div>
+        )}
       </CardHeader>
       <CardContent className="space-y-6">
         {processing ? (
