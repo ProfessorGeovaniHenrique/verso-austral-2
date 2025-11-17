@@ -585,29 +585,78 @@ export function TabStatistics({ demo = false }: TabStatisticsProps) {
                   <TableHeader className="sticky top-0 bg-background z-10">
                     <TableRow>
                       {([
-                        { col: 'palavra', label: 'Palavra' },
-                        { col: 'lema', label: 'Lema' },
-                        ...(demo ? [{ col: 'dominio' as const, label: 'Domínio Semântico' }] : []),
-                        { col: 'frequenciaBruta', label: 'Freq. Bruta' },
-                        { col: 'frequenciaNormalizada', label: 'Freq. Norm.' },
-                        { col: 'll', label: 'LL' },
-                        { col: 'mi', label: 'MI Score' },
-                        { col: 'significancia', label: 'Significância' },
-                        { col: 'efeito', label: 'Efeito' },
-                        { col: 'prosodia', label: 'Prosódia' }
-                      ] as const).map(({ col, label }) => (
+                        { 
+                          col: 'palavra' as const, 
+                          label: 'Palavra',
+                          tooltip: 'Forma da palavra como aparece no texto. Clique para ver todas as ocorrências em contexto (KWIC).'
+                        },
+                        { 
+                          col: 'lema' as const, 
+                          label: 'Lema',
+                          tooltip: 'Forma canônica ou dicionarizada da palavra. Agrupa variações morfológicas (ex: "canta", "cantou", "cantando" → lema "cantar").'
+                        },
+                        ...(demo ? [{ 
+                          col: 'dominio' as const, 
+                          label: 'Domínio Semântico',
+                          tooltip: 'Categoria temática à qual a palavra pertence (ex: natureza, sentimento, trabalho). Agrupa palavras por campos semânticos relacionados.'
+                        }] : []),
+                        { 
+                          col: 'frequenciaBruta', 
+                          label: 'Freq. Bruta',
+                          tooltip: 'Número absoluto de ocorrências da palavra no corpus. Indica quantas vezes o termo aparece no texto analisado.'
+                        },
+                        { 
+                          col: 'frequenciaNormalizada', 
+                          label: 'Freq. Norm.',
+                          tooltip: 'Frequência relativa (%) ajustada pelo tamanho do corpus. Permite comparação entre corpora de tamanhos diferentes.'
+                        },
+                        { 
+                          col: 'll', 
+                          label: 'LL',
+                          tooltip: 'Log-Likelihood: medida estatística que indica se a diferença de frequência entre corpora é significativa. Valores > 3.84 são estatisticamente significativos (p < 0.05).'
+                        },
+                        { 
+                          col: 'mi', 
+                          label: 'MI Score',
+                          tooltip: 'Mutual Information: mede a força da associação entre palavra e corpus. Valores positivos indicam maior associação; valores > 3.0 são considerados fortes.'
+                        },
+                        { 
+                          col: 'significancia', 
+                          label: 'Significância',
+                          tooltip: 'Nível de significância estatística (p-value). Indica a probabilidade de a diferença observada ser aleatória. p < 0.05 é considerado estatisticamente significativo.'
+                        },
+                        { 
+                          col: 'efeito', 
+                          label: 'Efeito',
+                          tooltip: 'Tamanho do efeito (effect size): magnitude prática da diferença, independente do tamanho da amostra. Pequeno/Médio/Grande indica a relevância linguística da diferença.'
+                        },
+                        { 
+                          col: 'prosodia', 
+                          label: 'Prosódia',
+                          tooltip: 'Prosódia Semântica: carga avaliativa da palavra. Positiva (🙂) indica significados favoráveis, Negativa (☹️) indica desfavoráveis, Neutra (😐) indica sem carga avaliativa.'
+                        }
+                      ] as const).map(({ col, label, tooltip }) => (
                         <TableHead key={col} className="bg-background" data-tour={col === 'palavra' ? "stats-sorting" : undefined}>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSort(col)}
-                            className="h-8 gap-1 px-2 hover:bg-muted/50 font-semibold"
-                          >
-                            {label}
-                            {sortColumn === col ? (sortDirection === 'asc' ? 
-                              <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />) :
-                              <ArrowUpDown className="h-4 w-4 opacity-50" />}
-                          </Button>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleSort(col)}
+                                  className="h-8 gap-1 px-2 hover:bg-muted/50 font-semibold"
+                                >
+                                  {label}
+                                  {sortColumn === col ? (sortDirection === 'asc' ? 
+                                    <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />) :
+                                    <ArrowUpDown className="h-4 w-4 opacity-50" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs">
+                                <p className="text-sm">{tooltip}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableHead>
                       ))}
                     </TableRow>
