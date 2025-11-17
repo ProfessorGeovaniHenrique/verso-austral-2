@@ -12,8 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Database, BarChart3, FileText, Music, Play, Lock, Wrench, FlaskConical } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { TabDomains } from "./TabDomains";
 import { TabStatistics } from "./TabStatistics";
 import { TabGalaxy } from "./TabGalaxy";
@@ -25,39 +29,77 @@ import { useAuthContext } from "@/contexts/AuthContext";
 
 import { useAnalytics } from '@/hooks/useAnalytics';
 
+// Schema de validação com Zod
+const accessRequestSchema = z.object({
+  full_name: z.string()
+    .trim()
+    .min(2, { message: "Nome deve ter no mínimo 2 caracteres" })
+    .max(100, { message: "Nome deve ter no máximo 100 caracteres" })
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, { 
+      message: "Nome deve conter apenas letras, espaços, hífens e apóstrofos" 
+    }),
+  
+  email: z.string()
+    .trim()
+    .email({ message: "Email inválido" })
+    .max(255, { message: "Email deve ter no máximo 255 caracteres" })
+    .toLowerCase(),
+  
+  institution: z.string()
+    .trim()
+    .max(200, { message: "Instituição deve ter no máximo 200 caracteres" })
+    .optional()
+    .or(z.literal("")),
+  
+  role_requested: z.enum(["professor", "pesquisador", "estudante"], {
+    errorMap: () => ({ message: "Selecione uma opção válida" })
+  }),
+  
+  reason: z.string()
+    .trim()
+    .max(1000, { message: "Justificativa deve ter no máximo 1000 caracteres" })
+    .optional()
+    .or(z.literal(""))
+});
+
+type AccessRequestFormData = z.infer<typeof accessRequestSchema>;
+
 export function TabApresentacao() {
   const { trackBannerClick } = useAnalytics();
   const [currentTab, setCurrentTab] = useState("intro");
   const { user } = useAuthContext();
   const [showAccessForm, setShowAccessForm] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleAccessRequest = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+  // Form com validação Zod
+  const form = useForm<AccessRequestFormData>({
+    resolver: zodResolver(accessRequestSchema),
+    defaultValues: {
+      full_name: "",
+      email: "",
+      institution: "",
+      reason: "",
+    }
+  });
 
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      full_name: formData.get('fullName') as string,
-      email: formData.get('email') as string,
-      institution: formData.get('institution') as string,
-      role_requested: formData.get('role') as string,
-      reason: formData.get('reason') as string,
-    };
-
+  const handleAccessRequest = async (data: AccessRequestFormData) => {
     try {
-      const { error } = await supabase.from('access_requests').insert(data);
+      // Dados já validados pelo Zod
+      const { error } = await supabase.from('access_requests').insert({
+        full_name: data.full_name,
+        email: data.email,
+        institution: data.institution || null,
+        role_requested: data.role_requested,
+        reason: data.reason || null,
+      });
       
       if (error) throw error;
 
       toast.success('Solicitação enviada com sucesso! Entraremos em contato em breve.');
       setShowAccessForm(false);
-      (e.target as HTMLFormElement).reset();
+      form.reset();
     } catch (error) {
       console.error('Error submitting access request:', error);
       toast.error('Erro ao enviar solicitação. Tente novamente.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
   const { startTour } = useApresentacaoTour({ autoStart: true });
@@ -172,70 +214,134 @@ export function TabApresentacao() {
                               Preencha o formulário abaixo e entraremos em contato com um convite personalizado.
                             </DialogDescription>
                           </DialogHeader>
-                          <form onSubmit={handleAccessRequest} className="space-y-4">
-                            <div className="space-y-2">
-                              <Label htmlFor="fullName">Nome Completo *</Label>
-                              <Input id="fullName" name="fullName" placeholder="Seu nome completo" required />
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="email">Email Institucional *</Label>
-                              <Input 
-                                id="email" 
-                                name="email" 
-                                type="email" 
-                                placeholder="seu.email@universidade.edu.br" 
-                                required 
+                          <Form {...form}>
+                            <form onSubmit={form.handleSubmit(handleAccessRequest)} className="space-y-4">
+                              <FormField
+                                control={form.control}
+                                name="full_name"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Nome Completo *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder="Seu nome completo" 
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">
+                                      Máximo 100 caracteres
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
                               />
-                            </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="institution">Instituição</Label>
-                              <Input 
-                                id="institution" 
-                                name="institution" 
-                                placeholder="Ex: UFRGS, UFPE, USP" 
+                              <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Email Institucional *</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="email"
+                                        placeholder="seu.email@universidade.edu.br" 
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">
+                                      Preferencialmente email institucional
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
                               />
-                            </div>
 
-                            <div className="space-y-2">
-                              <Label htmlFor="role">Você é: *</Label>
-                              <Select name="role" required>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Selecione..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="professor">Professor</SelectItem>
-                                  <SelectItem value="pesquisador">Pesquisador</SelectItem>
-                                  <SelectItem value="estudante">Estudante de Pós-Graduação</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label htmlFor="reason">Justificativa (opcional)</Label>
-                              <Textarea 
-                                id="reason" 
-                                name="reason" 
-                                placeholder="Conte-nos brevemente sobre sua pesquisa ou interesse na plataforma..." 
-                                rows={3}
+                              <FormField
+                                control={form.control}
+                                name="institution"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Instituição</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder="Ex: UFRGS, UFPE, USP" 
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">
+                                      Opcional - Máximo 200 caracteres
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
                               />
-                            </div>
 
-                            <div className="flex gap-3 justify-end">
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                onClick={() => setShowAccessForm(false)}
-                                disabled={isSubmitting}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
-                              </Button>
-                            </div>
-                          </form>
+                              <FormField
+                                control={form.control}
+                                name="role_requested"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Você é: *</FormLabel>
+                                    <Select 
+                                      onValueChange={field.onChange} 
+                                      defaultValue={field.value}
+                                    >
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Selecione..." />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="professor">Professor</SelectItem>
+                                        <SelectItem value="pesquisador">Pesquisador</SelectItem>
+                                        <SelectItem value="estudante">Estudante de Pós-Graduação</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="reason"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Justificativa (opcional)</FormLabel>
+                                    <FormControl>
+                                      <Textarea 
+                                        placeholder="Conte-nos brevemente sobre sua pesquisa ou interesse na plataforma..." 
+                                        rows={3}
+                                        {...field} 
+                                      />
+                                    </FormControl>
+                                    <FormDescription className="text-xs">
+                                      Opcional - Máximo 1000 caracteres
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="flex gap-3 justify-end">
+                                <Button 
+                                  type="button" 
+                                  variant="outline" 
+                                  onClick={() => {
+                                    setShowAccessForm(false);
+                                    form.reset();
+                                  }}
+                                  disabled={form.formState.isSubmitting}
+                                >
+                                  Cancelar
+                                </Button>
+                                <Button type="submit" disabled={form.formState.isSubmitting}>
+                                  {form.formState.isSubmitting ? 'Enviando...' : 'Enviar Solicitação'}
+                                </Button>
+                              </div>
+                            </form>
+                          </Form>
                         </DialogContent>
                       </Dialog>
                     </div>
