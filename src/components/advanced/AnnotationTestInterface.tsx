@@ -63,15 +63,48 @@ export function AnnotationTestInterface() {
     setResults([]);
     
     try {
-      const { data, error } = await supabase.functions.invoke('annotate-semantic', {
-        body: { 
-          corpus_type: 'marenco-verso', 
-          custom_text: texto,
-          demo_mode: demoMode 
-        }
-      });
+      let data, error;
 
-      if (error) throw error;
+      if (demoMode) {
+        // Em modo demo, fazer chamada direta via fetch para evitar header de auth inválido
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/annotate-semantic`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({
+              corpus_type: 'marenco-verso',
+              custom_text: texto,
+              demo_mode: true
+            })
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro na requisição');
+        }
+
+        data = await response.json();
+      } else {
+        // Modo normal com autenticação
+        const result = await supabase.functions.invoke('annotate-semantic', {
+          body: { 
+            corpus_type: 'marenco-verso', 
+            custom_text: texto,
+            demo_mode: false
+          }
+        });
+        
+        data = result.data;
+        error = result.error;
+        
+        if (error) throw error;
+      }
+
       setJobId(data.job.id);
       
       if (demoMode) {
@@ -81,10 +114,10 @@ export function AnnotationTestInterface() {
       } else {
         toast.success('Anotação iniciada! O progresso será monitorado em tempo real.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro:', error);
       setIsAnnotating(false);
-      toast.error('Erro ao iniciar anotação');
+      toast.error(error.message || 'Erro ao iniciar anotação');
     }
   };
 

@@ -253,23 +253,27 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
-    // Validação do body primeiro
+    // Validação do body primeiro para verificar demo_mode
     const rawBody = await req.json();
     const validatedRequest = validateRequest(rawBody);
     const { corpus_type, custom_text, artist_filter, start_line, end_line, demo_mode } = validatedRequest;
 
     let userId: string;
 
-    // Modo DEMO: não requer autenticação
+    // Modo DEMO: não requer autenticação - PRIORIDADE MÁXIMA
     if (demo_mode === true) {
-      userId = '00000000-0000-0000-0000-000000000000'; // ID temporário para modo demo
-      console.log('[annotate-semantic] Modo DEMO ativado - sem autenticação');
+      userId = '00000000-0000-0000-0000-000000000000';
+      console.log('[annotate-semantic] 🎭 MODO DEMO ativado - processamento sem autenticação');
     } else {
-      // Modo normal: requer autenticação
+      // Modo normal: REQUER autenticação válida
       const authHeader = req.headers.get('authorization');
+      
       if (!authHeader) {
         return new Response(
-          JSON.stringify({ error: 'Autenticação necessária (ou ative demo_mode: true)' }),
+          JSON.stringify({ 
+            error: 'Autenticação necessária',
+            hint: 'Use demo_mode: true para testar sem login'
+          }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -283,19 +287,23 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             error: 'Token inválido ou expirado',
-            details: authError?.message 
+            details: authError?.message,
+            hint: 'Faça login novamente ou use demo_mode: true'
           }),
           { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       userId = user.id;
+      console.log(`[annotate-semantic] ✅ Usuário autenticado: ${userId}`);
     }
 
     // Cliente com SERVICE_ROLE_KEY para operações privilegiadas
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log(`[annotate-semantic] Usuário ${userId} ${demo_mode ? '(DEMO)' : ''} iniciando anotação: ${corpus_type}`, {
+    console.log(`[annotate-semantic] 🚀 Iniciando anotação: ${corpus_type}`, {
+      userId,
+      demo: demo_mode || false,
       artist_filter,
       start_line,
       end_line
