@@ -19,19 +19,38 @@ export interface AnnotationJob {
   metadata: any;
 }
 
-export function useAnnotationJobs(refetchInterval: number = 3000) {
+export function useAnnotationJobs(
+  page: number = 1, 
+  pageSize: number = 20, 
+  refetchInterval: number = 3000
+) {
   const queryResult = useQuery({
-    queryKey: ['annotation-jobs'],
+    queryKey: ['annotation-jobs', page, pageSize],
     queryFn: async () => {
       return retrySupabaseOperation(async () => {
-        const { data, error } = await supabase
-          .from('annotation_jobs')
-          .select('*')
-          .order('tempo_inicio', { ascending: false })
-          .limit(50);
+        const offset = (page - 1) * pageSize;
+        
+        // ✅ OTIMIZAÇÃO #3: Buscar total e dados em paralelo
+        const [countResult, dataResult] = await Promise.all([
+          supabase
+            .from('annotation_jobs')
+            .select('*', { count: 'exact', head: true }),
+          supabase
+            .from('annotation_jobs')
+            .select('*')
+            .order('tempo_inicio', { ascending: false })
+            .range(offset, offset + pageSize - 1)
+        ]);
 
-        if (error) throw error;
-        return data as AnnotationJob[];
+        if (dataResult.error) throw dataResult.error;
+        
+        return {
+          jobs: (dataResult.data || []) as AnnotationJob[],
+          total: countResult.count || 0,
+          page,
+          pageSize,
+          totalPages: Math.ceil((countResult.count || 0) / pageSize)
+        };
       }, {
         maxRetries: 5,
         baseDelay: 500,
@@ -45,7 +64,7 @@ export function useAnnotationJobs(refetchInterval: number = 3000) {
     },
     refetchInterval: (query) => {
       // ✅ CORREÇÃO #7: Pausar polling se não há jobs ativos
-      const hasActiveJobs = query.state.data?.some(
+      const hasActiveJobs = query.state.data?.jobs?.some(
         job => job.status === 'pending' || job.status === 'processing'
       );
       return hasActiveJobs ? refetchInterval : false;
@@ -81,17 +100,24 @@ export function useAnnotationJobs(refetchInterval: number = 3000) {
     };
   }, [queryResult.refetch]);
 
+  const jobs = queryResult.data?.jobs || [];
   const stats = {
-    totalJobs: queryResult.data?.length || 0,
-    completedJobs: queryResult.data?.filter(j => j.status === 'completed').length || 0,
-    failedJobs: queryResult.data?.filter(j => j.status === 'failed').length || 0,
-    inProgressJobs: queryResult.data?.filter(j => j.status === 'processing' || j.status === 'pending').length || 0,
-    totalWordsProcessed: queryResult.data?.reduce((sum, j) => sum + (j.palavras_processadas || 0), 0) || 0
+    totalJobs: queryResult.data?.total || 0,
+    completedJobs: jobs.filter(j => j.status === 'completed').length,
+    failedJobs: jobs.filter(j => j.status === 'failed').length,
+    inProgressJobs: jobs.filter(j => j.status === 'processing' || j.status === 'pending').length,
+    totalWordsProcessed: jobs.reduce((sum, j) => sum + (j.palavras_processadas || 0), 0)
   };
 
   return {
-    jobs: queryResult.data || [],
+    jobs,
     stats,
+    pagination: {
+      page: queryResult.data?.page || 1,
+      pageSize: queryResult.data?.pageSize || pageSize,
+      total: queryResult.data?.total || 0,
+      totalPages: queryResult.data?.totalPages || 1
+    },
     isLoading: queryResult.isLoading,
     error: queryResult.error?.message || null,
     refetch: queryResult.refetch
