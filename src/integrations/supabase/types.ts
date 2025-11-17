@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_requests: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string
+          id: string
+          institution: string | null
+          invite_key_id: string | null
+          invited_at: string | null
+          reason: string | null
+          role_requested: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name: string
+          id?: string
+          institution?: string | null
+          invite_key_id?: string | null
+          invited_at?: string | null
+          reason?: string | null
+          role_requested?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string
+          id?: string
+          institution?: string | null
+          invite_key_id?: string | null
+          invited_at?: string | null
+          reason?: string | null
+          role_requested?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_requests_invite_key_id_fkey"
+            columns: ["invite_key_id"]
+            isOneToOne: false
+            referencedRelation: "invite_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_analysis_feedback: {
         Row: {
           analysis_id: string
@@ -176,6 +226,105 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_category: string
+          event_metadata: Json | null
+          event_name: string
+          id: string
+          page_path: string | null
+          referrer: string | null
+          session_id: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_category: string
+          event_metadata?: Json | null
+          event_name: string
+          id?: string
+          page_path?: string | null
+          referrer?: string | null
+          session_id: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_category?: string
+          event_metadata?: Json | null
+          event_name?: string
+          id?: string
+          page_path?: string | null
+          referrer?: string | null
+          session_id?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_feature_usage: {
+        Row: {
+          feature_name: string
+          first_used_at: string | null
+          id: string
+          last_used_at: string | null
+          usage_count: number | null
+          user_id: string | null
+        }
+        Insert: {
+          feature_name: string
+          first_used_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          feature_name?: string
+          first_used_at?: string | null
+          id?: string
+          last_used_at?: string | null
+          usage_count?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      analytics_user_sessions: {
+        Row: {
+          duration_seconds: number | null
+          ended_at: string | null
+          events_count: number | null
+          id: string
+          pages_visited: number | null
+          session_id: string
+          started_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          events_count?: number | null
+          id?: string
+          pages_visited?: number | null
+          session_id: string
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          events_count?: number | null
+          id?: string
+          pages_visited?: number | null
+          session_id?: string
+          started_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       annotated_corpus: {
         Row: {
@@ -1242,6 +1391,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_feature_usage: {
+        Args: { _feature_name: string; _user_id: string }
+        Returns: undefined
       }
     }
     Enums: {

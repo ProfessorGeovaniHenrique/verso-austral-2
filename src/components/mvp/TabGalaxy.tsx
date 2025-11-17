@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
-import { Sparkles, GitCompare, Download, Save } from 'lucide-react';
+import { Sparkles, GitCompare, Download, Save, Settings2, ChevronDown } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { D3SemanticCloud } from './D3SemanticCloud';
 import { D3CloudConsole } from './D3CloudConsole';
 import { ComparisonView } from './ComparisonView';
@@ -38,6 +39,7 @@ export function TabGalaxy({ demo = false }: TabGalaxyProps) {
   const [comparisonMode, setComparisonMode] = useState(false);
   const [domainModalOpen, setDomainModalOpen] = useState(false);
   const [selectedDomainData, setSelectedDomainData] = useState<any>(null);
+  const [consoleOpen, setConsoleOpen] = useState(false);
   const cloudContainerRef = useRef<HTMLDivElement>(null);
   
   const { isOpen: kwicOpen, closeModal: closeKwicModal, selectedWord, kwicData, isLoading: kwicLoading, openModal: openKwicModal } = useKWICModal('gaucho');

@@ -145,15 +145,23 @@ const onboardingSteps = [
   },
 ];
 
+import { useAnalytics } from '@/hooks/useAnalytics';
+
 export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(0);
   const navigate = useNavigate();
+  const { trackOnboardingStep } = useAnalytics();
   
   const progress = ((currentStep + 1) / onboardingSteps.length) * 100;
   const step = onboardingSteps[currentStep];
   const Icon = step.icon;
   
+  useEffect(() => {
+    trackOnboardingStep(currentStep + 1, step.title, 'view');
+  }, [currentStep, trackOnboardingStep]);
+  
   const handleNext = () => {
+    trackOnboardingStep(currentStep + 1, step.title, 'complete');
     if (currentStep < onboardingSteps.length - 1) {
       setCurrentStep(prev => prev + 1);
     } else {
@@ -173,6 +181,7 @@ export default function Onboarding() {
   };
   
   const handleSkip = () => {
+    trackOnboardingStep(currentStep + 1, step.title, 'skip');
     handleComplete();
   };
   

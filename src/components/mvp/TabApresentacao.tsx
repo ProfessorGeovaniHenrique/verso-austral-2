@@ -15,7 +15,10 @@ import { useCloudTour } from "@/hooks/useCloudTour";
 import { useStatisticsTour } from "@/hooks/useStatisticsTour";
 import { useAuthContext } from "@/contexts/AuthContext";
 
+import { useAnalytics } from '@/hooks/useAnalytics';
+
 export function TabApresentacao() {
+  const { trackBannerClick } = useAnalytics();
   const [currentTab, setCurrentTab] = useState("intro");
   const { user } = useAuthContext();
   const { startTour } = useApresentacaoTour({ autoStart: true });

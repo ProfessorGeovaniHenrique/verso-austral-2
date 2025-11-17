@@ -10,8 +10,18 @@ import { DispersionTool } from "./tools/DispersionTool";
 import { NGramsTool } from "./tools/NGramsTool";
 import { AdvancedAnalysisTab } from "./tools/AdvancedAnalysisTab";
 
+import { useAnalytics } from '@/hooks/useAnalytics';
+
 function TabToolsContent() {
   const { activeTab, setActiveTab } = useTools();
+  const { trackFeatureUsage } = useAnalytics();
+  
+  const handleTabChange = (newTab: string) => {
+    setActiveTab(newTab);
+    if (newTab !== 'basicas' && newTab !== 'avancadas') {
+      trackFeatureUsage(newTab);
+    }
+  };
 
   return (
     <Card className="card-academic">
@@ -26,7 +36,7 @@ function TabToolsContent() {
       </CardHeader>
       
       <CardContent>
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="basicas" className="flex items-center gap-2">
               <Wrench className="w-4 h-4" />

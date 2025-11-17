@@ -27,6 +27,8 @@ import DevOpsMetrics from "./pages/DevOpsMetrics";
 import DeveloperLogs from "./pages/DeveloperLogs";
 import AdminLexiconSetup from "./pages/AdminLexiconSetup";
 import AdminUsers from "./pages/AdminUsers";
+import AdminAnalytics from "./pages/AdminAnalytics";
+import AdminAccessRequests from "./pages/AdminAccessRequests";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -94,6 +96,22 @@ const App = () => (
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminUsers />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/analytics" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminAnalytics />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/access-requests" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminAccessRequests />
                 </ProtectedRoute>
               } 
             />
