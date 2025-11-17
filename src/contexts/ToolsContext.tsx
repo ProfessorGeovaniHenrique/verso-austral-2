@@ -12,11 +12,11 @@ const ToolsContext = createContext<ToolsContextType | undefined>(undefined);
 
 export function ToolsProvider({ children }: { children: ReactNode }) {
   const [selectedWord, setSelectedWord] = useState('');
-  const [activeTab, setActiveTab] = useState('wordlist');
+  const [activeTab, setActiveTab] = useState('basicas');
 
   const navigateToKWIC = (word: string) => {
     setSelectedWord(word);
-    setActiveTab('kwic');
+    setActiveTab('basicas');
   };
 
   return (

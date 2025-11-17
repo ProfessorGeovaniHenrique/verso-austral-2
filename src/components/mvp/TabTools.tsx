@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench } from "lucide-react";
+import { Wrench, Sparkles } from "lucide-react";
 import { ToolsProvider, useTools } from "@/contexts/ToolsContext";
 import { CorpusProvider } from "@/contexts/CorpusContext";
 import { WordlistTool } from "./tools/WordlistTool";
@@ -21,54 +21,56 @@ function TabToolsContent() {
           Ferramentas de Estilística de Corpus
         </CardTitle>
         <CardDescription className="section-description-academic">
-          Wordlist, Keywords, KWIC, Dispersão, N-grams, N-grams Dialetais e Análise Avançada
+          Análise linguística completa com ferramentas básicas e avançadas
         </CardDescription>
       </CardHeader>
       
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6">
-            <TabsTrigger value="wordlist">
-              Word List
+          <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsTrigger value="basicas" className="flex items-center gap-2">
+              <Wrench className="w-4 h-4" />
+              Ferramentas Básicas
             </TabsTrigger>
-            <TabsTrigger value="keywords">
-              Keywords
-            </TabsTrigger>
-            <TabsTrigger value="kwic">
-              KWIC
-            </TabsTrigger>
-            <TabsTrigger value="dispersion">
-              Dispersão
-            </TabsTrigger>
-            <TabsTrigger value="ngrams">
-              N-grams
-            </TabsTrigger>
-            <TabsTrigger value="advanced">
+            <TabsTrigger value="avancadas" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4" />
               Análise Avançada
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="wordlist" className="mt-6">
-            <WordlistTool />
+          <TabsContent value="basicas">
+            <Tabs defaultValue="wordlist" className="w-full">
+              <TabsList className="grid w-full grid-cols-5">
+                <TabsTrigger value="wordlist">Word List</TabsTrigger>
+                <TabsTrigger value="keywords">Keywords</TabsTrigger>
+                <TabsTrigger value="kwic">KWIC</TabsTrigger>
+                <TabsTrigger value="dispersion">Dispersão</TabsTrigger>
+                <TabsTrigger value="ngrams">N-grams</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="wordlist" className="mt-6">
+                <WordlistTool />
+              </TabsContent>
+              
+              <TabsContent value="keywords" className="mt-6">
+                <KeywordsTool />
+              </TabsContent>
+              
+              <TabsContent value="kwic" className="mt-6">
+                <KWICTool />
+              </TabsContent>
+              
+              <TabsContent value="dispersion" className="mt-6">
+                <DispersionTool />
+              </TabsContent>
+              
+              <TabsContent value="ngrams" className="mt-6">
+                <NGramsTool />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
           
-          <TabsContent value="keywords" className="mt-6">
-            <KeywordsTool />
-          </TabsContent>
-          
-          <TabsContent value="kwic" className="mt-6">
-            <KWICTool />
-          </TabsContent>
-          
-          <TabsContent value="dispersion" className="mt-6">
-            <DispersionTool />
-          </TabsContent>
-          
-          <TabsContent value="ngrams" className="mt-6">
-            <NGramsTool />
-          </TabsContent>
-          
-          <TabsContent value="advanced" className="mt-6">
+          <TabsContent value="avancadas" className="mt-6">
             <AdvancedAnalysisTab />
           </TabsContent>
         </Tabs>
