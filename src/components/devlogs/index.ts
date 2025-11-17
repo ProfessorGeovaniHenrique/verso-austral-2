@@ -11,3 +11,4 @@ export { CodeScannerInterface } from './CodeScannerInterface';
 export { ConstructionLogManager } from './ConstructionLogManager';
 export { TemporalEvolutionDashboard } from './TemporalEvolutionDashboard';
 export { CreditsSavingsIndicator } from './CreditsSavingsIndicator';
+export { AIAnalysisReview } from './AIAnalysisReview';

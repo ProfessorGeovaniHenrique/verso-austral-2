@@ -2,18 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PhaseTimeline } from "@/components/devlogs/PhaseTimeline";
-import { GrammarIntegration } from "@/components/devlogs/GrammarIntegration";
-import { TechnicalDecisions } from "@/components/devlogs/TechnicalDecisions";
-import { MetricsEvolution } from "@/components/devlogs/MetricsEvolution";
-import { SearchBar } from "@/components/devlogs/SearchBar";
-import { AuditReport } from "@/components/devlogs/AuditReport";
-import { CorrectionsLog } from "@/components/devlogs/CorrectionsLog";
-import { AIAssistant } from "@/components/devlogs/AIAssistant";
-import { CodeScannerInterface } from "@/components/devlogs/CodeScannerInterface";
-import { ConstructionLogManager } from "@/components/devlogs/ConstructionLogManager";
-import { TemporalEvolutionDashboard } from "@/components/devlogs/TemporalEvolutionDashboard";
-import { CreditsSavingsIndicator } from "@/components/devlogs/CreditsSavingsIndicator";
 import { constructionLog, projectStats, getCompletedPhases, getInProgressPhases } from "@/data/developer-logs/construction-log";
 import { scientificChangelog, scientificStats } from "@/data/developer-logs/changelog-scientific";
 import { FileText, GitBranch, TrendingUp, BookOpen, Target, ArrowLeft, Download, Bug, Bot, Zap, Wrench, BarChart3 } from "lucide-react";
@@ -21,6 +9,21 @@ import { useNavigate } from "react-router-dom";
 import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState, useMemo } from "react";
 import { matchesSearch } from "@/utils/highlightText";
+import {
+  AIAssistant,
+  CodeScannerInterface,
+  ConstructionLogManager,
+  CorrectionsLog,
+  MetricsEvolution,
+  SearchBar,
+  TechnicalDecisions,
+  TemporalEvolutionDashboard,
+  CreditsSavingsIndicator,
+  AIAnalysisReview,
+  PhaseTimeline,
+  GrammarIntegration,
+  AuditReport
+} from '@/components/devlogs';
 
 export default function DeveloperLogs() {
   const navigate = useNavigate();

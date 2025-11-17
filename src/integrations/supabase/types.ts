@@ -14,13 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_analysis_feedback: {
+        Row: {
+          analysis_id: string
+          created_at: string | null
+          human_verdict: string
+          id: string
+          suggestion_id: string
+          validated_at: string | null
+          validated_by: string | null
+          validator_notes: string | null
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string | null
+          human_verdict: string
+          id?: string
+          suggestion_id: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validator_notes?: string | null
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string | null
+          human_verdict?: string
+          id?: string
+          suggestion_id?: string
+          validated_at?: string | null
+          validated_by?: string | null
+          validator_notes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_analysis_feedback_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "ai_analysis_history"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ai_analysis_history: {
         Row: {
           actual_credits_saved: number | null
           analyzed_by: string | null
           applied_fixes: string[] | null
+          bugs_auto_resolved: number | null
+          context_used: Json | null
           created_at: string
           estimated_credits_saved: number | null
+          false_positives_filtered: number | null
           id: string
           logs_type: string
           metadata: Json | null
@@ -32,8 +76,11 @@ export type Database = {
           actual_credits_saved?: number | null
           analyzed_by?: string | null
           applied_fixes?: string[] | null
+          bugs_auto_resolved?: number | null
+          context_used?: Json | null
           created_at?: string
           estimated_credits_saved?: number | null
+          false_positives_filtered?: number | null
           id?: string
           logs_type: string
           metadata?: Json | null
@@ -45,8 +92,11 @@ export type Database = {
           actual_credits_saved?: number | null
           analyzed_by?: string | null
           applied_fixes?: string[] | null
+          bugs_auto_resolved?: number | null
+          context_used?: Json | null
           created_at?: string
           estimated_credits_saved?: number | null
+          false_positives_filtered?: number | null
           id?: string
           logs_type?: string
           metadata?: Json | null
@@ -62,6 +112,7 @@ export type Database = {
           actual_time_spent: number | null
           analysis_id: string
           category: string
+          confidence_score: number | null
           created_at: string
           estimated_credits_saved: number | null
           estimated_effort: string
@@ -74,12 +125,14 @@ export type Database = {
           suggestion_id: string
           title: string
           updated_at: string | null
+          verification_status: string | null
         }
         Insert: {
           actual_credits_saved?: number | null
           actual_time_spent?: number | null
           analysis_id: string
           category: string
+          confidence_score?: number | null
           created_at?: string
           estimated_credits_saved?: number | null
           estimated_effort: string
@@ -92,12 +145,14 @@ export type Database = {
           suggestion_id: string
           title: string
           updated_at?: string | null
+          verification_status?: string | null
         }
         Update: {
           actual_credits_saved?: number | null
           actual_time_spent?: number | null
           analysis_id?: string
           category?: string
+          confidence_score?: number | null
           created_at?: string
           estimated_credits_saved?: number | null
           estimated_effort?: string
@@ -110,6 +165,7 @@ export type Database = {
           suggestion_id?: string
           title?: string
           updated_at?: string | null
+          verification_status?: string | null
         }
         Relationships: [
           {

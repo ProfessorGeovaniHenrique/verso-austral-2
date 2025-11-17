@@ -34,6 +34,8 @@ export interface SuggestionStatus {
   actual_credits_saved: number | null;
   created_at: string;
   updated_at: string;
+  confidence_score: number | null;
+  verification_status: 'pending' | 'auto-verified' | 'false-positive' | 'human-verified' | null;
 }
 
 /**
