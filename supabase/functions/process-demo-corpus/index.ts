@@ -1,20 +1,29 @@
 /**
- * 🎯 PROCESS DEMO CORPUS
+ * 🎯 PROCESS DEMO CORPUS - MVP REFATORADO
  * 
  * Processa a música "Quando o Verso Vem pras Casa" e gera:
  * - Análises estatísticas (LL/MI scores)
- * - Domínios semânticos
- * - Prosódia
- * - Dados para visualizações
+ * - 6 Domínios semânticos centralizados
+ * - Prosódia como string ("Positiva", "Negativa", "Neutra")
+ * - Dados para visualizações consistentes
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// 🎨 SISTEMA CENTRALIZADO DE CORES (inline para edge function)
+const SEMANTIC_DOMAIN_COLORS = {
+  "Cultura e Lida Gaúcha": "#24A65B",
+  "Natureza e Paisagem": "#268BC8",
+  "Sentimentos e Abstrações": "#8B5CF6",
+  "Ações e Processos": "#FF9500",
+  "Qualidades e Estados": "#EC4899",
+  "Partes do Corpo e Seres Vivos": "#DC2626"
+} as const;
 
 // Corpus da música "Quando o Verso Vem pras Casa"
 const DEMO_CORPUS = [
@@ -23,13 +32,12 @@ const DEMO_CORPUS = [
   { palavra: "sombra", freq: 2 }, { palavra: "galpão", freq: 2 }, { palavra: "sol", freq: 2 },
   { palavra: "gateado", freq: 2 }, { palavra: "casa", freq: 1 }, { palavra: "calma", freq: 1 },
   { palavra: "pañuelo", freq: 1 }, { palavra: "maragato", freq: 1 }, { palavra: "horizonte", freq: 1 },
-  { palavra: "campereada", freq: 1 }, { palavra: "lombo", freq: 1 }, { palavra: "galpão", freq: 1 },
-  { palavra: "mate", freq: 1 }, { palavra: "maçanilha", freq: 1 }, { palavra: "coplas", freq: 1 },
-  { palavra: "querência", freq: 1 }, { palavra: "galponeira", freq: 1 }, { palavra: "candeeiro", freq: 1 },
-  { palavra: "campanha", freq: 1 }, { palavra: "açoite", freq: 1 }, { palavra: "tropa", freq: 1 },
-  { palavra: "encilha", freq: 1 }, { palavra: "prenda", freq: 1 }, { palavra: "arreios", freq: 1 },
-  { palavra: "esporas", freq: 1 }, { palavra: "bomba", freq: 1 }, { palavra: "cambona", freq: 1 },
-  { palavra: "redomona", freq: 1 }
+  { palavra: "campereada", freq: 1 }, { palavra: "lombo", freq: 1 }, { palavra: "mate", freq: 1 }, 
+  { palavra: "maçanilha", freq: 1 }, { palavra: "coplas", freq: 1 }, { palavra: "querência", freq: 1 }, 
+  { palavra: "galponeira", freq: 1 }, { palavra: "candeeiro", freq: 1 }, { palavra: "campanha", freq: 1 }, 
+  { palavra: "açoite", freq: 1 }, { palavra: "tropa", freq: 1 }, { palavra: "encilha", freq: 1 }, 
+  { palavra: "prenda", freq: 1 }, { palavra: "arreios", freq: 1 }, { palavra: "esporas", freq: 1 }, 
+  { palavra: "bomba", freq: 1 }, { palavra: "cambona", freq: 1 }, { palavra: "redomona", freq: 1 }
 ];
 
 const TOTAL_TOKENS_GAUCHO = 143;
@@ -46,88 +54,107 @@ const NORDESTINO_FREQS: Record<string, number> = {
   "bomba": 8, "cambona": 0, "redomona": 0
 };
 
-// Domínios semânticos principais
-const DOMAIN_MAPPING: Record<string, { domain: string; color: string; prosody: number }> = {
-  "verso": { domain: "Poesia", color: "#8b5cf6", prosody: 1 },
-  "campo": { domain: "Natureza", color: "#22c55e", prosody: 1 },
-  "coxilha": { domain: "Paisagem Gaúcha", color: "#86efac", prosody: 1 },
-  "saudade": { domain: "Sentimento", color: "#ef4444", prosody: -1 },
-  "tarumã": { domain: "Flora Regional", color: "#10b981", prosody: 1 },
-  "várzea": { domain: "Paisagem", color: "#34d399", prosody: 0 },
-  "sombra": { domain: "Natureza", color: "#22c55e", prosody: 0 },
-  "galpão": { domain: "Arquitetura Rural", color: "#f59e0b", prosody: 1 },
-  "sol": { domain: "Natureza", color: "#22c55e", prosody: 1 },
-  "gateado": { domain: "Fauna/Cavalo", color: "#eab308", prosody: 1 },
-  "mate": { domain: "Cultura Gaúcha", color: "#8b5cf6", prosody: 1 },
-  "querência": { domain: "Identidade Regional", color: "#ec4899", prosody: 1 },
-  "galponeira": { domain: "Cultura Gaúcha", color: "#8b5cf6", prosody: 1 },
-  "campanha": { domain: "Paisagem Gaúcha", color: "#86efac", prosody: 1 },
-  "tropa": { domain: "Lida Campeira", color: "#f59e0b", prosody: 0 },
-  "prenda": { domain: "Cultura Gaúcha", color: "#8b5cf6", prosody: 1 },
-  "bomba": { domain: "Artefato Cultural", color: "#f59e0b", prosody: 0 }
+// 🗺️ MAPEAMENTO COMPLETO DE PALAVRAS PARA OS 6 DOMÍNIOS SEMÂNTICOS
+const DOMAIN_MAPPING: Record<string, { domain: string; color: string; prosody: string }> = {
+  // CULTURA E LIDA GAÚCHA (Verde) - 16 palavras
+  "galpão": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "gateado": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "arreios": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "esporas": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "mate": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "bomba": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "prenda": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "galponeira": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "querência": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "maragato": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "pañuelo": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "tropa": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "encilha": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "campereada": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "redomona": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "casa": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Positiva" },
+  "candeeiro": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  "cambona": { domain: "Cultura e Lida Gaúcha", color: "#24A65B", prosody: "Neutra" },
+  
+  // NATUREZA E PAISAGEM (Azul) - 9 palavras
+  "campo": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Positiva" },
+  "coxilha": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Positiva" },
+  "horizonte": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Positiva" },
+  "sol": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Positiva" },
+  "sombra": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Neutra" },
+  "várzea": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Neutra" },
+  "tarumã": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Positiva" },
+  "maçanilha": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Neutra" },
+  "campanha": { domain: "Natureza e Paisagem", color: "#268BC8", prosody: "Neutra" },
+  
+  // SENTIMENTOS E ABSTRAÇÕES (Roxo) - 4 palavras
+  "verso": { domain: "Sentimentos e Abstrações", color: "#8B5CF6", prosody: "Positiva" },
+  "saudade": { domain: "Sentimentos e Abstrações", color: "#8B5CF6", prosody: "Negativa" },
+  "calma": { domain: "Sentimentos e Abstrações", color: "#8B5CF6", prosody: "Positiva" },
+  "coplas": { domain: "Sentimentos e Abstrações", color: "#8B5CF6", prosody: "Positiva" },
+  
+  // AÇÕES E PROCESSOS (Laranja) - 1 palavra
+  "açoite": { domain: "Ações e Processos", color: "#FF9500", prosody: "Negativa" },
+  
+  // PARTES DO CORPO E SERES VIVOS (Vermelho) - 1 palavra
+  "lombo": { domain: "Partes do Corpo e Seres Vivos", color: "#DC2626", prosody: "Neutra" }
 };
 
-// Descrições dos domínios semânticos
+// Descrições dos 6 domínios semânticos
 const DOMAIN_DESCRIPTIONS: Record<string, string> = {
-  "Poesia": "Elementos metapoéticos e expressões líricas da tradição gaúcha",
-  "Natureza": "Elementos naturais, clima e fenômenos do ambiente pampeano",
-  "Paisagem Gaúcha": "Acidentes geográficos e características topográficas regionais",
-  "Sentimento": "Expressões afetivas, saudade e estados emocionais",
-  "Flora Regional": "Vegetação característica do bioma pampa",
-  "Paisagem": "Elementos gerais da geografia e ambiente natural",
-  "Arquitetura Rural": "Construções e estruturas típicas do campo",
-  "Fauna/Cavalo": "Animais, especialmente cavalos e pelagens",
-  "Cultura Gaúcha": "Costumes, tradições e elementos identitários",
-  "Identidade Regional": "Conceitos ligados ao pertencimento e territorialidade",
-  "Lida Campeira": "Trabalho no campo e práticas pecuárias",
-  "Artefato Cultural": "Objetos e instrumentos da cultura tradicional",
-  "Geral": "Termos sem classificação temática específica"
+  "Cultura e Lida Gaúcha": "Tradições, objetos e práticas culturais do gaúcho",
+  "Natureza e Paisagem": "Elementos naturais, geografia e paisagem do pampa",
+  "Sentimentos e Abstrações": "Emoções, expressões líricas e estados de espírito",
+  "Ações e Processos": "Verbos e ações características da lida campeira",
+  "Qualidades e Estados": "Adjetivos e características descritivas",
+  "Partes do Corpo e Seres Vivos": "Anatomia humana e animal, fauna regional"
 };
 
-/**
- * Calcula Log-Likelihood
- */
+// Funções estatísticas
 function calculateLL(o1: number, n1: number, o2: number, n2: number): number {
   const e1 = n1 * (o1 + o2) / (n1 + n2);
   const e2 = n2 * (o1 + o2) / (n1 + n2);
   
-  const ll = 2 * (
-    (o1 > 0 ? o1 * Math.log(o1 / e1) : 0) +
-    (o2 > 0 ? o2 * Math.log(o2 / e2) : 0)
-  );
+  let ll = 0;
+  if (o1 > 0) ll += o1 * Math.log(o1 / e1);
+  if (o2 > 0) ll += o2 * Math.log(o2 / e2);
   
-  return ll;
+  return 2 * ll;
 }
 
-/**
- * Calcula Mutual Information
- */
 function calculateMI(o1: number, n1: number, o2: number, n2: number): number {
-  const p1 = o1 / n1;
-  const pTotal = (o1 + o2) / (n1 + n2);
-  
-  if (p1 === 0 || pTotal === 0) return 0;
-  
-  return Math.log2(p1 / pTotal);
+  const e1 = n1 * (o1 + o2) / (n1 + n2);
+  if (e1 === 0) return 0;
+  return Math.log2(o1 / e1);
 }
 
-/**
- * Processa o corpus demo
- */
 function processDemoCorpus() {
-  const keywords = DEMO_CORPUS.map(item => {
-    const o1 = item.freq;
-    const o2 = NORDESTINO_FREQS[item.palavra] || 0;
+  console.log('🚀 Iniciando processamento do corpus demo...');
+
+  // FASE 1: Processar keywords com LL/MI
+  const processedKeywords = DEMO_CORPUS.map(item => {
+    const freqNordestino = NORDESTINO_FREQS[item.palavra] || 0;
     
-    const ll = calculateLL(o1, TOTAL_TOKENS_GAUCHO, o2, TOTAL_TOKENS_NORDESTINO);
-    const mi = calculateMI(o1, TOTAL_TOKENS_GAUCHO, o2, TOTAL_TOKENS_NORDESTINO);
+    const ll = calculateLL(
+      item.freq,
+      TOTAL_TOKENS_GAUCHO,
+      freqNordestino,
+      TOTAL_TOKENS_NORDESTINO
+    );
     
+    const mi = calculateMI(
+      item.freq,
+      TOTAL_TOKENS_GAUCHO,
+      freqNordestino,
+      TOTAL_TOKENS_NORDESTINO
+    );
+
     const mapping = DOMAIN_MAPPING[item.palavra] || {
-      domain: "Geral",
-      color: "#94a3b8",
-      prosody: 0
+      domain: "Cultura e Lida Gaúcha",
+      color: "#24A65B",
+      prosody: "Neutra"
     };
-    
+
     return {
       palavra: item.palavra,
       frequencia: item.freq,
@@ -136,82 +163,90 @@ function processDemoCorpus() {
       significancia: ll > 15.13 ? "Alta" : ll > 6.63 ? "Média" : "Baixa",
       dominio: mapping.domain,
       cor: mapping.color,
-      prosody: mapping.prosody
+      prosody: mapping.prosody  // ✅ String: "Positiva", "Negativa", "Neutra"
     };
   }).sort((a, b) => b.ll - a.ll);
 
-  // Agregar por domínio
-  const dominioStats = keywords.reduce((acc, kw) => {
-    if (!acc[kw.dominio]) {
-      acc[kw.dominio] = {
-        dominio: kw.dominio,
-        descricao: DOMAIN_DESCRIPTIONS[kw.dominio] || "Domínio semântico identificado na análise",
-        cor: kw.cor,
-        palavras: [],
+  console.log(`✅ ${processedKeywords.length} keywords processadas`);
+
+  // FASE 2: Agregar domínios semânticos
+  const dominioMap = new Map<string, {
+    dominio: string;
+    riquezaLexical: number;
+    ocorrencias: number;
+    percentual: number;
+    palavras: string[];
+    cor: string;
+  }>();
+
+  processedKeywords.forEach(k => {
+    if (!dominioMap.has(k.dominio)) {
+      dominioMap.set(k.dominio, {
+        dominio: k.dominio,
+        riquezaLexical: 0,
         ocorrencias: 0,
-        avgLL: 0,
-        avgMI: 0
-      };
+        percentual: 0,
+        palavras: [],
+        cor: k.cor
+      });
     }
     
-    acc[kw.dominio].palavras.push(kw.palavra);
-    acc[kw.dominio].ocorrencias += kw.frequencia;
-    acc[kw.dominio].avgLL += kw.ll;
-    acc[kw.dominio].avgMI += kw.mi;
-    
-    return acc;
-  }, {} as Record<string, any>);
+    const dom = dominioMap.get(k.dominio)!;
+    dom.riquezaLexical += 1;
+    dom.ocorrencias += k.frequencia;
+    dom.palavras.push(k.palavra);
+  });
 
-  // Calcular médias
-  const dominios = Object.values(dominioStats).map((d: any) => ({
+  // Calcular percentuais
+  const totalOcorrencias = Array.from(dominioMap.values())
+    .reduce((sum, d) => sum + d.ocorrencias, 0);
+
+  const dominios = Array.from(dominioMap.values()).map(d => ({
     ...d,
-    avgLL: parseFloat((d.avgLL / d.palavras.length).toFixed(2)),
-    avgMI: parseFloat((d.avgMI / d.palavras.length).toFixed(2)),
-    riquezaLexical: d.palavras.length,
-    percentual: parseFloat(((d.ocorrencias / TOTAL_TOKENS_GAUCHO) * 100).toFixed(2))
-  })).sort((a, b) => b.avgLL - a.avgLL);
+    percentual: parseFloat(((d.ocorrencias / totalOcorrencias) * 100).toFixed(1))
+  })).sort((a, b) => b.percentual - a.percentual);
 
-  // Dados para nuvem
-  const cloudData = dominios.map(d => ({
-    codigo: d.dominio.substring(0, 3).toUpperCase(),
-    nome: d.dominio,
-    size: d.avgLL * 3,
-    color: d.cor,
-    wordCount: d.palavras.length,
-    avgScore: d.avgLL
+  console.log(`✅ ${dominios.length} domínios agregados`);
+
+  // FASE 3: Dados para nuvem
+  const cloudData = processedKeywords.slice(0, 20).map(k => ({
+    palavra: k.palavra,
+    valor: k.ll,
+    cor: k.cor,
+    dominio: k.dominio
   }));
 
-  // Análise de prosódia
-  const prosodiaStats = keywords.reduce((acc, k) => {
-    if (k.prosody > 0) acc.positivas++;
-    else if (k.prosody < 0) acc.negativas++;
-    else acc.neutras++;
-    return acc;
-  }, { positivas: 0, negativas: 0, neutras: 0 });
+  // FASE 4: Análise de prosódia
+  const prosodyDistribution = {
+    "Positiva": processedKeywords.filter(k => k.prosody === "Positiva").length,
+    "Negativa": processedKeywords.filter(k => k.prosody === "Negativa").length,
+    "Neutra": processedKeywords.filter(k => k.prosody === "Neutra").length
+  };
 
-  const totalProsodico = prosodiaStats.positivas + prosodiaStats.negativas + prosodiaStats.neutras;
+  // FASE 5: Estatísticas gerais
+  const stats = {
+    totalPalavras: DEMO_CORPUS.length,
+    totalTokens: TOTAL_TOKENS_GAUCHO,
+    mediaLL: parseFloat((processedKeywords.reduce((sum, k) => sum + k.ll, 0) / processedKeywords.length).toFixed(2)),
+    mediaMI: parseFloat((processedKeywords.reduce((sum, k) => sum + k.mi, 0) / processedKeywords.length).toFixed(2)),
+    riquezaLexical: parseFloat(((DEMO_CORPUS.length / TOTAL_TOKENS_GAUCHO) * 100).toFixed(1)),
+    significanciaAlta: processedKeywords.filter(k => k.significancia === "Alta").length,
+    significanciaMedia: processedKeywords.filter(k => k.significancia === "Média").length,
+    significanciaBaixa: processedKeywords.filter(k => k.significancia === "Baixa").length
+  };
+
+  console.log('✅ Processamento concluído com sucesso!');
 
   return {
-    keywords,
-    dominios,
-    cloudData,
-    estatisticas: {
-      totalPalavras: TOTAL_TOKENS_GAUCHO,
-      palavrasUnicas: DEMO_CORPUS.length,
-      dominiosIdentificados: dominios.length,
-      palavrasChaveSignificativas: keywords.filter(k => k.significancia === "Alta").length,
-      prosodiaDistribution: {
-        positivas: prosodiaStats.positivas,
-        negativas: prosodiaStats.negativas,
-        neutras: prosodiaStats.neutras,
-        percentualPositivo: parseFloat(((prosodiaStats.positivas / totalProsodico) * 100).toFixed(2)),
-        percentualNegativo: parseFloat(((prosodiaStats.negativas / totalProsodico) * 100).toFixed(2)),
-        percentualNeutro: parseFloat(((prosodiaStats.neutras / totalProsodico) * 100).toFixed(2))
-      }
-    }
+    keywords: processedKeywords,
+    dominios: dominios,
+    cloudData: cloudData,
+    prosodyDistribution: prosodyDistribution,
+    stats: stats
   };
 }
 
+// Handler HTTP
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -219,26 +254,37 @@ serve(async (req) => {
   }
 
   try {
-    console.log('📊 Processando corpus demo...');
+    console.log('📥 Recebida requisição para processar demo corpus');
     
     const result = processDemoCorpus();
     
-    console.log(`✅ Processamento concluído: ${result.keywords.length} palavras-chave, ${result.dominios.length} domínios`);
+    console.log('📤 Retornando resultado processado');
     
     return new Response(
       JSON.stringify(result),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
         status: 200
       }
     );
-  } catch (error: any) {
-    console.error('❌ Erro ao processar corpus demo:', error);
+  } catch (error) {
+    console.error('❌ Erro ao processar corpus:', error);
+    
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     
     return new Response(
-      JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      JSON.stringify({ 
+        error: errorMessage,
+        details: 'Falha ao processar o corpus de demonstração'
+      }),
+      { 
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json' 
+        },
         status: 500
       }
     );
