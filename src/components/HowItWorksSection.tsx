@@ -44,8 +44,8 @@ const HowItWorksSection = () => {
               key={step.title}
               className="p-8 bg-card border-border hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5"
             >
-              <div className={`w-16 h-16 rounded-2xl bg-secondary flex items-center justify-center mb-6 ${step.color}`}>
-                <step.icon size={32} strokeWidth={2} />
+              <div className="w-16 h-16 rounded-2xl bg-secondary/10 flex items-center justify-center mb-6">
+                <step.icon size={32} strokeWidth={2} className={step.color} />
               </div>
               <h3 className="text-xl font-bold mb-4">{step.title}</h3>
               <p className="text-muted-foreground leading-relaxed">
