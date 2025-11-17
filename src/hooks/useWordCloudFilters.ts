@@ -7,7 +7,7 @@ interface CloudNode {
   type: 'domain' | 'keyword';
   domain: string;
   tooltip: {
-    prosody?: number;
+    prosody?: number | string; // ✅ Aceita número (mockup) ou string (demo)
     significancia?: string;
     [key: string]: any;
   };
@@ -38,10 +38,20 @@ export function useWordCloudFilters(nodes: CloudNode[]) {
     // Prosody filter
     if (selectedProsody !== 'all') {
       result = result.filter(n => {
-        const prosody = n.tooltip.prosody ?? 0;
-        if (selectedProsody === 'positive') return prosody > 0;
-        if (selectedProsody === 'negative') return prosody < 0;
-        return prosody === 0;
+        const prosody = n.tooltip.prosody;
+        
+        // Se for string (dados demo)
+        if (typeof prosody === 'string') {
+          if (selectedProsody === 'positive') return prosody === 'Positiva';
+          if (selectedProsody === 'negative') return prosody === 'Negativa';
+          return prosody === 'Neutra';
+        }
+        
+        // Se for número (dados mockup)
+        const numericProsody = prosody ?? 0;
+        if (selectedProsody === 'positive') return numericProsody > 0;
+        if (selectedProsody === 'negative') return numericProsody < 0;
+        return numericProsody === 0;
       });
     }
 

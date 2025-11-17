@@ -329,7 +329,7 @@ export function OptimizedSemanticCloud({
                 </div>
               </div>
               
-              <div style="margin-top: 12px; padding: 8px; background: ${prosodyBg}; border-radius: 6px;">
+              <div style="margin-top: 12px; padding: 8px; background: ${prosodyInfo.bg}; border-radius: 6px;">
                 <span style="font-size: 12px; color: #555; font-weight: 500;">
                   ${prosodyInfo.emoji} Prosódia <strong>${prosodyInfo.label}</strong>
                 </span>
