@@ -35,7 +35,6 @@ export { auditCorpusData } from './validation/auditCorpusData';
 export { runAllTests, runTestsWithConsoleOutput } from './validation/corpusTests';
 export type { TestResult, TestSuite } from './validation/corpusTests';
 
-// Re-exportar types para conveniência
 export type {
   KWICEntry,
   KWICDataMap,
@@ -48,6 +47,12 @@ export type {
   ProsodiaData,
   LematizacaoData
 } from '../types/corpus.types';
+
+export type {
+  InsigniaCultural,
+  WordWithInsignias,
+  InsigniaAttribution
+} from '../types/cultural-insignia.types';
 
 export type {
   SemanticWord,

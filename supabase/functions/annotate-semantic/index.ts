@@ -355,34 +355,45 @@ async function processCorpusWithAI(
       // Processar batch com IA
       const annotations = await annotateBatchWithAI(batch, tagsets, supabase);
 
+      // Processar insígnias culturais antes de inserir
+      const annotationsWithInsignias = await Promise.all(
+        annotations.map(async (ann, idx) => {
+          const insignias = await inferCulturalInsignias(
+            batch[idx].palavra,
+            corpusType,
+            supabase
+          );
+          
+          return {
+            job_id: jobId,
+            palavra: batch[idx].palavra,
+            lema: batch[idx].palavra, // TODO: implementar lematização
+            pos: null, // TODO: implementar POS tagging
+            tagset_codigo: ann.tagset_codigo,
+            tagset_primario: ann.tagset_codigo.split('.')[0],
+            tagsets: [ann.tagset_codigo],
+            prosody: ann.prosody,
+            confianca: ann.confianca,
+            contexto_esquerdo: batch[idx].contexto_esquerdo,
+            contexto_direito: batch[idx].contexto_direito,
+            posicao_no_corpus: batch[idx].posicao_no_corpus,
+            insignias_culturais: insignias,
+            metadata: {
+              artista: batch[idx].artista,
+              musica: batch[idx].musica,
+              linha_numero: batch[idx].linha_numero,
+              verso_completo: batch[idx].verso_completo,
+              justificativa: ann.justificativa
+            }
+          };
+        })
+      );
+      
       // Inserir anotações no banco
-      if (annotations.length > 0) {
+      if (annotationsWithInsignias.length > 0) {
         const { error: insertError } = await supabase
           .from('annotated_corpus')
-          .insert(
-            annotations.map((ann, idx) => ({
-              job_id: jobId,
-              palavra: batch[idx].palavra,
-              lema: batch[idx].palavra, // TODO: implementar lematização
-              pos: null, // TODO: implementar POS tagging
-              tagset_codigo: ann.tagset_codigo,
-              tagset_primario: ann.tagset_codigo.split('.')[0],
-              tagsets: [ann.tagset_codigo],
-              prosody: ann.prosody,
-              confianca: ann.confianca,
-              contexto_esquerdo: batch[idx].contexto_esquerdo,
-              contexto_direito: batch[idx].contexto_direito,
-              posicao_no_corpus: batch[idx].posicao_no_corpus,
-              insignias_culturais: [], // TODO: inferir insígnias baseado em corpus_type e léxico dialectal
-              metadata: {
-                artista: batch[idx].artista,
-                musica: batch[idx].musica,
-                linha_numero: batch[idx].linha_numero,
-                verso_completo: batch[idx].verso_completo,
-                justificativa: ann.justificativa
-              }
-            }))
-          );
+          .insert(annotationsWithInsignias);
 
         if (insertError) {
           console.error('[processCorpusWithAI] Erro ao inserir batch:', insertError);
@@ -533,6 +544,69 @@ Retorne um array JSON com exatamente ${words.length} anotações.`;
     console.error('[annotateBatchWithAI] Erro com IA, fallback para léxico:', error);
     return annotateBatchFromLexicon(words, supabase);
   }
+}
+
+/**
+ * Infere insígnias culturais para uma palavra baseado em:
+ * 1. Corpus de origem (primária)
+ * 2. Léxico dialectal (secundárias)
+ */
+async function inferCulturalInsignias(
+  palavra: string,
+  corpusType: string,
+  supabase: any
+): Promise<string[]> {
+  const insignias: string[] = [];
+  
+  // Insígnia primária baseada no corpus
+  if (corpusType === 'gaucho' || corpusType === 'marenco-verso') {
+    insignias.push('Gaúcho');
+  } else if (corpusType === 'nordestino') {
+    insignias.push('Nordestino');
+  }
+  
+  // Buscar insígnias secundárias no léxico dialectal
+  const { data: dialectalEntry } = await supabase
+    .from('dialectal_lexicon')
+    .select('origem_regionalista, influencia_platina, contextos_culturais')
+    .eq('verbete_normalizado', palavra.toLowerCase())
+    .maybeSingle();
+  
+  if (dialectalEntry) {
+    // Adicionar origens regionalistas
+    if (dialectalEntry.origem_regionalista) {
+      dialectalEntry.origem_regionalista.forEach((origem: string) => {
+        if (origem.toLowerCase().includes('gaúcho') || origem.toLowerCase().includes('rio grande do sul')) {
+          if (!insignias.includes('Gaúcho')) insignias.push('Gaúcho');
+        }
+        if (origem.toLowerCase().includes('nordest')) {
+          if (!insignias.includes('Nordestino')) insignias.push('Nordestino');
+        }
+      });
+    }
+    
+    // Adicionar influência platina
+    if (dialectalEntry.influencia_platina) {
+      insignias.push('Platino');
+    }
+    
+    // Verificar contextos culturais para outras insígnias
+    if (dialectalEntry.contextos_culturais) {
+      const contextosStr = JSON.stringify(dialectalEntry.contextos_culturais).toLowerCase();
+      if (contextosStr.includes('indígena') || contextosStr.includes('guarani')) {
+        insignias.push('Indígena');
+      }
+      if (contextosStr.includes('afro') || contextosStr.includes('africano')) {
+        insignias.push('Afro-Brasileiro');
+      }
+      if (contextosStr.includes('caipira') || contextosStr.includes('interior')) {
+        insignias.push('Caipira');
+      }
+    }
+  }
+  
+  // Remover duplicatas
+  return [...new Set(insignias)];
 }
 
 async function annotateBatchFromLexicon(

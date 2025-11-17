@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Database, ArrowUpDown, Search } from "lucide-react";
 import { getDominiosAgregados } from "@/data/mockup/corpus-master";
 import { dominiosNormalizados } from "@/data/mockup";
+import { FilterInsigniaToolbar } from "@/components/FilterInsigniaToolbar";
 
 export function TabDomains() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<'dominio' | 'riqueza' | 'ocorrencias'>('dominio');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [selectedInsignias, setSelectedInsignias] = useState<string[]>([]);
 
   const dominiosCompletos = useMemo(() => {
     const agregados = getDominiosAgregados();
@@ -48,10 +50,21 @@ export function TabDomains() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Buscar domínio..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Buscar domínio..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="max-w-sm" />
+            </div>
+            <FilterInsigniaToolbar
+              selectedInsignias={selectedInsignias}
+              onInsigniasChange={setSelectedInsignias}
+            />
           </div>
+          {selectedInsignias.length > 0 && (
+            <div className="text-sm text-muted-foreground">
+              💡 Filtro de insígnias ativo (funcionalidade em desenvolvimento - dados ainda não disponíveis no corpus mockup)
+            </div>
+          )}
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
