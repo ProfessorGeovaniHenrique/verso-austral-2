@@ -52,24 +52,39 @@ jobs:
           SUPABASE_URL: https://kywmhuubbsvclkorxrse.supabase.co
           SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
+          PAYLOAD=$(jq -n \
+            --argjson totalFiles "${{ steps.metrics.outputs.total_files }}" \
+            --argjson totalLOC "${{ steps.metrics.outputs.total_loc }}" \
+            --argjson componentsLOC "${{ steps.metrics.outputs.components_loc }}" \
+            --argjson pagesLOC "${{ steps.metrics.outputs.pages_loc }}" \
+            --argjson hooksLOC "${{ steps.metrics.outputs.hooks_loc }}" \
+            --argjson contextsLOC "${{ steps.metrics.outputs.contexts_loc }}" \
+            --argjson edgeFunctionsLOC "${{ steps.metrics.outputs.edge_functions_loc }}" \
+            --arg commit "${{ github.sha }}" \
+            --arg branch "${{ github.ref_name }}" \
+            '{
+              totalFiles: $totalFiles,
+              totalLOC: $totalLOC,
+              breakdown: {
+                components: $componentsLOC,
+                pages: $pagesLOC,
+                hooks: $hooksLOC,
+                contexts: $contextsLOC,
+                edgeFunctions: $edgeFunctionsLOC
+              },
+              commit: $commit,
+              branch: $branch,
+              trigger: "github-actions"
+            }')
+          
+          echo "📦 Payload construído:"
+          echo "$PAYLOAD" | jq '.'
+          
           curl -X POST \
             "${SUPABASE_URL}/functions/v1/audit-project-metrics" \
             -H "Authorization: Bearer ${SUPABASE_KEY}" \
             -H "Content-Type: application/json" \
-            -d '{
-              "totalFiles": ${{ steps.metrics.outputs.total_files }},
-              "totalLOC": ${{ steps.metrics.outputs.total_loc }},
-              "breakdown": {
-                "components": ${{ steps.metrics.outputs.components_loc }},
-                "pages": ${{ steps.metrics.outputs.pages_loc }},
-                "hooks": ${{ steps.metrics.outputs.hooks_loc }},
-                "contexts": ${{ steps.metrics.outputs.contexts_loc }},
-                "edgeFunctions": ${{ steps.metrics.outputs.edge_functions_loc }}
-              },
-              "commit": "${{ github.sha }}",
-              "branch": "${{ github.ref_name }}",
-              "trigger": "github-actions"
-            }'
+            -d "$PAYLOAD"
       
       - name: 💬 Comentar PR com métricas (se for PR)
         if: github.event_name == 'pull_request'
