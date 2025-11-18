@@ -662,75 +662,74 @@ export function KeywordsTool() {
       </div>
 
       {/* Menu de Configuração Unificado e Colapsável */}
-      <Card data-tour="keywords-config" className="border-l-4 border-l-primary">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setIsConfigOpen(!isConfigOpen)}
-                  className="p-1"
-                >
-                  {isConfigOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </Button>
-              </CollapsibleTrigger>
-              <Settings2 className="h-4 w-4" />
-              <CardTitle className="text-base">Configurar Análise</CardTitle>
-              {!isConfigOpen && (
-                <Badge variant="secondary" className="ml-2">
-                  {Object.values(analysisConfig).filter(Boolean).length} análises ativas
-                </Badge>
-              )}
-            </div>
-            
-            {/* Botão de Limpar Cache */}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="h-8 text-xs text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-3 w-3 mr-1" />
-                  Limpar Cache
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Limpar Cache e Recarregar?</AlertDialogTitle>
-                  <AlertDialogDescription className="space-y-2">
-                    <p>Esta ação irá:</p>
-                    <ul className="list-disc list-inside space-y-1 text-sm">
-                      <li>Remover todos os dados salvos do localStorage</li>
-                      <li>Resetar todas as configurações para valores padrão</li>
-                      <li>Recarregar a página automaticamente</li>
-                    </ul>
-                    <p className="font-semibold text-destructive mt-3">
-                      ⚠️ Esta ação não pode ser desfeita!
-                    </p>
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction 
-                    onClick={clearAllCache}
-                    className="bg-destructive hover:bg-destructive/90"
+      <Collapsible open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+        <Card data-tour="keywords-config" className="border-l-4 border-l-primary">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="p-1"
                   >
-                    Sim, Limpar Tudo
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-          {!isConfigOpen && (
-            <div className="text-xs text-muted-foreground mt-2">
-              Estudo: {estudoMode === 'artist' && estudoArtist ? estudoArtist : `${estudoCorpusBase} (completo)`} vs Referência: {refMode === 'artist' && refArtist ? refArtist : `${refCorpusBase} (completo)`}
+                    {isConfigOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
+                <Settings2 className="h-4 w-4" />
+                <CardTitle className="text-base">Configurar Análise</CardTitle>
+                {!isConfigOpen && (
+                  <Badge variant="secondary" className="ml-2">
+                    {Object.values(analysisConfig).filter(Boolean).length} análises ativas
+                  </Badge>
+                )}
+              </div>
+              
+              {/* Botão de Limpar Cache */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Limpar Cache
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Limpar Cache e Recarregar?</AlertDialogTitle>
+                    <AlertDialogDescription className="space-y-2">
+                      <p>Esta ação irá:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        <li>Remover todos os dados salvos do localStorage</li>
+                        <li>Resetar todas as configurações para valores padrão</li>
+                        <li>Recarregar a página automaticamente</li>
+                      </ul>
+                      <p className="font-semibold text-destructive mt-3">
+                        ⚠️ Esta ação não pode ser desfeita!
+                      </p>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction 
+                      onClick={clearAllCache}
+                      className="bg-destructive hover:bg-destructive/90"
+                    >
+                      Sim, Limpar Tudo
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-          )}
-        </CardHeader>
-        <Collapsible open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+            {!isConfigOpen && (
+              <div className="text-xs text-muted-foreground mt-2">
+                Estudo: {estudoMode === 'artist' && estudoArtist ? estudoArtist : `${estudoCorpusBase} (completo)`} vs Referência: {refMode === 'artist' && refArtist ? refArtist : `${refCorpusBase} (completo)`}
+              </div>
+            )}
+          </CardHeader>
           <CollapsibleContent>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="keywords-corpus">
@@ -870,8 +869,8 @@ export function KeywordsTool() {
           </Button>
           </CardContent>
           </CollapsibleContent>
-        </Collapsible>
-      </Card>
+        </Card>
+      </Collapsible>
       
       {/* Estatísticas Comparativas - Só aparece após processamento */}
       {keywordsState.isProcessed && keywordsState.keywords.length > 0 && estudoMetadata && refMetadata && (
