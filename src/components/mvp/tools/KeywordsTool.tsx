@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useKeywords } from "@/hooks/useKeywords";
 import { useFeatureTour } from "@/hooks/useFeatureTour";
 import { keywordsTourSteps } from "./KeywordsTool.tour";
@@ -8,16 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download, Search, Play, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick, Music } from "lucide-react";
 import { KeywordEntry, CorpusType } from "@/data/types/corpus-tools.types";
+import { SubcorpusMetadata } from "@/data/types/subcorpus.types";
 import { useTools } from "@/contexts/ToolsContext";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { toast } from "sonner";
 import { CorpusSubcorpusSelector } from "@/components/corpus/CorpusSubcorpusSelector";
+import { loadFullTextCorpus } from "@/lib/fullTextParser";
 
 export function KeywordsTool() {
   useFeatureTour('keywords', keywordsTourSteps);
@@ -31,6 +34,11 @@ export function KeywordsTool() {
   const [refCorpusBase, setRefCorpusBase] = useState<CorpusType>('nordestino');
   const [refMode, setRefMode] = useState<'complete' | 'artist'>('complete');
   const [refArtist, setRefArtist] = useState<string | null>(null);
+  
+  // Estados para metadados
+  const [estudoMetadata, setEstudoMetadata] = useState<SubcorpusMetadata | null>(null);
+  const [refMetadata, setRefMetadata] = useState<SubcorpusMetadata | null>(null);
+  const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   
   const { keywords, isLoading, error, isProcessed, processKeywords } = useKeywords();
   const { navigateToKWIC } = useTools();
@@ -49,6 +57,76 @@ export function KeywordsTool() {
   const [sortColumn, setSortColumn] = useState<keyof KeywordEntry>('ll');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [minLLFilter, setMinLLFilter] = useState<number>(3.84);
+  
+  // Calcular metadados do subcorpus
+  const calculateSubcorpusMetadata = async (
+    corpusBase: CorpusType,
+    mode: 'complete' | 'artist',
+    artist: string | null
+  ): Promise<SubcorpusMetadata | null> => {
+    try {
+      const corpus = await loadFullTextCorpus(corpusBase);
+      
+      const musicas = mode === 'complete' 
+        ? corpus.musicas 
+        : corpus.musicas.filter(m => m.metadata.artista === artist);
+      
+      if (musicas.length === 0) return null;
+      
+      const totalPalavras = musicas.reduce((sum, m) => sum + m.palavras.length, 0);
+      const uniqueWords = new Set<string>();
+      musicas.forEach(m => m.palavras.forEach(p => uniqueWords.add(p.toLowerCase())));
+      
+      const albums = [...new Set(musicas.map(m => m.metadata.album))];
+      const anos = musicas
+        .map(m => m.metadata.ano ? parseInt(m.metadata.ano) : null)
+        .filter((a): a is number => a !== null);
+      
+      return {
+        id: mode === 'complete' ? corpusBase : `${corpusBase}-${artist}`,
+        artista: mode === 'complete' ? `Corpus ${corpusBase}` : artist!,
+        totalMusicas: musicas.length,
+        totalPalavras,
+        totalPalavrasUnicas: uniqueWords.size,
+        riquezaLexical: uniqueWords.size / totalPalavras,
+        anoInicio: anos.length > 0 ? Math.min(...anos) : undefined,
+        anoFim: anos.length > 0 ? Math.max(...anos) : undefined,
+        albums
+      };
+    } catch (error) {
+      console.error('Erro ao calcular metadados:', error);
+      return null;
+    }
+  };
+  
+  // Efeito para atualizar metadados quando seleção mudar
+  useEffect(() => {
+    const loadMetadata = async () => {
+      setIsLoadingMetadata(true);
+      
+      const [estudo, ref] = await Promise.all([
+        calculateSubcorpusMetadata(estudoCorpusBase, estudoMode, estudoArtist),
+        calculateSubcorpusMetadata(refCorpusBase, refMode, refArtist)
+      ]);
+      
+      setEstudoMetadata(estudo);
+      setRefMetadata(ref);
+      setIsLoadingMetadata(false);
+    };
+    
+    // Carregar apenas se modo artista tiver artista selecionado ou modo completo
+    const shouldLoad = (
+      (estudoMode === 'complete' || estudoArtist) &&
+      (refMode === 'complete' || refArtist)
+    );
+    
+    if (shouldLoad) {
+      loadMetadata();
+    } else {
+      setEstudoMetadata(null);
+      setRefMetadata(null);
+    }
+  }, [estudoCorpusBase, estudoMode, estudoArtist, refCorpusBase, refMode, refArtist]);
   
   const filteredKeywords = useMemo(() => {
     return keywords
@@ -98,16 +176,6 @@ export function KeywordsTool() {
       return;
     }
     
-    if (estudoMode === 'artist' && !estudoArtist) {
-      toast.error('Selecione um artista para o corpus de estudo');
-      return;
-    }
-    
-    if (refMode === 'artist' && !refArtist) {
-      toast.error('Selecione um artista para o corpus de referência');
-      return;
-    }
-    
     // Construir identificadores de corpus para processamento
     const estudoId = estudoMode === 'complete' 
       ? estudoCorpusBase 
@@ -121,58 +189,58 @@ export function KeywordsTool() {
   };
   
   const handleExportCSV = () => {
-    const estudoLabel = estudoMode === 'complete' ? estudoCorpusBase : `${estudoCorpusBase}-${estudoArtist}`;
-    const referenciaLabel = refMode === 'complete' ? refCorpusBase : `${refCorpusBase}-${refArtist}`;
+    const estudoLabel = estudoMode === 'complete' 
+      ? estudoCorpusBase 
+      : `${estudoCorpusBase} (${estudoArtist})`;
+      
+    const referenciaLabel = refMode === 'complete' 
+      ? refCorpusBase 
+      : `${refCorpusBase} (${refArtist})`;
     
-    const csv = [
-      ['Rank', 'Palavra', 'Freq Estudo', 'Freq Referência', 'Norm Freq Estudo', 'Norm Freq Referência', 'Log-Likelihood', 'MI Score', 'Efeito', 'Significância'].join(','),
-      ...filteredKeywords.map((kw, idx) => [
-        idx + 1, kw.palavra, kw.freqEstudo, kw.freqReferencia,
-        kw.normFreqEstudo.toFixed(2), kw.normFreqReferencia.toFixed(2),
-        kw.ll.toFixed(2), kw.mi.toFixed(3), kw.efeito, kw.significancia
-      ].join(','))
+    const csvContent = [
+      ['Palavra', 'Freq Estudo', 'Freq Ref', 'LL', '%Diff', 'Significância', 'Efeito'].join(','),
+      ...filteredKeywords.map(kw => 
+        [
+          kw.palavra,
+          kw.freqEstudo,
+          kw.freqRef,
+          kw.ll.toFixed(2),
+          kw.percDiff.toFixed(2),
+          kw.significancia,
+          kw.efeito
+        ].join(',')
+      )
     ].join('\n');
     
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `keywords_${estudoLabel}_vs_${referenciaLabel}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `keywords_${estudoLabel}_vs_${referenciaLabel}.csv`;
     link.click();
-    toast.success('Keywords exportadas com sucesso!');
   };
   
   const handleWordClick = (palavra: string) => {
-    navigateToKWIC(palavra);
-    toast.success(`Buscando "${palavra}" no KWIC...`);
+    navigateToKWIC(palavra, selection.corpusBase, false);
   };
   
   return (
     <div className="space-y-6">
-      {(currentMetadata || selection.mode === 'compare') && (
-        <Alert className="border-primary/20 bg-primary/5">
-          <Music className="h-4 w-4" />
-          <AlertDescription>
-            {selection.mode === 'compare' && selection.artistaA ? (
-              <span className="flex items-center gap-2">
-                Comparando: <strong className="text-primary">{selection.artistaA}</strong> vs <strong className="text-primary">{selection.artistaB || 'Resto do Corpus'}</strong>
-              </span>
-            ) : currentMetadata ? (
-              <span className="flex items-center gap-3">
-                Analisando subcorpus: <strong className="text-primary">{currentMetadata.artista}</strong>
-                <Badge variant="outline">{currentMetadata.totalMusicas} músicas</Badge>
-              </span>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      )}
-      
-      <Card>
+      <Alert>
+        <AlertDescription>
+          A análise de Keywords compara as frequências de palavras entre dois corpus para identificar
+          palavras-chave estatisticamente significativas usando o teste Log-Likelihood.
+        </AlertDescription>
+      </Alert>
+
+      <Card data-tour="keywords-config">
         <CardHeader>
-          <CardTitle>Configuração de Análise</CardTitle>
-          <CardDescription>Selecione os corpora de estudo e referência para comparação</CardDescription>
+          <CardTitle>Configurar Análise</CardTitle>
+          <CardDescription>
+            Selecione os corpus a serem comparados e processe para gerar a lista de palavras-chave
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="keywords-corpus">
             <CorpusSubcorpusSelector 
               label="Corpus de Estudo"
               corpusBase={estudoCorpusBase}
@@ -196,135 +264,371 @@ export function KeywordsTool() {
             />
           </div>
           
+          {/* Estatísticas dos Subcorpora */}
+          {(estudoMetadata || refMetadata) && !isLoadingMetadata && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              {/* Card de Estatísticas - Corpus de Estudo */}
+              {estudoMetadata && (
+                <Card className="border-primary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Music className="h-4 w-4" />
+                      Estatísticas: Corpus de Estudo
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Artista/Corpus:</span>
+                      <span className="font-semibold text-xs">{estudoMetadata.artista}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total de músicas:</span>
+                      <Badge variant="outline">{estudoMetadata.totalMusicas}</Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total de palavras:</span>
+                      <Badge variant="outline">
+                        {estudoMetadata.totalPalavras.toLocaleString()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Palavras únicas:</span>
+                      <Badge variant="outline">
+                        {estudoMetadata.totalPalavrasUnicas.toLocaleString()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Riqueza Lexical:</span>
+                      <Badge variant="secondary">
+                        {(estudoMetadata.riquezaLexical * 100).toFixed(2)}%
+                      </Badge>
+                    </div>
+                    {estudoMetadata.anoInicio && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Período:</span>
+                        <span className="text-xs">
+                          {estudoMetadata.anoInicio} - {estudoMetadata.anoFim}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {/* Card de Estatísticas - Corpus de Referência */}
+              {refMetadata && (
+                <Card className="border-secondary/20">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <Music className="h-4 w-4" />
+                      Estatísticas: Corpus de Referência
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Artista/Corpus:</span>
+                      <span className="font-semibold text-xs">{refMetadata.artista}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total de músicas:</span>
+                      <Badge variant="outline">{refMetadata.totalMusicas}</Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Total de palavras:</span>
+                      <Badge variant="outline">
+                        {refMetadata.totalPalavras.toLocaleString()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Palavras únicas:</span>
+                      <Badge variant="outline">
+                        {refMetadata.totalPalavrasUnicas.toLocaleString()}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Riqueza Lexical:</span>
+                      <Badge variant="secondary">
+                        {(refMetadata.riquezaLexical * 100).toFixed(2)}%
+                      </Badge>
+                    </div>
+                    {refMetadata.anoInicio && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Período:</span>
+                        <span className="text-xs">
+                          {refMetadata.anoInicio} - {refMetadata.anoFim}
+                        </span>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
+          
+          {/* Loading skeleton durante carregamento de metadados */}
+          {isLoadingMetadata && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+              <Card>
+                <CardContent className="pt-6">
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-6">
+                  <Skeleton className="h-24 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
           <Button 
-            onClick={handleProcessKeywords} 
+            onClick={handleProcessKeywords}
             disabled={isLoading}
             className="w-full"
           >
             {isLoading ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Processando...
               </>
             ) : (
               <>
-                <Play className="h-4 w-4 mr-2" />
-                Gerar Keywords
+                <Play className="mr-2 h-4 w-4" />
+                Processar Keywords
               </>
             )}
           </Button>
         </CardContent>
       </Card>
-      
-      {error && <Alert variant="destructive"><AlertDescription>{error}</AlertDescription></Alert>}
-      
+
+      {error && (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {isProcessed && keywords.length > 0 && (
-        <Card>
+        <Card data-tour="keywords-results">
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>{filteredKeywords.length} palavras-chave encontradas</CardTitle>
-                <CardDescription>Estatísticas de comparação entre corpora</CardDescription>
+                <CardTitle>Palavras-Chave Identificadas</CardTitle>
+                <CardDescription>
+                  {filteredKeywords.length} palavra{filteredKeywords.length !== 1 ? 's' : ''} após filtros
+                </CardDescription>
               </div>
-              <Button variant="outline" onClick={handleExportCSV}><Download className="h-4 w-4 mr-2" />Exportar CSV</Button>
+              <Button onClick={handleExportCSV} variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" />
+                Exportar CSV
+              </Button>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label><Search className="inline h-4 w-4 mr-2" />Buscar palavra</Label>
-                  <Input placeholder="Digite para filtrar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>LL Mínimo: {minLLFilter.toFixed(2)}</Label>
-                  <Input type="number" step="0.1" value={minLLFilter} onChange={(e) => setMinLLFilter(parseFloat(e.target.value) || 0)} />
+          <CardContent className="space-y-4">
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Buscar palavra</Label>
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Digite para filtrar..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8"
+                  />
                 </div>
               </div>
               
-              <div className="flex flex-wrap gap-4">
-                <div className="space-y-2">
-                  <Label>Significância</Label>
-                  <div className="flex gap-2">
-                    {['Alta', 'Média', 'Baixa'].map(sig => (
-                      <div key={sig} className="flex items-center gap-2">
-                        <Checkbox checked={filterSignificancia[sig as keyof typeof filterSignificancia]} onCheckedChange={(checked) => setFilterSignificancia(prev => ({ ...prev, [sig]: checked }))} />
-                        <span className="text-sm">{sig}</span>
-                      </div>
-                    ))}
+              <div className="space-y-2">
+                <Label>LL Mínimo</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={minLLFilter}
+                  onChange={(e) => setMinLLFilter(parseFloat(e.target.value) || 0)}
+                  placeholder="3.84"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Filtros Rápidos</Label>
+                <div className="space-y-1">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="filter-alta-sig"
+                      checked={filterSignificancia.Alta}
+                      onCheckedChange={(checked) => 
+                        setFilterSignificancia(prev => ({ ...prev, Alta: !!checked }))
+                      }
+                    />
+                    <label htmlFor="filter-alta-sig" className="text-sm cursor-pointer">
+                      Alta Significância
+                    </label>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Efeito</Label>
-                  <div className="flex gap-2">
-                    {[{ key: 'super-representado', label: 'Super-rep.' }, { key: 'sub-representado', label: 'Sub-rep.' }].map(({ key, label }) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <Checkbox checked={filterEfeito[key as keyof typeof filterEfeito]} onCheckedChange={(checked) => setFilterEfeito(prev => ({ ...prev, [key]: checked }))} />
-                        <span className="text-sm">{label}</span>
-                      </div>
-                    ))}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="filter-super"
+                      checked={filterEfeito['super-representado']}
+                      onCheckedChange={(checked) => 
+                        setFilterEfeito(prev => ({ ...prev, 'super-representado': !!checked }))
+                      }
+                    />
+                    <label htmlFor="filter-super" className="text-sm cursor-pointer">
+                      Super-representado
+                    </label>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <Table className="mt-4">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-16">Rank</TableHead>
-                  <TableHead>
-                    <Button variant="ghost" onClick={() => handleSort('palavra')} className="p-0 h-auto font-semibold">
-                      Palavra {sortColumn === 'palavra' && (sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-right">
-                    <Button variant="ghost" onClick={() => handleSort('ll')} className="p-0 h-auto font-semibold ml-auto">
-                      LL {sortColumn === 'll' && (sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />)}
-                    </Button>
-                  </TableHead>
-                  <TableHead className="text-center">Efeito</TableHead>
-                  <TableHead className="text-center">Significância</TableHead>
-                  <TableHead className="w-20 text-center">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredKeywords.slice(0, 100).map((kw, idx) => (
-                  <TableRow key={kw.palavra}>
-                    <TableCell className="text-muted-foreground">{idx + 1}</TableCell>
-                    <TableCell className="font-mono font-medium">{kw.palavra}</TableCell>
-                    <TableCell className="text-right">{kw.ll.toFixed(2)}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={kw.efeito === 'super-representado' ? 'default' : 'secondary'} className="gap-1">
-                        {kw.efeito === 'super-representado' ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                        {kw.efeito === 'super-representado' ? 'Super-rep.' : 'Sub-rep.'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant={kw.significancia === 'Alta' ? 'destructive' : kw.significancia === 'Média' ? 'default' : 'secondary'}>
-                        {kw.significancia}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
+
+            {/* Tabela */}
+            <div className="rounded-md border max-h-[600px] overflow-auto">
+              <Table>
+                <TableHeader className="sticky top-0 bg-background z-10">
+                  <TableRow>
+                    <TableHead>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleSort('palavra')}
+                        className="h-8 px-2"
+                      >
+                        Palavra
+                        {sortColumn === 'palavra' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleSort('freqEstudo')}
+                        className="h-8 px-2"
+                      >
+                        Freq Estudo
+                        {sortColumn === 'freqEstudo' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleSort('freqRef')}
+                        className="h-8 px-2"
+                      >
+                        Freq Ref
+                        {sortColumn === 'freqRef' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead className="text-right">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" onClick={() => handleWordClick(kw.palavra)} className="h-8 w-8">
-                              <MousePointerClick className="h-4 w-4" />
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleSort('ll')}
+                              className="h-8 px-2"
+                            >
+                              LL
+                              {sortColumn === 'll' && (
+                                sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                              )}
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Ver no KWIC</TooltipContent>
+                          <TooltipContent>
+                            <p>Log-Likelihood: quanto maior, mais significativa a diferença</p>
+                          </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                    </TableCell>
+                    </TableHead>
+                    <TableHead className="text-right">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleSort('percDiff')}
+                        className="h-8 px-2"
+                      >
+                        % Diff
+                        {sortColumn === 'percDiff' && (
+                          sortDirection === 'asc' ? <ChevronUp className="ml-1 h-3 w-3" /> : <ChevronDown className="ml-1 h-3 w-3" />
+                        )}
+                      </Button>
+                    </TableHead>
+                    <TableHead>Significância</TableHead>
+                    <TableHead>Efeito</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            
+                </TableHeader>
+                <TableBody>
+                  {filteredKeywords.slice(0, 100).map((kw, idx) => (
+                    <TableRow key={idx} className="hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        <button
+                          onClick={() => handleWordClick(kw.palavra)}
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          {kw.palavra}
+                          <MousePointerClick className="h-3 w-3 opacity-50" />
+                        </button>
+                      </TableCell>
+                      <TableCell className="text-right">{kw.freqEstudo}</TableCell>
+                      <TableCell className="text-right">{kw.freqRef}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="font-mono text-sm">{kw.ll.toFixed(2)}</span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <span className={`font-mono text-sm ${kw.percDiff > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {kw.percDiff > 0 ? '+' : ''}{kw.percDiff.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={
+                            kw.significancia === 'Alta' ? 'default' : 
+                            kw.significancia === 'Média' ? 'secondary' : 'outline'
+                          }
+                        >
+                          {kw.significancia}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          {kw.efeito === 'super-representado' ? (
+                            <TrendingUp className="h-4 w-4 text-green-600" />
+                          ) : (
+                            <TrendingDown className="h-4 w-4 text-red-600" />
+                          )}
+                          <span className="text-sm">{kw.efeito}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleWordClick(kw.palavra)}
+                        >
+                          Ver no KWIC
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
             {filteredKeywords.length > 100 && (
-              <div className="p-4 text-center text-sm text-muted-foreground">
-                Mostrando 100 de {filteredKeywords.length} keywords. Exporte o CSV para ver todos.
-              </div>
+              <Alert>
+                <AlertDescription>
+                  Mostrando as primeiras 100 palavras de {filteredKeywords.length} resultados. 
+                  Use os filtros para refinar sua busca ou exporte o CSV para ver todos os resultados.
+                </AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
