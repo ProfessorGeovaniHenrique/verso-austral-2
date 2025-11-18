@@ -10,16 +10,18 @@ import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AppLayout from "./pages/AppLayout";
-import Dashboard from "./pages/Dashboard";
+// Prototypes archived - accessible via Admin Gallery
+// import Dashboard from "./pages/Dashboard";
+// import Dashboard2 from "./pages/Dashboard2";
+// import Dashboard3 from "./pages/Dashboard3";
+// import Dashboard4 from "./pages/Dashboard4";
+// import Dashboard5 from "./pages/Dashboard5";
+// import Dashboard7 from "./pages/Dashboard7";
+// import Dashboard8 from "./pages/Dashboard8";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMetrics from "./pages/AdminMetrics";
+import AdminPrototypeGallery from "./pages/AdminPrototypeGallery";
 import { ProtectedRoute } from "./components/ProtectedRoute";
-import Dashboard2 from "./pages/Dashboard2";
-import Dashboard3 from "./pages/Dashboard3";
-import Dashboard4 from "./pages/Dashboard4";
-import Dashboard5 from "./pages/Dashboard5";
-import Dashboard7 from "./pages/Dashboard7";
-import Dashboard8 from "./pages/Dashboard8";
 import DashboardMVP from "./pages/DashboardMVP";
 import Onboarding from "./pages/Onboarding";
 import AdvancedMode from "./pages/AdvancedMode";
@@ -32,6 +34,16 @@ import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
 import DeveloperHistory from "./pages/DeveloperHistory";
 import NotFound from "./pages/NotFound";
+import { lazy } from "react";
+
+// Lazy load archived prototypes
+const ArchivedDashboard = lazy(() => import("./pages/_archived/Dashboard"));
+const ArchivedDashboard2 = lazy(() => import("./pages/_archived/Dashboard2"));
+const ArchivedDashboard3 = lazy(() => import("./pages/_archived/Dashboard3"));
+const ArchivedDashboard4 = lazy(() => import("./pages/_archived/Dashboard4"));
+const ArchivedDashboard5 = lazy(() => import("./pages/_archived/Dashboard5"));
+const ArchivedDashboard7 = lazy(() => import("./pages/_archived/Dashboard7"));
+const ArchivedDashboard8 = lazy(() => import("./pages/_archived/Dashboard8"));
 
 const queryClient = new QueryClient();
 
@@ -49,13 +61,7 @@ const App = () => (
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
         <Route element={<AppLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/dashboard2" element={<Dashboard2 />} />
-          <Route path="/dashboard3" element={<Dashboard3 />} />
-          <Route path="/dashboard4" element={<Dashboard4 />} />
-          <Route path="/dashboard5" element={<Dashboard5 />} />
-          <Route path="/dashboard7" element={<Dashboard7 />} />
-          <Route path="/dashboard8" element={<Dashboard8 />} />
+          {/* Archived dashboards - removed from public access */}
           <Route 
             path="/advanced-mode" 
             element={
@@ -126,10 +132,76 @@ const App = () => (
               } 
             />
             <Route 
+              path="/admin/prototypes" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminPrototypeGallery />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/developer-history" 
               element={
                 <ProtectedRoute requiredRole="admin">
                   <DeveloperHistory />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Protected routes for archived prototypes - admin only */}
+            <Route 
+              path="/prototypes/dashboard" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard2" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard2 />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard3" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard3 />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard4" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard4 />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard5" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard5 />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard7" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard7 />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/prototypes/dashboard8" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <ArchivedDashboard8 />
                 </ProtectedRoute>
               } 
             />

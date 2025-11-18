@@ -22,6 +22,7 @@ import {
   BookOpen,
   CircuitBoard,
   History,
+  Telescope,
   Moon,
   Sun
 } from "lucide-react";
@@ -145,6 +146,11 @@ const Header = () => {
                   <DropdownMenuItem onClick={() => navigate("/developer-logs")}>
                     <BookOpen className="mr-2 h-4 w-4" />
                     <span>Developer Logs</span>
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/admin/prototypes")}>
+                    <Telescope className="mr-2 h-4 w-4" />
+                    <span>Galeria de Protótipos</span>
                   </DropdownMenuItem>
                   
                   <DropdownMenuItem onClick={() => navigate("/developer-history")}>
