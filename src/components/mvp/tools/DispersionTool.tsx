@@ -1,66 +1,43 @@
-import { useState, useMemo, useEffect } from "react";
-import { Search, Download, Loader2, TrendingUp, Filter } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Download, Loader2, TrendingUp, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useCorpusCache } from "@/contexts/CorpusContext";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { generateDispersion, exportDispersionToCSV } from "@/services/dispersionService";
 import { DispersionAnalysis, CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@/components/ui/badge";
 
 export function DispersionTool() {
-  const [corpusType, setCorpusType] = useState<'gaucho' | 'nordestino'>('gaucho');
+  const { getFilteredCorpus, currentMetadata } = useSubcorpus();
   const [palavra, setPalavra] = useState('');
   const [analysis, setAnalysis] = useState<DispersionAnalysis | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [selectedArtistas, setSelectedArtistas] = useState<string[]>([]);
-  const [selectedAlbuns, setSelectedAlbuns] = useState<string[]>([]);
-  const [anoInicio, setAnoInicio] = useState<string>('');
-  const [anoFim, setAnoFim] = useState<string>('');
-  
-  const filters = useMemo(() => ({
-    artistas: selectedArtistas.length > 0 ? selectedArtistas : undefined,
-    albuns: selectedAlbuns.length > 0 ? selectedAlbuns : undefined,
-    anoInicio: anoInicio ? parseInt(anoInicio) : undefined,
-    anoFim: anoFim ? parseInt(anoFim) : undefined,
-  }), [selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
-  
-  const { getFullTextCache, isLoading: isCacheLoading } = useCorpusCache();
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
-  const [progress, setProgress] = useState(0);
+  const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
   
+  // Carregar corpus filtrado
   useEffect(() => {
     const loadCorpus = async () => {
+      setIsLoadingCorpus(true);
       try {
-        setProgress(30);
-        const cache = await getFullTextCache(corpusType, filters);
-        setCorpus(cache.corpus);
-        setProgress(100);
+        const filteredCorpus = await getFilteredCorpus();
+        setCorpus(filteredCorpus);
       } catch (error) {
         console.error('Erro ao carregar corpus:', error);
         toast.error('Erro ao carregar corpus');
+      } finally {
+        setIsLoadingCorpus(false);
       }
     };
     
     loadCorpus();
-  }, [corpusType, filters, getFullTextCache]);
-  
-  const artistasDisponiveis = useMemo(() => {
-    if (!corpus) return [];
-    return Array.from(new Set(corpus.musicas.map(m => m.metadata.artista))).sort();
-  }, [corpus]);
-  
-  const albunsDisponiveis = useMemo(() => {
-    if (!corpus) return [];
-    return Array.from(new Set(corpus.musicas.map(m => m.metadata.album))).sort();
-  }, [corpus]);
+  }, [getFilteredCorpus]);
   
   const handleAnalyze = () => {
     if (!palavra.trim()) {
