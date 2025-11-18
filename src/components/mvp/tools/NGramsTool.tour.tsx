@@ -5,6 +5,12 @@ export const ngramsTourSteps = [
     text: 'Encontre sequências de palavras que aparecem juntas com frequência no corpus.',
   },
   {
+    id: 'ngrams-menu',
+    title: '📍 Menu Lateral',
+    text: 'O menu lateral mantém suas configurações salvas. Experimente trocar entre "N-grams" e outras ferramentas.',
+    attachTo: { element: '[data-tour="tool-menu-ngrams"]', on: 'right' as const },
+  },
+  {
     id: 'ngrams-size',
     title: 'Tamanho do N-gram',
     text: 'Escolha o tamanho: 2-grams (bigramas), 3-grams (trigramas), etc.',

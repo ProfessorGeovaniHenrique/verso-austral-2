@@ -143,7 +143,7 @@ export function NGramsTool() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2" data-tour="ngrams-size">
               <Label>Tamanho do N-gram</Label>
               <Select value={ngramSize.toString()} onValueChange={(v) => setNgramSize(parseInt(v) as 2 | 3 | 4 | 5)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -164,7 +164,7 @@ export function NGramsTool() {
               <Input type="number" min="10" max="1000" value={maxResults} onChange={(e) => setMaxResults(e.target.value)} />
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2" data-tour="ngrams-generate">
             <Button onClick={handleGenerate} disabled={isProcessing || !corpus}>
               {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Gerando...</> : <><Hash className="h-4 w-4 mr-2" />Gerar N-grams</>}
             </Button>
@@ -174,7 +174,7 @@ export function NGramsTool() {
       </Card>
       
       {analysis && (
-        <Card>
+        <Card data-tour="ngrams-results">
           <CardHeader>
             <CardTitle>{analysis.ngrams.length} {analysis.n}-grams encontrados</CardTitle>
             <CardDescription>{analysis.ngramsUnicos} únicos no corpus</CardDescription>

@@ -176,7 +176,7 @@ export function KWICTool() {
           <CardDescription>Configure a busca de concordâncias no corpus</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="kwic-input">
             <Label>Palavra de busca</Label>
             <Input value={palavra} onChange={(e) => setPalavra(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearch()} />
           </div>
@@ -216,7 +216,7 @@ export function KWICTool() {
       </Card>
       
       {results.length > 0 && (
-        <Card>
+        <Card data-tour="kwic-results">
           <CardHeader><CardTitle>{results.length} ocorrências encontradas</CardTitle></CardHeader>
           <CardContent>
             <Table>

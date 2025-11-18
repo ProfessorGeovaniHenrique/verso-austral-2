@@ -5,6 +5,12 @@ export const kwicTourSteps = [
     text: 'Esta ferramenta mostra todas as ocorrências de uma palavra com seu contexto ao redor.',
   },
   {
+    id: 'kwic-menu',
+    title: '📍 Navegação Rápida',
+    text: 'Use o menu lateral para alternar entre ferramentas sem perder suas configurações. Clique em "KWIC" para ativar esta ferramenta.',
+    attachTo: { element: '[data-tour="tool-menu-kwic"]', on: 'right' as const },
+  },
+  {
     id: 'kwic-input',
     title: 'Digite uma Palavra',
     text: 'Comece digitando uma palavra para buscar. Experimente "pampa" ou "gaúcho".',

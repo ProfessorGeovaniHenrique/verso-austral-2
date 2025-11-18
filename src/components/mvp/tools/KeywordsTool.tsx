@@ -771,6 +771,7 @@ export function KeywordsTool() {
             onClick={handleProcessKeywords}
             disabled={isLoading}
             className="w-full"
+            data-tour="keywords-process"
           >
             {isLoading ? (
               <>

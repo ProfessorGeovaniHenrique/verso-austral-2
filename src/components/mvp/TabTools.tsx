@@ -115,6 +115,7 @@ function ToolsSidebarMenu() {
                   size="sm"
                   onClick={() => handleToolChange(tool.id)}
                   data-tool={tool.id}
+                  data-tour={`tool-menu-${tool.id}`}
                 >
                   <tool.icon className="w-4 h-4 mr-2" />
                   {!isCollapsed && <span>{tool.label}</span>}

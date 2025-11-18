@@ -5,6 +5,12 @@ export const keywordsTourSteps = [
     text: 'Descubra palavras estatisticamente significativas comparando dois corpus diferentes usando Log-Likelihood e Mutual Information.',
   },
   {
+    id: 'keywords-menu',
+    title: '📍 Ferramenta Ativa',
+    text: 'A ferramenta "Keywords" está selecionada no menu lateral. Você pode alternar para outras ferramentas a qualquer momento.',
+    attachTo: { element: '[data-tour="tool-menu-keywords"]', on: 'right' as const },
+  },
+  {
     id: 'keywords-corpus-selection',
     title: 'Selecione os Corpus',
     text: 'Escolha um corpus de estudo e um de referência para comparação estatística.',
