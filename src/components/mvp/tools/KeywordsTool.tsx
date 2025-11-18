@@ -32,15 +32,23 @@ export function KeywordsTool() {
   useFeatureTour('keywords', keywordsTourSteps);
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Estado para Corpus de Estudo
-  const [estudoCorpusBase, setEstudoCorpusBase] = useState<CorpusType>('gaucho');
-  const [estudoMode, setEstudoMode] = useState<'complete' | 'artist'>('complete');
-  const [estudoArtist, setEstudoArtist] = useState<string | null>(null);
+  // Estado persistido no context
+  const { keywordsState, setKeywordsState } = useTools();
   
-  // Estado para Corpus de Referência
-  const [refCorpusBase, setRefCorpusBase] = useState<CorpusType>('nordestino');
-  const [refMode, setRefMode] = useState<'complete' | 'artist'>('complete');
-  const [refArtist, setRefArtist] = useState<string | null>(null);
+  // Usar estado do context
+  const estudoCorpusBase = keywordsState.estudoCorpusBase;
+  const setEstudoCorpusBase = (val: CorpusType) => setKeywordsState({ estudoCorpusBase: val });
+  const estudoMode = keywordsState.estudoMode;
+  const setEstudoMode = (val: 'complete' | 'artist') => setKeywordsState({ estudoMode: val });
+  const estudoArtist = keywordsState.estudoArtist;
+  const setEstudoArtist = (val: string | null) => setKeywordsState({ estudoArtist: val });
+  
+  const refCorpusBase = keywordsState.refCorpusBase;
+  const setRefCorpusBase = (val: CorpusType) => setKeywordsState({ refCorpusBase: val });
+  const refMode = keywordsState.refMode;
+  const setRefMode = (val: 'complete' | 'artist') => setKeywordsState({ refMode: val });
+  const refArtist = keywordsState.refArtist;
+  const setRefArtist = (val: string | null) => setKeywordsState({ refArtist: val });
   
   // Estados para metadados
   const [estudoMetadata, setEstudoMetadata] = useState<SubcorpusMetadata | null>(null);
@@ -49,9 +57,16 @@ export function KeywordsTool() {
   const [errorEstudo, setErrorEstudo] = useState<string | null>(null);
   const [errorRef, setErrorRef] = useState<string | null>(null);
   
-  const { keywords, isLoading, error, isProcessed, processKeywords } = useKeywords();
+  const { keywords, isLoading, error, processKeywords } = useKeywords();
   const { navigateToKWIC } = useTools();
   const { currentMetadata, selection } = useSubcorpus();
+  
+  // Sincronizar keywords com context quando mudar
+  useEffect(() => {
+    if (keywords.length > 0) {
+      setKeywordsState({ keywords, isProcessed: true });
+    }
+  }, [keywords]);
   
   // Carregar corpus full-text para preview KWIC
   const { corpus: fullTextCorpus, isLoading: isLoadingFullCorpus } = useFullTextCorpus(
@@ -103,7 +118,18 @@ export function KeywordsTool() {
     };
   }, [estudoMetadata, refMetadata]);
   
-  const [searchTerm, setSearchTerm] = useState("");
+  // Estados de filtro e ordenação do context
+  const searchTerm = keywordsState.searchTerm;
+  const setSearchTerm = (val: string) => setKeywordsState({ searchTerm: val });
+  const sortColumn = keywordsState.sortColumn;
+  const setSortColumn = (val: typeof keywordsState.sortColumn) => setKeywordsState({ sortColumn: val });
+  const sortDirection = keywordsState.sortDirection;
+  const setSortDirection = (val: 'asc' | 'desc') => setKeywordsState({ sortDirection: val });
+  const minLLFilter = keywordsState.llFilter;
+  const setMinLLFilter = (val: number) => setKeywordsState({ llFilter: val });
+  const isProcessed = keywordsState.isProcessed;
+  
+  // Filtros temporários (não precisam persistir)
   const [filterSignificancia, setFilterSignificancia] = useState({
     Alta: true,
     Média: true,
@@ -113,9 +139,6 @@ export function KeywordsTool() {
     'super-representado': true,
     'sub-representado': true
   });
-  const [sortColumn, setSortColumn] = useState<keyof KeywordEntry>('ll');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [minLLFilter, setMinLLFilter] = useState<number>(3.84);
   
   // Dados para o scatter plot (LL vs Frequência)
   const scatterData = useMemo(() => {
@@ -204,7 +227,8 @@ export function KeywordsTool() {
   }, [estudoCorpusBase, estudoMode, estudoArtist, refCorpusBase, refMode, refArtist]);
   
   const filteredKeywords = useMemo(() => {
-    return keywords
+    const keywordsToFilter = keywordsState.keywords.length > 0 ? keywordsState.keywords : keywords;
+    return keywordsToFilter
       .filter(kw => {
         if (searchTerm && !kw.palavra.toLowerCase().includes(searchTerm.toLowerCase())) return false;
         if (!filterSignificancia[kw.significancia]) return false;
@@ -222,12 +246,14 @@ export function KeywordsTool() {
       });
   }, [keywords, searchTerm, filterSignificancia, filterEfeito, sortColumn, sortDirection, minLLFilter]);
   
-  const handleSort = (column: keyof KeywordEntry) => {
+  const handleSort = (column: typeof keywordsState.sortColumn) => {
     if (sortColumn === column) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(newDirection);
     } else {
       setSortColumn(column);
-      setSortDirection('desc');
+      const defaultDirection = column === 'll' ? 'desc' : 'asc';
+      setSortDirection(defaultDirection);
     }
   };
   

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useTools } from "@/contexts/ToolsContext";
 import { generateNGrams, exportNGramsToCSV } from "@/services/ngramsService";
 import { NGramAnalysis, CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { toast } from "sonner";
@@ -20,13 +21,20 @@ export function NGramsTool() {
   useFeatureTour('ngrams', ngramsTourSteps);
   
   const { getFilteredCorpus, currentMetadata } = useSubcorpus();
-  const [ngramSize, setNgramSize] = useState<2 | 3 | 4 | 5>(2);
-  const [minFrequencia, setMinFrequencia] = useState<string>('2');
-  const [maxResults, setMaxResults] = useState<string>('100');
-  const [analysis, setAnalysis] = useState<NGramAnalysis | null>(null);
+  const { ngramsState, setNgramsState } = useTools();
   const [isProcessing, setIsProcessing] = useState(false);
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
+  
+  // Usar estado do context
+  const ngramSize = ngramsState.ngramSize;
+  const setNgramSize = (val: 2 | 3 | 4 | 5) => setNgramsState({ ngramSize: val });
+  const minFrequencia = ngramsState.minFrequencia;
+  const setMinFrequencia = (val: string) => setNgramsState({ minFrequencia: val });
+  const maxResults = ngramsState.maxResults;
+  const setMaxResults = (val: string) => setNgramsState({ maxResults: val });
+  const analysis = ngramsState.analysis;
+  const setAnalysis = (val: NGramAnalysis | null) => setNgramsState({ analysis: val });
   
   useEffect(() => {
     const loadCorpus = async () => {

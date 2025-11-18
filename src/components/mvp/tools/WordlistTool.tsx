@@ -18,14 +18,19 @@ interface WordEntry {
 }
 
 export function WordlistTool() {
-  const [wordlist, setWordlist] = useState<WordEntry[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sortColumn, setSortColumn] = useState<'frequencia' | 'palavra'>('frequencia');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const { wordlistState, setWordlistState, navigateToKWIC } = useTools();
+  const { getFilteredCorpus, currentMetadata } = useSubcorpus();
   const [isLoading, setIsLoading] = useState(false);
   
-  const { navigateToKWIC } = useTools();
-  const { getFilteredCorpus, currentMetadata } = useSubcorpus();
+  // Usar estado do context
+  const wordlist = wordlistState.wordlist;
+  const setWordlist = (val: WordEntry[]) => setWordlistState({ wordlist: val });
+  const searchTerm = wordlistState.searchTerm;
+  const setSearchTerm = (val: string) => setWordlistState({ searchTerm: val });
+  const sortColumn = wordlistState.sortColumn;
+  const setSortColumn = (val: 'frequencia' | 'palavra') => setWordlistState({ sortColumn: val });
+  const sortDirection = wordlistState.sortDirection;
+  const setSortDirection = (val: 'asc' | 'desc') => setWordlistState({ sortDirection: val });
 
   const loadWordlist = async () => {
     setIsLoading(true);
@@ -76,10 +81,12 @@ export function WordlistTool() {
 
   const handleSort = (column: 'frequencia' | 'palavra') => {
     if (sortColumn === column) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+      const newDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      setSortDirection(newDirection);
     } else {
       setSortColumn(column);
-      setSortDirection(column === 'frequencia' ? 'desc' : 'asc');
+      const defaultDirection = column === 'frequencia' ? 'desc' : 'asc';
+      setSortDirection(defaultDirection);
     }
   };
 

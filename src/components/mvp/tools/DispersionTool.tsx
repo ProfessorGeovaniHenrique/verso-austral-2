@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useTools } from "@/contexts/ToolsContext";
 import { generateDispersion, exportDispersionToCSV } from "@/services/dispersionService";
 import { DispersionAnalysis, CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { toast } from "sonner";
@@ -15,11 +16,16 @@ import { Badge } from "@/components/ui/badge";
 
 export function DispersionTool() {
   const { getFilteredCorpus, currentMetadata } = useSubcorpus();
-  const [palavra, setPalavra] = useState('');
-  const [analysis, setAnalysis] = useState<DispersionAnalysis | null>(null);
+  const { dispersionState, setDispersionState } = useTools();
   const [isProcessing, setIsProcessing] = useState(false);
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
+  
+  // Usar estado do context
+  const palavra = dispersionState.palavra;
+  const setPalavra = (val: string) => setDispersionState({ palavra: val });
+  const analysis = dispersionState.analysis;
+  const setAnalysis = (val: DispersionAnalysis | null) => setDispersionState({ analysis: val });
   
   // Carregar corpus filtrado
   useEffect(() => {

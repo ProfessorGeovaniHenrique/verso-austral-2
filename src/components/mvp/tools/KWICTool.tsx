@@ -20,15 +20,21 @@ import { kwicTourSteps } from "./KWICTool.tour";
 export function KWICTool() {
   useFeatureTour('kwic', kwicTourSteps);
   
-  const { selectedWord } = useTools();
+  const { selectedWord, kwicState, setKwicState } = useTools();
   const { getFilteredCorpus, currentMetadata } = useSubcorpus();
-  const [palavra, setPalavra] = useState('');
-  const [contextoEsquerdaSize, setContextoEsquerdaSize] = useState(5);
-  const [contextoDireitaSize, setContextoDireitaSize] = useState(5);
-  const [results, setResults] = useState<KWICContext[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
+  
+  // Usar estado do context
+  const palavra = kwicState.palavra;
+  const setPalavra = (val: string) => setKwicState({ palavra: val });
+  const contextoEsquerdaSize = kwicState.contextoEsquerdo;
+  const setContextoEsquerdaSize = (val: number) => setKwicState({ contextoEsquerdo: val });
+  const contextoDireitaSize = kwicState.contextoDireito;
+  const setContextoDireitaSize = (val: number) => setKwicState({ contextoDireito: val });
+  const results = kwicState.results;
+  const setResults = (val: KWICContext[]) => setKwicState({ results: val });
   
   useEffect(() => {
     const loadCorpus = async () => {
