@@ -88,18 +88,21 @@ export function PhaseTimeline() {
               </div>
             )}
 
-            {phase.metrics && (
+            {phase.metrics && Object.keys(phase.metrics).length > 0 && (
               <div>
                 <h4 className="font-semibold mb-2">Métricas</h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  {Object.entries(phase.metrics.before).slice(0, 4).map(([key, value]) => (
-                    <div key={key} className="space-y-1">
-                      <p className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
-                      <p className="font-mono">
-                        {phase.metrics!.before[key as keyof typeof phase.metrics.before]} → {phase.metrics!.after[key as keyof typeof phase.metrics.after]}
-                      </p>
-                    </div>
-                  ))}
+                  {Object.entries(phase.metrics)
+                    .filter(([_, value]) => value !== undefined)
+                    .slice(0, 4)
+                    .map(([key, value]) => (
+                      <div key={key} className="space-y-1">
+                        <p className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, ' $1')}</p>
+                        <p className="font-mono">
+                          {value!.before} → {value!.after}
+                        </p>
+                      </div>
+                    ))}
                 </div>
               </div>
             )}
