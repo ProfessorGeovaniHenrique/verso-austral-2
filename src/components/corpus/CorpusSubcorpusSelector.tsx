@@ -7,6 +7,15 @@ import { Library, Music } from 'lucide-react';
 import { CorpusType, CORPUS_CONFIG } from '@/data/types/corpus-tools.types';
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 
+// Cache global em memória (persiste durante toda a sessão)
+const artistsCache = new Map<CorpusType, string[]>();
+
+// Função utilitária para limpar cache (útil para testes)
+export function clearArtistsCache() {
+  artistsCache.clear();
+  console.log('🗑️ Cache de artistas limpo');
+}
+
 interface CorpusSubcorpusSelectorProps {
   label: string;
   corpusBase: CorpusType;
@@ -33,11 +42,26 @@ export function CorpusSubcorpusSelector({
   
   useEffect(() => {
     const loadArtists = async () => {
+      // Verificar cache primeiro
+      if (artistsCache.has(corpusBase)) {
+        console.log(`🚀 Cache HIT: ${corpusBase}`);
+        setAvailableArtists(artistsCache.get(corpusBase)!);
+        return;
+      }
+      
+      console.log(`📥 Cache MISS: ${corpusBase} - Carregando...`);
       setIsLoadingArtists(true);
+      
       try {
         const corpus = await loadFullTextCorpus(corpusBase);
         const uniqueArtists = [...new Set(corpus.musicas.map(m => m.metadata.artista))];
-        setAvailableArtists(uniqueArtists.sort());
+        const sortedArtists = uniqueArtists.sort();
+        
+        // Salvar no cache
+        artistsCache.set(corpusBase, sortedArtists);
+        console.log(`✅ Cache SAVED: ${corpusBase} - ${sortedArtists.length} artistas`);
+        
+        setAvailableArtists(sortedArtists);
       } catch (error) {
         console.error('Erro ao carregar artistas:', error);
         setAvailableArtists([]);
