@@ -53,21 +53,7 @@ export function KWICTool() {
       // Busca automática com debounce de 300ms
       const timer = setTimeout(() => {
         if (corpus && selectedWord.trim()) {
-          setIsProcessing(true);
-          
-          try {
-            const contexts = generateKWIC(corpus, selectedWord, contextoEsquerdaSize, contextoDireitaSize);
-            setResults(contexts);
-            toast.success(`${contexts.length} ocorrências encontradas para "${selectedWord}"`, {
-              description: 'Busca disparada automaticamente. Ajuste o contexto se necessário.',
-              duration: 4000
-            });
-          } catch (error) {
-            console.error('Erro na busca automática:', error);
-            toast.error('Erro ao buscar concordâncias');
-          } finally {
-            setIsProcessing(false);
-          }
+          handleSearch(selectedWord);
         } else if (!corpus) {
           toast.info(`Palavra "${selectedWord}" carregada`, {
             description: 'Aguarde o carregamento do corpus para buscar',
@@ -78,7 +64,55 @@ export function KWICTool() {
       
       return () => clearTimeout(timer);
     }
-  }, [selectedWord, corpus, contextoEsquerdaSize, contextoDireitaSize]);
+  }, [selectedWord, corpus]);
+  
+  // Listas disponíveis para filtros
+  const availableArtists = useMemo(() => {
+    if (!corpus) return [];
+    const artists = new Set<string>();
+    corpus.musicas.forEach(m => artists.add(m.metadata.artista));
+    return Array.from(artists).sort();
+  }, [corpus]);
+  
+  const availableMusicas = useMemo(() => {
+    if (!corpus) return [];
+    return corpus.musicas.map(m => ({
+      artista: m.metadata.artista,
+      musica: m.metadata.musica,
+      key: `${m.metadata.artista}-${m.metadata.musica}`
+    }));
+  }, [corpus]);
+  
+  // Aplicar filtros
+  const filteredResults = useMemo(() => {
+    let filtered = [...results];
+
+    if (selectedArtists.length > 0) {
+      filtered = filtered.filter(ctx =>
+        selectedArtists.includes(ctx.metadata.artista)
+      );
+    }
+
+    if (selectedMusicas.length > 0) {
+      filtered = filtered.filter(ctx =>
+        selectedMusicas.includes(`${ctx.metadata.artista}-${ctx.metadata.musica}`)
+      );
+    }
+
+    if (anoInicio || anoFim) {
+      filtered = filtered.filter(ctx => {
+        const ano = ctx.metadata.ano ? Number(ctx.metadata.ano) : null;
+        if (!ano) return false;
+        
+        if (anoInicio && ano < anoInicio) return false;
+        if (anoFim && ano > anoFim) return false;
+        
+        return true;
+      });
+    }
+
+    return filtered;
+  }, [results, selectedArtists, selectedMusicas, anoInicio, anoFim]);
   
   const handleSearch = () => {
     if (!palavra.trim()) {
