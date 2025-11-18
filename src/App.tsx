@@ -34,7 +34,7 @@ import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
 import DeveloperHistory from "./pages/DeveloperHistory";
 import NotFound from "./pages/NotFound";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 
 // Lazy load archived prototypes
 const ArchivedDashboard = lazy(() => import("./pages/_archived/Dashboard"));
@@ -153,7 +153,16 @@ const App = () => (
               path="/prototypes/dashboard" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -161,7 +170,16 @@ const App = () => (
               path="/prototypes/dashboard2" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard2 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard2 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -169,7 +187,16 @@ const App = () => (
               path="/prototypes/dashboard3" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard3 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard3 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -177,7 +204,16 @@ const App = () => (
               path="/prototypes/dashboard4" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard4 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard4 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -185,7 +221,16 @@ const App = () => (
               path="/prototypes/dashboard5" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard5 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard5 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -193,7 +238,16 @@ const App = () => (
               path="/prototypes/dashboard7" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard7 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard7 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
@@ -201,7 +255,16 @@ const App = () => (
               path="/prototypes/dashboard8" 
               element={
                 <ProtectedRoute requiredRole="admin">
-                  <ArchivedDashboard8 />
+                  <Suspense fallback={
+                    <div className="min-h-screen flex items-center justify-center">
+                      <div className="text-center space-y-4">
+                        <div className="animate-spin h-12 w-12 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+                        <p className="text-muted-foreground">Carregando protótipo...</p>
+                      </div>
+                    </div>
+                  }>
+                    <ArchivedDashboard8 />
+                  </Suspense>
                 </ProtectedRoute>
               } 
             />
