@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Music, Library, Users } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface UnifiedCorpusSelectorProps {
   allowComparison?: boolean;
+  layout?: 'horizontal' | 'vertical';
 }
 
-export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpusSelectorProps) {
+export function UnifiedCorpusSelector({ allowComparison = false, layout = 'horizontal' }: UnifiedCorpusSelectorProps) {
   const { selection, setSelection, currentMetadata, availableArtists, isLoading } = useSubcorpus();
   
   const handleModeChange = (mode: 'complete' | 'single' | 'compare') => {
@@ -33,17 +35,19 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
     setSelection({ ...selection, artistaB: artista });
   };
   
+  const isVertical = layout === 'vertical';
+
   return (
-    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent mb-6">
+    <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent mb-4">
       <CardContent className="pt-6">
-        <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
+        <div className={isVertical ? "space-y-4" : "grid grid-cols-[auto_1fr] gap-4 items-start"}>
           {/* Toggle: Corpus Completo vs Subcorpus */}
-          <div className="flex gap-2">
+          <div className={isVertical ? "flex flex-col gap-2" : "flex gap-2"}>
             <Button 
               variant={selection.mode === 'complete' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('complete')}
-              className="gap-2"
+              className={isVertical ? "w-full justify-start gap-2" : "gap-2"}
             >
               <Library className="h-4 w-4" />
               Corpus Completo
@@ -52,7 +56,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
               variant={selection.mode === 'single' ? 'default' : 'outline'}
               size="sm"
               onClick={() => handleModeChange('single')}
-              className="gap-2"
+              className={isVertical ? "w-full justify-start gap-2" : "gap-2"}
             >
               <Music className="h-4 w-4" />
               Subcorpus
@@ -62,7 +66,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                 variant={selection.mode === 'compare' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => handleModeChange('compare')}
-                className="gap-2"
+                className={isVertical ? "w-full justify-start gap-2" : "gap-2"}
               >
                 <Users className="h-4 w-4" />
                 Comparar
@@ -73,8 +77,8 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
           {/* Seleção dinâmica baseada no modo */}
           <div className="space-y-3">
             {/* Seletor de Corpus Base (sempre visível) */}
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-medium min-w-[100px]">
+            <div className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-3"}>
+              <label className={isVertical ? "text-sm font-medium" : "text-sm font-medium min-w-[100px]"}>
                 Corpus Base:
               </label>
               <Select 
@@ -82,7 +86,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                 onValueChange={handleCorpusChange}
                 disabled={isLoading}
               >
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className={isVertical ? "w-full" : "w-[200px]"}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -101,8 +105,8 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
             
             {/* Modo Subcorpus Individual */}
             {selection.mode === 'single' && (
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-medium min-w-[100px]">
+              <div className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-3"}>
+                <label className={isVertical ? "text-sm font-medium" : "text-sm font-medium min-w-[100px]"}>
                   Artista:
                 </label>
                 <Select 
@@ -110,7 +114,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                   onValueChange={handleArtistaAChange}
                   disabled={isLoading || availableArtists.length === 0}
                 >
-                  <SelectTrigger className="w-[200px]">
+                  <SelectTrigger className={isVertical ? "w-full" : "w-[200px]"}>
                     <SelectValue placeholder="Selecione um artista" />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
@@ -122,7 +126,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                   </SelectContent>
                 </Select>
                 
-                {currentMetadata && (
+                {!isVertical && currentMetadata && (
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <Badge variant="outline" className="gap-1">
                       <Music className="h-3 w-3" />
@@ -142,8 +146,8 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
             {/* Modo Comparativo */}
             {selection.mode === 'compare' && allowComparison && (
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium min-w-[100px]">
+                <div className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-3"}>
+                  <label className={isVertical ? "text-sm font-medium" : "text-sm font-medium min-w-[100px]"}>
                     Estudo:
                   </label>
                   <Select 
@@ -151,7 +155,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                     onValueChange={handleArtistaAChange}
                     disabled={isLoading || availableArtists.length === 0}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className={isVertical ? "w-full" : "w-[200px]"}>
                       <SelectValue placeholder="Selecione artista A" />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
@@ -164,8 +168,8 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                   </Select>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <label className="text-sm font-medium min-w-[100px]">
+                <div className={isVertical ? "flex flex-col gap-2" : "flex items-center gap-3"}>
+                  <label className={isVertical ? "text-sm font-medium" : "text-sm font-medium min-w-[100px]"}>
                     Referência:
                   </label>
                   <Select 
@@ -179,7 +183,7 @@ export function UnifiedCorpusSelector({ allowComparison = false }: UnifiedCorpus
                     }}
                     disabled={isLoading || availableArtists.length === 0}
                   >
-                    <SelectTrigger className="w-[200px]">
+                    <SelectTrigger className={isVertical ? "w-full" : "w-[200px]"}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="max-h-[300px]">
