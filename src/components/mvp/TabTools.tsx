@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Wrench, Sparkles, Database, HelpCircle, ChevronRight, ChevronDown } from "lucide-react";
+import { Wrench, Sparkles, Database, HelpCircle, ChevronRight, ChevronDown, Menu } from "lucide-react";
 import { ToolsProvider, useTools } from "@/contexts/ToolsContext";
 import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
 import { WordlistTool } from "./tools/WordlistTool";
@@ -11,12 +11,14 @@ import { NGramsTool } from "./tools/NGramsTool";
 import { AdvancedAnalysisTab } from "./tools/AdvancedAnalysisTab";
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Static constant to prevent re-creation on every render
 const BASIC_TOOLS = [
@@ -28,12 +30,18 @@ const BASIC_TOOLS = [
 ] as const;
 
 // Sidebar Menu Component
-function ToolsSidebarMenu() {
+function ToolsSidebarMenu({ 
+  isCollapsed: externalIsCollapsed, 
+  onNavigate 
+}: { 
+  isCollapsed: boolean;
+  onNavigate?: () => void;
+}) {
   const { activeTab, setActiveTab } = useTools();
   const { trackFeatureUsage } = useAnalytics();
   const [isBasicasOpen, setIsBasicasOpen] = useState(true);
   const [isAvancadasOpen, setIsAvancadasOpen] = useState(false);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(externalIsCollapsed);
 
   // Memoize allowComparison to prevent unnecessary re-renders of UnifiedCorpusSelector
   const allowComparison = useMemo(
@@ -44,6 +52,7 @@ function ToolsSidebarMenu() {
   const handleToolChange = (toolId: string) => {
     setActiveTab(toolId);
     trackFeatureUsage(toolId);
+    onNavigate?.();
   };
 
   return (
@@ -249,6 +258,9 @@ function HelpPanel() {
 
 function TabToolsContent() {
   const { activeTab } = useTools();
+  const isMobile = useIsMobile();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(!isMobile && typeof window !== 'undefined' && window.innerWidth < 1024);
 
   // Map tools to components
   const toolComponents: Record<string, React.ReactNode> = {
@@ -262,52 +274,77 @@ function TabToolsContent() {
 
   const ActiveTool = toolComponents[activeTab] || toolComponents.wordlist;
 
+  if (isMobile) {
+    return (
+      <div className="flex flex-col h-full w-full">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          className="fixed top-4 left-4 z-50 bg-background border shadow-md"
+          onClick={() => setIsMobileMenuOpen(true)}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+
+        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+          <SheetContent side="left" className="w-80 p-0">
+            <ScrollArea className="h-full">
+              <ToolsSidebarMenu 
+                isCollapsed={false}
+                onNavigate={() => setIsMobileMenuOpen(false)} 
+              />
+            </ScrollArea>
+          </SheetContent>
+        </Sheet>
+
+        <main className="flex-1 p-4 overflow-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {ActiveTool}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <ResizablePanelGroup direction="horizontal" className="min-h-screen">
-      {/* Left Sidebar - Fixed Width, Collapsible */}
-      <ResizablePanel defaultSize={20} minSize={5} maxSize={25} className="min-w-[60px]">
-        <ToolsSidebarMenu />
+      <ResizablePanel 
+        defaultSize={typeof window !== 'undefined' && window.innerWidth < 1024 ? 8 : 20}
+        minSize={5}
+        maxSize={30}
+        collapsible
+        onCollapse={() => setIsCollapsed(true)}
+        onExpand={() => setIsCollapsed(false)}
+      >
+        <ToolsSidebarMenu isCollapsed={isCollapsed} />
       </ResizablePanel>
-
+      
       <ResizableHandle withHandle />
-
-      {/* Central Area - Flexible */}
-      <ResizablePanel defaultSize={60} minSize={40}>
+      
+      <ResizablePanel defaultSize={80} minSize={30}>
         <ScrollArea className="h-screen">
           <div className="p-6">
-            <Card className="card-academic">
-              <CardHeader>
-                <CardTitle className="section-header-academic flex items-center gap-2">
-                  <Wrench className="w-5 h-5" />
-                  Ferramentas de Estilística de Corpus
-                </CardTitle>
-                <CardDescription className="section-description-academic">
-                  Análise linguística completa com ferramentas básicas e avançadas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2, ease: "easeInOut" }}
-                  >
-                    {ActiveTool}
-                  </motion.div>
-                </AnimatePresence>
-              </CardContent>
-            </Card>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTab}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                {ActiveTool}
+              </motion.div>
+            </AnimatePresence>
           </div>
         </ScrollArea>
-      </ResizablePanel>
-
-      <ResizableHandle withHandle />
-
-      {/* Right Panel - Help, Collapsible */}
-      <ResizablePanel defaultSize={20} minSize={5} maxSize={25}>
-        <HelpPanel />
       </ResizablePanel>
     </ResizablePanelGroup>
   );

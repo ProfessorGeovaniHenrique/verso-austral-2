@@ -10,6 +10,8 @@ import { Download, Search, Loader2, ChevronDown, ChevronUp, MousePointerClick, M
 import { useTools } from "@/contexts/ToolsContext";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { toast } from "sonner";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
+import { wordlistTourSteps } from "./WordlistTool.tour";
 
 interface WordEntry {
   palavra: string;
@@ -79,6 +81,8 @@ export function WordlistTool() {
   const { wordlistState, setWordlistState, navigateToKWIC } = useTools();
   const { getFilteredCorpus, currentMetadata } = useSubcorpus();
   const [isLoading, setIsLoading] = useState(false);
+  
+  useFeatureTour('wordlist', wordlistTourSteps);
   
   // Usar estado do context
   const wordlist = wordlistState.wordlist;
@@ -197,7 +201,7 @@ export function WordlistTool() {
       {/* Controles */}
       <div className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="wordlist-search">
             <Label>Buscar palavra</Label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -212,7 +216,7 @@ export function WordlistTool() {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={loadWordlist} disabled={isLoading}>
+          <Button onClick={loadWordlist} disabled={isLoading} data-tour="wordlist-generate">
             {isLoading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -234,7 +238,7 @@ export function WordlistTool() {
 
       {/* Tabela */}
       {wordlist.length > 0 && (
-        <div className="rounded-md border">
+        <div className="rounded-md border" data-tour="wordlist-results">
           <Table>
             <TableHeader>
               <TableRow>

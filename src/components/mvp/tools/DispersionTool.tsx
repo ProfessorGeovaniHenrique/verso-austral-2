@@ -13,6 +13,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 import { Badge } from "@/components/ui/badge";
+import { useFeatureTour } from "@/hooks/useFeatureTour";
+import { dispersionTourSteps } from "./DispersionTool.tour";
 
 export function DispersionTool() {
   const { getFilteredCorpus, currentMetadata } = useSubcorpus();
@@ -20,6 +22,8 @@ export function DispersionTool() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
+  
+  useFeatureTour('dispersion', dispersionTourSteps);
   
   // Usar estado do context
   const palavra = dispersionState.palavra;
@@ -149,7 +153,7 @@ export function DispersionTool() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2" data-tour="dispersion-input">
               <Label htmlFor="palavra-input">Palavra para análise</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -170,6 +174,7 @@ export function DispersionTool() {
               onClick={handleAnalyze} 
               disabled={isProcessing || !corpus || !palavra.trim()}
               className="gap-2"
+              data-tour="dispersion-analyze"
             >
               {isProcessing ? (
                 <>
@@ -198,7 +203,7 @@ export function DispersionTool() {
       {analysis && (
         <div className="space-y-6">
           {/* Métricas */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4" data-tour="dispersion-metrics">
             <Card>
               <CardContent className="pt-6">
                 <div className="text-2xl font-bold">{analysis.totalOcorrencias}</div>
@@ -236,7 +241,7 @@ export function DispersionTool() {
           </div>
           
           {/* Gráfico de dispersão */}
-          <Card>
+          <Card data-tour="dispersion-chart">
             <CardHeader>
               <CardTitle>Distribuição de "{analysis.palavra}" no Corpus</CardTitle>
               <CardDescription>
