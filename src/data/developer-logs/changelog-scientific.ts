@@ -21,7 +21,7 @@ export interface ScientificChangelog {
 export const scientificChangelog: ScientificChangelog[] = [
   {
     version: "v0.1.0-alpha",
-    date: "2024-12-15",
+    date: "2025-02-28",
     methodology: "Prototipagem visual com dados mockados",
     keyReferences: [
       "STUBBS, Michael. Words and Phrases: Corpus Studies of Lexical Semantics. Oxford: Blackwell, 2001."
@@ -62,7 +62,7 @@ export const scientificChangelog: ScientificChangelog[] = [
   },
   {
     version: "v0.5.0-beta",
-    date: "2025-01-22",
+    date: "2025-04-15",
     methodology: "Integração de conhecimento gramatical baseado em Castilho (2010)",
     keyReferences: [
       "CASTILHO, Ataliba T. de. Nova Gramática do Português Brasileiro. São Paulo: Contexto, 2010.",
@@ -115,7 +115,7 @@ export const scientificChangelog: ScientificChangelog[] = [
   },
   {
     version: "v0.8.0-beta",
-    date: "2025-01-28",
+    date: "2025-07-31",
     methodology: "Implementação de POS Tagger baseado em regras gramaticais",
     keyReferences: [
       "CASTILHO, Ataliba T. de. Nova Gramática do Português Brasileiro. São Paulo: Contexto, 2010.",
@@ -162,7 +162,7 @@ export const scientificChangelog: ScientificChangelog[] = [
   },
   {
     version: "v1.0.0-rc1",
-    date: "2025-02-05",
+    date: "2025-10-31",
     methodology: "Dashboard de Regras Gramaticais para validação humana",
     keyReferences: [
       "CASTILHO, Ataliba T. de. Nova Gramática do Português Brasileiro. São Paulo: Contexto, 2010."
@@ -194,7 +194,7 @@ export const scientificChangelog: ScientificChangelog[] = [
   },
   {
     version: "v1.2.0 (planejado)",
-    date: "2025-02-20",
+    date: "2025-11-18",
     methodology: "Anotação semântica automática com processamento computacional + validação humana",
     keyReferences: [
       "MCINTYRE, Dan; WALKER, Brian; MCINTYRE, Dan. Corpus stylistics. Edinburgh: Edinburgh University Press, 2019.",

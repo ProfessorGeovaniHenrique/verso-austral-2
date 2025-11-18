@@ -382,7 +382,7 @@ export const mvpMetrics = {
 export const milestones: Milestone[] = [
   {
     id: 'mvp-auth',
-    date: 'Q4 2024',
+    date: 'Q1 2025',
     title: 'Autenticação e Sessões',
     epicIds: ['epic-0'],
     status: 'completed',
@@ -390,7 +390,7 @@ export const milestones: Milestone[] = [
   },
   {
     id: 'mvp-semantic',
-    date: 'Q1 2025',
+    date: 'Q2 2025',
     title: 'Análise Semântica MVP',
     epicIds: ['epic-1'],
     status: 'current',
@@ -398,7 +398,7 @@ export const milestones: Milestone[] = [
   },
   {
     id: 'domain-mgmt',
-    date: 'Q2 2025',
+    date: 'Q3 2025',
     title: 'Gestão de Domínios',
     epicIds: ['epic-2'],
     status: 'upcoming',
@@ -406,7 +406,7 @@ export const milestones: Milestone[] = [
   },
   {
     id: 'advanced-tools',
-    date: 'Q2 2025',
+    date: 'Q3 2025',
     title: 'Ferramentas Avançadas',
     epicIds: ['epic-4'],
     status: 'upcoming',
@@ -414,7 +414,7 @@ export const milestones: Milestone[] = [
   },
   {
     id: 'v2-launch',
-    date: 'Q3 2025',
+    date: 'Q4 2025',
     title: 'V2.0 - Módulo Didático',
     epicIds: ['epic-6', 'epic-7', 'epic-8'],
     status: 'upcoming',
