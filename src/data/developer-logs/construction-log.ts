@@ -303,6 +303,11 @@ export const constructionLog: ConstructionPhase[] = [
         source: "MCINTYRE, Dan; WALKER, Brian; MCINTYRE, Dan. Corpus stylistics. Edinburgh: Edinburgh University Press, 2019.",
         extractedConcepts: ["Anotação semântica", "Domínios semânticos", "Estilística de corpus"],
         citationKey: "mcintyre2019"
+      },
+      {
+        source: "RAYSON, P. et al. The UCREL semantic analysis system. In: WORKSHOP ON BEYOND NAMED ENTITY RECOGNITION SEMANTIC LABELLING FOR NLP TASKS, 4., 2004, Lisboa. Proceedings... Lisboa: LREC, 2004. p. 7-12.",
+        extractedConcepts: ["Sistema de análise semântica", "Etiquetagem semântica", "USAS"],
+        citationKey: "rayson2004"
       }
     ],
     nextSteps: [
