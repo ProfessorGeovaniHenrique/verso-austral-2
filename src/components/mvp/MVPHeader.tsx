@@ -8,6 +8,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Moon, Sun, Sparkles, Wrench, FlaskConical, Lock, LogIn } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { AchievementsBadge } from "@/components/achievements/AchievementsBadge";
 
 type TabType = 'apresentacao' | 'tools' | 'subcorpus' | 'validation';
 
@@ -60,6 +61,7 @@ export function MVPHeader({
                 </Button>
               </Link>
             )}
+            {isAuthenticated && <AchievementsBadge />}
             <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-9 w-9" title={mode === 'academic' ? 'Modo Cósmico' : 'Modo Acadêmico'}>
               {mode === 'academic' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
             </Button>
