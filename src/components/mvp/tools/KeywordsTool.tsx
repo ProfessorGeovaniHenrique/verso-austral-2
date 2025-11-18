@@ -7,13 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, Search, Play, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick, Music } from "lucide-react";
+import { Download, Search, Play, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick, Music, AlertCircle } from "lucide-react";
 import { KeywordEntry, CorpusType } from "@/data/types/corpus-tools.types";
 import { SubcorpusMetadata } from "@/data/types/subcorpus.types";
 import { useTools } from "@/contexts/ToolsContext";
@@ -39,6 +39,8 @@ export function KeywordsTool() {
   const [estudoMetadata, setEstudoMetadata] = useState<SubcorpusMetadata | null>(null);
   const [refMetadata, setRefMetadata] = useState<SubcorpusMetadata | null>(null);
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
+  const [errorEstudo, setErrorEstudo] = useState<string | null>(null);
+  const [errorRef, setErrorRef] = useState<string | null>(null);
   
   const { keywords, isLoading, error, isProcessed, processKeywords } = useKeywords();
   const { navigateToKWIC } = useTools();
@@ -266,7 +268,24 @@ export function KeywordsTool() {
           </div>
           
           {/* Estatísticas dos Subcorpora */}
-          {(estudoMetadata || refMetadata) && !isLoadingMetadata && (
+          {/* Alertas de Erro */}
+          {errorEstudo && (
+            <Alert variant="destructive" className="mt-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro - Corpus de Estudo</AlertTitle>
+              <AlertDescription>{errorEstudo}</AlertDescription>
+            </Alert>
+          )}
+          
+          {errorRef && (
+            <Alert variant="destructive" className="mt-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Erro - Corpus de Referência</AlertTitle>
+              <AlertDescription>{errorRef}</AlertDescription>
+            </Alert>
+          )}
+          
+          {(estudoMetadata || refMetadata) && !isLoadingMetadata && !errorEstudo && !errorRef && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
               {/* Card de Estatísticas - Corpus de Estudo */}
               {estudoMetadata && (
