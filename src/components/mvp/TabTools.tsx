@@ -14,8 +14,18 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Static constant to prevent re-creation on every render
+const BASIC_TOOLS = [
+  { id: 'wordlist', label: 'Word List', icon: Database },
+  { id: 'keywords', label: 'Keywords', icon: Sparkles },
+  { id: 'kwic', label: 'KWIC', icon: Database },
+  { id: 'dispersion', label: 'Dispersão', icon: Database },
+  { id: 'ngrams', label: 'N-grams', icon: Database },
+] as const;
 
 // Sidebar Menu Component
 function ToolsSidebarMenu() {
@@ -25,13 +35,11 @@ function ToolsSidebarMenu() {
   const [isAvancadasOpen, setIsAvancadasOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const basicTools = [
-    { id: 'wordlist', label: 'Word List', icon: Database },
-    { id: 'keywords', label: 'Keywords', icon: Sparkles },
-    { id: 'kwic', label: 'KWIC', icon: Database },
-    { id: 'dispersion', label: 'Dispersão', icon: Database },
-    { id: 'ngrams', label: 'N-grams', icon: Database },
-  ];
+  // Memoize allowComparison to prevent unnecessary re-renders of UnifiedCorpusSelector
+  const allowComparison = useMemo(
+    () => activeTab === 'keywords',
+    [activeTab]
+  );
 
   const handleToolChange = (toolId: string) => {
     setActiveTab(toolId);
@@ -61,7 +69,7 @@ function ToolsSidebarMenu() {
           <div className="mb-4">
             {!isCollapsed && (
               <UnifiedCorpusSelector 
-                allowComparison={activeTab === 'keywords'} 
+                allowComparison={allowComparison} 
                 layout="vertical"
               />
             )}
@@ -96,7 +104,7 @@ function ToolsSidebarMenu() {
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="space-y-1 mt-1">
-              {basicTools.map((tool) => (
+              {BASIC_TOOLS.map((tool) => (
                 <Button
                   key={tool.id}
                   variant={activeTab === tool.id ? 'secondary' : 'ghost'}
@@ -277,7 +285,17 @@ function TabToolsContent() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {ActiveTool}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeTab}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2, ease: "easeInOut" }}
+                  >
+                    {ActiveTool}
+                  </motion.div>
+                </AnimatePresence>
               </CardContent>
             </Card>
           </div>
