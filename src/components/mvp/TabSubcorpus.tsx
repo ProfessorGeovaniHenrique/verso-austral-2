@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useSubcorpora } from '@/hooks/useSubcorpora';
 import { SubcorpusDashboard } from '@/components/subcorpus/SubcorpusDashboard';
 import { SubcorpusSelector } from '@/components/subcorpus/SubcorpusSelector';
+import { KeywordsComparisonChart } from '@/components/subcorpus/KeywordsComparisonChart';
+import { DomainRadarComparison } from '@/components/subcorpus/DomainRadarComparison';
 import { Card, CardContent } from '@/components/ui/card';
 import { SubcorpusComparisonMode, ComparativoSubcorpora } from '@/data/types/subcorpus.types';
 import { Loader2 } from 'lucide-react';
@@ -208,6 +210,23 @@ export function TabSubcorpus() {
               </div>
             </CardContent>
           </Card>
+          
+          {/* Visualizações Gráficas */}
+          <KeywordsComparisonChart
+            keywordsA={comparison.keywordsComparativas.keywordsA}
+            keywordsB={comparison.keywordsComparativas.keywordsB}
+            artistaA={comparison.subcorpusA.artista}
+            artistaB={comparison.subcorpusB.artista}
+          />
+          
+          {comparison.dominiosComparativos && (
+            <DomainRadarComparison
+              dominiosA={comparison.dominiosComparativos.dominiosA}
+              dominiosB={comparison.dominiosComparativos.dominiosB}
+              artistaA={comparison.subcorpusA.artista}
+              artistaB={comparison.subcorpusB.artista}
+            />
+          )}
         </div>
       )}
       

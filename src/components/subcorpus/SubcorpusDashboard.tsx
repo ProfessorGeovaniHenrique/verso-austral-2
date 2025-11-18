@@ -3,8 +3,9 @@ import { SubcorpusMetadata } from '@/data/types/subcorpus.types';
 import { SubcorpusCard } from './SubcorpusCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Music, TrendingUp, Hash } from 'lucide-react';
+import { Music, TrendingUp, Hash, Search } from 'lucide-react';
 
 interface SubcorpusDashboardProps {
   subcorpora: SubcorpusMetadata[];
@@ -20,8 +21,18 @@ export function SubcorpusDashboard({
   selectedArtista 
 }: SubcorpusDashboardProps) {
   const [sortBy, setSortBy] = useState<SortOption>('palavras');
+  const [searchTerm, setSearchTerm] = useState('');
   
-  // Estatísticas gerais
+  // Filtrar subcorpora por busca
+  const filteredSubcorpora = useMemo(() => {
+    if (!searchTerm.trim()) return subcorpora;
+    const search = searchTerm.toLowerCase();
+    return subcorpora.filter(s => 
+      s.artista.toLowerCase().includes(search)
+    );
+  }, [subcorpora, searchTerm]);
+  
+  // Estatísticas gerais (baseadas em todos os subcorpora)
   const stats = useMemo(() => {
     const totalMusicas = subcorpora.reduce((acc, s) => acc + s.totalMusicas, 0);
     const totalPalavras = subcorpora.reduce((acc, s) => acc + s.totalPalavras, 0);
@@ -35,9 +46,9 @@ export function SubcorpusDashboard({
     };
   }, [subcorpora]);
   
-  // Ordenar subcorpora
+  // Ordenar subcorpora filtrados
   const sortedSubcorpora = useMemo(() => {
-    return [...subcorpora].sort((a, b) => {
+    return [...filteredSubcorpora].sort((a, b) => {
       switch (sortBy) {
         case 'musicas':
           return b.totalMusicas - a.totalMusicas;
@@ -51,7 +62,7 @@ export function SubcorpusDashboard({
           return 0;
       }
     });
-  }, [subcorpora, sortBy]);
+  }, [filteredSubcorpora, sortBy]);
   
   return (
     <div className="space-y-6">
@@ -109,8 +120,24 @@ export function SubcorpusDashboard({
         </Card>
       </div>
       
-      {/* Controles de Ordenação */}
-      <div className="flex justify-between items-center">
+      {/* Controles de Busca e Ordenação */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar artista..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 w-full sm:w-[250px]"
+            />
+          </div>
+          {searchTerm && (
+            <Badge variant="secondary" className="whitespace-nowrap">
+              {filteredSubcorpora.length} {filteredSubcorpora.length === 1 ? 'resultado' : 'resultados'}
+            </Badge>
+          )}
+        </div>
         <div>
           <h2 className="text-2xl font-bold">Subcorpora por Artista</h2>
           <p className="text-sm text-muted-foreground mt-1">

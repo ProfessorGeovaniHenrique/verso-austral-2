@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
+import { SubcorpusIndicator } from "@/components/corpus/SubcorpusIndicator";
 import { TabApresentacao } from "@/components/mvp/TabApresentacao";
 import { TabTools } from "@/components/mvp/TabTools";
 import { TabValidation } from "@/components/mvp/TabValidation";
@@ -33,6 +34,9 @@ export default function DashboardMVP() {
         hasToolsAccess={hasToolsAccess()}
         hasTestsAccess={hasTestsAccess()}
       />
+      
+      {/* Badge Flutuante de Subcorpus Ativo */}
+      <SubcorpusIndicator />
 
       {/* Conteúdo scrollável com espaçamento ajustado para header unificado */}
       <main className="container-academic py-4 md:py-8 mt-[180px] md:mt-[200px]">
