@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download, Search, Play, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick, Music, AlertCircle } from "lucide-react";
+import { Download, Search, Play, Loader2, ChevronDown, ChevronUp, TrendingUp, TrendingDown, MousePointerClick, Music, AlertCircle, BarChart3, Lightbulb, FileJson, FileDown } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend, Cell } from "recharts";
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { KeywordEntry, CorpusType } from "@/data/types/corpus-tools.types";
 import { SubcorpusMetadata } from "@/data/types/subcorpus.types";
 import { useTools } from "@/contexts/ToolsContext";
@@ -45,6 +47,50 @@ export function KeywordsTool() {
   const { keywords, isLoading, error, isProcessed, processKeywords } = useKeywords();
   const { navigateToKWIC } = useTools();
   const { currentMetadata, selection } = useSubcorpus();
+  
+  // Dados para o gráfico comparativo
+  const chartData = useMemo(() => {
+    if (!estudoMetadata || !refMetadata) return null;
+
+    return [
+      {
+        metrica: 'Riqueza Lexical (%)',
+        [estudoMetadata.artista]: parseFloat((estudoMetadata.riquezaLexical * 100).toFixed(2)),
+        [refMetadata.artista]: parseFloat((refMetadata.riquezaLexical * 100).toFixed(2)),
+      },
+      {
+        metrica: 'Palavras Únicas',
+        [estudoMetadata.artista]: estudoMetadata.totalPalavrasUnicas,
+        [refMetadata.artista]: refMetadata.totalPalavrasUnicas,
+      },
+      {
+        metrica: 'Total de Palavras',
+        [estudoMetadata.artista]: estudoMetadata.totalPalavras,
+        [refMetadata.artista]: refMetadata.totalPalavras,
+      },
+      {
+        metrica: 'Total de Músicas',
+        [estudoMetadata.artista]: estudoMetadata.totalMusicas,
+        [refMetadata.artista]: refMetadata.totalMusicas,
+      }
+    ];
+  }, [estudoMetadata, refMetadata]);
+
+  // Configuração do gráfico
+  const chartConfig = useMemo(() => {
+    if (!estudoMetadata || !refMetadata) return {};
+    
+    return {
+      [estudoMetadata.artista]: {
+        label: estudoMetadata.artista,
+        color: 'hsl(var(--chart-1))',
+      },
+      [refMetadata.artista]: {
+        label: refMetadata.artista,
+        color: 'hsl(var(--chart-2))',
+      },
+    };
+  }, [estudoMetadata, refMetadata]);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [filterSignificancia, setFilterSignificancia] = useState({
