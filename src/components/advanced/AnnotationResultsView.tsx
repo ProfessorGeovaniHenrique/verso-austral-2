@@ -6,6 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Loader2, Search, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useTools } from "@/contexts/ToolsContext";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { toast } from "sonner";
 
 interface AnnotatedWord {
   id: string;
@@ -34,6 +37,10 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterProsody, setFilterProsody] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // FASE 3: Integração KWIC
+  const { navigateToKWIC } = useTools();
+  const { selection } = useSubcorpus();
 
   useEffect(() => {
     loadResults();
@@ -89,6 +96,19 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
     if (prosody === null) return 'N/A';
     if (prosody > 0) return `+${prosody}`;
     return `${prosody}`;
+  };
+
+  // FASE 3: Handler para navegação KWIC
+  const handleWordClick = (palavra: string) => {
+    navigateToKWIC(palavra, 'semantic-annotation', {
+      corpusBase: selection.corpusBase,
+      mode: selection.mode === 'single' ? 'artist' : 'complete',
+      artist: selection.artistaA || undefined
+    });
+    
+    toast.info(`Navegando para KWIC: "${palavra}"`, {
+      description: 'Busca contextual nos resultados da anotação'
+    });
   };
 
   if (loading) {

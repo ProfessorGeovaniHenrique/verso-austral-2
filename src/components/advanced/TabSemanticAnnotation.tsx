@@ -7,11 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, PlayCircle, CheckCircle2, AlertCircle, Filter } from "lucide-react";
+import { Loader2, PlayCircle, CheckCircle2, AlertCircle, Filter, Info } from "lucide-react";
 import { toast } from "sonner";
 import { CorpusType } from "@/data/types/corpus-tools.types";
 import { AnnotationProgressModal } from "./AnnotationProgressModal";
 import { AnnotationResultsView } from "./AnnotationResultsView";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { SubcorpusIndicator } from "@/components/corpus/SubcorpusIndicator";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AnnotationJob {
   id: string;
@@ -27,6 +30,7 @@ interface AnnotationJob {
 }
 
 export function TabSemanticAnnotation() {
+  const { selection, setSelection } = useSubcorpus();
   const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
   const [artistFilter, setArtistFilter] = useState<string>('');
   const [startLine, setStartLine] = useState<string>('');
@@ -35,6 +39,42 @@ export function TabSemanticAnnotation() {
   const [currentJob, setCurrentJob] = useState<AnnotationJob | null>(null);
   const [showProgress, setShowProgress] = useState(false);
   const [completedJobId, setCompletedJobId] = useState<string | null>(null);
+
+  // FASE 2: Sincronização bidirecional com SubcorpusContext
+  useEffect(() => {
+    // Sync FROM SubcorpusContext TO local state
+    setSelectedCorpus(selection.corpusBase);
+    if (selection.mode === 'single' && selection.artistaA) {
+      setArtistFilter(selection.artistaA);
+    }
+  }, [selection.corpusBase, selection.mode, selection.artistaA]);
+
+  // Sync FROM local state TO SubcorpusContext
+  const handleCorpusChange = (value: CorpusType) => {
+    setSelectedCorpus(value);
+    setSelection({
+      ...selection,
+      corpusBase: value,
+      mode: 'complete'
+    });
+  };
+
+  const handleArtistFilterChange = (value: string) => {
+    setArtistFilter(value);
+    if (value.trim()) {
+      setSelection({
+        ...selection,
+        mode: 'single',
+        artistaA: value.trim()
+      });
+    } else {
+      setSelection({
+        ...selection,
+        mode: 'complete',
+        artistaA: null
+      });
+    }
+  };
 
   useEffect(() => {
     if (!currentJob?.id) return;
@@ -56,8 +96,15 @@ export function TabSemanticAnnotation() {
           if (updated.status === 'concluido') {
             setIsAnnotating(false);
             setCompletedJobId(updated.id);
+            
+            // FASE 4: Toast melhorado com ação rápida
             toast.success('Anotação concluída!', {
-              description: `${updated.palavras_anotadas} palavras anotadas com sucesso.`
+              description: `${updated.palavras_anotadas} palavras anotadas com sucesso.`,
+              action: {
+                label: 'Ver Resultados',
+                onClick: () => setShowProgress(false)
+              },
+              duration: 6000
             });
           } else if (updated.status === 'erro') {
             setIsAnnotating(false);
