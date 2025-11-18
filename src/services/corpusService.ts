@@ -51,10 +51,9 @@ export async function loadAndParseCorpus(
 }
 
 function getCorpusPath(corpus: CorpusType): string {
-  const paths: Record<CorpusType, string> = {
+  const paths: Partial<Record<CorpusType, string>> = {
     'gaucho': '/corpus/corpus-gaucho.tsv',
     'nordestino': '/corpus/corpus-nordestino.tsv',
-    'sertanejo': '/corpus/corpus-sertanejo.tsv',
   };
-  return paths[corpus];
+  return paths[corpus] || '/corpus/corpus-gaucho.tsv';
 }

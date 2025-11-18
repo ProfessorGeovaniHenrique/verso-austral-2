@@ -80,7 +80,6 @@ export function DialectalAnalysisTool() {
   const [analysis, setAnalysis] = useState<ReturnType<typeof generateDialectalAnalysis> | null>(null);
   
   const { isLoading, error, processKeywords } = useKeywords();
-  const { keywordsState } = useTools();
 
   const handleAnalyze = async () => {
     if (corpusEstudo === corpusReferencia) {
@@ -88,13 +87,7 @@ export function DialectalAnalysisTool() {
       return;
     }
 
-    await processKeywords(corpusEstudo, corpusReferencia, (kws) => {
-      if (kws.length > 0) {
-        const dialectalAnalysis = generateDialectalAnalysis(kws);
-        setAnalysis(dialectalAnalysis);
-        toast.success(`${dialectalAnalysis.estatisticas.totalMarcas} marcas dialetais detectadas!`);
-      }
-    });
+    await processKeywords(corpusEstudo, corpusReferencia);
   };
 
   // Filtros aplicados

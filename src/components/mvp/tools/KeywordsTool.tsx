@@ -139,9 +139,9 @@ export function KeywordsTool() {
   
   // Dados para o scatter plot (LL vs Frequência)
   const scatterData = useMemo(() => {
-    if (!keywords || keywords.length === 0) return [];
+    if (!keywordsState.keywords || keywordsState.keywords.length === 0) return [];
 
-    return keywords.map(kw => ({
+    return keywordsState.keywords.map(kw => ({
       palavra: kw.palavra,
       ll: kw.ll,
       freqEstudo: kw.freqEstudo,
@@ -151,7 +151,7 @@ export function KeywordsTool() {
       mi: kw.mi,
       isOutlier: kw.ll > 50 || kw.freqEstudo > 200,
     }));
-  }, [keywords]);
+  }, [keywordsState.keywords]);
   
   // Calcular metadados do subcorpus
   const calculateSubcorpusMetadata = async (
@@ -224,7 +224,7 @@ export function KeywordsTool() {
   }, [estudoCorpusBase, estudoMode, estudoArtist, refCorpusBase, refMode, refArtist]);
   
   const filteredKeywords = useMemo(() => {
-    const keywordsToFilter = keywordsState.keywords.length > 0 ? keywordsState.keywords : keywords;
+    const keywordsToFilter = keywordsState.keywords.length > 0 ? keywordsState.keywords : [];
     return keywordsToFilter
       .filter(kw => {
         if (searchTerm && !kw.palavra.toLowerCase().includes(searchTerm.toLowerCase())) return false;
@@ -241,7 +241,7 @@ export function KeywordsTool() {
         }
         return 0;
       });
-  }, [keywords, searchTerm, filterSignificancia, filterEfeito, sortColumn, sortDirection, minLLFilter]);
+  }, [keywordsState.keywords, searchTerm, filterSignificancia, filterEfeito, sortColumn, sortDirection, minLLFilter]);
   
   const handleSort = (column: typeof keywordsState.sortColumn) => {
     if (sortColumn === column) {
@@ -349,7 +349,7 @@ export function KeywordsTool() {
   
   // Exportação para Excel
   const handleExportToExcel = async () => {
-    if (!estudoMetadata || !refMetadata || keywords.length === 0) {
+    if (!estudoMetadata || !refMetadata || keywordsState.keywords.length === 0) {
       toast.error('Certifique-se de que os metadados e keywords estão carregados');
       return;
     }
@@ -422,7 +422,7 @@ export function KeywordsTool() {
 
       // Sheet 3: Keywords
       const keywordsSheet = XLSX.utils.json_to_sheet(
-        keywords.map((kw, index) => ({
+        keywordsState.keywords.map((kw, index) => ({
           'Rank': index + 1,
           'Palavra': kw.palavra,
           'Freq. Estudo': kw.freqEstudo,
@@ -448,7 +448,7 @@ export function KeywordsTool() {
       XLSX.writeFile(workbook, filename);
       
       toast.success(`Excel exportado: ${filename}`, {
-        description: `${keywords.length} keywords processadas em 3 sheets`
+        description: `${keywordsState.keywords.length} keywords processadas em 3 sheets`
       });
 
     } catch (error) {
@@ -969,7 +969,7 @@ export function KeywordsTool() {
       )}
 
       {/* Botões de Exportação */}
-      {isProcessed && keywords.length > 0 && estudoMetadata && refMetadata && (
+      {isProcessed && keywordsState.keywords.length > 0 && estudoMetadata && refMetadata && (
         <Card className="mb-6">
           <CardHeader>
             <CardTitle>Exportar Análise</CardTitle>
@@ -999,7 +999,7 @@ export function KeywordsTool() {
         </Card>
       )}
 
-      {isProcessed && keywords.length > 0 && (
+      {isProcessed && keywordsState.keywords.length > 0 && (
         <Card data-tour="keywords-results">
           <CardHeader>
             <div className="flex justify-between items-center">
