@@ -2,18 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Loader2, PlayCircle, CheckCircle2, AlertCircle, Filter, Info } from "lucide-react";
+import { Loader2, PlayCircle, CheckCircle2, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { CorpusType } from "@/data/types/corpus-tools.types";
 import { AnnotationProgressModal } from "./AnnotationProgressModal";
 import { AnnotationResultsView } from "./AnnotationResultsView";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { SubcorpusIndicator } from "@/components/corpus/SubcorpusIndicator";
+import { DualCorpusSelector } from "./DualCorpusSelector";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface AnnotationJob {
@@ -27,53 +23,54 @@ interface AnnotationJob {
   tempo_inicio: string;
   tempo_fim: string | null;
   erro_mensagem: string | null;
+  cultural_markers_found?: number;
 }
 
 export function TabSemanticAnnotation() {
   const { selection, setSelection } = useSubcorpus();
-  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
-  const [artistFilter, setArtistFilter] = useState<string>('');
-  const [startLine, setStartLine] = useState<string>('');
-  const [endLine, setEndLine] = useState<string>('');
+  
+  const [estudoCorpus, setEstudoCorpus] = useState<CorpusType>('gaucho');
+  const [estudoMode, setEstudoMode] = useState<'complete' | 'artist'>('complete');
+  const [estudoArtist, setEstudoArtist] = useState<string>('');
+  
+  const [refCorpus, setRefCorpus] = useState<CorpusType>('nordestino');
+  const [refMode, setRefMode] = useState<'complete' | 'artist'>('complete');
+  const [refArtist, setRefArtist] = useState<string>('');
+  
+  const [balanceRatio, setBalanceRatio] = useState<number>(1.0);
+  
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [currentJob, setCurrentJob] = useState<AnnotationJob | null>(null);
   const [showProgress, setShowProgress] = useState(false);
   const [completedJobId, setCompletedJobId] = useState<string | null>(null);
 
-  // FASE 2: Sincronização bidirecional com SubcorpusContext
   useEffect(() => {
-    // Sync FROM SubcorpusContext TO local state
-    setSelectedCorpus(selection.corpusBase);
+    setEstudoCorpus(selection.corpusBase);
+    setEstudoMode(selection.mode === 'single' ? 'artist' : 'complete');
     if (selection.mode === 'single' && selection.artistaA) {
-      setArtistFilter(selection.artistaA);
+      setEstudoArtist(selection.artistaA);
     }
-  }, [selection.corpusBase, selection.mode, selection.artistaA]);
+  }, [selection]);
 
-  // Sync FROM local state TO SubcorpusContext
-  const handleCorpusChange = (value: CorpusType) => {
-    setSelectedCorpus(value);
+  const handleInvertCorpora = () => {
+    const tempCorpus = estudoCorpus;
+    const tempMode = estudoMode;
+    const tempArtist = estudoArtist;
+    
+    setEstudoCorpus(refCorpus);
+    setEstudoMode(refMode);
+    setEstudoArtist(refArtist);
+    
+    setRefCorpus(tempCorpus);
+    setRefMode(tempMode);
+    setRefArtist(tempArtist);
+    
     setSelection({
       ...selection,
-      corpusBase: value,
-      mode: 'complete'
+      corpusBase: refCorpus,
+      mode: refMode === 'artist' ? 'single' : 'complete',
+      artistaA: refMode === 'artist' ? refArtist : null
     });
-  };
-
-  const handleArtistFilterChange = (value: string) => {
-    setArtistFilter(value);
-    if (value.trim()) {
-      setSelection({
-        ...selection,
-        mode: 'single',
-        artistaA: value.trim()
-      });
-    } else {
-      setSelection({
-        ...selection,
-        mode: 'complete',
-        artistaA: null
-      });
-    }
   };
 
   useEffect(() => {
@@ -81,9 +78,7 @@ export function TabSemanticAnnotation() {
 
     const channel = supabase
       .channel(`job-${currentJob.id}`)
-      .on(
-        'postgres_changes',
-        {
+      .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
           table: 'annotation_jobs',
@@ -97,28 +92,23 @@ export function TabSemanticAnnotation() {
             setIsAnnotating(false);
             setCompletedJobId(updated.id);
             
-            // FASE 4: Toast melhorado com ação rápida
+            const markersInfo = updated.cultural_markers_found 
+              ? ` | 🏆 ${updated.cultural_markers_found} marcadores culturais`
+              : '';
+            
             toast.success('Anotação concluída!', {
-              description: `${updated.palavras_anotadas} palavras anotadas com sucesso.`,
-              action: {
-                label: 'Ver Resultados',
-                onClick: () => setShowProgress(false)
-              },
-              duration: 6000
+              description: `${updated.palavras_anotadas} palavras${markersInfo}`,
+              action: { label: 'Ver Resultados', onClick: () => setShowProgress(false) },
+              duration: 8000
             });
           } else if (updated.status === 'erro') {
             setIsAnnotating(false);
-            toast.error('Erro na anotação', {
-              description: updated.erro_mensagem || 'Erro desconhecido'
-            });
+            toast.error('Erro', { description: updated.erro_mensagem || 'Erro desconhecido' });
           }
         }
-      )
-      .subscribe();
+      ).subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { channel.unsubscribe(); };
   }, [currentJob?.id]);
 
   const startAnnotation = async () => {
@@ -126,230 +116,118 @@ export function TabSemanticAnnotation() {
       setIsAnnotating(true);
       setShowProgress(true);
       
-      const body: any = { corpus_type: selectedCorpus };
+      const body: any = { 
+        corpus_type: estudoCorpus,
+        reference_corpus: {
+          corpus_type: refCorpus,
+          size_ratio: balanceRatio
+        }
+      };
       
-      if (artistFilter.trim()) {
-        body.artist_filter = artistFilter.trim();
+      if (estudoMode === 'artist' && estudoArtist.trim()) {
+        body.artist_filter = estudoArtist.trim();
       }
       
-      if (startLine.trim()) {
-        body.start_line = parseInt(startLine);
+      if (refMode === 'artist' && refArtist.trim()) {
+        body.reference_corpus.artist_filter = refArtist.trim();
       }
       
-      if (endLine.trim()) {
-        body.end_line = parseInt(endLine);
-      }
-      
-      const { data, error } = await supabase.functions.invoke('annotate-semantic', {
-        body
-      });
-
+      const { data, error } = await supabase.functions.invoke('annotate-semantic', { body });
       if (error) throw error;
       
       setCurrentJob(data.job);
-      
-      let description = 'O processamento está em andamento...';
-      if (artistFilter) description += ` (Artista: ${artistFilter})`;
-      if (startLine || endLine) description += ` (Linhas: ${startLine || '1'}-${endLine || '∞'})`;
-      
-      toast.success('Anotação iniciada', { description });
+      toast.success('Anotação iniciada');
     } catch (error: any) {
       setIsAnnotating(false);
       setShowProgress(false);
-      toast.error('Erro ao iniciar anotação', {
-        description: error.message
-      });
+      toast.error('Erro', { description: error.message });
     }
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'processando':
-        return <Badge variant="default" className="gap-1"><Loader2 className="w-3 h-3 animate-spin" />Processando</Badge>;
-      case 'concluido':
-        return <Badge variant="default" className="gap-1 bg-green-600"><CheckCircle2 className="w-3 h-3" />Concluído</Badge>;
-      case 'erro':
-        return <Badge variant="destructive" className="gap-1"><AlertCircle className="w-3 h-3" />Erro</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+      case 'processando': return <Badge className="gap-1"><Loader2 className="w-3 h-3 animate-spin" />Processando</Badge>;
+      case 'concluido': return <Badge className="gap-1 bg-green-600"><CheckCircle2 className="w-3 h-3" />Concluído</Badge>;
+      case 'erro': return <Badge variant="destructive" className="gap-1"><AlertCircle className="w-3 h-3" />Erro</Badge>;
+      default: return <Badge variant="outline">{status}</Badge>;
     }
-  };
-
-  const clearFilters = () => {
-    setArtistFilter('');
-    setStartLine('');
-    setEndLine('');
   };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Anotação Semântica Automática</CardTitle>
+          <CardTitle>Anotação Semântica Comparativa</CardTitle>
           <CardDescription>
-            Processa o corpus selecionado e atribui automaticamente domínios semânticos e prosódia a cada palavra através de algoritmos de processamento de linguagem natural
+            Identifica marcadores culturais através de análise estatística (Log-Likelihood e Mutual Information)
           </CardDescription>
         </CardHeader>
-
-        <CardContent className="space-y-4">
-          {/* Seletor de Corpus */}
-          <div className="space-y-2">
-            <Label>Selecionar Corpus</Label>
-            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gaucho">🏞️ Corpus Gaúcho Completo</SelectItem>
-                <SelectItem value="nordestino">🌵 Corpus Nordestino</SelectItem>
-                <SelectItem value="marenco-verso">🎵 Luiz Marenco - Verso Austral</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Filtros Avançados */}
-          <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Filter className="w-4 h-4 text-muted-foreground" />
-                <Label className="text-sm font-semibold">Filtros Avançados (Opcional)</Label>
-              </div>
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Limpar Filtros
-              </Button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="artist">Filtrar por Artista</Label>
-                <Input
-                  id="artist"
-                  placeholder="Ex: Luiz Marenco"
-                  value={artistFilter}
-                  onChange={(e) => setArtistFilter(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Processar apenas músicas deste artista
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="startLine">Linha Inicial</Label>
-                <Input
-                  id="startLine"
-                  type="number"
-                  placeholder="1"
-                  min="1"
-                  value={startLine}
-                  onChange={(e) => setStartLine(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Começar a partir desta linha
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="endLine">Linha Final</Label>
-                <Input
-                  id="endLine"
-                  type="number"
-                  placeholder="1000"
-                  min="1"
-                  value={endLine}
-                  onChange={(e) => setEndLine(e.target.value)}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Parar nesta linha
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Botão de Início */}
-          <Button 
-            onClick={startAnnotation}
-            disabled={isAnnotating}
-            className="w-full gap-2"
-            size="lg"
-          >
-            {isAnnotating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Processamento em andamento...
-              </>
-            ) : (
-              <>
-                <PlayCircle className="w-4 h-4" />
-                Iniciar Anotação Semântica
-              </>
-            )}
-          </Button>
-
-          {/* Informações do Job Atual */}
-          {currentJob && (
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Status:</span>
-                  {getStatusBadge(currentJob.status)}
+        <CardContent className="space-y-6">
+          <DualCorpusSelector
+            estudoCorpus={estudoCorpus} onEstudoCorpusChange={setEstudoCorpus}
+            estudoMode={estudoMode} onEstudoModeChange={setEstudoMode}
+            estudoArtist={estudoArtist} onEstudoArtistChange={setEstudoArtist}
+            refCorpus={refCorpus} onRefCorpusChange={setRefCorpus}
+            refMode={refMode} onRefModeChange={setRefMode}
+            refArtist={refArtist} onRefArtistChange={setRefArtist}
+            balanceRatio={balanceRatio} onBalanceRatioChange={setBalanceRatio}
+            onInvert={handleInvertCorpora} disabled={isAnnotating}
+          />
+          
+          <Card className="border-dashed border-2 bg-muted/20">
+            <CardContent className="pt-6 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Upload className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium text-sm text-muted-foreground">Upload de Corpus Personalizado</p>
+                  <p className="text-xs text-muted-foreground">Funcionalidade em desenvolvimento</p>
                 </div>
-                
-                {currentJob.status === 'processando' && (
-                  <>
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>Progresso</span>
-                        <span className="font-mono">{currentJob.progresso}%</span>
-                      </div>
-                      <Progress value={currentJob.progresso} />
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Processadas:</span>
-                        <div className="font-mono font-medium">{currentJob.palavras_processadas}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Total:</span>
-                        <div className="font-mono font-medium">{currentJob.total_palavras}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Anotadas:</span>
-                        <div className="font-mono font-medium">{currentJob.palavras_anotadas}</div>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {currentJob.status === 'concluido' && (
-                  <div className="text-sm text-muted-foreground">
-                    Concluído em {new Date(currentJob.tempo_fim!).toLocaleString('pt-BR')}
-                  </div>
-                )}
-
-                {currentJob.status === 'erro' && currentJob.erro_mensagem && (
-                  <div className="text-sm text-destructive">
-                    {currentJob.erro_mensagem}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
+              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="outline" size="sm" disabled><Upload className="h-4 w-4 mr-2" />Upload</Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Formato .txt estruturado | Max 50MB | UTF-8</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </CardContent>
+          </Card>
+          
+          <div className="flex justify-between pt-4 border-t">
+            <div className="text-sm text-muted-foreground">
+              {isAnnotating ? <span className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Processando...</span> : 'Pronto'}
+            </div>
+            <Button onClick={startAnnotation} disabled={isAnnotating} size="lg" className="gap-2">
+              <PlayCircle className="w-5 h-5" />{isAnnotating ? 'Processando...' : 'Iniciar Anotação'}
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Modal de Progresso */}
-      {showProgress && currentJob && (
-        <AnnotationProgressModal
-          open={showProgress}
-          onOpenChange={setShowProgress}
-          job={currentJob}
-        />
+      {currentJob && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Status</CardTitle>
+              {getStatusBadge(currentJob.status)}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="w-full bg-secondary rounded-full h-2">
+              <div className="bg-primary h-2 rounded-full" style={{ width: `${currentJob.progresso}%` }} />
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center text-sm">
+              <div><p className="text-muted-foreground">Processadas</p><p className="font-bold text-lg">{currentJob.palavras_processadas || 0}</p></div>
+              <div><p className="text-muted-foreground">Anotadas</p><p className="font-bold text-lg text-primary">{currentJob.palavras_anotadas || 0}</p></div>
+              <div><p className="text-muted-foreground">Marcadores 🏆</p><p className="font-bold text-lg text-green-600">{currentJob.cultural_markers_found || 0}</p></div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Resultados */}
-      {completedJobId && (
-        <AnnotationResultsView jobId={completedJobId} />
-      )}
+      {showProgress && currentJob && <AnnotationProgressModal job={currentJob} open={showProgress} onOpenChange={setShowProgress} />}
+      {completedJobId && <AnnotationResultsView jobId={completedJobId} />}
     </div>
   );
 }

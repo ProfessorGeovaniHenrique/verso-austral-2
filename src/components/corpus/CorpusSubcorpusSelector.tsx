@@ -91,8 +91,8 @@ export function CorpusSubcorpusSelector({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="gaucho">Gaúcho</SelectItem>
-              <SelectItem value="nordestino">Nordestino</SelectItem>
+              <SelectItem value="gaucho">🏞️ Gaúcho</SelectItem>
+              <SelectItem value="nordestino">🌵 Nordestino</SelectItem>
             </SelectContent>
           </Select>
         </div>

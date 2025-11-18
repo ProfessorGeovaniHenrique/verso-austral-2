@@ -1,6 +1,6 @@
 import { LucideIcon } from "lucide-react";
 
-export type CorpusType = 'gaucho' | 'nordestino' | 'marenco-verso';
+export type CorpusType = 'gaucho' | 'nordestino';
 
 export const CORPUS_CONFIG = {
   gaucho: {
@@ -17,13 +17,6 @@ export const CORPUS_CONFIG = {
     estudoPath: '/src/data/corpus/corpus-referencia-nordestino.txt',
     referenciaPath: '/src/data/corpus/corpus-estudo-gaucho.txt'
   },
-  'marenco-verso': {
-    label: 'Luiz Marenco - Quando o verso vem pras casa',
-    icon: '🎵',
-    description: 'Letra individual para análise estilística',
-    estudoPath: '/src/data/corpus/corpus-luiz-marenco-verso.txt',
-    referenciaPath: '/src/data/corpus/corpus-estudo-gaucho.txt'
-  }
 } as const;
 
 export interface CorpusWord {

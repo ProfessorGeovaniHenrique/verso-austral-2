@@ -331,15 +331,21 @@ export type Database = {
           confianca: number | null
           contexto_direito: string | null
           contexto_esquerdo: string | null
+          freq_reference_corpus: number | null
+          freq_study_corpus: number | null
           id: string
           insignias_culturais: string[] | null
+          is_cultural_marker: boolean | null
           job_id: string
           lema: string | null
+          ll_score: number | null
           metadata: Json | null
+          mi_score: number | null
           palavra: string
           pos: string | null
           posicao_no_corpus: number | null
           prosody: number | null
+          significance_level: string | null
           tagset_codigo: string | null
           tagset_primario: string | null
           tagsets: Json | null
@@ -348,15 +354,21 @@ export type Database = {
           confianca?: number | null
           contexto_direito?: string | null
           contexto_esquerdo?: string | null
+          freq_reference_corpus?: number | null
+          freq_study_corpus?: number | null
           id?: string
           insignias_culturais?: string[] | null
+          is_cultural_marker?: boolean | null
           job_id: string
           lema?: string | null
+          ll_score?: number | null
           metadata?: Json | null
+          mi_score?: number | null
           palavra: string
           pos?: string | null
           posicao_no_corpus?: number | null
           prosody?: number | null
+          significance_level?: string | null
           tagset_codigo?: string | null
           tagset_primario?: string | null
           tagsets?: Json | null
@@ -365,15 +377,21 @@ export type Database = {
           confianca?: number | null
           contexto_direito?: string | null
           contexto_esquerdo?: string | null
+          freq_reference_corpus?: number | null
+          freq_study_corpus?: number | null
           id?: string
           insignias_culturais?: string[] | null
+          is_cultural_marker?: boolean | null
           job_id?: string
           lema?: string | null
+          ll_score?: number | null
           metadata?: Json | null
+          mi_score?: number | null
           palavra?: string
           pos?: string | null
           posicao_no_corpus?: number | null
           prosody?: number | null
+          significance_level?: string | null
           tagset_codigo?: string | null
           tagset_primario?: string | null
           tagsets?: Json | null
@@ -455,13 +473,19 @@ export type Database = {
       annotation_jobs: {
         Row: {
           corpus_type: string
+          cultural_markers_found: number | null
           erro_mensagem: string | null
           id: string
           metadata: Json | null
           palavras_anotadas: number | null
           palavras_processadas: number | null
           progresso: number | null
+          reference_artist_filter: string | null
+          reference_corpus_size: number | null
+          reference_corpus_type: string | null
+          size_ratio: number | null
           status: string
+          study_corpus_size: number | null
           tempo_fim: string | null
           tempo_inicio: string | null
           total_palavras: number | null
@@ -469,13 +493,19 @@ export type Database = {
         }
         Insert: {
           corpus_type: string
+          cultural_markers_found?: number | null
           erro_mensagem?: string | null
           id?: string
           metadata?: Json | null
           palavras_anotadas?: number | null
           palavras_processadas?: number | null
           progresso?: number | null
+          reference_artist_filter?: string | null
+          reference_corpus_size?: number | null
+          reference_corpus_type?: string | null
+          size_ratio?: number | null
           status?: string
+          study_corpus_size?: number | null
           tempo_fim?: string | null
           tempo_inicio?: string | null
           total_palavras?: number | null
@@ -483,13 +513,19 @@ export type Database = {
         }
         Update: {
           corpus_type?: string
+          cultural_markers_found?: number | null
           erro_mensagem?: string | null
           id?: string
           metadata?: Json | null
           palavras_anotadas?: number | null
           palavras_processadas?: number | null
           progresso?: number | null
+          reference_artist_filter?: string | null
+          reference_corpus_size?: number | null
+          reference_corpus_type?: string | null
+          size_ratio?: number | null
           status?: string
+          study_corpus_size?: number | null
           tempo_fim?: string | null
           tempo_inicio?: string | null
           total_palavras?: number | null

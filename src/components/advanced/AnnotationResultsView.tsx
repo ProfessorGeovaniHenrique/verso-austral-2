@@ -36,9 +36,9 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
   const [loading, setLoading] = useState(true);
   const [filterDomain, setFilterDomain] = useState<string>('all');
   const [filterProsody, setFilterProsody] = useState<string>('all');
+  const [filterMarkers, setFilterMarkers] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // FASE 3: Integração KWIC
   const { navigateToKWIC } = useTools();
   const { selection } = useSubcorpus();
 
