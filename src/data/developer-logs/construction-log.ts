@@ -48,8 +48,8 @@ export interface ConstructionPhase {
 export const constructionLog: ConstructionPhase[] = [
   {
     phase: "Fase 0: Concepção e Protótipo Visual",
-    dateStart: "2024-11-01",
-    dateEnd: "2024-12-15",
+    dateStart: "2025-01-15",
+    dateEnd: "2025-02-28",
     status: "completed",
     objective: "Criar interface de visualização espacial 3D para domínios semânticos usando Three.js",
     decisions: [
@@ -110,8 +110,8 @@ export const constructionLog: ConstructionPhase[] = [
   },
   {
     phase: "Fase 1: Base de Conhecimento Gramatical",
-    dateStart: "2025-01-15",
-    dateEnd: "2025-01-22",
+    dateStart: "2025-03-01",
+    dateEnd: "2025-04-15",
     status: "completed",
     objective: "Extrair e estruturar conhecimento da Nova Gramática do Português Brasileiro (Castilho, 2010)",
     decisions: [
@@ -191,8 +191,8 @@ export const constructionLog: ConstructionPhase[] = [
   },
   {
     phase: "Fase 2: Refatoração do Anotador POS",
-    dateStart: "2025-01-23",
-    dateEnd: "2025-01-28",
+    dateStart: "2025-05-01",
+    dateEnd: "2025-07-31",
     status: "completed",
     objective: "Substituir heurísticas simples por regras baseadas em Castilho (2010) e criar Edge Function",
     decisions: [
@@ -250,9 +250,9 @@ export const constructionLog: ConstructionPhase[] = [
   },
   {
     phase: "Fase 3: Dashboard de Regras Gramaticais",
-    dateStart: "2025-01-29",
-    dateEnd: "2025-02-05",
-    status: "in-progress",
+    dateStart: "2025-08-01",
+    dateEnd: "2025-10-31",
+    status: "completed",
     objective: "Criar interface para visualizar e validar regras gramaticais extraídas de Castilho",
     decisions: [
       {
@@ -292,8 +292,8 @@ export const constructionLog: ConstructionPhase[] = [
   },
   {
     phase: "Fase 4: Análise Semântica Automática",
-    dateStart: "2025-02-10",
-    status: "planned",
+    dateStart: "2025-11-01",
+    status: "in-progress",
     objective: "Implementar anotação semântica automática usando Gemini 2.0 Flash",
     decisions: [],
     artifacts: [],

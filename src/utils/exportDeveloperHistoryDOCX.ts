@@ -9,6 +9,7 @@ import {
   mvpMetrics,
   type Epic
 } from '@/data/developer-logs/product-roadmap';
+import { getCurrentReportDate, formatDateBR } from './dateHelpers';
 
 interface ExportOptions {
   includeTimeline?: boolean;
@@ -32,7 +33,7 @@ export async function exportDeveloperHistoryToDOCX(options: ExportOptions = {}) 
       spacing: { after: 100 }
     }),
     new Paragraph({
-      text: `Gerado em: ${new Date().toLocaleString('pt-BR')}`,
+      text: `Gerado em: ${formatDateBR(getCurrentReportDate())}`,
       alignment: AlignmentType.CENTER,
       spacing: { after: 400 }
     })

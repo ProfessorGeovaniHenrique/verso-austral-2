@@ -11,6 +11,7 @@ import {
   type Epic,
   type Story
 } from '@/data/developer-logs/product-roadmap';
+import { getCurrentReportDate, formatDateBR } from './dateHelpers';
 
 interface ExportOptions {
   includeTimeline?: boolean;
@@ -37,7 +38,7 @@ export async function exportDeveloperHistoryToPDF(options: ExportOptions = {}) {
   pdf.text('Plataforma de Análise Cultural', pageWidth / 2, 40, { align: 'center' });
   
   pdf.setFontSize(10);
-  const timestamp = new Date().toLocaleString('pt-BR');
+  const timestamp = formatDateBR(getCurrentReportDate());
   pdf.text(`Gerado em: ${timestamp}`, pageWidth / 2, 50, { align: 'center' });
 
   yPosition = 80;
