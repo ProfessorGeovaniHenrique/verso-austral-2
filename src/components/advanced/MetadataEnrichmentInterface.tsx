@@ -1,17 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database } from 'lucide-react';
+import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive } from 'lucide-react';
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
 import { EnrichmentMetrics } from './EnrichmentMetrics';
+import { SaveIndicator } from '@/components/ui/save-indicator';
+import { SessionRestoreDialog } from './SessionRestoreDialog';
+import { SessionHistoryTab } from './SessionHistoryTab';
+import { useEnrichmentPersistence } from '@/hooks/useEnrichmentPersistence';
+import { useMultiTabSync } from '@/hooks/useMultiTabSync';
+import { useSaveIndicator } from '@/hooks/useSaveIndicator';
+import { EnrichmentSession, validateEnrichmentSession } from '@/lib/enrichmentSchemas';
+import { saveSessionToCloud, loadSessionFromCloud, resolveConflict } from '@/services/enrichmentPersistence';
+import { useAuth } from '@/hooks/useAuth';
 
 interface EnrichedSongData extends SongMetadata {
   status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error';
@@ -30,6 +40,9 @@ interface EnrichedSongData extends SongMetadata {
 }
 
 export function MetadataEnrichmentInterface() {
+  const { user } = useAuth();
+  
+  // Estados existentes
   const [corpusType, setCorpusType] = useState<CorpusType>('gaucho');
   const [songs, setSongs] = useState<EnrichedSongData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -41,6 +54,125 @@ export function MetadataEnrichmentInterface() {
   const [avgTimePerSong, setAvgTimePerSong] = useState<number>(0);
   const [avgProcessingTime, setAvgProcessingTime] = useState(0);
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  
+  // Estados de persistência
+  const [cloudSessionId, setCloudSessionId] = useState<string | null>(null);
+  const [sessionStartTime, setSessionStartTime] = useState<string>(new Date().toISOString());
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [localSessionToRestore, setLocalSessionToRestore] = useState<EnrichmentSession | null>(null);
+  const [cloudSessionToRestore, setCloudSessionToRestore] = useState<EnrichmentSession | null>(null);
+  
+  // Hooks de persistência
+  const persistence = useEnrichmentPersistence();
+  const { status: saveStatus, startSaving, completeSaving, setSaveError } = useSaveIndicator();
+  
+  // Métricas calculadas
+  const metrics = useMemo(() => ({
+    totalSongs: songs.length,
+    pendingSongs: songs.filter(s => s.status === 'pending' && !s.sugestao).length,
+    enrichedSongs: songs.filter(s => s.sugestao && s.status !== 'validated' && s.status !== 'rejected').length,
+    validatedSongs: songs.filter(s => s.status === 'validated').length,
+    rejectedSongs: songs.filter(s => s.status === 'rejected').length,
+    errorCount: songs.filter(s => s.status === 'error').length,
+    averageConfidence: songs.filter(s => s.sugestao?.confianca).reduce((sum, s) => sum + (s.sugestao?.confianca || 0), 0) / songs.filter(s => s.sugestao?.confianca).length || 0,
+    totalProcessingTime: avgProcessingTime * songs.filter(s => s.sugestao).length,
+    averageTimePerSong: avgTimePerSong,
+  }), [songs, avgProcessingTime, avgTimePerSong]);
+
+  // Multi-tab sync
+  const handleSessionUpdate = useCallback((session: EnrichmentSession) => {
+    setSongs(session.songs as any);
+    setCurrentIndex(session.currentIndex);
+    setCorpusType(session.corpusType);
+    toast.info('Sessão sincronizada de outra aba');
+  }, []);
+
+  const handleSessionClear = useCallback(() => {
+    setSongs([]);
+    setCurrentIndex(0);
+    toast.info('Sessão limpa em outra aba');
+  }, []);
+
+  const { broadcastSessionUpdate, broadcastSessionClear } = useMultiTabSync(handleSessionUpdate, handleSessionClear);
+
+  // Salvar sessão automaticamente após cada música
+  const saveCurrentSession = useCallback(async () => {
+    if (songs.length === 0) return;
+    
+    startSaving();
+    
+    const session: EnrichmentSession = {
+      corpusType,
+      songs: songs as any,
+      currentIndex,
+      isEnriching,
+      isPaused,
+      metrics,
+      startedAt: sessionStartTime,
+      lastSavedAt: new Date().toISOString(),
+      schemaVersion: 1,
+    };
+
+    try {
+      // Salvar local
+      persistence.saveSession(session);
+      
+      // Salvar cloud (se autenticado)
+      if (user) {
+        const sessionId = await saveSessionToCloud(session, cloudSessionId || undefined);
+        if (sessionId && !cloudSessionId) {
+          setCloudSessionId(sessionId);
+        }
+      }
+      
+      completeSaving();
+      broadcastSessionUpdate(session);
+    } catch (error) {
+      console.error('Erro ao salvar sessão:', error);
+      setSaveError('Erro ao salvar');
+    }
+  }, [songs, corpusType, currentIndex, isEnriching, isPaused, metrics, sessionStartTime, user, cloudSessionId, persistence, startSaving, completeSaving, setSaveError, broadcastSessionUpdate]);
+
+  // Carregar sessão ao montar
+  useEffect(() => {
+    const loadSavedSession = async () => {
+      const localSession = persistence.loadSession();
+      const cloudSession = user ? await loadSessionFromCloud() : null;
+
+      if (localSession || cloudSession) {
+        setLocalSessionToRestore(localSession);
+        setCloudSessionToRestore(cloudSession);
+        setShowRestoreDialog(true);
+      }
+    };
+
+    loadSavedSession();
+  }, []);
+
+  // Salvar após cada mudança nos songs
+  useEffect(() => {
+    if (songs.length > 0) {
+      saveCurrentSession();
+    }
+  }, [songs]);
+
+  const handleRestoreSession = (source: 'local' | 'cloud') => {
+    const session = source === 'local' ? localSessionToRestore : cloudSessionToRestore;
+    if (!session) return;
+
+    setSongs(session.songs as any);
+    setCorpusType(session.corpusType);
+    setCurrentIndex(session.currentIndex);
+    setSessionStartTime(session.startedAt);
+    
+    toast.success('Sessão restaurada com sucesso!');
+  };
+
+  const handleDiscardSession = () => {
+    persistence.clearSession();
+    broadcastSessionClear();
+    toast.success('Sessão descartada');
+  };
 
   // Load corpus
   const loadCorpus = async () => {
@@ -335,18 +467,47 @@ export function MetadataEnrichmentInterface() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5" />
-            Sistema de Enriquecimento de Metadados
-          </CardTitle>
-          <CardDescription>
-            Enriqueça automaticamente os metadados do corpus com MusicBrainz API + Lovable AI
-          </CardDescription>
-        </CardHeader>
+    <>
+      <SessionRestoreDialog
+        open={showRestoreDialog}
+        onOpenChange={setShowRestoreDialog}
+        localSession={localSessionToRestore}
+        cloudSession={cloudSessionToRestore}
+        onRestore={handleRestoreSession}
+        onDiscard={handleDiscardSession}
+      />
+
+      <Tabs defaultValue="enrich" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="enrich">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Enriquecimento
+          </TabsTrigger>
+          <TabsTrigger value="history">
+            <History className="h-4 w-4 mr-2" />
+            Histórico
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="enrich" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-5 w-5" />
+                    Sistema de Enriquecimento de Metadados
+                  </CardTitle>
+                  <CardDescription>
+                    Enriqueça automaticamente os metadados do corpus com MusicBrainz API + Lovable AI
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2">
+                  <HardDrive className="h-4 w-4 text-muted-foreground" />
+                  <SaveIndicator {...saveStatus} />
+                </div>
+              </div>
+            </CardHeader>
         <CardContent className="space-y-4">
           {/* Corpus Selector */}
           <div className="flex gap-2">
@@ -609,6 +770,20 @@ export function MetadataEnrichmentInterface() {
           </CardContent>
         </Card>
       )}
-    </div>
+        </TabsContent>
+
+        <TabsContent value="history">
+          <SessionHistoryTab onRestore={async (sessionId) => {
+            const session = await loadSessionFromCloud(sessionId);
+            if (session) {
+              setSongs(session.songs as any);
+              setCorpusType(session.corpusType);
+              setCurrentIndex(session.currentIndex);
+              toast.success('Sessão restaurada do histórico!');
+            }
+          }} />
+        </TabsContent>
+      </Tabs>
+    </>
   );
 }

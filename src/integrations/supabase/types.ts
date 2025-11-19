@@ -908,6 +908,66 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_sessions: {
+        Row: {
+          completed_at: string | null
+          compressed_data: string
+          corpus_type: string
+          created_at: string
+          id: string
+          last_saved_at: string
+          metadata: Json | null
+          processed_songs: number
+          progress_percentage: number | null
+          rejected_songs: number
+          schema_version: number
+          session_name: string | null
+          started_at: string
+          total_songs: number
+          updated_at: string
+          user_id: string
+          validated_songs: number
+        }
+        Insert: {
+          completed_at?: string | null
+          compressed_data: string
+          corpus_type: string
+          created_at?: string
+          id?: string
+          last_saved_at?: string
+          metadata?: Json | null
+          processed_songs?: number
+          progress_percentage?: number | null
+          rejected_songs?: number
+          schema_version?: number
+          session_name?: string | null
+          started_at?: string
+          total_songs?: number
+          updated_at?: string
+          user_id: string
+          validated_songs?: number
+        }
+        Update: {
+          completed_at?: string | null
+          compressed_data?: string
+          corpus_type?: string
+          created_at?: string
+          id?: string
+          last_saved_at?: string
+          metadata?: Json | null
+          processed_songs?: number
+          progress_percentage?: number | null
+          rejected_songs?: number
+          schema_version?: number
+          session_name?: string | null
+          started_at?: string
+          total_songs?: number
+          updated_at?: string
+          user_id?: string
+          validated_songs?: number
+        }
+        Relationships: []
+      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null
