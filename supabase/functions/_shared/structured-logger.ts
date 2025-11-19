@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/react";
+import { captureException, captureMessage, addBreadcrumb as sentryCrumb } from "./sentry.ts";
 
 export enum LogLevel {
   DEBUG = 0,
@@ -9,9 +9,12 @@ export enum LogLevel {
 }
 
 export interface LogContext {
-  component?: string;
-  action?: string;
+  functionName?: string;
   userId?: string;
+  jobId?: string;
+  requestId?: string;
+  duration?: number;
+  stage?: string;
   [key: string]: unknown;
 }
 
@@ -25,15 +28,21 @@ interface LogEntry {
     message: string;
     stack?: string;
   };
+  correlationId?: string;
 }
 
 class StructuredLogger {
   private minLevel: LogLevel;
-  private isDevelopment: boolean;
+  private correlationId?: string;
 
-  constructor(minLevel?: LogLevel) {
-    this.minLevel = minLevel ?? LogLevel.INFO;
-    this.isDevelopment = import.meta.env.DEV;
+  constructor(minLevel?: LogLevel, correlationId?: string) {
+    const envLevel = Deno.env.get("LOG_LEVEL")?.toUpperCase();
+    this.minLevel = minLevel ?? (LogLevel[envLevel as keyof typeof LogLevel] || LogLevel.INFO);
+    this.correlationId = correlationId;
+  }
+
+  setCorrelationId(id: string): void {
+    this.correlationId = id;
   }
 
   debug(message: string, context?: LogContext): void {
@@ -44,26 +53,14 @@ class StructuredLogger {
     this.log(LogLevel.INFO, message, context);
     
     // Add breadcrumb to Sentry
-    Sentry.addBreadcrumb({
-      message,
-      level: "info",
-      data: context,
-    });
+    sentryCrumb(message, context, "info");
   }
 
   warn(message: string, context?: LogContext): void {
     this.log(LogLevel.WARN, message, context);
     
     // Add breadcrumb to Sentry
-    Sentry.addBreadcrumb({
-      message,
-      level: "warning",
-      data: context,
-    });
-  }
-
-  success(message: string, context?: LogContext): void {
-    this.info(`✅ ${message}`, context);
+    sentryCrumb(message, context, "warning");
   }
 
   error(message: string, error?: Error, context?: LogContext): void {
@@ -81,11 +78,17 @@ class StructuredLogger {
 
     // Send to Sentry
     if (error) {
-      Sentry.captureException(error, {
+      captureException(error, {
+        functionName: context?.functionName,
+        userId: context?.userId as string,
+        requestId: context?.requestId as string,
         extra: context,
       });
     } else {
-      Sentry.captureMessage(message, "error");
+      captureMessage(message, "error", {
+        functionName: context?.functionName,
+        extra: context,
+      });
     }
   }
 
@@ -104,12 +107,17 @@ class StructuredLogger {
 
     // Send to Sentry
     if (error) {
-      Sentry.captureException(error, {
-        level: "fatal",
-        extra: context,
+      captureException(error, {
+        functionName: context?.functionName,
+        userId: context?.userId as string,
+        requestId: context?.requestId as string,
+        extra: { ...context, severity: "fatal" },
       });
     } else {
-      Sentry.captureMessage(message, "fatal");
+      captureMessage(message, "fatal", {
+        functionName: context?.functionName,
+        extra: context,
+      });
     }
   }
 
@@ -130,28 +138,14 @@ class StructuredLogger {
       level: LogLevel[level],
       message,
       context: context ? { ...context } : undefined,
+      correlationId: this.correlationId,
     };
   }
 
   private output(entry: LogEntry): void {
-    // In development, pretty print
-    if (this.isDevelopment) {
-      const style = this.getConsoleStyle(entry.level);
-      console.log(
-        `%c[${entry.level}]%c ${entry.message}`,
-        style,
-        "color: inherit",
-        entry.context || ""
-      );
-      if (entry.error) {
-        console.error(entry.error);
-      }
-      return;
-    }
-
-    // In production, structured JSON
     const output = JSON.stringify(entry);
     
+    // Use appropriate console method
     if (entry.level === "DEBUG") {
       console.debug(output);
     } else if (entry.level === "INFO") {
@@ -162,17 +156,13 @@ class StructuredLogger {
       console.error(output);
     }
   }
-
-  private getConsoleStyle(level: string): string {
-    const styles: Record<string, string> = {
-      DEBUG: "color: #6b7280; font-weight: bold",
-      INFO: "color: #3b82f6; font-weight: bold",
-      WARN: "color: #f59e0b; font-weight: bold",
-      ERROR: "color: #ef4444; font-weight: bold",
-      FATAL: "color: #dc2626; font-weight: bold; background: #fee",
-    };
-    return styles[level] || "";
-  }
 }
 
-export const logger = new StructuredLogger();
+// Factory function to create logger with correlation ID
+export function createLogger(functionName: string, requestId?: string): StructuredLogger {
+  const logger = new StructuredLogger(undefined, requestId);
+  return logger;
+}
+
+// Default export
+export default StructuredLogger;

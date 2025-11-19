@@ -1300,6 +1300,45 @@ export type Database = {
           },
         ]
       }
+      metric_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string | null
+          current_value: number
+          function_name: string | null
+          id: string
+          metadata: Json | null
+          resolved_at: string | null
+          severity: string
+          threshold: number
+          triggered_at: string | null
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string | null
+          current_value: number
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity: string
+          threshold: number
+          triggered_at?: string | null
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string | null
+          current_value?: number
+          function_name?: string | null
+          id?: string
+          metadata?: Json | null
+          resolved_at?: string | null
+          severity?: string
+          threshold?: number
+          triggered_at?: string | null
+        }
+        Relationships: []
+      }
       phase_metrics: {
         Row: {
           created_at: string | null
