@@ -12,10 +12,12 @@ interface EnrichmentRequest {
   album?: string;
   ano?: string;
   corpusType?: 'gaucho' | 'nordestino';
+  lyricsPreview?: string;
 }
 
 interface EnrichmentResult {
   compositor?: string;
+  artista?: string;
   album?: string;
   ano?: string;
   fonte: 'musicbrainz' | 'ai-inferred' | 'not-found';
@@ -29,16 +31,34 @@ serve(async (req) => {
   }
 
   try {
-    const { artista, musica, album, ano, corpusType }: EnrichmentRequest = await req.json();
+    const { artista, musica, album, ano, corpusType, lyricsPreview }: EnrichmentRequest = await req.json();
     
-    console.log(`🔍 Enriquecendo: ${artista} - ${musica}`);
+    if (!musica) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required field: musica' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // STEP 1: Try MusicBrainz API
-    let result = await queryMusicBrainz(artista, musica);
+    console.log(`🎵 Enriquecendo [${corpusType}]: ${artista} - ${musica}`);
     
-    // STEP 2: If MusicBrainz fails, use Lovable AI
-    if (result.fonte === 'not-found') {
-      result = await queryLovableAI(artista, musica, album, ano, corpusType);
+    let result: EnrichmentResult;
+    
+    // Estratégia por corpus
+    if (corpusType === 'nordestino' || artista === 'Desconhecido' || !artista) {
+      // Corpus Nordestino: pular MusicBrainz, ir direto para Gemini com letra
+      console.log('🎭 Corpus Nordestino detectado - usando IA diretamente com letra');
+      result = await queryLovableAI(artista, musica, album, ano, corpusType, lyricsPreview);
+    } else {
+      // Corpus Gaúcho: tentar MusicBrainz primeiro (híbrido)
+      console.log('🐴 Corpus Gaúcho - tentando MusicBrainz primeiro');
+      result = await queryMusicBrainz(artista, musica);
+      
+      // Fallback para IA se MusicBrainz falhar
+      if (result.fonte === 'not-found') {
+        console.log('🤖 MusicBrainz não encontrou, usando IA...');
+        result = await queryLovableAI(artista, musica, album, ano, corpusType, lyricsPreview);
+      }
     }
 
     console.log(`✅ Resultado: ${result.fonte} (${result.confianca}% confiança)`);
@@ -74,28 +94,49 @@ async function queryMusicBrainz(
 ): Promise<EnrichmentResult> {
   try {
     // MusicBrainz requires URL encoding and user agent
-    const query = encodeURIComponent(`artist:"${artista}" AND recording:"${musica}"`);
-    const url = `https://musicbrainz.org/ws/2/recording/?query=${query}&fmt=json&limit=5`;
+    const artistEncoded = encodeURIComponent(artista);
+    const songEncoded = encodeURIComponent(musica);
     
-    console.log(`📡 MusicBrainz query: ${url}`);
+    // Try with artist + title first
+    let url = `https://musicbrainz.org/ws/2/recording/?query=artist:${artistEncoded}%20AND%20recording:${songEncoded}&fmt=json&limit=1`;
     
-    const response = await fetch(url, {
+    console.log('🔍 Consultando MusicBrainz (artista+título):', url);
+    
+    let response = await fetch(url, {
       headers: {
-        'User-Agent': 'CorpusAnalyzer/1.0 (research@example.com)',
-        'Accept': 'application/json'
-      }
+        'User-Agent': 'VaiboraApp/1.0 (contato@vaibora.app)',
+      },
     });
 
     if (!response.ok) {
-      console.warn(`⚠️ MusicBrainz returned ${response.status}`);
+      console.error('❌ Erro MusicBrainz (artista+título):', response.status);
       return { fonte: 'not-found', confianca: 0 };
     }
 
-    const data = await response.json();
+    let data = await response.json();
     
+    // Fallback: try title-only search if no results
     if (!data.recordings || data.recordings.length === 0) {
-      console.log('📭 MusicBrainz: Nenhum resultado');
-      return { fonte: 'not-found', confianca: 0 };
+      console.log('⚠️ Nenhum resultado com artista+título, tentando apenas título...');
+      url = `https://musicbrainz.org/ws/2/recording/?query=recording:${songEncoded}&fmt=json&limit=3`;
+      
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'VaiboraApp/1.0 (contato@vaibora.app)',
+        },
+      });
+      
+      if (!response.ok) {
+        console.error('❌ Erro na busca por título:', response.status);
+        return { fonte: 'not-found', confianca: 0 };
+      }
+      
+      data = await response.json();
+      
+      if (!data.recordings || data.recordings.length === 0) {
+        console.log('❌ Nenhuma gravação encontrada no MusicBrainz');
+        return { fonte: 'not-found', confianca: 0 };
+      }
     }
 
     // Get best match (first result with highest score)
@@ -148,7 +189,8 @@ async function queryLovableAI(
   musica: string,
   album?: string,
   ano?: string,
-  corpusType?: string
+  corpusType?: string,
+  lyricsPreview?: string
 ): Promise<EnrichmentResult> {
   try {
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -164,7 +206,46 @@ async function queryLovableAI(
       ? 'música nordestina/forró/baião do Nordeste brasileiro'
       : 'música popular brasileira';
 
-    const prompt = `Você é um especialista em música popular brasileira, com profundo conhecimento sobre compositores, parcerias e histórico de gravações.
+    // Prompt otimizado para Nordestino (com letra) ou Gaúcho (com artista)
+    const isNordestino = corpusType === 'nordestino' || artista === 'Desconhecido' || !artista;
+    
+    let prompt: string;
+    
+    if (isNordestino && lyricsPreview) {
+      // Prompt para Nordestino: usar título + letra para identificar compositor E artista
+      prompt = `Você é um especialista em música popular brasileira, especializado em ${contextoCultural}.
+
+**TAREFA:** Identifique o COMPOSITOR e o ARTISTA/INTÉRPRETE original desta música:
+
+🎵 **Título:** ${musica}
+${ano ? `📅 **Ano:** ${ano}` : ''}
+
+📝 **Trecho da letra:**
+"""
+${lyricsPreview}
+"""
+
+**INSTRUÇÕES:**
+1. Identifique o compositor principal desta música
+2. Se possível, identifique também o artista/intérprete mais conhecido
+3. Para parcerias, liste os nomes separados por "e" (ex: "Raul Torres e João Pacífico")
+4. Se for tradicional/domínio público, responda "Tradicional"
+5. Se não souber com certeza, responda "Desconhecido"
+
+**IMPORTANTE:** 
+- Use o trecho da letra para identificar a música com precisão
+- Priorize compositores e intérpretes nordestinos conhecidos
+- Não invente informações - apenas responda se tiver conhecimento confiável
+
+**RESPOSTA (formato JSON):**
+{
+  "compositor": "nome do compositor",
+  "artista": "nome do artista/intérprete (se diferente do campo fornecido)",
+  "confianca": 85
+}`;
+    } else {
+      // Prompt para Gaúcho: artista conhecido
+      prompt = `Você é um especialista em música popular brasileira, com profundo conhecimento sobre compositores, parcerias e histórico de gravações.
 
 **TAREFA:** Identifique o compositor da seguinte ${contextoCultural}:
 
@@ -185,6 +266,7 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
 - Priorize compositores brasileiros e regionais conhecidos
 
 **RESPOSTA (apenas o nome):**`;
+    }
 
     console.log(`🤖 Consultando Lovable AI...`);
 
@@ -197,14 +279,10 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { 
-            role: 'system', 
-            content: 'Você é um especialista em música brasileira. Seja preciso e conciso.' 
-          },
           { role: 'user', content: prompt }
         ],
         temperature: 0.5,
-        max_tokens: 200
+        max_tokens: 300
       }),
     });
 
@@ -215,7 +293,39 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
     }
 
     const data = await response.json();
-    const compositor = data.choices?.[0]?.message?.content?.trim();
+    let responseContent = data.choices?.[0]?.message?.content?.trim() || '';
+    
+    if (!responseContent) {
+      console.log('❌ IA não retornou resposta válida');
+      return { fonte: 'not-found', confianca: 0 };
+    }
+
+    console.log('🤖 Resposta da IA:', responseContent);
+    
+    // Parse JSON response for Nordestino format
+    let compositor = '';
+    let artistaSugerido = '';
+    let confiancaIA = 70;
+    
+    if (isNordestino && responseContent.includes('{')) {
+      try {
+        // Extract JSON from response
+        const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          compositor = parsed.compositor || '';
+          artistaSugerido = parsed.artista || '';
+          confiancaIA = parsed.confianca || 70;
+        } else {
+          compositor = responseContent;
+        }
+      } catch (e) {
+        console.warn('⚠️ Não foi possível parsear JSON, usando resposta raw');
+        compositor = responseContent;
+      }
+    } else {
+      compositor = responseContent;
+    }
 
     if (!compositor || compositor === 'Desconhecido') {
       console.log('🤖 AI: Compositor desconhecido');
