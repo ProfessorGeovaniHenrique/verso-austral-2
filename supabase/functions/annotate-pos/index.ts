@@ -2,6 +2,8 @@
 
 import { RateLimiter, addRateLimitHeaders } from "../_shared/rateLimiter.ts";
 import { EdgeFunctionLogger } from "../_shared/logger.ts";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -137,7 +139,16 @@ console.log(`[annotate-pos] Base carregada: ${Object.keys(IRREGULAR_VERBS).lengt
 
 // ============= SERVER =============
 
-Deno.serve(async (req) => {
+Deno.serve(withInstrumentation('annotate-pos', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('annotate-pos', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -209,7 +220,7 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }), 
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
-});
+}));
 
 async function processText(texto: string): Promise<POSToken[]> {
   const words = texto.toLowerCase().replace(/[^\w\sáàâãéêíóôõúç\-]/g, ' ').split(/\s+/).filter(w => w.length > 0);
