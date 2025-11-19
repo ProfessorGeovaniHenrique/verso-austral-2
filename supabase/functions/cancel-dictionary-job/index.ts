@@ -1,20 +1,17 @@
 /**
- * ✅ FASE 3 - BLOCO 1 + SPRINT 1: Edge Function de Cancelamento com Advisory Locks
- * Usa função SQL atômica para prevenir race conditions em cancelamentos simultâneos
+ * ✅ SPRINT 1 + SPRINT 2: Cancelamento com Advisory Locks + Validação + Rate Limiting
+ * Usa função SQL atômica + validação Zod + rate limiting Upstash
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { cancelJobSchema, createValidationMiddleware } from "../_shared/validation.ts";
+import { checkRateLimit, RateLimitPresets, createRateLimitHeaders } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
-
-interface CancelRequest {
-  jobId: string;
-  reason: string;
-}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -41,7 +38,44 @@ serve(async (req) => {
       throw new Error("Não autenticado");
     }
 
-    const { jobId, reason } = await req.json() as CancelRequest;
+    // 🔒 Rate Limiting (5 cancelamentos por minuto por usuário)
+    const rateLimitResult = await checkRateLimit(
+      `cancel-job:${user.id}`,
+      RateLimitPresets.STRICT
+    );
+
+    if (!rateLimitResult.success) {
+      return new Response(
+        JSON.stringify({ error: rateLimitResult.error }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            ...createRateLimitHeaders(rateLimitResult),
+            "Content-Type": "application/json" 
+          } 
+        }
+      );
+    }
+
+    // ✅ Validação com Zod
+    const validateRequest = createValidationMiddleware(cancelJobSchema);
+    const validation = await validateRequest(req);
+
+    if (!validation.success) {
+      return new Response(
+        JSON.stringify({ 
+          error: validation.error,
+          details: validation.details?.errors 
+        }),
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        }
+      );
+    }
+
+    const { jobId, reason } = validation.data;
 
     // Validação
     if (!jobId || !reason || reason.trim().length < 5) {
@@ -99,7 +133,13 @@ serve(async (req) => {
         jobStatus: result.job_status,
         forcedCancellation: result.forced
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { 
+        headers: { 
+          ...corsHeaders, 
+          ...createRateLimitHeaders(rateLimitResult),
+          "Content-Type": "application/json" 
+        } 
+      }
     );
 
   } catch (error: any) {

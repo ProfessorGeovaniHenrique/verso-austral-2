@@ -15,6 +15,8 @@ import { CancellationHistory } from './CancellationHistory';
 import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 
+const MAX_FILE_SIZE = 10_000_000; // 10MB
+
 export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
   const [isImportingVolII, setIsImportingVolII] = useState(false);
@@ -78,6 +80,18 @@ export function DictionaryImportInterface() {
       }
       
       const rawContent = await response.text();
+      
+      // ✅ SPRINT 2: Validação de tamanho de arquivo (10MB máx)
+      const fileSizeBytes = new Blob([rawContent]).size;
+      if (fileSizeBytes > MAX_FILE_SIZE) {
+        toast.error(
+          `Arquivo muito grande: ${(fileSizeBytes / 1_000_000).toFixed(2)}MB (máximo: 10MB)`,
+          { duration: 5000 }
+        );
+        setter(false);
+        return;
+      }
+      
       if (!rawContent || rawContent.trim().length === 0) {
         toast.error(`Arquivo vazio: Volume ${volumeNum}`);
         setter(false);
@@ -156,6 +170,18 @@ export function DictionaryImportInterface() {
     
     const response = await fetch(fileName);
     const rawContent = await response.text();
+    
+    // ✅ SPRINT 2: Validação de tamanho de arquivo (10MB máx)
+    const fileSizeBytes = new Blob([rawContent]).size;
+    if (fileSizeBytes > MAX_FILE_SIZE) {
+      toast.error(
+        `Arquivo muito grande: ${(fileSizeBytes / 1_000_000).toFixed(2)}MB (máximo: 10MB)`,
+        { duration: 5000 }
+      );
+      setter(false);
+      return;
+    }
+    
     const { preprocessDialectalText } = await import('@/lib/preprocessDialectalText');
     const processedContent = preprocessDialectalText(rawContent, volumeNum);
     

@@ -1,7 +1,10 @@
 /**
  * Utilitários de Validação Pré-Importação
  * FASE 3 - BLOCO 2: Observabilidade
+ * SPRINT 2: Adicionado Zod schemas e middleware de validação
  */
+
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 export interface ValidationResult {
   valid: boolean;
@@ -282,4 +285,128 @@ ${result.errors.map(e => `   • ${e}`).join('\n')}
 ${result.warnings.map(w => `   • ${w}`).join('\n')}
 `);
   }
+}
+
+// ==================== SPRINT 2: ZOD SCHEMAS ====================
+
+// Schema para cancelamento de job
+export const cancelJobSchema = z.object({
+  jobId: z.string().uuid({ message: "jobId deve ser um UUID válido" }),
+  reason: z.string()
+    .trim()
+    .min(5, { message: "Motivo deve ter no mínimo 5 caracteres" })
+    .max(500, { message: "Motivo não pode exceder 500 caracteres" }),
+});
+
+// Schema para importação de dicionário
+export const dictionaryImportSchema = z.object({
+  fileContent: z.string()
+    .min(1, { message: "Conteúdo do arquivo não pode estar vazio" })
+    .max(10_000_000, { message: "Arquivo muito grande (máx: 10MB)" }),
+  tipoDicionario: z.enum(
+    ["Nunes e Nunes", "Gutenberg", "Houaiss", "UNESP"],
+    { errorMap: () => ({ message: "Tipo de dicionário inválido" }) }
+  ),
+  offsetInicial: z.number()
+    .int()
+    .min(0, { message: "Offset deve ser >= 0" })
+    .optional()
+    .default(0),
+});
+
+// Schema para anotação de corpus
+export const annotationSchema = z.object({
+  corpusType: z.enum(["study", "reference"], {
+    errorMap: () => ({ message: "corpusType deve ser 'study' ou 'reference'" })
+  }),
+  artistFilter: z.string().trim().max(200).optional(),
+  demoMode: z.boolean().optional().default(false),
+});
+
+// ==================== FUNÇÕES DE VALIDAÇÃO ZOD ====================
+
+export type ZodValidationResult<T> = 
+  | { success: true; data: T }
+  | { success: false; error: string; details?: z.ZodError };
+
+/**
+ * Valida dados usando um schema Zod
+ */
+export function validate<T>(
+  schema: z.ZodSchema<T>,
+  data: unknown
+): ZodValidationResult<T> {
+  try {
+    const parsed = schema.parse(data);
+    return { success: true, data: parsed };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const firstError = error.errors[0];
+      return {
+        success: false,
+        error: firstError.message,
+        details: error,
+      };
+    }
+    return {
+      success: false,
+      error: "Erro de validação desconhecido",
+    };
+  }
+}
+
+/**
+ * Valida tamanho de payload completo
+ */
+export function validatePayloadSize(
+  payload: unknown,
+  maxSizeBytes: number = 10_000_000
+): ZodValidationResult<unknown> {
+  const size = JSON.stringify(payload).length;
+  
+  if (size > maxSizeBytes) {
+    return {
+      success: false,
+      error: `Payload muito grande: ${(size / 1_000_000).toFixed(2)}MB (máx: ${(maxSizeBytes / 1_000_000).toFixed(2)}MB)`,
+    };
+  }
+  
+  return { success: true, data: payload };
+}
+
+/**
+ * Sanitiza string removendo caracteres perigosos
+ */
+export function sanitizeString(input: string): string {
+  return input
+    .trim()
+    .replace(/[<>]/g, '') // Remove tags HTML
+    .replace(/javascript:/gi, '') // Remove javascript:
+    .replace(/on\w+=/gi, '') // Remove event handlers
+    .substring(0, 10000); // Limita tamanho
+}
+
+/**
+ * Middleware de validação HTTP
+ */
+export function createValidationMiddleware<T>(schema: z.ZodSchema<T>) {
+  return async (req: Request): Promise<ZodValidationResult<T>> => {
+    try {
+      const body = await req.json();
+      
+      // Validar tamanho do payload
+      const sizeValidation = validatePayloadSize(body);
+      if (!sizeValidation.success) {
+        return sizeValidation as ZodValidationResult<T>;
+      }
+      
+      // Validar com schema Zod
+      return validate(schema, body);
+    } catch (error) {
+      return {
+        success: false,
+        error: "Corpo da requisição inválido (JSON mal formado)",
+      };
+    }
+  };
 }
