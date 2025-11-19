@@ -111,6 +111,25 @@ interface AIAnnotation {
   new_category_examples?: string[];
 }
 
+// ============ FUNÇÃO DE SANITIZAÇÃO ============
+function sanitizeText(text: string): string {
+  return text.replace(/\u0000/g, '').trim();
+}
+
+// ============ FUNÇÃO DE EXTRAÇÃO DE USUÁRIO ============
+function getUserFromAuthHeader(authHeader: string | null): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const token = authHeader.substring(7);
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const payload = JSON.parse(atob(parts[1]));
+    return payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
 const BATCH_SIZE = 200; // Aumentado de 50 para 200
 const UPDATE_FREQUENCY = 10; // Atualizar a cada 10 batches
 
@@ -121,6 +140,9 @@ function parseRealCorpus(
   startLine?: number,
   endLine?: number
 ): CorpusWord[] {
+  // Sanitizar texto para remover caracteres nulos
+  corpusText = sanitizeText(corpusText);
+  
   const lines = corpusText.split('\n');
   const words: CorpusWord[] = [];
   
@@ -267,10 +289,17 @@ function calculateLogLikelihood(o1: number, n1: number, o2: number, n2: number):
 }
 
 function calculateMutualInformation(o1: number, n1: number, o2: number, n2: number): number {
+  // Proteção contra divisão por zero
+  if (n1 <= 0 || n2 <= 0) return 0;
+  
   const p1 = o1 / n1;
   const pTotal = (o1 + o2) / (n1 + n2);
+  
+  // Proteção contra log(0)
   if (p1 === 0 || pTotal === 0) return 0;
-  return Math.log2(p1 / pTotal);
+  
+  const mi = Math.log2(p1 / pTotal);
+  return Number.isFinite(mi) ? mi : 0;
 }
 
 function interpretLL(ll: number): 'Alta' | 'Média' | 'Baixa' {
@@ -1112,6 +1141,91 @@ Retorne um array JSON com exatamente ${words.length} anotações.`;
     console.error('[annotateBatchWithAI] Erro com IA, fallback para léxico:', error);
     return annotateBatchFromLexicon(words, supabase);
   }
+}
+
+// ============ CHUNKING DE IA ============
+async function annotateBatchWithAI_chunked(
+  words: CorpusWord[],
+  tagsets: SemanticTagset[],
+  supabase: any
+): Promise<AIAnnotation[]> {
+  const CHUNK_SIZE = 10;
+  const allAnnotations: AIAnnotation[] = [];
+  
+  console.log(`[annotateBatchWithAI_chunked] Dividindo ${words.length} palavras em chunks de ${CHUNK_SIZE}`);
+  
+  for (let i = 0; i < words.length; i += CHUNK_SIZE) {
+    const chunk = words.slice(i, Math.min(i + CHUNK_SIZE, words.length));
+    try {
+      const annotations = await annotateBatchWithAI(chunk, tagsets, supabase);
+      allAnnotations.push(...annotations);
+    } catch (error) {
+      console.error(`[annotateBatchWithAI_chunked] Erro no chunk ${i}-${i + CHUNK_SIZE}:`, error);
+      // Fallback para léxico para este chunk
+      const fallbackAnnotations = await annotateBatchFromLexicon_safe(chunk, supabase);
+      allAnnotations.push(...fallbackAnnotations);
+    }
+  }
+  
+  return allAnnotations;
+}
+
+// ============ FALLBACK SEGURO PARA LÉXICO ============
+async function annotateBatchFromLexicon_safe(
+  words: CorpusWord[],
+  supabase: any
+): Promise<AIAnnotation[]> {
+  if (words.length === 0) {
+    console.warn('[annotateBatchFromLexicon_safe] Array de palavras vazio');
+    return [];
+  }
+  
+  const cleanWords = words
+    .map(w => w.palavra.toLowerCase())
+    .filter(w => w && w.length > 0);
+  
+  if (cleanWords.length === 0) {
+    console.warn('[annotateBatchFromLexicon_safe] Nenhuma palavra válida para consulta');
+    return words.map(() => ({
+      tagset_codigo: 'MG.GEN',
+      prosody: 0,
+      confianca: 0.3,
+      justificativa: 'Palavra inválida ou vazia',
+      is_new_category: false
+    } as AIAnnotation));
+  }
+  
+  const { data: lexiconEntries } = await supabase
+    .from('semantic_lexicon')
+    .select('palavra, tagset_codigo, prosody, confianca')
+    .in('palavra', cleanWords);
+  
+  const lexiconMap = new Map(
+    (lexiconEntries || []).map((entry: any) => [
+      entry.palavra.toLowerCase(),
+      {
+        tagset_codigo: entry.tagset_codigo || 'MG.GEN',
+        prosody: entry.prosody ?? 0,
+        confianca: entry.confianca ?? 0.5,
+        justificativa: 'Anotação do léxico semântico',
+        is_new_category: false
+      }
+    ])
+  );
+  
+  return words.map(w => {
+    const annotation = lexiconMap.get(w.palavra.toLowerCase());
+    if (annotation) {
+      return annotation as AIAnnotation;
+    }
+    return {
+      tagset_codigo: 'MG.GEN',
+      prosody: 0,
+      confianca: 0.3,
+      justificativa: 'Palavra não encontrada no léxico',
+      is_new_category: false
+    } as AIAnnotation;
+  });
 }
 
 /**
