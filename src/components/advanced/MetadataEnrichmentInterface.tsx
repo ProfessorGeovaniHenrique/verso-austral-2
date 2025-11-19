@@ -57,6 +57,7 @@ export function MetadataEnrichmentInterface() {
   const [avgTimePerSong, setAvgTimePerSong] = useState<number>(0);
   const [avgProcessingTime, setAvgProcessingTime] = useState(0);
   const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [viewMode, setViewMode] = useState<'validation-queue' | 'all'>('validation-queue');
   
   // Estados de persistência
   const [cloudSessionId, setCloudSessionId] = useState<string | null>(null);
@@ -85,6 +86,23 @@ export function MetadataEnrichmentInterface() {
     totalProcessingTime: avgProcessingTime * songs.filter(s => s.sugestao).length,
     averageTimePerSong: avgProcessingTime,
   }), [songs, avgProcessingTime]);
+
+  // Filtro inteligente de visualização (FASE 1.1: Validation Queue)
+  const getDisplaySongs = useCallback(() => {
+    if (viewMode === 'validation-queue') {
+      // Mostrar apenas músicas que precisam de validação humana
+      return songs.filter(s => 
+        s.sugestao && 
+        s.status !== 'validated' && 
+        s.status !== 'rejected' &&
+        s.status !== 'pending' &&
+        s.status !== 'enriching'
+      );
+    }
+    return songs; // Modo 'all'
+  }, [songs, viewMode]);
+
+  const displaySongs = useMemo(() => getDisplaySongs(), [getDisplaySongs]);
 
   // Multi-tab sync
   const handleSessionUpdate = useCallback((session: EnrichmentSession) => {
@@ -693,8 +711,27 @@ export function MetadataEnrichmentInterface() {
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle>Músicas</CardTitle>
+              <CardTitle>
+                {viewMode === 'validation-queue' 
+                  ? `Fila de Validação (${displaySongs.length})` 
+                  : `Todas as Músicas (${songs.length})`}
+              </CardTitle>
               <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant={viewMode === 'validation-queue' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('validation-queue')}
+                >
+                  <Check className="h-4 w-4 mr-2" />
+                  Fila de Validação ({songs.filter(s => s.sugestao && s.status !== 'validated' && s.status !== 'rejected' && s.status !== 'pending' && s.status !== 'enriching').length})
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === 'all' ? 'default' : 'outline'}
+                  onClick={() => setViewMode('all')}
+                >
+                  Ver Todas ({songs.length})
+                </Button>
                 <Button
                   size="sm"
                   variant={confidenceFilter === 'all' ? 'default' : 'outline'}
@@ -732,7 +769,33 @@ export function MetadataEnrichmentInterface() {
           <CardContent>
             <ScrollArea className="h-[500px]">
               <div className="space-y-2">
-                {songs
+                {displaySongs.length === 0 && viewMode === 'validation-queue' ? (
+                  <div className="text-center py-12 space-y-4">
+                    <div className="flex justify-center">
+                      <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-950/20 flex items-center justify-center">
+                        <Check className="h-8 w-8 text-green-600" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold mb-2">Fila de Validação Vazia</h3>
+                      <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                        Todas as músicas enriquecidas foram validadas ou rejeitadas.
+                        {stats.pending > 0 && (
+                          <span className="block mt-2">
+                            Ainda há {stats.pending} música(s) aguardando enriquecimento.
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => setViewMode('all')}
+                    >
+                      Ver Todas as Músicas
+                    </Button>
+                  </div>
+                ) : (
+                  displaySongs
                   .filter(song => {
                     if (confidenceFilter === 'all') return true;
                     if (!song.sugestao) return false;
@@ -837,7 +900,8 @@ export function MetadataEnrichmentInterface() {
                       </div>
                     )}
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </ScrollArea>
           </CardContent>
