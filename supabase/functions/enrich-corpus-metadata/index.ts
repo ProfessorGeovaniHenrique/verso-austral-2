@@ -309,26 +309,42 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
     
     if (isNordestino && responseContent.includes('{')) {
       try {
-        // Extract JSON from response
+        // Tentar extrair JSON da resposta (pode ter texto antes/depois)
         const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
-          compositor = parsed.compositor || '';
-          artistaSugerido = parsed.artista || '';
-          confiancaIA = parsed.confianca || 70;
+          
+          // Validar campos obrigatórios
+          if (parsed.compositor && typeof parsed.compositor === 'string') {
+            compositor = parsed.compositor.trim();
+            artistaSugerido = parsed.artista?.trim() || '';
+            confiancaIA = typeof parsed.confianca === 'number' ? parsed.confianca : 70;
+            
+            console.log(`✅ JSON válido parseado com sucesso`);
+            console.log(`📊 Dados extraídos:`, { compositor, artistaSugerido, confiancaIA });
+          } else {
+            console.warn('⚠️ JSON sem campo "compositor", usando resposta raw');
+            compositor = responseContent;
+          }
         } else {
+          console.warn('⚠️ JSON malformado, usando resposta raw');
           compositor = responseContent;
         }
       } catch (e) {
-        console.warn('⚠️ Não foi possível parsear JSON, usando resposta raw');
-        compositor = responseContent;
+        const errorMessage = e instanceof Error ? e.message : 'Erro desconhecido';
+        console.warn(`⚠️ Erro ao parsear JSON: ${errorMessage}`);
+        console.warn(`   Resposta: ${responseContent.slice(0, 200)}`);
+        compositor = responseContent; // Fallback para texto puro
       }
     } else {
+      // Gaúcho: texto puro esperado
+      console.log(`📝 Resposta texto puro: ${responseContent.slice(0, 100)}...`);
       compositor = responseContent;
     }
 
     if (!compositor || compositor === 'Desconhecido') {
-      console.log('🤖 AI: Compositor desconhecido');
+      console.log('❌ AI: Compositor desconhecido ou não confiável');
+      console.log(`   Resposta original: "${responseContent.slice(0, 150)}"`);
       return { fonte: 'not-found', confianca: 0 };
     }
 
@@ -341,7 +357,9 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
       
       if (nomeMatch) {
         compositorExtraido = nomeMatch[1].trim();
-        console.log(`🎯 Nome extraído de contexto: ${compositorExtraido}`);
+        console.log(`🎯 Nome extraído de contexto:`);
+        console.log(`   Original: "${compositor}"`);
+        console.log(`   Extraído: "${compositorExtraido}"`);
       }
     }
 
@@ -351,42 +369,74 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
       return { fonte: 'not-found', confianca: 0 };
     }
 
-    // Calcular confiança baseada em indicadores
-    let confianca = 70; // Base
+    // Calcular confiança baseada no tipo de resposta
+    let confianca: number;
 
-    // Aumentar confiança se:
-    if (compositorExtraido.length > 5 && compositorExtraido.includes(' ')) {
-      confianca += 10; // Nome completo provavelmente correto
+    if (isNordestino && confiancaIA > 0) {
+      // MODO JSON: Priorizar confiança da IA + ajustes mínimos
+      console.log(`🎯 Confiança base da IA: ${confiancaIA}%`);
+      confianca = confiancaIA;
+      
+      // Ajustes finos baseados em qualidade da resposta
+      if (compositorExtraido.length > 5 && compositorExtraido.includes(' ')) {
+        confianca += 5; // Nome completo
+      }
+      
+      if (compositorExtraido.includes(' e ')) {
+        confianca += 3; // Parceria identificada
+      }
+      
+      if (artistaSugerido && artistaSugerido !== 'Desconhecido') {
+        confianca += 5; // IA também identificou o artista
+      }
+      
+      // Diminuir se resposta suspeita
+      if (compositorExtraido.length < 5) {
+        confianca -= 15;
+      }
+      
+      confianca = Math.min(Math.max(confianca, 40), 98); // Limitar 40-98%
+      
+    } else {
+      // MODO TEXTO PURO: Calcular confiança via heurísticas (Gaúcho)
+      console.log(`🧮 Calculando confiança via heurísticas...`);
+      confianca = 70; // Base
+      
+      if (compositorExtraido.length > 5 && compositorExtraido.includes(' ')) {
+        confianca += 10;
+      }
+      
+      if (artista && artista.toLowerCase() === compositorExtraido.toLowerCase()) {
+        confianca += 15; // Música autoral
+      }
+      
+      if (compositorExtraido.includes(' e ')) {
+        confianca += 5;
+      }
+      
+      if (compositorExtraido.length < 5) {
+        confianca -= 20;
+      }
+      
+      if (!compositorExtraido.match(/^[A-ZÇÁÉÍÓÚÂÊÔÃÕ]/)) {
+        confianca -= 15;
+      }
+      
+      confianca = Math.min(Math.max(confianca, 30), 95); // Limitar 30-95%
     }
 
-    if (artista.toLowerCase() === compositorExtraido.toLowerCase()) {
-      confianca += 15; // Música autoral (alta confiança)
-    }
-
-    if (compositorExtraido.includes(' e ')) {
-      confianca += 5; // Parceria identificada
-    }
-
-    // Diminuir confiança se:
-    if (compositorExtraido.length < 5) {
-      confianca -= 20; // Nome muito curto (suspeito)
-    }
-
-    if (!compositorExtraido.match(/^[A-ZÇÁÉÍÓÚÂÊÔÃÕ]/)) {
-      confianca -= 15; // Não começa com maiúscula
-    }
-
-    confianca = Math.min(Math.max(confianca, 30), 95); // Limitar entre 30-95%
+    console.log(`✅ Confiança final: ${confianca}%`)
 
     console.log(`✅ AI inferiu: ${compositorExtraido} (${confianca}% confiança)`);
 
     return {
       compositor: compositorExtraido,
+      artista: artistaSugerido || undefined, // NOVO: Retornar artista sugerido para Nordestino
       fonte: 'ai-inferred',
       confianca,
       detalhes: `Gemini 2.5 Flash | Contexto: ${contextoCultural} | Confiança: ${confianca}%${
-        compositorExtraido !== compositor ? ` | Original: "${compositor.slice(0, 100)}..."` : ''
-      }`
+        artistaSugerido ? ` | Artista sugerido: ${artistaSugerido}` : ''
+      }${compositorExtraido !== compositor ? ` | Original: "${compositor.slice(0, 100)}..."` : ''}`
     };
 
   } catch (error) {
