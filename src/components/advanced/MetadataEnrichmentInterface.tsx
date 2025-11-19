@@ -304,7 +304,7 @@ export function MetadataEnrichmentInterface() {
           .maybeSingle(); // ✅ maybeSingle() para evitar erro se não existir
         
         if (error) {
-          logger.warn('⚠️ Erro ao buscar role:', error);
+          logger.warn('⚠️ Erro ao buscar role:', { message: error.message, code: error.code });
           setUserRole('user'); // ✅ Fallback seguro
           return;
         }

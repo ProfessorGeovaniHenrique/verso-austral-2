@@ -42,6 +42,10 @@ export async function saveSessionToCloud(
   session: EnrichmentSession,
   sessionId?: string
 ): Promise<string | null> {
+  // ✅ Declarar fora do try para usar no catch
+  let json = '';
+  let compressed = '';
+  
   try {
     // Obter user_id
     const { data: { user } } = await supabase.auth.getUser();
@@ -71,8 +75,8 @@ export async function saveSessionToCloud(
     }
 
     // Comprimir dados
-    const json = JSON.stringify(session);
-    const compressed = LZString.compress(json);
+    json = JSON.stringify(session);
+    compressed = LZString.compress(json);
 
     // ✅ FASE 2: Validar tamanho do payload
     const compressedSizeBytes = new Blob([compressed]).size;
