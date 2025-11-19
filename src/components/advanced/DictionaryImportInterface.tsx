@@ -255,7 +255,7 @@ export function DictionaryImportInterface() {
           onSoundEnabledChange={setSoundEnabled}
         />
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -280,6 +280,20 @@ export function DictionaryImportInterface() {
             <CardContent>
               <Button onClick={() => importDialectalVolume('II')} disabled={isImportingVolI || isImportingVolII || isImportingGutenberg} className="w-full">
                 {isImportingVolII ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : 'Importar'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Gutenberg (Completo)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={importGutenberg} disabled={isImportingVolI || isImportingVolII || isImportingGutenberg} className="w-full">
+                {isImportingGutenberg ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : 'Importar'}
               </Button>
             </CardContent>
           </Card>
