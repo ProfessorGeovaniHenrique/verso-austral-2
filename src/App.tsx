@@ -50,16 +50,12 @@ const ArchivedDashboard8 = lazy(() => import("./pages/_archived/Dashboard8"));
 
 const queryClient = new QueryClient();
 
-const AppContent = () => {
-  // Ativa pré-carregamento inteligente de corpus
+const RouterContent = () => {
+  // Hook precisa estar dentro do BrowserRouter
   useCorpusPreload();
   
   return (
-    <>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
+    <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -284,9 +280,19 @@ const AppContent = () => {
             <Route path="/developer-logs" element={<DeveloperLogs />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </>
+    </Routes>
+  );
+};
+
+const AppContent = () => {
+  return (
+    <>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <RouterContent />
+      </BrowserRouter>
+    </>
   );
 };
 
