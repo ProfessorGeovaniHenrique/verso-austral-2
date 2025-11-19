@@ -32,6 +32,7 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
+import AdminMetadataEnrichment from "./pages/AdminMetadataEnrichment";
 import DeveloperHistory from "./pages/DeveloperHistory";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
@@ -132,7 +133,15 @@ const App = () => (
               } 
             />
             <Route 
-              path="/admin/prototypes" 
+              path="/admin/metadata-enrichment" 
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminMetadataEnrichment />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/admin/prototypes"
               element={
                 <ProtectedRoute requiredRole="admin">
                   <AdminPrototypeGallery />

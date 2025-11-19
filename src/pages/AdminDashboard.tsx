@@ -38,10 +38,11 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Copy, Check, Calendar, Users, Key, CheckCircle } from "lucide-react";
+import { Plus, Copy, Check, Calendar, Users, Key, CheckCircle, Sparkles, Database as DatabaseIcon, FileText, BarChart3, Settings, UserCog } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useNavigate } from "react-router-dom";
 
 type InviteKey = Database["public"]["Tables"]["invite_keys"]["Row"];
 type AppRole = Database["public"]["Enums"]["app_role"];
@@ -51,6 +52,7 @@ interface InviteWithUser extends InviteKey {
 }
 
 export default function AdminDashboard() {
+  const navigate = useNavigate();
   const [invites, setInvites] = useState<InviteWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -178,6 +180,133 @@ export default function AdminDashboard() {
       <div className="container mx-auto max-w-7xl space-y-6">
         <AdminBreadcrumb currentPage="Gerenciar Convites" />
         
+        {/* Quick Access Cards */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Acesso Rápido</CardTitle>
+            <CardDescription>Ferramentas administrativas disponíveis</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-purple-500/50" 
+                onClick={() => navigate('/admin/metadata-enrichment')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="h-5 w-5 text-purple-500" />
+                    Enriquecimento de Metadados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Sistema semi-automatizado para enriquecer corpus com dados de compositores
+                  </p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <DatabaseIcon className="h-3 w-3" />
+                      <span>MusicBrainz API + Lovable AI</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Check className="h-3 w-3" />
+                      <span>Validação humana integrada</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <FileText className="h-3 w-3" />
+                      <span>Exportação e aplicação automatizada</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-blue-500/50" 
+                onClick={() => navigate('/admin/users')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <UserCog className="h-5 w-5 text-blue-500" />
+                    Gerenciar Usuários
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Visualize e gerencie usuários cadastrados na plataforma
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-green-500/50" 
+                onClick={() => navigate('/admin/analytics')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <BarChart3 className="h-5 w-5 text-green-500" />
+                    Analytics
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Métricas e insights de uso da plataforma
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-orange-500/50" 
+                onClick={() => navigate('/admin/lexicon-setup')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Settings className="h-5 w-5 text-orange-500" />
+                    Configuração de Léxico
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Gerencie importações de dicionários e léxicos
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-red-500/50" 
+                onClick={() => navigate('/admin/edge-functions')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <DatabaseIcon className="h-5 w-5 text-red-500" />
+                    Edge Functions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Monitore e gerencie funções serverless
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="hover:shadow-lg transition-all cursor-pointer hover:border-indigo-500/50" 
+                onClick={() => navigate('/admin/metrics')}
+              >
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <BarChart3 className="h-5 w-5 text-indigo-500" />
+                    Métricas do Sistema
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Performance e saúde do sistema
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </CardContent>
+        </Card>
+
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold font-heading text-primary">
