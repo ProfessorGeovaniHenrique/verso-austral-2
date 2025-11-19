@@ -59,9 +59,41 @@ function inferCategorias(verbete: string, definicoes: any[], contextos: any): st
 
 function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
   try {
-    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)]+)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT)\s?\)\s+([^-–\n]+?)(?:\s*[-–]\s*|\n)(.+)$/s;
+    // ✅ IMPROVED: More flexible regex for Volume II format variations
+    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT)\s?\)\s+([^-–\n]+?)(?:\s*[-–]\s*|\n)(.+)$/s;
     const match = verbeteRaw.match(headerRegex);
-    if (!match) return null;
+    
+    if (!match) {
+      // ✅ FALLBACK: Try alternative format (some entries have different structure)
+      console.log(`⚠️ Regex primário falhou. Tentando formato alternativo para: ${verbeteRaw.substring(0, 50)}...`);
+      
+      const altRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+)\s+\(([^)]+)\)\s+(.+)$/s;
+      const altMatch = verbeteRaw.match(altRegex);
+      
+      if (!altMatch) {
+        console.error(`❌ Parse falhou completamente para verbete: ${verbeteRaw.substring(0, 100)}`);
+        return null;
+      }
+      
+      // Parse with fallback format
+      const [_, verbete, origemBruta, restoConteudo] = altMatch;
+      const origem = origemBruta.includes('BRAS') ? 'BRAS' : (origemBruta.includes('PLAT') ? 'PLAT' : 'BRAS');
+      
+      return {
+        verbete: verbete.trim(),
+        verbete_normalizado: normalizeWord(verbete),
+        origem_primaria: origem,
+        classe_gramatical: null,
+        marcacao_temporal: null,
+        frequencia_uso: null,
+        definicoes: [{ texto: restoConteudo.trim(), acepcao: 1 }],
+        remissoes: [],
+        contextos_culturais: { autores_citados: [], regioes_mencionadas: [], notas: [] },
+        categorias_tematicas: [],
+        volume_fonte: volumeNum,
+        confianca_extracao: 0.60, // Lower confidence for fallback parsing
+      };
+    }
     
     const [_, verbete, origem, classeGramBruta, restoDefinicao] = match;
     const classeGram = classeGramBruta.replace(/\b(ANT|DES|BRAS|PLAT)\b/g, '').trim();
@@ -83,7 +115,8 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
     const contextos_culturais = { autores_citados: [], regioes_mencionadas: [], notas: [] };
     const categorias = inferCategorias(verbete, definicoes, contextos_culturais);
     
-    return {
+    // ✅ CRITICAL FIX: Ensure volume_fonte is ALWAYS set
+    const result = {
       verbete: verbete.trim(),
       verbete_normalizado: normalizeWord(verbete),
       origem_primaria: origem,
@@ -94,12 +127,16 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
       remissoes: remissoes.length > 0 ? remissoes : null,
       contextos_culturais,
       categorias_tematicas: categorias.length > 0 ? categorias : null,
-      volume_fonte: `Volume ${volumeNum}`,
+      volume_fonte: volumeNum, // ✅ CRITICAL: Store just "I" or "II", not "Volume I"
       confianca_extracao: 0.95,
       validado_humanamente: false
     };
+    
+    console.log(`✅ Verbete parseado: ${result.verbete} (Volume ${volumeNum})`);
+    return result;
+    
   } catch (error: any) {
-    console.error(`Erro ao parsear verbete: ${error.message}`);
+    console.error(`❌ Erro crítico ao parsear verbete: ${error.message}`);
     return null;
   }
 }
@@ -152,11 +189,31 @@ async function processVerbetesInternal(jobId: string, verbetes: string[], volume
 
     for (const verbeteRaw of batch) {
       const parsed = parseVerbete(verbeteRaw, volumeNum);
-      if (parsed) {
-        parsedBatch.push(parsed);
-      } else {
+      if (!parsed) {
         erros++;
+        console.error(`❌ Parse falhou para verbete: ${verbeteRaw.substring(0, 100)}`);
+        
+        // ✅ Log failed entry for debugging
+        try {
+          await supabase.from('dictionary_import_jobs').insert({
+            tipo_dicionario: `dialectal-volume-${volumeNum}-FAILED`,
+            status: 'erro',
+            erro_mensagem: `Parse failed: ${verbeteRaw.substring(0, 200)}`,
+            metadata: { original_verbete: verbeteRaw }
+          });
+        } catch (logError) {
+          console.error('Failed to log error:', logError);
+        }
+        continue;
       }
+      
+      // ✅ VALIDATION: Double-check volume_fonte
+      if (!parsed.volume_fonte) {
+        console.error(`⚠️ CRITICAL: volume_fonte missing, setting to ${volumeNum}`);
+        parsed.volume_fonte = volumeNum;
+      }
+      
+      parsedBatch.push(parsed);
     }
 
     if (parsedBatch.length > 0) {
