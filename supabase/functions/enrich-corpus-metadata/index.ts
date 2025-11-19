@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { sanitizeText } from "../_shared/sanitize.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,31 +45,38 @@ serve(withInstrumentation('enrich-corpus-metadata', async (req) => {
   try {
     const { artista, musica, album, ano, corpusType, lyricsPreview }: EnrichmentRequest = await req.json();
     
-    if (!musica) {
+    // ✅ SANITIZAR INPUTS para prevenir erro de encoding no Postgres
+    const cleanArtista = sanitizeText(artista);
+    const cleanMusica = sanitizeText(musica);
+    const cleanAlbum = sanitizeText(album);
+    const cleanAno = sanitizeText(ano);
+    const cleanLyrics = sanitizeText(lyricsPreview, 50_000); // Limitar letras a 50KB
+    
+    if (!cleanMusica) {
       return new Response(
-        JSON.stringify({ error: 'Missing required field: musica' }),
+        JSON.stringify({ error: 'Missing or invalid field: musica' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`🎵 Enriquecendo [${corpusType}]: ${artista} - ${musica}`);
+    console.log(`🎵 Enriquecendo [${corpusType}]: ${cleanArtista} - ${cleanMusica}`);
     
     let result: EnrichmentResult;
     
-    // Estratégia por corpus
-    if (corpusType === 'nordestino' || artista === 'Desconhecido' || !artista) {
+    // Estratégia por corpus (usar valores sanitizados)
+    if (corpusType === 'nordestino' || cleanArtista === 'Desconhecido' || !cleanArtista) {
       // Corpus Nordestino: pular MusicBrainz, ir direto para Gemini com letra
       console.log('🎭 Corpus Nordestino detectado - usando IA diretamente com letra');
-      result = await queryLovableAI(artista, musica, album, ano, corpusType, lyricsPreview);
+      result = await queryLovableAI(cleanArtista, cleanMusica, cleanAlbum, cleanAno, corpusType, cleanLyrics);
     } else {
       // Corpus Gaúcho: tentar MusicBrainz primeiro (híbrido)
       console.log('🐴 Corpus Gaúcho - tentando MusicBrainz primeiro');
-      result = await queryMusicBrainz(artista, musica);
+      result = await queryMusicBrainz(cleanArtista, cleanMusica);
       
       // Fallback para IA se MusicBrainz falhar
       if (result.fonte === 'not-found') {
         console.log('🤖 MusicBrainz não encontrou, usando IA...');
-        result = await queryLovableAI(artista, musica, album, ano, corpusType, lyricsPreview);
+        result = await queryLovableAI(cleanArtista, cleanMusica, cleanAlbum, cleanAno, corpusType, cleanLyrics);
       }
     }
 
@@ -177,13 +185,14 @@ async function queryMusicBrainz(
 
     console.log(`✅ MusicBrainz: Compositor=${compositor}, Score=${score}`);
 
+    // ✅ SANITIZAR outputs antes de retornar
     return {
-      compositor,
-      album,
-      ano,
+      compositor: sanitizeText(compositor),
+      album: sanitizeText(album),
+      ano: sanitizeText(ano),
       fonte: 'musicbrainz',
       confianca: score,
-      detalhes: `MusicBrainz ID: ${bestMatch.id}`
+      detalhes: sanitizeText(`MusicBrainz ID: ${bestMatch.id}`)
     };
 
   } catch (error) {
@@ -436,18 +445,18 @@ ${ano ? `📅 **Ano:** ${ano}` : ''}
       confianca = Math.min(Math.max(confianca, 30), 95); // Limitar 30-95%
     }
 
-    console.log(`✅ Confiança final: ${confianca}%`)
+    console.log(`✅ Confiança final: ${confianca}%`);
+    console.log(`📝 Compositor: ${compositorExtraido}`);
 
-    console.log(`✅ AI inferiu: ${compositorExtraido} (${confianca}% confiança)`);
-
+    // ✅ SANITIZAR outputs antes de retornar
     return {
-      compositor: compositorExtraido,
-      artista: artistaSugerido || undefined, // NOVO: Retornar artista sugerido para Nordestino
+      compositor: sanitizeText(compositorExtraido),
+      artista: sanitizeText(artistaSugerido) || undefined,
       fonte: 'ai-inferred',
       confianca,
-      detalhes: `Gemini 2.5 Flash | Contexto: ${contextoCultural} | Confiança: ${confianca}%${
+      detalhes: sanitizeText(`Gemini 2.5 Flash | Contexto: ${contextoCultural} | Confiança: ${confianca}%${
         artistaSugerido ? ` | Artista sugerido: ${artistaSugerido}` : ''
-      }${compositorExtraido !== compositor ? ` | Original: "${compositor.slice(0, 100)}..."` : ''}`
+      }${compositorExtraido !== compositor ? ` | Original: "${compositor.slice(0, 100)}..."` : ''}`)
     };
 
   } catch (error) {

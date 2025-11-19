@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { sanitizeText } from '../_shared/sanitize.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -232,23 +233,24 @@ async function processEnrichment(
         const result = data as EnrichmentResult;
         
         // Classificar baseado na confiança
+        // ✅ SANITIZAR dados antes de armazenar
         if (result.confianca >= 85) {
           enriched.push({
             ...song,
-            compositor: result.compositor,
-            ano: result.ano,
-            album: result.album || song.album,
+            compositor: sanitizeText(result.compositor),
+            ano: sanitizeText(result.ano),
+            album: sanitizeText(result.album || song.album),
             fonte: result.fonte
           });
         } else {
           forReview.push({
             ...song,
-            compositor_sugerido: result.compositor,
-            ano_sugerido: result.ano,
-            album_sugerido: result.album,
+            compositor_sugerido: sanitizeText(result.compositor),
+            ano_sugerido: sanitizeText(result.ano),
+            album_sugerido: sanitizeText(result.album),
             fonte: result.fonte,
             confianca: result.confianca,
-            detalhes: result.detalhes
+            detalhes: sanitizeText(result.detalhes)
           });
         }
 

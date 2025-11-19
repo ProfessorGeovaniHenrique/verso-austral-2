@@ -29,6 +29,7 @@ import { EnrichmentSession, validateEnrichmentSession } from '@/lib/enrichmentSc
 import { saveSessionToCloud, loadSessionFromCloud, resolveConflict } from '@/services/enrichmentPersistence';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
+import { fetchWithTimeoutRetry } from '@/lib/fetch';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -380,18 +381,42 @@ export function MetadataEnrichmentInterface() {
       const hasInversion = song.artista && song.musica && 
         (song.artista.split(' ').length <= 3 && song.musica.split(' ').length > 5);
 
-      const { data, error } = await supabase.functions.invoke('enrich-corpus-metadata', {
-        body: {
-          artista: song.artista,
-          musica: song.musica,
-          album: song.album,
-          ano: song.ano,
-          corpusType: corpusType,
-          lyricsPreview: song.letra?.slice(0, 300)
-        }
-      });
+      // ✅ USAR FETCH COM TIMEOUT + RETRY
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      
+      if (!token) {
+        throw new Error('Usuário não autenticado');
+      }
 
-      if (error) throw error;
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const response = await fetchWithTimeoutRetry(
+        `${supabaseUrl}/functions/v1/enrich-corpus-metadata`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            artista: song.artista,
+            musica: song.musica,
+            album: song.album,
+            ano: song.ano,
+            corpusType: corpusType,
+            lyricsPreview: song.letra?.slice(0, 300)
+          })
+        },
+        45_000, // 45s timeout
+        2       // 2 retries
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => response.statusText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const data = await response.json();
 
       setSongs(prev => {
         const newSongs = prev.map((s, i) => 
@@ -401,8 +426,6 @@ export function MetadataEnrichmentInterface() {
             sugestao: data 
           } : s
         );
-        
-        // FASE 3.1: Removido setTimeout bloqueante
         
         return newSongs;
       });
@@ -414,9 +437,25 @@ export function MetadataEnrichmentInterface() {
 
     } catch (error: any) {
       console.error(`Erro ao enriquecer "${song.musica}":`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+      
       setSongs(prev => prev.map((s, i) => 
-        i === index ? { ...s, status: 'error' as const } : s
+        i === index ? { 
+          ...s, 
+          status: 'error' as const,
+          sugestao: {
+            fonte: 'not-found' as const,
+            confianca: 0,
+            detalhes: errorMessage
+          }
+        } : s
       ));
+      
+      toast.error(`Erro: ${song.musica}`, { 
+        description: errorMessage.includes('timeout') 
+          ? 'Timeout - tente novamente' 
+          : errorMessage
+      });
     }
   };
 
