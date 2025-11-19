@@ -16,6 +16,7 @@ interface EnrichedSongData extends SongMetadata {
   status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error';
   sugestao?: {
     compositor?: string;
+    artista?: string;
     album?: string;
     ano?: string;
     fonte: 'musicbrainz' | 'ai-inferred' | 'not-found';
@@ -24,6 +25,7 @@ interface EnrichedSongData extends SongMetadata {
   };
   compositorEditado?: string;
   fonteValidada?: 'musicbrainz' | 'ai-inferred' | 'manual';
+  letra?: string;
 }
 
 export function MetadataEnrichmentInterface() {
@@ -42,6 +44,7 @@ export function MetadataEnrichmentInterface() {
       const corpus = await loadFullTextCorpus(corpusType);
       const enrichedSongs: EnrichedSongData[] = corpus.musicas.map(m => ({
         ...m.metadata,
+        letra: m.letra,
         status: 'pending'
       }));
       
@@ -62,13 +65,17 @@ export function MetadataEnrichmentInterface() {
     ));
 
     try {
+      const hasInversion = song.artista && song.musica && 
+        (song.artista.split(' ').length <= 3 && song.musica.split(' ').length > 5);
+
       const { data, error } = await supabase.functions.invoke('enrich-corpus-metadata', {
         body: {
           artista: song.artista,
           musica: song.musica,
           album: song.album,
           ano: song.ano,
-          corpusType: corpusType
+          corpusType: corpusType,
+          lyricsPreview: song.letra?.slice(0, 300)
         }
       });
 

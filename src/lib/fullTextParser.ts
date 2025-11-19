@@ -27,28 +27,60 @@ export function parseFullTextCorpus(
   blocos.forEach((bloco, index) => {
     const linhas = bloco.split('\n').filter(l => l.trim());
     
-    if (linhas.length < 3) {
+    if (linhas.length < 2) {
       console.warn(`⚠️ Bloco ${index} muito curto, pulando...`);
       return;
     }
     
-    // Parse metadata (first two lines)
-    const [artistaAlbum, tituloAno, ...letrasLinhas] = linhas;
+    let artista: string;
+    let compositor: string | undefined;
+    let album: string;
+    let musica: string;
+    let ano: string | undefined;
+    let letrasLinhas: string[];
+    let isNordestinoFormat = false;
     
-    // Extract artist, composer, and album
-    // Format: "Artista (Compositor: Nome) - Album" or "Artista - Album"
-    const compositorMatch = artistaAlbum.match(/\(Compositor:\s*([^)]+)\)/);
-    const compositor = compositorMatch ? compositorMatch[1].trim() : undefined;
+    // Detect format: Nordestino (title only) vs Gaúcho (artist - album)
+    const firstLine = linhas[0];
+    const secondLine = linhas[1] || '';
     
-    const artistaAlbumClean = artistaAlbum.replace(/\s*\(Compositor:[^)]+\)\s*/, '');
-    const artistaAlbumParts = artistaAlbumClean.split(' - ');
-    const artista = artistaAlbumParts[0]?.trim() || 'Desconhecido';
-    const album = artistaAlbumParts[1]?.trim() || '';
-    
-    // Extract title and year
-    const tituloAnoParts = tituloAno.split('_');
-    const musica = tituloAnoParts[0]?.trim() || 'Sem título';
-    const ano = tituloAnoParts[1]?.trim() || undefined;
+    // Check if it's Nordestino format: no artist separator, title-like first line
+    if (!firstLine.includes(' - ') && !firstLine.includes('(Compositor:')) {
+      // Nordestino format detected: Title_Year\nLyrics...
+      isNordestinoFormat = true;
+      
+      const tituloAnoParts = firstLine.split('_');
+      musica = tituloAnoParts[0]?.trim() || 'Sem título';
+      ano = tituloAnoParts[1]?.trim() || undefined;
+      
+      artista = 'Desconhecido'; // Mark for AI enrichment
+      compositor = undefined;
+      album = '';
+      letrasLinhas = linhas.slice(1); // Lyrics start from second line
+      
+      if (index < 3) {
+        console.log(`🎭 Nordestino: ${musica} (${ano || 'sem ano'})`);
+      }
+    } else {
+      // Gaúcho format: "Artista (Compositor: Nome) - Album"
+      const [artistaAlbum, tituloAno, ...resto] = linhas;
+      
+      // Extract artist, composer, and album
+      const compositorMatch = artistaAlbum.match(/\(Compositor:\s*([^)]+)\)/);
+      compositor = compositorMatch ? compositorMatch[1].trim() : undefined;
+      
+      const artistaAlbumClean = artistaAlbum.replace(/\s*\(Compositor:[^)]+\)\s*/, '');
+      const artistaAlbumParts = artistaAlbumClean.split(' - ');
+      artista = artistaAlbumParts[0]?.trim() || 'Desconhecido';
+      album = artistaAlbumParts[1]?.trim() || '';
+      
+      // Extract title and year
+      const tituloAnoParts = tituloAno.split('_');
+      musica = tituloAnoParts[0]?.trim() || 'Sem título';
+      ano = tituloAnoParts[1]?.trim() || undefined;
+      
+      letrasLinhas = resto;
+    }
     
     const metadata: SongMetadata = {
       artista,
