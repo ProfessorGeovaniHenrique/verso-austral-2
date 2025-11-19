@@ -1,0 +1,84 @@
+# Workflow: Cleanup stuck annotation_jobs
+# Runs on schedule and on manual dispatch. Requires secret SUPABASE_DB_URL with full Postgres connection string.
+name: cleanup-stuck-jobs
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch:
+    inputs:
+      action_mode:
+        description: 'mark_error = mark stuck jobs as erro; requeue = set stuck jobs back to pending'
+        required: false
+        default: 'mark_error'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+      MODE: ${{ github.event.inputs.action_mode }}
+    steps:
+      - name: Checkout (for logs/context)
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Show pre-check counts
+        run: |
+          set -euo pipefail
+          MODE=${MODE:-mark_error}
+          echo "Running cleanup with mode: $MODE"
+          echo "Counting stuck jobs (processing older than 1 hour) before update:"
+          psql "$DATABASE_URL" -c "SELECT count(*) AS stuck_jobs_before FROM public.annotation_jobs WHERE status = 'processing' AND tempo_inicio < NOW() - INTERVAL '1 hour';"
+
+      - name: Run cleanup SQL
+        id: run_cleanup
+        run: |
+          set -euo pipefail
+          MODE=${MODE:-mark_error}
+          echo "Mode: $MODE"
+
+          if [ "$MODE" = "mark_error" ]; then
+            SQL="UPDATE public.annotation_jobs
+                 SET status = 'erro',
+                     erro_mensagem = 'Job travado - resetado automaticamente',
+                     tempo_fim = NOW()
+                 WHERE status = 'processing'
+                   AND tempo_inicio < NOW() - INTERVAL '1 hour';"
+            echo "Marking stuck jobs as erro..."
+          else
+            SQL="UPDATE public.annotation_jobs
+                 SET status = 'pending',
+                     erro_mensagem = NULL,
+                     tempo_inicio = NULL,
+                     tempo_fim = NULL,
+                     progresso = 0,
+                     palavras_processadas = 0,
+                     palavras_anotadas = 0
+                 WHERE status = 'processing'
+                   AND tempo_inicio < NOW() - INTERVAL '1 hour';"
+            echo "Re-queueing stuck jobs to pending..."
+          fi
+
+          # Run the update and capture psql output (which includes rows affected)
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "$SQL"
+
+      - name: Show post-check counts and sample rows
+        run: |
+          set -euo pipefail
+          echo "Counting stuck jobs (processing older than 1 hour) after update:"
+          psql "$DATABASE_URL" -c "SELECT count(*) AS stuck_jobs_after FROM public.annotation_jobs WHERE status = 'processing' AND tempo_inicio < NOW() - INTERVAL '1 hour';"
+          echo "Recent jobs (last 10):"
+          psql "$DATABASE_URL" -c "SELECT id, status, progresso, erro_mensagem, tempo_inicio, tempo_fim FROM public.annotation_jobs ORDER BY tempo_inicio DESC LIMIT 10;"
+
+      - name: Upload log artifact (optional)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cleanup-output
+          path: |
+            # No files created; output is in job logs. This step kept for future extension.
