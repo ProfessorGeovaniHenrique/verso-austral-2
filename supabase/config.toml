@@ -1,4 +1,9 @@
-project_id = "kywmhuubbsvclkorxrse"
+project_id = "xwnvacyomyivmnikfyjw"
+
+[functions.process-pending-jobs]
+verify_jwt = false
+# Motivo: Função interna do sistema para processar jobs pendentes
+# Proteção: Usa service role key, invocada por cron/scheduler
 
 # ============================================
 # CONFIGURAÇÃO DE AUTENTICAÇÃO DAS EDGE FUNCTIONS
