@@ -950,6 +950,66 @@ export type Database = {
         }
         Relationships: []
       }
+      enrichment_jobs: {
+        Row: {
+          auto_validated: number | null
+          backup_url: string | null
+          completed_at: string | null
+          corpus_type: string
+          created_at: string | null
+          errors: string[] | null
+          id: string
+          metadata: Json | null
+          needs_review: number | null
+          processed_songs: number | null
+          review_csv_url: string | null
+          started_at: string | null
+          status: string
+          total_songs: number | null
+          updated_at: string | null
+          updated_corpus_url: string | null
+          user_id: string | null
+        }
+        Insert: {
+          auto_validated?: number | null
+          backup_url?: string | null
+          completed_at?: string | null
+          corpus_type: string
+          created_at?: string | null
+          errors?: string[] | null
+          id?: string
+          metadata?: Json | null
+          needs_review?: number | null
+          processed_songs?: number | null
+          review_csv_url?: string | null
+          started_at?: string | null
+          status?: string
+          total_songs?: number | null
+          updated_at?: string | null
+          updated_corpus_url?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          auto_validated?: number | null
+          backup_url?: string | null
+          completed_at?: string | null
+          corpus_type?: string
+          created_at?: string | null
+          errors?: string[] | null
+          id?: string
+          metadata?: Json | null
+          needs_review?: number | null
+          processed_songs?: number | null
+          review_csv_url?: string | null
+          started_at?: string | null
+          status?: string
+          total_songs?: number | null
+          updated_at?: string | null
+          updated_corpus_url?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       enrichment_sessions: {
         Row: {
           completed_at: string | null

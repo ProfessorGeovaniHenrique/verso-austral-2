@@ -39,6 +39,11 @@ verify_jwt = true
 # Motivo: Requer autenticação para enriquecimento de metadados
 # Proteção: Apenas usuários autenticados podem enriquecer corpus
 
+[functions.batch-enrich-corpus]
+verify_jwt = true
+# Motivo: Requer autenticação para processamento batch de enriquecimento
+# Proteção: Apenas usuários autenticados (admins) podem processar corpus em lote
+
 # Funções protegidas por JWT (padrão)
 # send-invite-email: Requer JWT + verificação de role admin
 # Outras funções não listadas usam verify_jwt = true por padrão
