@@ -153,6 +153,33 @@ function parseUNESPEntry(text: string): UNESPEntry | null {
   }
 }
 
+/**
+ * ✅ FASE 3 - BLOCO 1: Detectar cancelamento de job
+ */
+async function checkCancellation(jobId: string, supabaseClient: any) {
+  const { data: job } = await supabaseClient
+    .from('dictionary_import_jobs')
+    .select('is_cancelling')
+    .eq('id', jobId)
+    .single();
+
+  if (job?.is_cancelling) {
+    console.log('🛑 Cancelamento detectado! Interrompendo processamento...');
+    
+    await supabaseClient
+      .from('dictionary_import_jobs')
+      .update({
+        status: 'cancelado',
+        cancelled_at: new Date().toISOString(),
+        tempo_fim: new Date().toISOString(),
+        erro_mensagem: 'Job cancelado pelo usuário'
+      })
+      .eq('id', jobId);
+
+    throw new Error('JOB_CANCELLED');
+  }
+}
+
 async function processInBackground(
   jobId: string,
   rawContent: string,
@@ -223,6 +250,9 @@ async function processInBackground(
 
       // Inserir batch quando atingir tamanho
       if (definitionBatches.length >= BATCH_SIZE) {
+        // ✅ FASE 3 - BLOCO 1: Verificar cancelamento antes de inserir batch
+        await checkCancellation(jobId, supabaseClient);
+        
         console.log(`💾 Inserindo batch de ${definitionBatches.length} definições...`);
         
         await withRetry(async () => {

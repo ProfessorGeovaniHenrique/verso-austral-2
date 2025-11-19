@@ -752,10 +752,14 @@ export type Database = {
       dictionary_import_jobs: {
         Row: {
           atualizado_em: string | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
           criado_em: string | null
           erro_mensagem: string | null
           erros: number | null
           id: string
+          is_cancelling: boolean | null
           metadata: Json | null
           offset_inicial: number | null
           progresso: number | null
@@ -769,10 +773,14 @@ export type Database = {
         }
         Insert: {
           atualizado_em?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           criado_em?: string | null
           erro_mensagem?: string | null
           erros?: number | null
           id?: string
+          is_cancelling?: boolean | null
           metadata?: Json | null
           offset_inicial?: number | null
           progresso?: number | null
@@ -786,10 +794,14 @@ export type Database = {
         }
         Update: {
           atualizado_em?: string | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
           criado_em?: string | null
           erro_mensagem?: string | null
           erros?: number | null
           id?: string
+          is_cancelling?: boolean | null
           metadata?: Json | null
           offset_inicial?: number | null
           progresso?: number | null

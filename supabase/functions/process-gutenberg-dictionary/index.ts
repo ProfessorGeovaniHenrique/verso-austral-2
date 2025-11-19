@@ -140,6 +140,33 @@ function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
   }
 }
 
+/**
+ * ✅ FASE 3 - BLOCO 1: Detectar cancelamento de job
+ */
+async function checkCancellation(jobId: string, supabaseClient: any) {
+  const { data: job } = await supabaseClient
+    .from('dictionary_import_jobs')
+    .select('is_cancelling')
+    .eq('id', jobId)
+    .single();
+
+  if (job?.is_cancelling) {
+    console.log('🛑 Cancelamento detectado! Interrompendo processamento...');
+    
+    await supabaseClient
+      .from('dictionary_import_jobs')
+      .update({
+        status: 'cancelado',
+        cancelled_at: new Date().toISOString(),
+        tempo_fim: new Date().toISOString(),
+        erro_mensagem: 'Job cancelado pelo usuário'
+      })
+      .eq('id', jobId);
+
+    throw new Error('JOB_CANCELLED');
+  }
+}
+
 async function processInBackground(jobId: string, verbetes: string[]) {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -231,8 +258,12 @@ async function processInBackground(jobId: string, verbetes: string[]) {
       processados += batch.length;
       batchCount++;
 
+      // ✅ FASE 3 - BLOCO 1: Verificar cancelamento a cada 5 batches
       // Atualizar progresso a cada 5 batches
       if (batchCount % 5 === 0) {
+        // Checar se job foi cancelado
+        await checkCancellation(jobId, supabase);
+        
         const progressPercent = Math.round((processados / verbetes.length) * 100);
         
         await withRetry(async () => {
