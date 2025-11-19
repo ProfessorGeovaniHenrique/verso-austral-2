@@ -54,6 +54,12 @@ Deno.serve(async (req) => {
 
     const { corpusType, validatedSongs, createBackup }: ApplyMetadataRequest = await req.json();
 
+    // Validar se corpus está disponível
+    const availableCorpora = ['gaucho'];
+    if (!availableCorpora.includes(corpusType)) {
+      throw new Error(`Corpus '${corpusType}' ainda não está disponível. O corpus nordestino está fragmentado em 3 partes e precisa ser consolidado primeiro. Disponíveis: ${availableCorpora.join(', ')}`);
+    }
+
     console.log(`🎯 Aplicando metadados ao corpus ${corpusType}: ${validatedSongs.length} músicas`);
 
     // 1. Carregar corpus original
@@ -63,14 +69,18 @@ Deno.serve(async (req) => {
     let originalContent: string;
     if (!corpusResponse.ok) {
       // Fallback para arquivo local se não estiver no storage
-      const localPath = `../../public/data/${corpusType}/full-text/${corpusType}-completo.txt`;
+      const localPath = `../../public/corpus/full-text/${corpusType}-completo.txt`;
       try {
         originalContent = await Deno.readTextFile(localPath);
+        console.log(`✅ Corpus carregado do path local: ${localPath}`);
       } catch (e) {
-        throw new Error(`Corpus file not found: ${corpusPath}`);
+        const errorMessage = e instanceof Error ? e.message : String(e);
+        console.error(`❌ Erro ao carregar corpus local: ${localPath}`, e);
+        throw new Error(`Corpus file not found. Tried Storage: ${corpusPath} and Local: ${localPath}. Error: ${errorMessage}`);
       }
     } else {
       originalContent = await corpusResponse.text();
+      console.log(`✅ Corpus carregado do Supabase Storage: ${corpusPath}`);
     }
 
     // 2. Criar backup se solicitado
