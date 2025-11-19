@@ -11,6 +11,7 @@ import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database } from 'luci
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
+import { EnrichmentMetrics } from './EnrichmentMetrics';
 
 interface EnrichedSongData extends SongMetadata {
   status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error';
@@ -36,6 +37,10 @@ export function MetadataEnrichmentInterface() {
   const [isPaused, setIsPaused] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [estimatedTimeRemaining, setEstimatedTimeRemaining] = useState<number>(0);
+  const [avgTimePerSong, setAvgTimePerSong] = useState<number>(0);
+  const [avgProcessingTime, setAvgProcessingTime] = useState(0);
+  const [confidenceFilter, setConfidenceFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
 
   // Load corpus
   const loadCorpus = async () => {
@@ -102,22 +107,70 @@ export function MetadataEnrichmentInterface() {
     }
   };
 
+  // Retry logic with exponential backoff
+  const enrichSongWithRetry = async (
+    song: EnrichedSongData, 
+    index: number, 
+    maxRetries = 3
+  ): Promise<void> => {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await enrichSong(song, index);
+        return; // Success!
+      } catch (error: any) {
+        lastError = error;
+        
+        // Retry on rate limit (429) or server error (5xx)
+        if (error.status === 429 || (error.status >= 500 && error.status < 600)) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+          console.warn(`⚠️ Retry ${attempt}/${maxRetries} após ${backoffMs}ms:`, error);
+          await new Promise(resolve => setTimeout(resolve, backoffMs));
+        } else {
+          throw error; // Non-recoverable error
+        }
+      }
+    }
+    
+    throw lastError; // All retries failed
+  };
+
   // Batch enrichment
   const startEnrichment = async () => {
     setIsEnriching(true);
     setIsPaused(false);
     
-    const pendingSongs = songs.filter(s => s.status === 'pending' && !s.sugestao);
     const startIdx = currentIndex;
+    const startTime = Date.now();
+    const processedTimes: number[] = [];
     
     for (let i = startIdx; i < songs.length && !isPaused; i++) {
       if (songs[i].status === 'pending' && !songs[i].sugestao) {
         setCurrentIndex(i);
-        await enrichSong(songs[i], i);
+        
+        const songStartTime = Date.now();
+        await enrichSongWithRetry(songs[i], i);
+        const songTime = Date.now() - songStartTime;
+        processedTimes.push(songTime);
+        
+        // Calculate metrics
+        const elapsed = Date.now() - startTime;
+        const processed = processedTimes.length;
+        const avgTime = elapsed / processed;
+        const remaining = songs.filter((s, idx) => idx > i && s.status === 'pending' && !s.sugestao).length;
+        const eta = avgTime * remaining;
+        
+        setAvgTimePerSong(avgTime);
+        setEstimatedTimeRemaining(eta);
         setProgress(((i + 1) / songs.length) * 100);
         
-        // Rate limiting: wait 1s between requests
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Calculate overall avg processing time
+        const totalTime = processedTimes.reduce((sum, t) => sum + t, 0);
+        setAvgProcessingTime(totalTime / processedTimes.length);
+        
+        // Rate limiting: 5 req/s (200ms delay)
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
     }
     
@@ -157,6 +210,29 @@ export function MetadataEnrichmentInterface() {
     ));
   };
 
+  // Utility function for confidence badges
+  const getConfidenceBadge = (confidence: number) => {
+    if (confidence >= 85) {
+      return {
+        className: 'bg-green-600 hover:bg-green-700 text-white',
+        icon: '✓',
+        label: 'Alta'
+      };
+    } else if (confidence >= 70) {
+      return {
+        className: 'bg-yellow-600 hover:bg-yellow-700 text-white',
+        icon: '⚠',
+        label: 'Média'
+      };
+    } else {
+      return {
+        className: 'bg-red-600 hover:bg-red-700 text-white',
+        icon: '⚠',
+        label: 'Baixa'
+      };
+    }
+  };
+
   // Export validated data
   const exportCSV = () => {
     const validatedSongs = songs.filter(s => s.status === 'validated');
@@ -181,6 +257,73 @@ export function MetadataEnrichmentInterface() {
     link.click();
     
     toast.success(`${validatedSongs.length} músicas exportadas`);
+  };
+
+  // Export full report (CSV + Metrics JSON)
+  const exportFullReport = () => {
+    const validatedSongs = songs.filter(s => s.status === 'validated');
+    
+    if (validatedSongs.length === 0) {
+      toast.error('Nenhuma música validada para exportar');
+      return;
+    }
+
+    // Generate CSV with additional metrics
+    const csv = [
+      'artista,compositor,musica,album,ano,fonte,confianca,fonte_validada',
+      ...validatedSongs.map(s => 
+        `"${s.artista}","${s.compositor || ''}","${s.musica}","${s.album}","${s.ano || ''}","${s.sugestao?.fonte || ''}","${s.sugestao?.confianca || 0}","${s.fonteValidada || ''}"`
+      )
+    ].join('\n');
+
+    // Generate metrics report in JSON format
+    const enrichedSongs = songs.filter(s => s.sugestao);
+    const metrics = {
+      summary: {
+        total_songs: songs.length,
+        validated: validatedSongs.length,
+        validation_rate: ((validatedSongs.length / songs.length) * 100).toFixed(2) + '%'
+      },
+      sources: {
+        musicbrainz: enrichedSongs.filter(s => s.sugestao?.fonte === 'musicbrainz').length,
+        gemini: enrichedSongs.filter(s => s.sugestao?.fonte === 'ai-inferred').length,
+        not_found: enrichedSongs.filter(s => s.sugestao?.fonte === 'not-found').length
+      },
+      confidence: {
+        average: (enrichedSongs.reduce((sum, s) => sum + s.sugestao!.confianca, 0) / enrichedSongs.length).toFixed(2),
+        high: enrichedSongs.filter(s => s.sugestao!.confianca >= 85).length,
+        medium: enrichedSongs.filter(s => s.sugestao!.confianca >= 70 && s.sugestao!.confianca < 85).length,
+        low: enrichedSongs.filter(s => s.sugestao!.confianca < 70).length
+      },
+      performance: {
+        avg_time_per_song_ms: avgProcessingTime
+      },
+      generated_at: new Date().toISOString()
+    };
+
+    const csvBlob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const jsonBlob = new Blob([JSON.stringify(metrics, null, 2)], { type: 'application/json' });
+    
+    const csvUrl = URL.createObjectURL(csvBlob);
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    
+    const date = new Date().toISOString().split('T')[0];
+    
+    // Download CSV
+    const csvLink = document.createElement('a');
+    csvLink.href = csvUrl;
+    csvLink.download = `metadata-enriched-${corpusType}-${date}.csv`;
+    csvLink.click();
+    
+    // Download Metrics JSON
+    setTimeout(() => {
+      const jsonLink = document.createElement('a');
+      jsonLink.href = jsonUrl;
+      jsonLink.download = `metrics-${corpusType}-${date}.json`;
+      jsonLink.click();
+    }, 100);
+    
+    toast.success(`Relatório completo exportado: ${validatedSongs.length} músicas + métricas`);
   };
 
   const stats = {
@@ -226,33 +369,41 @@ export function MetadataEnrichmentInterface() {
 
           {/* Stats */}
           {songs.length > 0 && (
-            <div className="grid grid-cols-5 gap-2">
-              <div className="text-center p-2 bg-secondary/20 rounded">
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <div className="text-xs text-muted-foreground">Total</div>
+            <>
+              <div className="grid grid-cols-5 gap-2">
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold">{stats.total}</div>
+                  <div className="text-xs text-muted-foreground">Total</div>
+                </div>
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                  <div className="text-xs text-muted-foreground">Pendentes</div>
+                </div>
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold text-blue-600">{stats.enriched}</div>
+                  <div className="text-xs text-muted-foreground">Enriquecidas</div>
+                </div>
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold text-green-600">{stats.validated}</div>
+                  <div className="text-xs text-muted-foreground">Validadas</div>
+                </div>
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
+                  <div className="text-xs text-muted-foreground">Rejeitadas</div>
+                </div>
               </div>
-              <div className="text-center p-2 bg-secondary/20 rounded">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="text-xs text-muted-foreground">Pendentes</div>
-              </div>
-              <div className="text-center p-2 bg-secondary/20 rounded">
-                <div className="text-2xl font-bold text-blue-600">{stats.enriched}</div>
-                <div className="text-xs text-muted-foreground">Enriquecidas</div>
-              </div>
-              <div className="text-center p-2 bg-secondary/20 rounded">
-                <div className="text-2xl font-bold text-green-600">{stats.validated}</div>
-                <div className="text-xs text-muted-foreground">Validadas</div>
-              </div>
-              <div className="text-center p-2 bg-secondary/20 rounded">
-                <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="text-xs text-muted-foreground">Rejeitadas</div>
-              </div>
-            </div>
+
+              {/* Dashboard de Métricas */}
+              <EnrichmentMetrics 
+                songs={songs} 
+                avgProcessingTime={avgProcessingTime} 
+              />
+            </>
           )}
 
           {/* Controls */}
           {songs.length > 0 && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               {!isEnriching ? (
                 <Button onClick={startEnrichment} disabled={stats.pending === 0}>
                   <Play className="h-4 w-4 mr-2" />
@@ -273,6 +424,15 @@ export function MetadataEnrichmentInterface() {
                 <Download className="h-4 w-4 mr-2" />
                 Exportar CSV ({stats.validated})
               </Button>
+
+              <Button 
+                onClick={exportFullReport} 
+                variant="secondary"
+                disabled={stats.validated === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Relatório Completo
+              </Button>
             </div>
           )}
 
@@ -280,9 +440,15 @@ export function MetadataEnrichmentInterface() {
           {isEnriching && (
             <div className="space-y-2">
               <Progress value={progress} />
-              <p className="text-sm text-muted-foreground text-center">
-                Processando: {currentIndex + 1} / {songs.length}
-              </p>
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>Processando: {currentIndex + 1} / {songs.length}</span>
+                <span>
+                  Tempo médio: {(avgTimePerSong / 1000).toFixed(1)}s/música
+                </span>
+                <span>
+                  ETA: {Math.ceil(estimatedTimeRemaining / 1000)}s
+                </span>
+              </div>
             </div>
           )}
         </CardContent>
@@ -292,12 +458,57 @@ export function MetadataEnrichmentInterface() {
       {songs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Músicas</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>Músicas</CardTitle>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  size="sm"
+                  variant={confidenceFilter === 'all' ? 'default' : 'outline'}
+                  onClick={() => setConfidenceFilter('all')}
+                >
+                  Todas
+                </Button>
+                <Button
+                  size="sm"
+                  variant={confidenceFilter === 'high' ? 'default' : 'outline'}
+                  onClick={() => setConfidenceFilter('high')}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  Alta (≥85%)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={confidenceFilter === 'medium' ? 'default' : 'outline'}
+                  onClick={() => setConfidenceFilter('medium')}
+                  className="bg-yellow-600 hover:bg-yellow-700"
+                >
+                  Média (70-85%)
+                </Button>
+                <Button
+                  size="sm"
+                  variant={confidenceFilter === 'low' ? 'default' : 'outline'}
+                  onClick={() => setConfidenceFilter('low')}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  Baixa (&lt;70%)
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <ScrollArea className="h-[500px]">
               <div className="space-y-2">
-                {songs.map((song, index) => (
+                {songs
+                  .filter(song => {
+                    if (confidenceFilter === 'all') return true;
+                    if (!song.sugestao) return false;
+                    const conf = song.sugestao.confianca;
+                    if (confidenceFilter === 'high') return conf >= 85;
+                    if (confidenceFilter === 'medium') return conf >= 70 && conf < 85;
+                    if (confidenceFilter === 'low') return conf < 70;
+                    return true;
+                  })
+                  .map((song, index) => (
                   <div 
                     key={index}
                     className="p-4 border rounded-lg space-y-2"
@@ -326,14 +537,21 @@ export function MetadataEnrichmentInterface() {
 
                     {/* Suggestion */}
                     {song.sugestao && song.status !== 'validated' && song.status !== 'rejected' && (
-                      <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded space-y-2">
+                      <div className={`p-3 rounded space-y-2 ${
+                        song.sugestao.confianca < 70 
+                          ? 'bg-red-50 dark:bg-red-950/20 border-2 border-red-300 dark:border-red-700' 
+                          : 'bg-blue-50 dark:bg-blue-950/20'
+                      }`}>
                         <div className="flex items-center gap-2 text-sm font-medium">
                           {song.sugestao.fonte === 'musicbrainz' ? (
                             <Database className="h-4 w-4" />
                           ) : (
                             <Sparkles className="h-4 w-4" />
                           )}
-                          Sugestão ({song.sugestao.confianca}% confiança)
+                          <span>Sugestão</span>
+                          <Badge className={getConfidenceBadge(song.sugestao.confianca).className}>
+                            {getConfidenceBadge(song.sugestao.confianca).icon} {song.sugestao.confianca}% - {getConfidenceBadge(song.sugestao.confianca).label}
+                          </Badge>
                         </div>
                         
                         {song.sugestao.compositor && (
