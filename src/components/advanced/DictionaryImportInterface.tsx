@@ -123,7 +123,7 @@ export function DictionaryImportInterface() {
     try {
       toast.info('Gutenberg: ~700k verbetes. Processamento em lotes de 5.000...');
       
-      const response = await fetch('/data/dictionaries/gutenberg-raw.txt');
+      const response = await fetch('/src/data/dictionaries/gutenberg-completo.txt');
       if (!response.ok) {
         toast.error('Arquivo Gutenberg não encontrado');
         return;
