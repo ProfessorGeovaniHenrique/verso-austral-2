@@ -76,8 +76,8 @@ export function MetadataEnrichmentInterface() {
     errorCount: songs.filter(s => s.status === 'error').length,
     averageConfidence: songs.filter(s => s.sugestao?.confianca).reduce((sum, s) => sum + (s.sugestao?.confianca || 0), 0) / songs.filter(s => s.sugestao?.confianca).length || 0,
     totalProcessingTime: avgProcessingTime * songs.filter(s => s.sugestao).length,
-    averageTimePerSong: avgTimePerSong,
-  }), [songs, avgProcessingTime, avgTimePerSong]);
+    averageTimePerSong: avgProcessingTime,
+  }), [songs, avgProcessingTime]);
 
   // Multi-tab sync
   const handleSessionUpdate = useCallback((session: EnrichmentSession) => {
@@ -147,14 +147,8 @@ export function MetadataEnrichmentInterface() {
     };
 
     loadSavedSession();
-  }, []);
+  }, [user, persistence]);
 
-  // Salvar após cada mudança nos songs
-  useEffect(() => {
-    if (songs.length > 0) {
-      saveCurrentSession();
-    }
-  }, [songs]);
 
   const handleRestoreSession = (source: 'local' | 'cloud') => {
     const session = source === 'local' ? localSessionToRestore : cloudSessionToRestore;
@@ -218,13 +212,19 @@ export function MetadataEnrichmentInterface() {
 
       if (error) throw error;
 
-      setSongs(prev => prev.map((s, i) => 
-        i === index ? { 
-          ...s, 
-          status: 'pending' as const, 
-          sugestao: data 
-        } : s
-      ));
+      setSongs(prev => {
+        const newSongs = prev.map((s, i) => 
+          i === index ? { 
+            ...s, 
+            status: 'pending' as const, 
+            sugestao: data 
+          } : s
+        );
+        
+        setTimeout(() => saveCurrentSession(), 100);
+        
+        return newSongs;
+      });
 
       // Auto-validate high confidence results
       if (data.confianca >= 90) {
@@ -317,23 +317,29 @@ export function MetadataEnrichmentInterface() {
 
   // Validate/reject suggestions
   const validateSong = (index: number, accept: boolean) => {
-    setSongs(prev => prev.map((s, i) => {
-      if (i !== index) return s;
+    setSongs(prev => {
+      const newSongs = prev.map((s, i) => {
+        if (i !== index) return s;
+        
+        if (accept && s.sugestao && s.sugestao.fonte !== 'not-found') {
+          return {
+            ...s,
+            compositor: s.compositorEditado || s.sugestao.compositor,
+            album: s.sugestao.album || s.album,
+            ano: s.sugestao.ano || s.ano,
+            fonte: s.compositorEditado ? 'manual' as const : s.sugestao.fonte as ('musicbrainz' | 'ai-inferred'),
+            fonteValidada: s.sugestao.fonte,
+            status: 'validated' as const
+          };
+        }
+        
+        return { ...s, status: 'rejected' as const };
+      });
       
-      if (accept && s.sugestao && s.sugestao.fonte !== 'not-found') {
-        return {
-          ...s,
-          compositor: s.compositorEditado || s.sugestao.compositor,
-          album: s.sugestao.album || s.album,
-          ano: s.sugestao.ano || s.ano,
-          fonte: s.compositorEditado ? 'manual' as const : s.sugestao.fonte as ('musicbrainz' | 'ai-inferred'),
-          fonteValidada: s.sugestao.fonte,
-          status: 'validated' as const
-        };
-      }
+      setTimeout(() => saveCurrentSession(), 100);
       
-      return { ...s, status: 'rejected' as const };
-    }));
+      return newSongs;
+    });
   };
 
   const editComposer = (index: number, value: string) => {

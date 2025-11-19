@@ -6,20 +6,30 @@ import { z } from 'zod';
  */
 
 export const EnrichedSongDataSchema = z.object({
-  title: z.string(),
-  artist: z.string(),
-  album: z.string().optional(),
-  year: z.number().optional(),
-  composer: z.string().optional(),
+  // Campos do SongMetadata (português)
+  artista: z.string(),
+  compositor: z.string().optional(),
+  album: z.string(),
+  musica: z.string(),
+  ano: z.string().optional(),
+  fonte: z.enum(['manual', 'musicbrainz', 'ai-inferred', 'original']).optional(),
+  
+  // Campos adicionais
   status: z.enum(['pending', 'enriching', 'enriched', 'validated', 'rejected', 'error']),
-  suggestions: z.object({
-    composer: z.string().optional(),
+  letra: z.string().optional(),
+  compositorEditado: z.string().optional(),
+  fonteValidada: z.enum(['musicbrainz', 'ai-inferred', 'manual']).optional(),
+  
+  // Sugestão
+  sugestao: z.object({
+    compositor: z.string().optional(),
+    artista: z.string().optional(),
     album: z.string().optional(),
-    year: z.number().optional(),
-    confidence: z.number().min(0).max(100).optional(),
-    source: z.string().optional(),
+    ano: z.string().optional(),
+    fonte: z.enum(['musicbrainz', 'ai-inferred', 'not-found']),
+    confianca: z.number().min(0).max(100),
+    detalhes: z.string().optional(),
   }).optional(),
-  error: z.string().optional(),
 });
 
 export const EnrichmentMetricsSchema = z.object({
@@ -30,7 +40,7 @@ export const EnrichmentMetricsSchema = z.object({
   rejectedSongs: z.number().int().min(0),
   errorCount: z.number().int().min(0),
   averageConfidence: z.number().min(0).max(100).optional(),
-  totalProcessingTime: z.number().int().min(0),
+  totalProcessingTime: z.number().int().min(0).default(0),
   averageTimePerSong: z.number().min(0).optional(),
 });
 
