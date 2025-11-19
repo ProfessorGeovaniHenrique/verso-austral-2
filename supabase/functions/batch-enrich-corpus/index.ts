@@ -24,37 +24,6 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const url = new URL(req.url);
-    
-    // GET /batch-enrich-corpus?jobId=xxx - Status do job
-    if (req.method === 'GET') {
-      const jobId = url.searchParams.get('jobId');
-      if (!jobId) {
-        return new Response(
-          JSON.stringify({ error: 'jobId é obrigatório' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const { data: job, error } = await supabase
-        .from('enrichment_jobs')
-        .select('*')
-        .eq('id', jobId)
-        .single();
-
-      if (error) {
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      return new Response(
-        JSON.stringify(job),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     // POST /batch-enrich-corpus - Iniciar job
     if (req.method === 'POST') {
       const authHeader = req.headers.get('Authorization');

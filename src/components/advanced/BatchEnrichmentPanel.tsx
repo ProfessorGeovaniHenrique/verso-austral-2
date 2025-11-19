@@ -40,13 +40,14 @@ export function BatchEnrichmentPanel({ corpusType }: BatchEnrichmentPanelProps) 
 
     const pollInterval = setInterval(async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('batch-enrich-corpus', {
-          method: 'GET',
-          body: { jobId: job.id }
-        });
+        const { data, error } = await supabase
+          .from('enrichment_jobs')
+          .select('*')
+          .eq('id', job.id)
+          .single();
 
         if (!error && data) {
-          setJob(data);
+          setJob(data as EnrichmentJob);
           
           if (data.status === 'completed') {
             toast.success('Enriquecimento concluído!');
@@ -85,7 +86,13 @@ export function BatchEnrichmentPanel({ corpusType }: BatchEnrichmentPanelProps) 
       });
 
       if (error) {
+        console.error('Edge Function error:', error);
         toast.error(`Erro ao iniciar enriquecimento: ${error.message}`);
+        return;
+      }
+
+      if (!data || !data.jobId) {
+        toast.error('Resposta inválida da Edge Function');
         return;
       }
 
@@ -109,7 +116,7 @@ export function BatchEnrichmentPanel({ corpusType }: BatchEnrichmentPanelProps) 
       toast.success('Enriquecimento iniciado! O processamento está em andamento.');
     } catch (error) {
       console.error('Erro ao iniciar:', error);
-      toast.error('Erro ao iniciar enriquecimento');
+      toast.error(`Erro ao iniciar enriquecimento: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
     } finally {
       setIsStarting(false);
     }
