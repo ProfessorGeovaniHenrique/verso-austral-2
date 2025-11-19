@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 
@@ -16,6 +18,15 @@ interface SendInviteRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('send-invite-email', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -168,4 +179,4 @@ const handler = async (req: Request): Promise<Response> => {
   }
 };
 
-serve(handler);
+serve(withInstrumentation('send-invite-email', handler));

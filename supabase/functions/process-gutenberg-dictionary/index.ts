@@ -3,6 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry } from "../_shared/retry.ts";
 import { validateGutenbergFile, logValidationResult } from "../_shared/validation.ts";
 import { logJobStart, logJobProgress, logJobComplete, logJobError } from "../_shared/logging.ts";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -336,7 +338,16 @@ async function processInBackground(jobId: string, verbetes: string[]) {
   }
 }
 
-serve(async (req) => {
+serve(withInstrumentation('process-gutenberg-dictionary', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('process-gutenberg-dictionary', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -412,4 +423,4 @@ serve(async (req) => {
       }
     );
   }
-});
+}));

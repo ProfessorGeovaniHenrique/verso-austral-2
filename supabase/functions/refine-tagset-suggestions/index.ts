@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,7 +36,16 @@ interface AIRefinedSuggestion {
   }>;
 }
 
-serve(async (req) => {
+serve(withInstrumentation('refine-tagset-suggestions', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('refine-tagset-suggestions', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -196,4 +207,4 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
       }
     );
   }
-});
+}));

@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -163,7 +165,16 @@ interface SyncResult {
   dataHash?: string;
 }
 
-serve(async (req) => {
+serve(withInstrumentation('sync-construction-log', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('sync-construction-log', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
@@ -216,7 +227,7 @@ serve(async (req) => {
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
-});
+}));
 
 async function generateHash(data: string): Promise<string> {
   const encoder = new TextEncoder();

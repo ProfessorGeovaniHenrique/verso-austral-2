@@ -10,13 +10,24 @@ import { checkRateLimit, RateLimitPresets, createRateLimitHeaders } from "../_sh
 import { withCircuitBreaker, CircuitBreakerPresets } from "../_shared/circuit-breaker.ts";
 import { withSupabaseRetry } from "../_shared/retry.ts";
 import { withTimeout, Timeouts } from "../_shared/timeout.ts";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-serve(async (req) => {
+serve(withInstrumentation('cancel-dictionary-job', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('cancel-dictionary-job', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -164,4 +175,4 @@ serve(async (req) => {
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-});
+}));

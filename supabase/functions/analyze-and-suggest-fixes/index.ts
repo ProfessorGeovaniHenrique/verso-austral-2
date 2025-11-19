@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { withInstrumentation } from "../_shared/instrumentation.ts";
+import { createHealthCheck } from "../_shared/health-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,7 +49,16 @@ interface CodeSnapshot {
   };
 }
 
-serve(async (req) => {
+serve(withInstrumentation('analyze-and-suggest-fixes', async (req) => {
+  // Health check endpoint
+  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+    const health = await createHealthCheck('analyze-and-suggest-fixes', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -441,7 +452,7 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
-});
+}));
 
 function getPrioritySeverity(priority: number): 'Crítico' | 'Alto' | 'Médio' | 'Baixo' {
   if (priority === 1) return 'Crítico';
