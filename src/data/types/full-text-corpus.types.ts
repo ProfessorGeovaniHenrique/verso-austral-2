@@ -7,9 +7,11 @@ import { CorpusType } from './corpus-tools.types';
 
 export interface SongMetadata {
   artista: string;
+  compositor?: string;      // NEW - Composer name
   album: string;
   musica: string;
   ano?: string;
+  fonte?: 'manual' | 'musicbrainz' | 'ai-inferred' | 'original'; // NEW - Data source
 }
 
 export interface SongEntry {

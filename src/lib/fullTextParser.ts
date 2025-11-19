@@ -35,8 +35,13 @@ export function parseFullTextCorpus(
     // Parse metadata (first two lines)
     const [artistaAlbum, tituloAno, ...letrasLinhas] = linhas;
     
-    // Extract artist and album
-    const artistaAlbumParts = artistaAlbum.split(' - ');
+    // Extract artist, composer, and album
+    // Format: "Artista (Compositor: Nome) - Album" or "Artista - Album"
+    const compositorMatch = artistaAlbum.match(/\(Compositor:\s*([^)]+)\)/);
+    const compositor = compositorMatch ? compositorMatch[1].trim() : undefined;
+    
+    const artistaAlbumClean = artistaAlbum.replace(/\s*\(Compositor:[^)]+\)\s*/, '');
+    const artistaAlbumParts = artistaAlbumClean.split(' - ');
     const artista = artistaAlbumParts[0]?.trim() || 'Desconhecido';
     const album = artistaAlbumParts[1]?.trim() || '';
     
@@ -47,9 +52,11 @@ export function parseFullTextCorpus(
     
     const metadata: SongMetadata = {
       artista,
+      compositor,
       album,
       musica,
-      ano
+      ano,
+      fonte: compositor ? 'manual' : 'original'
     };
     
     // Process lyrics

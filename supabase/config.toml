@@ -34,6 +34,11 @@ verify_jwt = false
 # Motivo: Cálculo de métricas iniciado pelo sistema
 # Proteção: Usa service role key, não depende de JWT de usuário
 
+[functions.enrich-corpus-metadata]
+verify_jwt = true
+# Motivo: Requer autenticação para enriquecimento de metadados
+# Proteção: Apenas usuários autenticados podem enriquecer corpus
+
 # Funções protegidas por JWT (padrão)
 # send-invite-email: Requer JWT + verificação de role admin
 # Outras funções não listadas usam verify_jwt = true por padrão
