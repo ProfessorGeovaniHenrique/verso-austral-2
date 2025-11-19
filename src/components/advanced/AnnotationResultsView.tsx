@@ -19,6 +19,13 @@ interface AnnotatedWord {
   contexto_esquerdo: string | null;
   contexto_direito: string | null;
   lema: string | null;
+  insignias_culturais?: string[];
+  freq_study_corpus?: number;
+  freq_reference_corpus?: number;
+  ll_score?: number;
+  mi_score?: number;
+  is_cultural_marker?: boolean;
+  significance_level?: string;
 }
 
 interface SemanticTag {
@@ -79,10 +86,14 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
       (filterProsody === 'positive' && (word.prosody ?? 0) > 0) ||
       (filterProsody === 'negative' && (word.prosody ?? 0) < 0) ||
       (filterProsody === 'neutral' && word.prosody === 0);
+    const matchesMarkers = 
+      filterMarkers === 'all' ||
+      (filterMarkers === 'markers' && word.is_cultural_marker) ||
+      (filterMarkers === 'high' && word.significance_level === 'Alta');
     const matchesSearch = searchTerm === '' || 
       word.palavra.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesDomain && matchesProsody && matchesSearch;
+    return matchesDomain && matchesProsody && matchesMarkers && matchesSearch;
   });
 
   const getProsodyIcon = (prosody: number | null) => {
@@ -166,6 +177,17 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
               <SelectItem value="negative">Negativa (-1 a -3)</SelectItem>
             </SelectContent>
           </Select>
+
+          <Select value={filterMarkers} onValueChange={setFilterMarkers}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Marcadores" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as palavras</SelectItem>
+              <SelectItem value="markers">🏆 Apenas Marcadores</SelectItem>
+              <SelectItem value="high">Alta Significância</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <ScrollArea className="h-[500px] rounded-md border">
@@ -210,6 +232,43 @@ export function AnnotationResultsView({ jobId }: AnnotationResultsViewProps) {
                     )}
                   </div>
                 </div>
+
+                {/* Métricas Comparativas */}
+                {word.ll_score !== null && word.ll_score !== undefined && (
+                  <div className="mt-3 pt-3 border-t space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground mb-2">
+                      📊 Análise Comparativa
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">LL Score:</span>
+                        <span className="font-mono font-medium">{word.ll_score.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">MI Score:</span>
+                        <span className="font-mono font-medium">{word.mi_score?.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-muted-foreground">Freq CE / CR:</span>
+                        <span className="font-mono">{word.freq_study_corpus} / {word.freq_reference_corpus}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {word.is_cultural_marker && (
+                        <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
+                          🏆 Marcador Cultural
+                        </Badge>
+                      )}
+                      {word.significance_level && (
+                        <Badge variant={word.significance_level === 'Alta' ? 'default' : 'secondary'}>
+                          {word.significance_level} Significância
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                )}
               </Card>
             ))}
           </div>

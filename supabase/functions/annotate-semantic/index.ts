@@ -51,12 +51,17 @@ function classifyProperName(word: string): string {
 }
 
 interface AnnotationRequest {
-  corpus_type: 'gaucho' | 'nordestino' | 'marenco-verso';
+  corpus_type: 'gaucho' | 'nordestino';
   custom_text?: string;
   artist_filter?: string;
   start_line?: number;
   end_line?: number;
   demo_mode?: boolean;
+  reference_corpus?: {
+    corpus_type: 'gaucho' | 'nordestino';
+    artist_filter?: string;
+    size_ratio?: number;
+  };
 }
 
 interface CorpusWord {
@@ -211,16 +216,46 @@ async function loadCorpusFile(corpusType: string): Promise<string> {
   return text;
 }
 
+// ============ FUNÇÕES ESTATÍSTICAS PARA ANÁLISE COMPARATIVA ============
+function calculateLogLikelihood(o1: number, n1: number, o2: number, n2: number): number {
+  const e1 = n1 * (o1 + o2) / (n1 + n2);
+  const e2 = n2 * (o1 + o2) / (n1 + n2);
+  const ll = 2 * ((o1 > 0 ? o1 * Math.log(o1 / e1) : 0) + (o2 > 0 ? o2 * Math.log(o2 / e2) : 0));
+  return ll;
+}
+
+function calculateMutualInformation(o1: number, n1: number, o2: number, n2: number): number {
+  const p1 = o1 / n1;
+  const pTotal = (o1 + o2) / (n1 + n2);
+  if (p1 === 0 || pTotal === 0) return 0;
+  return Math.log2(p1 / pTotal);
+}
+
+function interpretLL(ll: number): 'Alta' | 'Média' | 'Baixa' {
+  if (ll > 15.13) return 'Alta';
+  if (ll > 6.63) return 'Média';
+  return 'Baixa';
+}
+
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Validação de entrada
 function validateRequest(data: any): AnnotationRequest {
   if (!data || typeof data !== 'object') {
     throw new Error('Payload inválido');
   }
   
-  const { corpus_type, custom_text, artist_filter, start_line, end_line } = data;
+  const { corpus_type, custom_text, artist_filter, start_line, end_line, reference_corpus } = data;
   
-  if (!corpus_type || !['gaucho', 'nordestino', 'marenco-verso'].includes(corpus_type)) {
-    throw new Error('corpus_type deve ser: gaucho, nordestino ou marenco-verso');
+  if (!corpus_type || !['gaucho', 'nordestino'].includes(corpus_type)) {
+    throw new Error('corpus_type deve ser: gaucho ou nordestino');
   }
   
   if (custom_text !== undefined && (typeof custom_text !== 'string' || custom_text.length > 1000000)) {
@@ -242,8 +277,34 @@ function validateRequest(data: any): AnnotationRequest {
   if (start_line && end_line && start_line > end_line) {
     throw new Error('start_line deve ser menor que end_line');
   }
+
+  // Validar reference_corpus se fornecido
+  if (reference_corpus !== undefined) {
+    if (typeof reference_corpus !== 'object' || reference_corpus === null) {
+      throw new Error('reference_corpus deve ser um objeto');
+    }
+
+    if (!reference_corpus.corpus_type || !['gaucho', 'nordestino'].includes(reference_corpus.corpus_type)) {
+      throw new Error('reference_corpus.corpus_type deve ser: gaucho ou nordestino');
+    }
+
+    if (reference_corpus.artist_filter !== undefined && typeof reference_corpus.artist_filter !== 'string') {
+      throw new Error('reference_corpus.artist_filter deve ser string');
+    }
+
+    if (reference_corpus.size_ratio !== undefined) {
+      if (typeof reference_corpus.size_ratio !== 'number' || reference_corpus.size_ratio < 0.1 || reference_corpus.size_ratio > 5.0) {
+        throw new Error('reference_corpus.size_ratio deve estar entre 0.1 e 5.0');
+      }
+    }
+
+    // Impedir CE = CR quando ambos são completos (sem filtros de artista)
+    if (!artist_filter && !reference_corpus.artist_filter && corpus_type === reference_corpus.corpus_type) {
+      throw new Error('Corpus de estudo e referência não podem ser iguais quando ambos são completos');
+    }
+  }
   
-  return { corpus_type, custom_text, artist_filter, start_line, end_line };
+  return { corpus_type, custom_text, artist_filter, start_line, end_line, reference_corpus };
 }
 
 serve(async (req) => {
@@ -332,7 +393,7 @@ serve(async (req) => {
     });
     
     const validatedRequest = validateRequest(rawBody);
-    const { corpus_type, custom_text, artist_filter, start_line, end_line } = validatedRequest;
+    const { corpus_type, custom_text, artist_filter, start_line, end_line, reference_corpus } = validatedRequest;
     
     // VERIFICAR DEMO_MODE ANTES DE QUALQUER COISA
     const demo_mode = rawBody.demo_mode === true || rawBody.demo_mode === 'true';
@@ -480,7 +541,7 @@ serve(async (req) => {
 
     // @ts-ignore
     EdgeRuntime.waitUntil(
-      processCorpusWithAI(job.id, corpus_type, supabaseUrl, supabaseServiceKey, custom_text, artist_filter, start_line, end_line)
+      processCorpusWithAI(job.id, corpus_type, supabaseUrl, supabaseServiceKey, custom_text, artist_filter, start_line, end_line, reference_corpus)
     );
 
     // Registrar log de debug de sucesso
@@ -560,7 +621,8 @@ async function processCorpusWithAI(
   customText?: string,
   artistFilter?: string,
   startLine?: number,
-  endLine?: number
+  endLine?: number,
+  referenceCorpus?: { corpus_type: string; artist_filter?: string; size_ratio?: number }
 ) {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -605,13 +667,70 @@ async function processCorpusWithAI(
 
     console.log(`[processCorpusWithAI] Total de palavras a processar: ${words.length}`);
 
-    // Atualizar job com total de palavras
+    // ============ ANÁLISE COMPARATIVA: CARREGAR CORPUS DE REFERÊNCIA ============
+    let refWords: CorpusWord[] = [];
+    let studyFreqMap: Map<string, number> = new Map();
+    let refFreqMap: Map<string, number> = new Map();
+    let culturalMarkersCount = 0;
+
+    if (referenceCorpus) {
+      console.log(`[processCorpusWithAI] 🔄 Carregando corpus de referência: ${referenceCorpus.corpus_type}`, {
+        artist_filter: referenceCorpus.artist_filter,
+        size_ratio: referenceCorpus.size_ratio || 1.0
+      });
+
+      try {
+        const refCorpusText = await loadCorpusFile(referenceCorpus.corpus_type);
+        const parsedRefCorpus = parseRealCorpus(refCorpusText, referenceCorpus.artist_filter);
+        
+        // Aplicar balanceamento por amostragem aleatória (Fisher-Yates shuffle)
+        const sizeRatio = referenceCorpus.size_ratio || 1.0;
+        const targetSize = Math.floor(words.length * sizeRatio);
+        refWords = shuffleArray(parsedRefCorpus).slice(0, targetSize);
+
+        console.log(`[processCorpusWithAI] ✅ Corpus de referência carregado:`, {
+          total_parsed: parsedRefCorpus.length,
+          target_size: targetSize,
+          final_size: refWords.length,
+          ratio_applied: sizeRatio
+        });
+
+        // Calcular mapas de frequência
+        words.forEach(w => {
+          const key = w.palavra.toLowerCase();
+          studyFreqMap.set(key, (studyFreqMap.get(key) || 0) + 1);
+        });
+
+        refWords.forEach(w => {
+          const key = w.palavra.toLowerCase();
+          refFreqMap.set(key, (refFreqMap.get(key) || 0) + 1);
+        });
+
+        console.log(`[processCorpusWithAI] 📊 Frequências calculadas:`, {
+          study_unique_words: studyFreqMap.size,
+          ref_unique_words: refFreqMap.size,
+          study_total_tokens: words.length,
+          ref_total_tokens: refWords.length
+        });
+
+      } catch (error) {
+        console.error(`[processCorpusWithAI] ❌ Erro ao carregar corpus de referência:`, error);
+        // Continuar sem análise comparativa
+      }
+    }
+
+    // Atualizar job com total de palavras e metadata de referência
     await supabase
       .from('annotation_jobs')
       .update({
         total_palavras: words.length,
         palavras_processadas: 0,
-        palavras_anotadas: 0
+        palavras_anotadas: 0,
+        study_corpus_size: words.length,
+        reference_corpus_size: refWords.length > 0 ? refWords.length : null,
+        reference_corpus_type: referenceCorpus?.corpus_type || null,
+        reference_artist_filter: referenceCorpus?.artist_filter || null,
+        size_ratio: referenceCorpus?.size_ratio || null
       })
       .eq('id', jobId);
 
@@ -669,13 +788,39 @@ async function processCorpusWithAI(
         });
       }
 
-      // Fase 3: Processar insígnias e montar registros finais
+      // Fase 3: Processar insígnias e montar registros finais com análise comparativa
       const annotationsWithInsignias = await Promise.all(
         batch.map(async (word, idx) => {
           const ann = preAnnotations[idx];
           if (!ann) return null;
 
           const insignias = await inferCulturalInsignias(word.palavra, corpusType, supabase);
+          
+          // ============ CÁLCULO DE MÉTRICAS COMPARATIVAS ============
+          const palavraLower = word.palavra.toLowerCase();
+          const freqCE = studyFreqMap.get(palavraLower) || 0;
+          const freqCR = refFreqMap.get(palavraLower) || 0;
+
+          let llScore = null;
+          let miScore = null;
+          let isCulturalMarker = false;
+          let significanceLevel = null;
+
+          if (refWords.length > 0 && freqCE > 0) {
+            const n1 = words.length;
+            const n2 = refWords.length;
+            
+            llScore = calculateLogLikelihood(freqCE, n1, freqCR, n2);
+            miScore = calculateMutualInformation(freqCE, n1, freqCR, n2);
+            significanceLevel = interpretLL(llScore);
+            
+            // Marcador cultural: LL > 6.63 (p < 0.01) && MI > 1.0 && freq_CE > freq_CR
+            isCulturalMarker = llScore > 6.63 && miScore > 1.0 && freqCE > freqCR;
+            
+            if (isCulturalMarker) {
+              culturalMarkersCount++;
+            }
+          }
           
           return {
             job_id: jobId,
@@ -691,6 +836,12 @@ async function processCorpusWithAI(
             contexto_direito: word.contexto_direito,
             posicao_no_corpus: word.posicao_no_corpus,
             insignias_culturais: insignias,
+            freq_study_corpus: freqCE,
+            freq_reference_corpus: freqCR,
+            ll_score: llScore,
+            mi_score: miScore,
+            is_cultural_marker: isCulturalMarker,
+            significance_level: significanceLevel,
             metadata: {
               artista: word.artista,
               musica: word.musica,
@@ -873,7 +1024,7 @@ async function inferCulturalInsignias(
   const insignias: string[] = [];
   
   // Insígnia primária baseada no corpus
-  if (corpusType === 'gaucho' || corpusType === 'marenco-verso') {
+  if (corpusType === 'gaucho') {
     insignias.push('Gaúcho');
   } else if (corpusType === 'nordestino') {
     insignias.push('Nordestino');
