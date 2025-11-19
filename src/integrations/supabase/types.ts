@@ -1715,6 +1715,15 @@ export type Database = {
     }
     Functions: {
       calculate_tagset_hierarchy: { Args: never; Returns: undefined }
+      cancel_job_atomic: {
+        Args: { p_job_id: string; p_reason: string; p_user_id: string }
+        Returns: {
+          forced: boolean
+          job_status: string
+          message: string
+          success: boolean
+        }[]
+      }
       generate_invite_key: { Args: never; Returns: string }
       get_users_with_roles: {
         Args: never

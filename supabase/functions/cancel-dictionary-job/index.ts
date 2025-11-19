@@ -1,6 +1,6 @@
 /**
- * ✅ FASE 3 - BLOCO 1: Edge Function de Cancelamento de Jobs
- * Permite interromper importações em andamento com confirmação e logging
+ * ✅ FASE 3 - BLOCO 1 + SPRINT 1: Edge Function de Cancelamento com Advisory Locks
+ * Usa função SQL atômica para prevenir race conditions em cancelamentos simultâneos
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -14,7 +14,6 @@ const corsHeaders = {
 interface CancelRequest {
   jobId: string;
   reason: string;
-  cleanupData?: boolean;
 }
 
 serve(async (req) => {
@@ -42,7 +41,7 @@ serve(async (req) => {
       throw new Error("Não autenticado");
     }
 
-    const { jobId, reason, cleanupData = false } = await req.json() as CancelRequest;
+    const { jobId, reason } = await req.json() as CancelRequest;
 
     // Validação
     if (!jobId || !reason || reason.trim().length < 5) {
@@ -51,131 +50,54 @@ serve(async (req) => {
 
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  🛑 CANCELAMENTO SOLICITADO                               
+║  🛑 CANCELAMENTO SOLICITADO (ATOMIC)                      
 ║  📋 Job ID: ${jobId.substring(0, 8)}...
 ║  👤 Usuário: ${user.email}
 ║  📝 Motivo: ${reason}
-║  🧹 Cleanup: ${cleanupData ? 'SIM' : 'NÃO'}
+║  🔒 Usando Advisory Lock
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
-    // 1️⃣ Buscar o job
-    const { data: job, error: fetchError } = await supabaseClient
-      .from('dictionary_import_jobs')
-      .select('*')
-      .eq('id', jobId)
-      .single();
+    // 🔒 Chamar função SQL atômica com advisory lock
+    // Previne race conditions em cancelamentos simultâneos
+    const { data, error: rpcError } = await supabaseClient
+      .rpc('cancel_job_atomic', {
+        p_job_id: jobId,
+        p_user_id: user.id,
+        p_reason: reason
+      });
 
-    if (fetchError || !job) {
-      throw new Error('Job não encontrado');
+    if (rpcError) {
+      console.error(`❌ Erro na função atômica: ${rpcError.message}`);
+      throw rpcError;
     }
 
-    // Verificar se job pode ser cancelado
-    if (!['iniciado', 'processando', 'pendente'].includes(job.status)) {
-      throw new Error(`Job não pode ser cancelado (status: ${job.status})`);
+    if (!data || data.length === 0) {
+      throw new Error('Nenhum resultado retornado da função de cancelamento');
     }
 
-    console.log(`✅ Job encontrado: ${job.tipo_dicionario} (status: ${job.status})`);
+    const result = data[0];
 
-    // 2️⃣ Sinalizar cancelamento
-    const { error: updateError } = await supabaseClient
-      .from('dictionary_import_jobs')
-      .update({
-        is_cancelling: true,
-        cancellation_reason: reason,
-        cancelled_by: user.id,
-        atualizado_em: new Date().toISOString()
-      })
-      .eq('id', jobId);
-
-    if (updateError) throw updateError;
-
-    console.log(`🏴 Flag is_cancelling definido. Aguardando edge function detectar...`);
-
-    // 3️⃣ Aguardar até 10 segundos para a edge function detectar e parar
-    let attempts = 0;
-    let jobCancelled = false;
-
-    while (attempts < 20 && !jobCancelled) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      const { data: updatedJob } = await supabaseClient
-        .from('dictionary_import_jobs')
-        .select('status')
-        .eq('id', jobId)
-        .single();
-
-      if (updatedJob?.status === 'cancelado') {
-        jobCancelled = true;
-        console.log(`✅ Edge function detectou cancelamento e parou gracefully`);
-        break;
-      }
-      attempts++;
-    }
-
-    // 4️⃣ Se edge function não parou, forçar status
-    if (!jobCancelled) {
-      console.warn(`⚠️ Edge function não detectou cancelamento em 10s. Forçando status...`);
-      
-      const { error: forceError } = await supabaseClient
-        .from('dictionary_import_jobs')
-        .update({
-          status: 'cancelado',
-          cancelled_at: new Date().toISOString(),
-          tempo_fim: new Date().toISOString(),
-          erro_mensagem: 'Job cancelado manualmente pelo usuário'
-        })
-        .eq('id', jobId);
-
-      if (forceError) throw forceError;
-      console.log(`✅ Status forçado para 'cancelado'`);
-    }
-
-    // 5️⃣ Limpar dados parciais se solicitado
-    let deletedEntries = 0;
-    if (cleanupData) {
-      console.log(`🧹 Limpando dados parciais do job ${jobId}...`);
-      
-      // Determinar tabela baseado no tipo de dicionário
-      let tableName = 'dialectal_lexicon';
-      if (job.tipo_dicionario.toLowerCase().includes('gutenberg')) {
-        tableName = 'gutenberg_lexicon';
-      } else if (job.tipo_dicionario.toLowerCase().includes('houaiss')) {
-        tableName = 'lexical_synonyms';
-      } else if (job.tipo_dicionario.toLowerCase().includes('unesp')) {
-        tableName = 'lexical_definitions';
-      }
-
-      // Tentar deletar por metadata (assumindo que alguns jobs armazenam job_id)
-      const { data: deletedData, error: deleteError } = await supabaseClient
-        .from(tableName)
-        .delete()
-        .filter('metadata->job_id', 'eq', jobId)
-        .select();
-
-      if (!deleteError && deletedData && deletedData.length > 0) {
-        deletedEntries = deletedData.length;
-        console.log(`✅ ${deletedEntries} entradas removidas de ${tableName}`);
-      } else {
-        console.log(`ℹ️ Nenhuma entrada encontrada com job_id na metadata`);
-      }
+    if (!result.success) {
+      throw new Error(result.message || 'Falha ao cancelar job');
     }
 
     console.log(`
 ╔═══════════════════════════════════════════════════════════╗
-║  ✅ JOB CANCELADO COM SUCESSO                             
-║  📊 Entradas removidas: ${deletedEntries}
-║  ⏱️  Tempo de processamento: ${jobCancelled ? '<10s' : '10s (forçado)'}
+║  ✅ JOB CANCELADO COM SUCESSO (ATOMIC)                    
+║  📊 Status: ${result.job_status}
+║  ⏱️  Tipo: ${result.forced ? 'FORÇADO após timeout' : 'GRACEFUL'}
+║  💬 Mensagem: ${result.message}
 ╚═══════════════════════════════════════════════════════════╝
 `);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Job cancelado com sucesso',
-        deletedEntries,
+        message: result.message,
         jobId,
-        forcedCancellation: !jobCancelled
+        jobStatus: result.job_status,
+        forcedCancellation: result.forced
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

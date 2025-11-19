@@ -3,7 +3,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { XCircle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -16,7 +15,6 @@ interface CancelJobDialogProps {
 
 export function CancelJobDialog({ jobId, jobType, onCancelled }: CancelJobDialogProps) {
   const [reason, setReason] = useState('');
-  const [cleanupData, setCleanupData] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
 
@@ -28,16 +26,13 @@ export function CancelJobDialog({ jobId, jobType, onCancelled }: CancelJobDialog
 
     setIsCancelling(true);
     try {
-      const { data, error } = await supabase.functions.invoke('cancel-dictionary-job', {
-        body: { jobId, reason: reason.trim(), cleanupData }
+      const { error } = await supabase.functions.invoke('cancel-dictionary-job', {
+        body: { jobId, reason: reason.trim() }
       });
 
       if (error) throw error;
 
-      toast.success('Job cancelado com sucesso!');
-      if (data?.deletedEntries > 0) {
-        toast.info(`${data.deletedEntries} entradas parciais removidas`);
-      }
+      toast.success('Job cancelado com sucesso usando transação atômica!');
 
       setIsOpen(false);
       setReason('');
@@ -84,23 +79,10 @@ export function CancelJobDialog({ jobId, jobType, onCancelled }: CancelJobDialog
             <p className="text-xs text-muted-foreground">
               Mínimo de 5 caracteres
             </p>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <Label htmlFor="cleanup" className="text-sm">
-              Limpar dados parciais já inseridos?
-            </Label>
-            <Switch
-              id="cleanup"
-              checked={cleanupData}
-              onCheckedChange={setCleanupData}
-            />
-          </div>
-          {cleanupData && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
-              ⚠️ Todos os verbetes inseridos até agora serão removidos do banco de dados
+            <p className="text-xs text-primary/70 mt-2">
+              🔒 Cancelamento usa advisory locks para prevenir race conditions
             </p>
-          )}
+          </div>
         </div>
 
         <AlertDialogFooter>
