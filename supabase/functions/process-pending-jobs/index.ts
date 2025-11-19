@@ -1,124 +1,164 @@
 /**
- * Processador agendado de jobs de anotação pendentes
- * Executa via pg_cron a cada minuto para garantir processamento
- * mesmo se EdgeRuntime.waitUntil falhar
+ * Edge Function: process-pending-jobs
+ *
+ * - Busca jobs com status 'pending' (limit configurável)
+ * - Marca job como 'processing' (optimistic lock) antes de processar
+ * - Invoca a função 'annotate-semantic' passando job_id para processamento
+ * - Em caso de erro, marca job como 'erro' e salva erro_mensagem
+ * - Retorna um resumo JSON
+ *
+ * Segurança:
+ * - Usa SUPABASE_SERVICE_ROLE_KEY (NUNCA expor no frontend)
+ * - Recomenda-se implantar e agendar esta função no ambiente de staging/production
+ *
+ * Observação:
+ * - A função 'annotate-semantic' deve aceitar payload contendo job_id para processar um job existente
+ *   (ou ajuste a invocação conforme sua implementação).
  */
-
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-Deno.serve(async (req) => {
-  const requestId = crypto.randomUUID();
-  
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
+const MAX_JOBS_PER_RUN = Number(Deno.env.get("PPJ_MAX_JOBS") || 5);
+const INVOKE_TIMEOUT_MS = Number(Deno.env.get("PPJ_INVOKE_TIMEOUT_MS") || 60_000);
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    console.log(`[${requestId}] 🔄 Iniciando processamento de jobs pendentes`);
+  const requestId = crypto.randomUUID();
+  console.log(`[${requestId}] process-pending-jobs invoked`);
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error(`[${requestId}] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY`);
+      return new Response(JSON.stringify({ error: "Missing env SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar jobs pendentes (máximo 5 por execução)
+    // Buscar jobs pendentes (ordenados por criação)
     const { data: pendingJobs, error: fetchError } = await supabase
-      .from('annotation_jobs')
-      .select('*')
-      .eq('status', 'pendente')
-      .order('tempo_inicio', { ascending: true })
-      .limit(5);
+      .from("annotation_jobs")
+      .select("*")
+      .eq("status", "pending")
+      .order("tempo_inicio", { ascending: true })
+      .limit(MAX_JOBS_PER_RUN);
 
     if (fetchError) {
-      console.error(`[${requestId}] Erro ao buscar jobs pendentes:`, fetchError);
-      throw fetchError;
+      console.error(`[${requestId}] Error fetching pending jobs:`, fetchError);
+      return new Response(JSON.stringify({ error: fetchError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (!pendingJobs || pendingJobs.length === 0) {
-      console.log(`[${requestId}] ✅ Nenhum job pendente encontrado`);
-      return new Response(
-        JSON.stringify({ message: 'Nenhum job pendente', processed: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      console.log(`[${requestId}] No pending jobs`);
+      return new Response(JSON.stringify({ message: "No pending jobs", processed: 0 }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    console.log(`[${requestId}] 📋 ${pendingJobs.length} job(s) pendente(s) encontrado(s)`);
+    console.log(`[${requestId}] Found ${pendingJobs.length} pending job(s)`);
 
-    // Processar cada job invocando a função annotate-semantic
-    const results = [];
+    const results: Array<{ job_id: any; success: boolean; error?: string }> = [];
+
     for (const job of pendingJobs) {
+      const jobId = job.id;
+      console.log(`[${requestId}] Attempting to lock job ${jobId}`);
+
+      // Optimistic lock: transition pending -> processing
+      const { data: updated, error: updateErr } = await supabase
+        .from("annotation_jobs")
+        .update({ status: "processing", tempo_inicio: job.tempo_inicio || new Date().toISOString() })
+        .eq("id", jobId)
+        .eq("status", "pending")
+        .select()
+        .single();
+
+      if (updateErr || !updated) {
+        console.warn(`[${requestId}] Could not lock job ${jobId}:`, updateErr?.message || "already claimed");
+        results.push({ job_id: jobId, success: false, error: updateErr?.message || "lock_failed" });
+        continue;
+      }
+
+      console.log(`[${requestId}] Locked job ${jobId}, invoking annotate-semantic`);
+
       try {
-        console.log(`[${requestId}] 🚀 Processando job ${job.id}`);
+        // Payload enviado para o processor (a função annotate-semantic deve suportar job_id)
+        const invokePayload = {
+          corpus_type: job.corpus_type,
+          demo_mode: job.demo_mode === true || job.demo_mode === "true",
+          custom_text: job.custom_text || null,
+          artist_filter: job.artist_filter || null,
+          start_line: job.start_line ?? null,
+          end_line: job.end_line ?? null,
+          reference_corpus: job.reference_corpus || null,
+          job_id: jobId,
+        };
 
-        // Marcar como processando
-        await supabase
-          .from('annotation_jobs')
-          .update({ status: 'processando' })
-          .eq('id', job.id);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), INVOKE_TIMEOUT_MS);
 
-        // Invocar função de anotação
-        const { data: invokeData, error: invokeError } = await supabase.functions.invoke(
-          'annotate-semantic',
-          {
-            body: {
-              corpus_type: job.corpus_type,
-              demo_mode: job.demo_mode,
-              custom_text: job.custom_text,
-              reference_corpus: job.reference_corpus,
-              job_id: job.id, // Passar job_id para não criar novo
-            },
-          }
-        );
+        const invokeResponse = await supabase.functions.invoke("annotate-semantic", {
+          body: invokePayload,
+          signal: controller.signal,
+        });
 
-        if (invokeError) {
-          console.error(`[${requestId}] Erro ao invocar annotate-semantic para job ${job.id}:`, invokeError);
-          
-          // Marcar como erro
+        clearTimeout(timeout);
+
+        if (invokeResponse.error) {
+          console.error(`[${requestId}] Invocation error for job ${jobId}:`, invokeResponse.error);
           await supabase
-            .from('annotation_jobs')
-            .update({ 
-              status: 'erro',
-              erro_mensagem: invokeError.message,
-              tempo_fim: new Date().toISOString()
+            .from("annotation_jobs")
+            .update({
+              status: "erro",
+              erro_mensagem: String(invokeResponse.error.message || invokeResponse.error),
+              tempo_fim: new Date().toISOString(),
             })
-            .eq('id', job.id);
+            .eq("id", jobId);
 
-          results.push({ job_id: job.id, success: false, error: invokeError.message });
+          results.push({ job_id: jobId, success: false, error: String(invokeResponse.error.message || invokeResponse.error) });
         } else {
-          console.log(`[${requestId}] ✅ Job ${job.id} processado com sucesso`);
-          results.push({ job_id: job.id, success: true });
+          console.log(`[${requestId}] Invocation success for job ${jobId}`);
+          results.push({ job_id: jobId, success: true });
         }
-      } catch (error) {
-        console.error(`[${requestId}] Erro ao processar job ${job.id}:`, error);
-        results.push({ job_id: job.id, success: false, error: (error as Error).message });
+      } catch (err) {
+        const msg = ((err && (err as Error).message) || String(err)) as string;
+        console.error(`[${requestId}] Fatal error invoking job ${jobId}:`, msg);
+        await supabase
+          .from("annotation_jobs")
+          .update({
+            status: "erro",
+            erro_mensagem: msg,
+            tempo_fim: new Date().toISOString(),
+          })
+          .eq("id", jobId);
+
+        results.push({ job_id: jobId, success: false, error: msg });
       }
     }
 
-    console.log(`[${requestId}] ✅ Processamento concluído: ${results.length} job(s)`);
-
-    return new Response(
-      JSON.stringify({ 
-        message: 'Jobs processados',
-        processed: results.length,
-        results 
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+    console.log(`[${requestId}] Processing completed; results:`, results);
+    return new Response(JSON.stringify({ message: "Jobs processed", processed: results.length, results }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error(`[${requestId}] Erro fatal no processador de jobs:`, error);
-    
-    return new Response(
-      JSON.stringify({ error: (error as Error).message }),
-      { 
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
+    console.error(`[${requestId}] Unhandled error:`, error);
+    return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });

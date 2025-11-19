@@ -452,6 +452,30 @@ serve(async (req) => {
     
     // Parsing e logging do body recebido
     const rawBody = await req.json();
+    
+    // === SNIPPET: Support job_id invocations from process-pending-jobs ===
+    if (rawBody && rawBody.job_id) {
+      // Called as processor invocation — process existing job directly
+      const jobId = rawBody.job_id;
+      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      // run processing in background to avoid blocking request (but return immediately)
+      // @ts-ignore
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            await processCorpusWithAI(jobId, rawBody.corpus_type || 'gaucho', Deno.env.get('SUPABASE_URL')!, supabaseServiceKey, rawBody.custom_text, rawBody.artist_filter, rawBody.start_line, rawBody.end_line, rawBody.reference_corpus);
+          } catch (e) {
+            console.error('[annotate-semantic] Error processing job invoked by process-pending-jobs:', e);
+            const sup = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey);
+            const errorMsg = (e && (e as Error).message) || String(e);
+            await sup.from('annotation_jobs').update({ status: 'erro', erro_mensagem: errorMsg, tempo_fim: new Date().toISOString() }).eq('id', jobId);
+          }
+        })()
+      );
+      return new Response(JSON.stringify({ message: 'Processing scheduled', job_id: jobId }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+    // === END SNIPPET ===
+    
     const requestStartTime = Date.now();
     const requestId = crypto.randomUUID();
     

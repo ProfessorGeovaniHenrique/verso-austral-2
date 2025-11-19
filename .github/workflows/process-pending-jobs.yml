@@ -1,0 +1,25 @@
+name: process-pending-jobs
+
+on:
+  schedule:
+    - cron: '*/1 * * * *' # every minute
+  workflow_dispatch:
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke process-pending-jobs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -e
+          echo "Invoking process-pending-jobs at $(date -u)"
+          resp=$(curl -s -X POST "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/process-pending-jobs" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' )
+          echo "Response:"
+          echo "$resp" | jq .
