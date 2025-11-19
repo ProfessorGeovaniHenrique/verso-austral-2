@@ -6,8 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const BATCH_SIZE = 200; // ✅ OTIMIZADO: Era 50, agora 200 (4x mais rápido)
-const UPDATE_FREQUENCY = 10; // ✅ OTIMIZADO: Atualizar progresso a cada 10 batches
+const BATCH_SIZE = 500; // ✅ FASE 3: Otimizado de 200 para 500 (priorizar velocidade)
+const UPDATE_FREQUENCY = 10; // Atualizar progresso a cada 10 batches
+const TIMEOUT_MS = 90000; // ✅ FASE 3: Padronizado para 90s
 
 interface ProcessRequest {
   fileContent: string;
@@ -57,52 +58,101 @@ function inferCategorias(verbete: string, definicoes: any[], contextos: any): st
   return Array.from(categorias);
 }
 
+/**
+ * ✅ FASE 2: Parser melhorado com regex mais robusto
+ * Suporta múltiplas variações de formato do Dialectal Volume II
+ */
 function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
   try {
-    // ✅ IMPROVED: More flexible regex for Volume II format variations
-    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT)\s?\)\s+([^-–\n]+?)(?:\s*[-–]\s*|\n)(.+)$/s;
-    const match = verbeteRaw.match(headerRegex);
+    // Limpar espaços extras e normalizar separadores
+    const cleanText = verbeteRaw.trim().replace(/\s+/g, ' ').replace(/[-–—]/g, '-');
+    
+    // ✅ FASE 2: Regex principal melhorado para aceitar mais variações
+    // Formato: PALAVRA (ORIGEM) POS MARCADORES - Definição
+    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+?)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT|PORT)\s?\)\s+([^-]+?)(?:\s+-\s+|\n)(.+)$/s;
+    const match = cleanText.match(headerRegex);
     
     if (!match) {
-      // ✅ FALLBACK: Try alternative format (some entries have different structure)
-      console.log(`⚠️ Regex primário falhou. Tentando formato alternativo para: ${verbeteRaw.substring(0, 50)}...`);
+      // ✅ FASE 2: Fallback 1 - Formato mais simples sem marcadores
+      const simpleRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+?)\s+\((BRAS|PLAT|CAST|QUER|PORT)\s?\)\s+(.+)$/s;
+      const simpleMatch = cleanText.match(simpleRegex);
       
-      const altRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+)\s+\(([^)]+)\)\s+(.+)$/s;
-      const altMatch = verbeteRaw.match(altRegex);
-      
-      if (!altMatch) {
-        console.error(`❌ Parse falhou completamente para verbete: ${verbeteRaw.substring(0, 100)}`);
-        return null;
+      if (simpleMatch) {
+        const [_, verbete, origem, restoConteudo] = simpleMatch;
+        
+        // Tentar extrair POS do resto do conteúdo
+        const posMatch = restoConteudo.match(/^(S\.m\.|S\.f\.|Adj\.|V\.|Adv\.|Tr\.dir\.|Int\.)\s+(.+)$/i);
+        const pos = posMatch ? posMatch[1] : null;
+        const definicao = posMatch ? posMatch[2] : restoConteudo;
+        
+        return {
+          verbete: verbete.trim(),
+          verbete_normalizado: normalizeWord(verbete),
+          origem_primaria: origem.replace(/\s/g, ''),
+          classe_gramatical: pos,
+          marcacao_temporal: null,
+          frequencia_uso: null,
+          definicoes: [{ texto: definicao.trim(), acepcao: 1 }],
+          remissoes: [],
+          contextos_culturais: {},
+          categorias_tematicas: [],
+          volume_fonte: volumeNum,
+          pagina_fonte: null,
+          confianca_extracao: 0.75,
+          validado_humanamente: false,
+          variantes: [],
+          sinonimos: [],
+          termos_espanhol: [],
+          influencia_platina: origem === 'PLAT',
+          origem_regionalista: [origem]
+        };
       }
       
-      // Parse with fallback format
-      const [_, verbete, origemBruta, restoConteudo] = altMatch;
-      const origem = origemBruta.includes('BRAS') ? 'BRAS' : (origemBruta.includes('PLAT') ? 'PLAT' : 'BRAS');
+      // ✅ FASE 2: Fallback 2 - Formato ainda mais simples (última tentativa)
+      console.log(`⚠️ Tentando último fallback para: ${verbeteRaw.substring(0, 80)}...`);
       
-      return {
-        verbete: verbete.trim(),
-        verbete_normalizado: normalizeWord(verbete),
-        origem_primaria: origem,
-        classe_gramatical: null,
-        marcacao_temporal: null,
-        frequencia_uso: null,
-        definicoes: [{ texto: restoConteudo.trim(), acepcao: 1 }],
-        remissoes: [],
-        contextos_culturais: { autores_citados: [], regioes_mencionadas: [], notas: [] },
-        categorias_tematicas: [],
-        volume_fonte: volumeNum,
-        confianca_extracao: 0.60, // Lower confidence for fallback parsing
-      };
+      const lastResortRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+?)\s+(.+)$/s;
+      const lastMatch = cleanText.match(lastResortRegex);
+      
+      if (lastMatch) {
+        const [_, verbete, conteudo] = lastMatch;
+        
+        return {
+          verbete: verbete.trim(),
+          verbete_normalizado: normalizeWord(verbete),
+          origem_primaria: 'BRAS',
+          classe_gramatical: null,
+          marcacao_temporal: null,
+          frequencia_uso: null,
+          definicoes: [{ texto: conteudo.trim(), acepcao: 1 }],
+          remissoes: [],
+          contextos_culturais: {},
+          categorias_tematicas: [],
+          volume_fonte: volumeNum,
+          pagina_fonte: null,
+          confianca_extracao: 0.60,
+          validado_humanamente: false,
+          variantes: [],
+          sinonimos: [],
+          termos_espanhol: [],
+          influencia_platina: false,
+          origem_regionalista: ['BRAS']
+        };
+      }
+      
+      console.error(`❌ Parse falhou completamente para: ${verbeteRaw.substring(0, 100)}`);
+      return null;
     }
     
+    // Parse com match bem-sucedido
     const [_, verbete, origem, classeGramBruta, restoDefinicao] = match;
     const classeGram = classeGramBruta.replace(/\b(ANT|DES|BRAS|PLAT)\b/g, '').trim();
     const temANT = /\bANT\b/.test(classeGramBruta);
     const temDES = /\bDES\b/.test(classeGramBruta);
     const marcacao_temporal = temANT && temDES ? 'ANT/DES' : (temANT ? 'ANT' : (temDES ? 'DES' : null));
     const freqMatch = restoDefinicao.match(/\[(r\/us|m\/us|n\/d)\]/);
-    const definicoesBrutas = restoDefinicao.split('//').map(d => d.trim()).filter(d => d.length > 0);
-    const definicoes = definicoesBrutas.map((def, idx) => ({
+    const definicoesBrutas = restoDefinicao.split('//').map((d: string) => d.trim()).filter((d: string) => d.length > 0);
+    const definicoes = definicoesBrutas.map((def: string, idx: number) => ({
       texto: def.replace(/\[(r\/us|m\/us|n\/d)\]/g, '').trim(),
       acepcao: idx + 1
     }));
@@ -115,7 +165,6 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
     const contextos_culturais = { autores_citados: [], regioes_mencionadas: [], notas: [] };
     const categorias = inferCategorias(verbete, definicoes, contextos_culturais);
     
-    // ✅ CRITICAL FIX: Ensure volume_fonte is ALWAYS set
     const result = {
       verbete: verbete.trim(),
       verbete_normalizado: normalizeWord(verbete),
@@ -127,9 +176,15 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
       remissoes: remissoes.length > 0 ? remissoes : null,
       contextos_culturais,
       categorias_tematicas: categorias.length > 0 ? categorias : null,
-      volume_fonte: volumeNum, // ✅ CRITICAL: Store just "I" or "II", not "Volume I"
+      volume_fonte: volumeNum,
+      pagina_fonte: null,
       confianca_extracao: 0.95,
-      validado_humanamente: false
+      validado_humanamente: false,
+      variantes: [],
+      sinonimos: [],
+      termos_espanhol: [],
+      influencia_platina: origem === 'PLAT'|| origem === 'BRAS/PLAT',
+      origem_regionalista: [origem]
     };
     
     console.log(`✅ Verbete parseado: ${result.verbete} (Volume ${volumeNum})`);
