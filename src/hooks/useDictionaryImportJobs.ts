@@ -21,6 +21,27 @@ export interface DictionaryImportJob {
   criado_em: string;
   atualizado_em: string;
   offset_inicial?: number;
+  isStalled?: boolean; // Job travado (sem atualização > 5min)
+}
+
+/**
+ * Detecta se um job está travado (sem atualização > 5 minutos)
+ */
+function detectStalledJobs(jobs: DictionaryImportJob[]): DictionaryImportJob[] {
+  const now = new Date();
+  const STALLED_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
+
+  return jobs.map(job => {
+    if ((job.status === 'processando' || job.status === 'iniciado') && job.atualizado_em) {
+      const lastUpdate = new Date(job.atualizado_em);
+      const timeSinceUpdate = now.getTime() - lastUpdate.getTime();
+      
+      if (timeSinceUpdate > STALLED_THRESHOLD_MS) {
+        return { ...job, isStalled: true };
+      }
+    }
+    return { ...job, isStalled: false };
+  });
 }
 
 export function useDictionaryImportJobs(refetchInterval: number = 2000) {
@@ -35,7 +56,10 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
           .limit(20);
 
         if (error) throw error;
-        return data as DictionaryImportJob[];
+        
+        // Detectar jobs travados
+        const jobsWithStalledDetection = detectStalledJobs(data as DictionaryImportJob[]);
+        return jobsWithStalledDetection;
       }, {
         maxRetries: 5,
         baseDelay: 500,
@@ -51,7 +75,7 @@ export function useDictionaryImportJobs(refetchInterval: number = 2000) {
       const hasActiveJobs = query.state.data?.some(
         job => job.status === 'iniciado' || job.status === 'processando' || job.status === 'pendente'
       );
-      return hasActiveJobs ? refetchInterval : false;
+      return hasActiveJobs ? refetchInterval : 10000; // 2s para ativos, 10s para inativos
     },
     staleTime: 1000,
     gcTime: 5 * 60 * 1000,

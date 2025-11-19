@@ -126,7 +126,10 @@ export function DictionaryImportInterface() {
     await clearAndReimport(tipoDicionario);
   };
 
-  const getStatusIcon = (status: string | null) => {
+  const getStatusIcon = (status: string | null, isStalled?: boolean) => {
+    if (isStalled) {
+      return <AlertCircle className="h-4 w-4 text-red-500 animate-pulse" />;
+    }
     switch (status) {
       case 'iniciado': return <Clock className="h-4 w-4 text-yellow-500" />;
       case 'processando': return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
@@ -137,11 +140,36 @@ export function DictionaryImportInterface() {
   };
 
   const getStatusBadge = (job: any) => {
+    if (job.isStalled) {
+      return (
+        <Badge variant="destructive" className="animate-pulse">
+          ⚠️ Travado (sem atualização &gt; 5min)
+        </Badge>
+      );
+    }
+    
     const isIncomplete = job.status === 'concluido' && job.progresso < 100;
     if (isIncomplete) {
       return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500">Parcial ({job.progresso}%)</Badge>;
     }
-    return <Badge>{job.status}</Badge>;
+    
+    switch (job.status) {
+      case 'iniciado':
+        return <Badge variant="secondary">🔄 Iniciado</Badge>;
+      case 'processando':
+        return (
+          <Badge className="bg-blue-600">
+            <Loader2 className="w-3 h-3 mr-1 inline animate-spin" />
+            Processando
+          </Badge>
+        );
+      case 'concluido':
+        return <Badge className="bg-green-600">✅ Concluído</Badge>;
+      case 'erro':
+        return <Badge variant="destructive">❌ Erro</Badge>;
+      default:
+        return <Badge>{job.status}</Badge>;
+    }
   };
 
   return (
@@ -185,15 +213,30 @@ export function DictionaryImportInterface() {
 
       {jobs && jobs.length > 0 && (
         <div ref={resultsRef} className="space-y-4">
-          <h3 className="text-xl font-semibold">Histórico de Importações</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Histórico de Importações</h3>
+            {jobs.some(j => j.isStalled) && (
+              <Badge variant="destructive" className="animate-pulse">
+                ⚠️ {jobs.filter(j => j.isStalled).length} job(s) travado(s)
+              </Badge>
+            )}
+            {jobs.some(j => j.status === 'processando' || j.status === 'iniciado') && !jobs.some(j => j.isStalled) && (
+              <Badge variant="secondary" className="animate-pulse">
+                {jobs.filter(j => j.status === 'processando' || j.status === 'iniciado').length} ativo(s)
+              </Badge>
+            )}
+          </div>
           {jobs.map(job => {
             const isIncomplete = job.status === 'concluido' && job.progresso < 100;
             return (
-              <Card key={job.id} className={isIncomplete ? 'border-yellow-500' : ''}>
+              <Card 
+                key={job.id} 
+                className={`${isIncomplete ? 'border-yellow-500' : ''} ${job.isStalled ? 'border-destructive bg-destructive/5' : ''}`}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
-                      {getStatusIcon(job.status)}
+                      {getStatusIcon(job.status, job.isStalled)}
                       {job.tipo_dicionario}
                     </CardTitle>
                     {getStatusBadge(job)}
