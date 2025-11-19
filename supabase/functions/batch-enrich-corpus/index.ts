@@ -364,27 +364,45 @@ async function processEnrichment(
   }
 }
 
+/**
+ * Parse corpus text into song objects
+ * Formato real do corpus:
+ * Artista - Álbum Ano
+ * Titulo_Ano
+ * [letra da música]
+ * ---------------
+ */
 function parseCorpus(text: string): any[] {
   const songs: any[] = [];
-  const lines = text.split('\n');
+  const blocks = text.split('---------------').filter(b => b.trim());
   
-  for (const line of lines) {
-    // Formato: ### Artista - Música (Compositor, Ano, Álbum)
-    const match = line.match(/^###\s+(.+?)\s+-\s+(.+?)(?:\s+\(([^)]*)\))?$/);
-    if (match) {
-      const [, artista, musica, metadata = ''] = match;
-      const parts = metadata.split(',').map(p => p.trim());
-      
-      songs.push({
-        artista: artista.trim(),
-        musica: musica.trim(),
-        compositor: parts[0] || '',
-        ano: parts[1] || '',
-        album: parts[2] || ''
-      });
-    }
+  for (const block of blocks) {
+    const lines = block.trim().split('\n').filter(l => l.trim());
+    if (lines.length < 2) continue;
+    
+    // Linha 1: "Artista - Álbum Ano" ou "Artista - Álbum"
+    const line1Match = lines[0].match(/^(.+?)\s+-\s+(.+?)(\d{4})?$/);
+    if (!line1Match) continue;
+    
+    const artista = line1Match[1].trim();
+    const albumInfo = line1Match[2].trim();
+    const anoAlbum = line1Match[3] || '';
+    
+    // Linha 2: "Titulo_Ano" ou apenas "Titulo"
+    const line2Parts = lines[1].split('_');
+    const musica = line2Parts[0].trim();
+    const anoMusica = line2Parts[1] ? line2Parts[1].trim() : anoAlbum;
+    
+    songs.push({
+      artista,
+      musica,
+      compositor: '', // Sempre vazio no corpus atual - precisa enriquecimento
+      ano: anoMusica,
+      album: albumInfo
+    });
   }
   
+  console.log(`Parser identificou ${songs.length} músicas no corpus`);
   return songs;
 }
 
@@ -407,21 +425,42 @@ function generateReviewCSV(songs: any[]): string {
   return headers + rows.join('\n');
 }
 
+/**
+ * Atualiza o corpus com dados enriquecidos
+ * Mantém o formato original, apenas adicionando compositor quando encontrado
+ */
 function updateCorpusWithEnrichedData(originalText: string, enriched: any[]): string {
   let updatedText = originalText;
   
   for (const song of enriched) {
-    const oldPattern = new RegExp(
-      `###\\s+${escapeRegex(song.artista)}\\s+-\\s+${escapeRegex(song.musica)}(?:\\s+\\([^)]*\\))?`,
-      'g'
-    );
+    // Procurar pelo bloco da música usando o separador
+    const blocks = updatedText.split('---------------');
     
-    const metadata = [song.compositor, song.ano, song.album]
-      .filter(Boolean)
-      .join(', ');
+    for (let i = 0; i < blocks.length; i++) {
+      const lines = blocks[i].trim().split('\n');
+      if (lines.length < 2) continue;
+      
+      // Verificar se é o artista e música corretos
+      const line1Match = lines[0].match(/^(.+?)\s+-\s+/);
+      const line2 = lines[1].split('_')[0];
+      
+      if (line1Match && 
+          line1Match[1].trim() === song.artista && 
+          line2.trim() === song.musica) {
+        
+        // Atualizar linha 1 com compositor se encontrado
+        if (song.compositor) {
+          const anoInfo = song.ano ? ` ${song.ano}` : '';
+          lines[0] = `${song.artista} - ${song.album || song.compositor}${anoInfo}`;
+        }
+        
+        // Recompor o bloco
+        blocks[i] = lines.join('\n');
+        break;
+      }
+    }
     
-    const newHeader = `### ${song.artista} - ${song.musica} (${metadata})`;
-    updatedText = updatedText.replace(oldPattern, newHeader);
+    updatedText = blocks.join('---------------');
   }
   
   return updatedText;
