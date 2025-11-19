@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb, TrendingUp, Clock } from 'lucide-react';
+import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb, TrendingUp, Clock, Zap } from 'lucide-react';
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
@@ -20,6 +20,7 @@ import { SessionRestoreDialog } from './SessionRestoreDialog';
 import { SessionHistoryTab } from './SessionHistoryTab';
 import { RoadmapTab } from './RoadmapTab';
 import { MetadataQualityDashboard } from './MetadataQualityDashboard';
+import { BatchEnrichmentPanel } from './BatchEnrichmentPanel';
 import { useEnrichmentPersistence } from '@/hooks/useEnrichmentPersistence';
 import { useMultiTabSync } from '@/hooks/useMultiTabSync';
 import { useSaveIndicator } from '@/hooks/useSaveIndicator';
@@ -814,6 +815,10 @@ export function MetadataEnrichmentInterface() {
             <Sparkles className="h-4 w-4 mr-2" />
             Enriquecimento
           </TabsTrigger>
+          <TabsTrigger value="batch">
+            <Zap className="h-4 w-4 mr-2" />
+            Batch Automático
+          </TabsTrigger>
           <TabsTrigger value="analysis">
             <TrendingUp className="h-4 w-4 mr-2" />
             Análise
@@ -1253,6 +1258,10 @@ export function MetadataEnrichmentInterface() {
           </CardContent>
         </Card>
       )}
+        </TabsContent>
+
+        <TabsContent value="batch">
+          <BatchEnrichmentPanel corpusType={corpusType} />
         </TabsContent>
 
         <TabsContent value="history">
