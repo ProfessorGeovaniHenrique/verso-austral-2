@@ -1,6 +1,6 @@
 import { 
   Key, Users, BarChart3, Database, Sparkles,
-  BookOpen, Telescope, History, CircuitBoard
+  BookOpen, Telescope, History, CircuitBoard, Activity
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -30,6 +30,7 @@ const adminItems: NavItem[] = [
 ];
 
 const devItems: NavItem[] = [
+  { title: "Métricas Tempo Real", url: "/admin/metrics-realtime", icon: Activity },
   { title: "Developer Logs", url: "/developer-logs", icon: BookOpen },
   { title: "Galeria de Protótipos", url: "/admin/prototypes", icon: Telescope },
   { title: "Developer History", url: "/developer-history", icon: History },

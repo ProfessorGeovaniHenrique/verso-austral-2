@@ -37,6 +37,7 @@ import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
 import AdminMetadataEnrichment from "./pages/AdminMetadataEnrichment";
 import DeveloperHistory from "./pages/DeveloperHistory";
+import AdminMetricsRealtime from "./pages/AdminMetricsRealtime";
 import NotFound from "./pages/NotFound";
 import { lazy, Suspense } from "react";
 
@@ -172,6 +173,14 @@ const RouterContent = () => {
             element={
               <ProtectedRoute requiredRole="admin">
                 <DeveloperLogs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/metrics-realtime" 
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminMetricsRealtime />
               </ProtectedRoute>
             } 
           />
