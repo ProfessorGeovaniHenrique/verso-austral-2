@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +9,9 @@ import { BookOpen, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw
 import { useDictionaryImportJobs, verifyDictionaryIntegrity, clearAndReimport, resumeImport } from '@/hooks/useDictionaryImportJobs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DictionaryImportTester } from './DictionaryImportTester';
+import { NotificationSettings } from './NotificationSettings';
+import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
@@ -17,6 +20,42 @@ export function DictionaryImportInterface() {
   const [isVerifying, setIsVerifying] = useState(false);
   const { data: jobs } = useDictionaryImportJobs();
   const resultsRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
+
+  // ✅ FASE 3 - BLOCO 2: Configurações de notificações persistidas
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    () => localStorage.getItem('dict-notifications-enabled') === 'true'
+  );
+  const [soundEnabled, setSoundEnabled] = useState(
+    () => localStorage.getItem('dict-notifications-sound') === 'true'
+  );
+
+  // ✅ FASE 3 - BLOCO 2: Ativar hook de notificações em tempo real
+  useDictionaryJobNotifications({
+    enabled: notificationsEnabled,
+    soundEnabled,
+    onComplete: (jobId) => {
+      console.log('✅ Job concluído:', jobId);
+    },
+    onError: (jobId, error) => {
+      console.error('❌ Job com erro:', jobId, error);
+    },
+    onCancelled: (jobId) => {
+      console.log('🛑 Job cancelado:', jobId);
+    },
+    onStalled: (jobId) => {
+      console.warn('⚠️ Job travado:', jobId);
+    }
+  });
+
+  // ✅ FASE 3 - BLOCO 2: Persistir configurações no localStorage
+  useEffect(() => {
+    localStorage.setItem('dict-notifications-enabled', String(notificationsEnabled));
+  }, [notificationsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('dict-notifications-sound', String(soundEnabled));
+  }, [soundEnabled]);
 
   const importDialectalVolume = async (volumeNum: 'I' | 'II') => {
     const setter = volumeNum === 'I' ? setIsImportingVolI : setIsImportingVolII;
@@ -179,6 +218,14 @@ export function DictionaryImportInterface() {
           <h2 className="text-2xl font-bold">Importação de Dicionários</h2>
           <p className="text-muted-foreground">Importe e gerencie dicionários dialectais</p>
         </div>
+
+        {/* ✅ FASE 3 - BLOCO 2: Configurações de Notificações em Tempo Real */}
+        <NotificationSettings
+          enabled={notificationsEnabled}
+          soundEnabled={soundEnabled}
+          onEnabledChange={setNotificationsEnabled}
+          onSoundEnabledChange={setSoundEnabled}
+        />
 
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
