@@ -8,7 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff } from 'lucide-react';
+import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb } from 'lucide-react';
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
@@ -16,6 +16,7 @@ import { EnrichmentMetrics } from './EnrichmentMetrics';
 import { SaveIndicator } from '@/components/ui/save-indicator';
 import { SessionRestoreDialog } from './SessionRestoreDialog';
 import { SessionHistoryTab } from './SessionHistoryTab';
+import { RoadmapTab } from './RoadmapTab';
 import { useEnrichmentPersistence } from '@/hooks/useEnrichmentPersistence';
 import { useMultiTabSync } from '@/hooks/useMultiTabSync';
 import { useSaveIndicator } from '@/hooks/useSaveIndicator';
@@ -578,6 +579,10 @@ export function MetadataEnrichmentInterface() {
             <History className="h-4 w-4 mr-2" />
             Histórico
           </TabsTrigger>
+          <TabsTrigger value="roadmap">
+            <Lightbulb className="h-4 w-4 mr-2" />
+            Roadmap
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="enrich" className="space-y-6">
@@ -919,6 +924,10 @@ export function MetadataEnrichmentInterface() {
               toast.success('Sessão restaurada do histórico!');
             }
           }} />
+        </TabsContent>
+
+        <TabsContent value="roadmap">
+          <RoadmapTab />
         </TabsContent>
       </Tabs>
     </>

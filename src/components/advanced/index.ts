@@ -34,3 +34,4 @@ export { AnnotationProgressModal } from './AnnotationProgressModal';
 export { AnnotationResultsView } from './AnnotationResultsView';
 export { DualCorpusSelector } from './DualCorpusSelector';
 export { MetadataEnrichmentInterface } from './MetadataEnrichmentInterface';
+export { RoadmapTab } from './RoadmapTab';
