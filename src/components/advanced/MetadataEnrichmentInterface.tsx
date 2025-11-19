@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb } from 'lucide-react';
@@ -14,6 +15,7 @@ import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
 import { EnrichmentMetrics } from './EnrichmentMetrics';
 import { SaveIndicator } from '@/components/ui/save-indicator';
+import { StorageSourceBadge, type StorageSource } from '@/components/ui/storage-source-badge';
 import { SessionRestoreDialog } from './SessionRestoreDialog';
 import { SessionHistoryTab } from './SessionHistoryTab';
 import { RoadmapTab } from './RoadmapTab';
@@ -66,6 +68,10 @@ export function MetadataEnrichmentInterface() {
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [localSessionToRestore, setLocalSessionToRestore] = useState<EnrichmentSession | null>(null);
   const [cloudSessionToRestore, setCloudSessionToRestore] = useState<EnrichmentSession | null>(null);
+  
+  // FASE 2: Estados do fine-tuning
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
+  const [sessionLoadSource, setSessionLoadSource] = useState<StorageSource>(null);
   
   // FASE 2.1: Mutex para saveCurrentSession (prevenir race conditions)
   const saveMutexRef = useRef<boolean>(false);
