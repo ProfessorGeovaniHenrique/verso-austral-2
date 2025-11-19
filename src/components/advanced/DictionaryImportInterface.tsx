@@ -10,6 +10,8 @@ import { useDictionaryImportJobs, verifyDictionaryIntegrity, clearAndReimport, r
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DictionaryImportTester } from './DictionaryImportTester';
 import { NotificationSettings } from './NotificationSettings';
+import { CancelJobDialog } from './CancelJobDialog';
+import { CancellationHistory } from './CancellationHistory';
 import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -305,6 +307,15 @@ export function DictionaryImportInterface() {
                   )}
                   
                   <div className="flex flex-wrap gap-2">
+                    {/* ✅ FASE 3 - BLOCO 3: Botão de Cancelamento para jobs ativos */}
+                    {(job.status === 'iniciado' || job.status === 'processando') && (
+                      <CancelJobDialog
+                        jobId={job.id}
+                        jobType={job.tipo_dicionario}
+                        onCancelled={() => queryClient.invalidateQueries({ queryKey: ['dictionary-import-jobs'] })}
+                      />
+                    )}
+                    
                     {isIncomplete && (
                       <Button 
                         size="sm" 
@@ -366,6 +377,9 @@ export function DictionaryImportInterface() {
           })}
         </div>
       )}
+
+      {/* ✅ FASE 3 - BLOCO 3: Histórico de Cancelamentos */}
+      <CancellationHistory />
     </div>
   );
 }
