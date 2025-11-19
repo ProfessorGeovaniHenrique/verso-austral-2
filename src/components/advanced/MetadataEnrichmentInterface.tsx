@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb } from 'lucide-react';
+import { Download, Play, Pause, Check, X, Edit2, Sparkles, Database, History, HardDrive, Wifi, WifiOff, Lightbulb, TrendingUp, Clock } from 'lucide-react';
 import { loadFullTextCorpus } from '@/lib/fullTextParser';
 import type { CorpusType } from '@/data/types/corpus-tools.types';
 import type { SongMetadata } from '@/data/types/full-text-corpus.types';
@@ -19,6 +19,7 @@ import { StorageSourceBadge, type StorageSource } from '@/components/ui/storage-
 import { SessionRestoreDialog } from './SessionRestoreDialog';
 import { SessionHistoryTab } from './SessionHistoryTab';
 import { RoadmapTab } from './RoadmapTab';
+import { MetadataQualityDashboard } from './MetadataQualityDashboard';
 import { useEnrichmentPersistence } from '@/hooks/useEnrichmentPersistence';
 import { useMultiTabSync } from '@/hooks/useMultiTabSync';
 import { useSaveIndicator } from '@/hooks/useSaveIndicator';
@@ -27,9 +28,20 @@ import { EnrichmentSession, validateEnrichmentSession } from '@/lib/enrichmentSc
 import { saveSessionToCloud, loadSessionFromCloud, resolveConflict } from '@/services/enrichmentPersistence';
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '@/components/ui/alert-dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EnrichedSongData extends SongMetadata {
-  status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error';
+  status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error' | 'applied';
   sugestao?: {
     compositor?: string;
     artista?: string;
@@ -69,9 +81,21 @@ export function MetadataEnrichmentInterface() {
   const [localSessionToRestore, setLocalSessionToRestore] = useState<EnrichmentSession | null>(null);
   const [cloudSessionToRestore, setCloudSessionToRestore] = useState<EnrichmentSession | null>(null);
   
-  // FASE 2: Estados do fine-tuning
+  // FASE 2: Estados do fine-tuning de carregamento
   const [isLoadingSession, setIsLoadingSession] = useState(true);
   const [sessionLoadSource, setSessionLoadSource] = useState<StorageSource>(null);
+  
+  // FASES DO FINE-TUNING COMPLETO
+  // Fase 2: Seletor de quantidade e ordenação
+  const [quantityToEnrich, setQuantityToEnrich] = useState(20);
+  const [sortBy, setSortBy] = useState<'sequential' | 'alphabetical' | 'missing-composer' | 'random'>('sequential');
+  
+  // Fase 3: Aplicação ao corpus
+  const [isApplying, setIsApplying] = useState(false);
+  const [showApplyDialog, setShowApplyDialog] = useState(false);
+  
+  // Fase 4: Gestão de fila inteligente
+  const [queueFilter, setQueueFilter] = useState<'all' | 'pending' | 'enriched' | 'validated' | 'applied' | 'rejected'>('all');
   
   // FASE 2.1: Mutex para saveCurrentSession (prevenir race conditions)
   const saveMutexRef = useRef<boolean>(false);
@@ -349,61 +373,93 @@ export function MetadataEnrichmentInterface() {
     throw lastError; // All retries failed
   };
 
-  // Batch enrichment com salvamento periódico inteligente (FASE 3.1)
+  // FASE 1: Processamento Concorrente (5x mais rápido)
   const startEnrichment = async () => {
     setIsEnriching(true);
     setIsPaused(false);
     
-    const startIdx = currentIndex;
     const startTime = Date.now();
     const processedTimes: number[] = [];
     let songsSinceLastSave = 0;
-    const SAVE_INTERVAL = 5; // Salvar a cada 5 músicas
+    const SAVE_INTERVAL = 5;
+    const BATCH_SIZE = 5; // Processar 5 músicas em paralelo
     
-    for (let i = startIdx; i < songs.length && !isPaused; i++) {
-      if (songs[i].status === 'pending' && !songs[i].sugestao) {
-        setCurrentIndex(i);
-        
-        const songStartTime = Date.now();
-        await enrichSongWithRetry(songs[i], i);
-        const songTime = Date.now() - songStartTime;
-        processedTimes.push(songTime);
-        
-        songsSinceLastSave++;
-        
-        // Salvamento periódico (não-bloqueante)
-        if (songsSinceLastSave >= SAVE_INTERVAL) {
-          saveCurrentSession(); // Sem await!
-          songsSinceLastSave = 0;
-          logger.info(`💾 Checkpoint: salvamento periódico (a cada ${SAVE_INTERVAL} músicas)`);
-        }
-        
-        // Calculate metrics
-        const elapsed = Date.now() - startTime;
-        const processed = processedTimes.length;
-        const avgTime = elapsed / processed;
-        const remaining = songs.filter((s, idx) => idx > i && s.status === 'pending' && !s.sugestao).length;
-        const eta = avgTime * remaining;
-        
-        setAvgTimePerSong(avgTime);
-        setEstimatedTimeRemaining(eta);
-        setProgress(((i + 1) / songs.length) * 100);
-        
-        const totalTime = processedTimes.reduce((sum, t) => sum + t, 0);
-        setAvgProcessingTime(totalTime / processedTimes.length);
-        
-        // Rate limiting: 5 req/s (200ms delay)
-        await new Promise(resolve => setTimeout(resolve, 200));
+    // FASE 2: Obter músicas para enriquecer baseado na quantidade e ordenação
+    const songsToEnrich = getSongsToEnrich();
+    
+    // Processar em batches paralelos
+    for (let i = 0; i < songsToEnrich.length && !isPaused; i += BATCH_SIZE) {
+      const batch = songsToEnrich.slice(i, i + BATCH_SIZE);
+      const batchStartTime = Date.now();
+      
+      // Processar batch em paralelo
+      await Promise.all(
+        batch.map((song, batchIdx) => {
+          const globalIdx = songs.findIndex(s => s.artista === song.artista && s.musica === song.musica);
+          setCurrentIndex(globalIdx);
+          return enrichSongWithRetry(song, globalIdx);
+        })
+      );
+      
+      const batchTime = Date.now() - batchStartTime;
+      processedTimes.push(batchTime / batch.length); // Tempo médio por música no batch
+      
+      songsSinceLastSave += batch.length;
+      
+      // Salvamento periódico
+      if (songsSinceLastSave >= SAVE_INTERVAL) {
+        saveCurrentSession();
+        songsSinceLastSave = 0;
+        logger.info(`💾 Checkpoint: ${i + batch.length}/${songsToEnrich.length} músicas processadas`);
       }
+      
+      // Atualizar métricas
+      const elapsed = Date.now() - startTime;
+      const processed = i + batch.length;
+      const avgTime = elapsed / processed;
+      const remaining = songsToEnrich.length - processed;
+      const eta = (avgTime * remaining) / BATCH_SIZE; // Ajustado para paralelismo
+      
+      setAvgTimePerSong(avgTime);
+      setEstimatedTimeRemaining(eta);
+      setProgress((processed / songsToEnrich.length) * 100);
+      
+      const totalTime = processedTimes.reduce((sum, t) => sum + t, 0);
+      setAvgProcessingTime(totalTime / processedTimes.length);
     }
     
-    // Salvamento final (bloqueante)
     await saveCurrentSession();
-    logger.success('💾 Salvamento final concluído');
+    logger.success('💾 Enriquecimento concluído e salvo');
     
     setIsEnriching(false);
-    toast.success('Enriquecimento concluído!');
+    toast.success(`${songsToEnrich.length} músicas enriquecidas em ${((Date.now() - startTime) / 1000).toFixed(1)}s!`);
   };
+  
+  // FASE 2: Função para obter músicas a enriquecer baseado na quantidade e ordenação
+  const getSongsToEnrich = useCallback(() => {
+    let filtered = songs.filter(s => s.status === 'pending' && !s.sugestao);
+    
+    // Aplicar ordenação
+    switch (sortBy) {
+      case 'alphabetical':
+        filtered.sort((a, b) => a.musica.localeCompare(b.musica));
+        break;
+      case 'missing-composer':
+        filtered.sort((a, b) => {
+          const aHasComposer = !!a.compositor;
+          const bHasComposer = !!b.compositor;
+          if (aHasComposer === bHasComposer) return 0;
+          return aHasComposer ? 1 : -1;
+        });
+        break;
+      case 'random':
+        filtered = filtered.sort(() => Math.random() - 0.5);
+        break;
+      // 'sequential' é o padrão (sem ordenação adicional)
+    }
+    
+    return filtered.slice(0, quantityToEnrich);
+  }, [songs, sortBy, quantityToEnrich]);
 
   const pauseEnrichment = async () => {
     setIsPaused(true);
@@ -431,7 +487,84 @@ export function MetadataEnrichmentInterface() {
       
       return { ...s, status: 'rejected' as const };
     }));
-    // FASE 3.1: Removido setTimeout bloqueante
+  };
+  
+  // FASE 3: Aplicar metadados ao corpus
+  const applyToCorpus = async () => {
+    if (!user) {
+      toast.error('Você precisa estar autenticado');
+      return;
+    }
+    
+    const validatedSongs = songs.filter(s => s.status === 'validated');
+    
+    if (validatedSongs.length === 0) {
+      toast.error('Nenhuma música validada para aplicar');
+      return;
+    }
+    
+    setShowApplyDialog(true);
+  };
+  
+  const confirmApplyToCorpus = async () => {
+    setShowApplyDialog(false);
+    setIsApplying(true);
+    
+    const validatedSongs = songs.filter(s => s.status === 'validated');
+    
+    try {
+      logger.info(`🎯 Aplicando ${validatedSongs.length} metadados ao corpus ${corpusType}`);
+      
+      const { data, error } = await supabase.functions.invoke('apply-corpus-metadata', {
+        body: {
+          corpusType,
+          validatedSongs: validatedSongs.map(s => ({
+            artista: s.artista,
+            musica: s.musica,
+            compositor: s.compositor,
+            album: s.album,
+            ano: s.ano,
+            letra: s.letra,
+          })),
+          createBackup: true,
+        },
+      });
+      
+      if (error) throw error;
+      
+      logger.success(`✅ ${data.songsUpdated} metadados aplicados com sucesso!`);
+      
+      // Baixar o corpus atualizado
+      const blob = new Blob([data.updatedContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${corpusType}-completo-ATUALIZADO.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // Marcar músicas como aplicadas e remover da fila
+      setSongs(prev => prev.map(s => 
+        s.status === 'validated' 
+          ? { ...s, status: 'applied' as const }
+          : s
+      ));
+      
+      // Salvar sessão atualizada
+      await saveCurrentSession();
+      
+      toast.success(
+        `✅ ${data.songsUpdated} metadados aplicados ao corpus!\n` +
+        `${data.backupCreated ? '💾 Backup criado automaticamente\n' : ''}` +
+        `📥 Arquivo atualizado baixado`
+      );
+      
+    } catch (error) {
+      logger.error('❌ Erro ao aplicar metadados:', error);
+      toast.error('Erro ao aplicar metadados ao corpus');
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const editComposer = (index: number, value: string) => {
@@ -581,6 +714,10 @@ export function MetadataEnrichmentInterface() {
             <Sparkles className="h-4 w-4 mr-2" />
             Enriquecimento
           </TabsTrigger>
+          <TabsTrigger value="analysis">
+            <TrendingUp className="h-4 w-4 mr-2" />
+            Análise
+          </TabsTrigger>
           <TabsTrigger value="history">
             <History className="h-4 w-4 mr-2" />
             Histórico
@@ -629,11 +766,48 @@ export function MetadataEnrichmentInterface() {
               {isLoading ? 'Carregando...' : 'Carregar Corpus'}
             </Button>
           </div>
+          
+          {/* FASE 2: Seletor de Quantidade e Ordenação */}
+          {songs.length > 0 && stats.pending > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-secondary/10 rounded-lg">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Quantidade a Enriquecer</label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    min={1}
+                    max={stats.pending}
+                    value={quantityToEnrich}
+                    onChange={(e) => setQuantityToEnrich(Math.min(stats.pending, Math.max(1, parseInt(e.target.value) || 1)))}
+                    className="w-24"
+                  />
+                  <Badge variant="outline" className="self-center">
+                    de {stats.pending} pendentes
+                  </Badge>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Ordenação</label>
+                <Select value={sortBy} onValueChange={(v: any) => setSortBy(v)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sequential">Sequencial</SelectItem>
+                    <SelectItem value="alphabetical">Alfabética</SelectItem>
+                    <SelectItem value="missing-composer">Sem Compositor Primeiro</SelectItem>
+                    <SelectItem value="random">Aleatória</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
 
           {/* Stats */}
           {songs.length > 0 && (
             <>
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-6 gap-2">
                 <div className="text-center p-2 bg-secondary/20 rounded">
                   <div className="text-2xl font-bold">{stats.total}</div>
                   <div className="text-xs text-muted-foreground">Total</div>
@@ -654,6 +828,10 @@ export function MetadataEnrichmentInterface() {
                   <div className="text-2xl font-bold text-red-600">{stats.rejected}</div>
                   <div className="text-xs text-muted-foreground">Rejeitadas</div>
                 </div>
+                <div className="text-center p-2 bg-secondary/20 rounded">
+                  <div className="text-2xl font-bold text-purple-600">{songs.filter(s => s.status === 'applied').length}</div>
+                  <div className="text-xs text-muted-foreground">Aplicadas</div>
+                </div>
               </div>
 
               {/* Dashboard de Métricas */}
@@ -670,7 +848,7 @@ export function MetadataEnrichmentInterface() {
               {!isEnriching ? (
                 <Button onClick={startEnrichment} disabled={stats.pending === 0}>
                   <Play className="h-4 w-4 mr-2" />
-                  Iniciar Enriquecimento
+                  Iniciar Enriquecimento ({Math.min(quantityToEnrich, stats.pending)})
                 </Button>
               ) : (
                 <Button onClick={pauseEnrichment} variant="destructive">
@@ -695,6 +873,26 @@ export function MetadataEnrichmentInterface() {
               >
                 <Download className="h-4 w-4 mr-2" />
                 Exportar Relatório Completo
+              </Button>
+              
+              {/* FASE 3: Botão Aplicar ao Corpus */}
+              <Button 
+                onClick={applyToCorpus} 
+                variant="default"
+                disabled={stats.validated === 0 || isApplying}
+                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              >
+                {isApplying ? (
+                  <>
+                    <Clock className="h-4 w-4 mr-2 animate-spin" />
+                    Aplicando...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Aplicar ao Corpus ({stats.validated})
+                  </>
+                )}
               </Button>
             </div>
           )}
@@ -936,6 +1134,28 @@ export function MetadataEnrichmentInterface() {
           <RoadmapTab />
         </TabsContent>
       </Tabs>
+      
+      {/* FASE 3: AlertDialog para confirmar aplicação */}
+      <AlertDialog open={showApplyDialog} onOpenChange={setShowApplyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Aplicar Metadados ao Corpus?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você está prestes a atualizar <strong>{songs.filter(s => s.status === 'validated').length} músicas</strong> no corpus <strong>{corpusType}</strong>.
+              <br /><br />
+              ✅ Um backup automático será criado<br />
+              📥 O arquivo atualizado será baixado automaticamente<br />
+              🗑️ As músicas aplicadas serão removidas da fila
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmApplyToCorpus}>
+              Aplicar Metadados
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

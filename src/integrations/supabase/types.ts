@@ -641,6 +641,36 @@ export type Database = {
         }
         Relationships: []
       }
+      corpus_metadata_versions: {
+        Row: {
+          applied_by: string | null
+          content_snapshot: string
+          corpus_type: string
+          created_at: string | null
+          id: string
+          metadata_count: number
+          version_number: number
+        }
+        Insert: {
+          applied_by?: string | null
+          content_snapshot: string
+          corpus_type: string
+          created_at?: string | null
+          id?: string
+          metadata_count: number
+          version_number: number
+        }
+        Update: {
+          applied_by?: string | null
+          content_snapshot?: string
+          corpus_type?: string
+          created_at?: string | null
+          id?: string
+          metadata_count?: number
+          version_number?: number
+        }
+        Relationships: []
+      }
       dialectal_lexicon: {
         Row: {
           atualizado_em: string | null
@@ -1219,6 +1249,44 @@ export type Database = {
           sinonimos?: string[] | null
         }
         Relationships: []
+      }
+      metadata_application_history: {
+        Row: {
+          application_source: string
+          applied_by: string | null
+          backup_version_id: string | null
+          corpus_type: string
+          created_at: string | null
+          id: string
+          songs_updated: number
+        }
+        Insert: {
+          application_source: string
+          applied_by?: string | null
+          backup_version_id?: string | null
+          corpus_type: string
+          created_at?: string | null
+          id?: string
+          songs_updated: number
+        }
+        Update: {
+          application_source?: string
+          applied_by?: string | null
+          backup_version_id?: string | null
+          corpus_type?: string
+          created_at?: string | null
+          id?: string
+          songs_updated?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metadata_application_history_backup_version_id_fkey"
+            columns: ["backup_version_id"]
+            isOneToOne: false
+            referencedRelation: "corpus_metadata_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phase_metrics: {
         Row: {
