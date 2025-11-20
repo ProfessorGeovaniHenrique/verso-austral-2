@@ -12,42 +12,42 @@ interface RochaPomboEntry {
 }
 
 function parseRochaPomboLine(line: string): RochaPomboEntry | null {
-  const trimmed = line.trim();
+  // Remover numeração, espaços extras e limpar
+  const cleanLine = line
+    .replace(/^\d+\.\s*/, '') // Remove "1. ", "2. " etc
+    .trim();
+
+  // Ignorar linhas vazias ou cabeçalhos
+  if (!cleanLine || cleanLine.length < 3) return null;
+  if (cleanLine.includes('===') || cleanLine.includes('---')) return null;
+  if (cleanLine.match(/^(DICIONÁRIO|SINÔNIMOS|VOLUME|PÁGINA)/i)) return null;
+
+  // NOVO REGEX para formato: "1. PALAVRA. sinonimo1, 2. sinonimo2, 3. sinonimo3"
+  // Captura palavra principal antes do primeiro ponto, depois todos os sinônimos (com ou sem números)
+  const match = cleanLine.match(/^([A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑ][A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑ\s\-,]+?)\.\s+(.+)/);
   
-  // Ignorar linhas de metadados, cabeçalhos e linhas muito curtas
-  if (
-    !trimmed || 
-    trimmed.length < 10 ||
-    /^(\d+:|[A-Z\s]{20,}|Page \d+|ISBN|Catalogação|Biblioteca|Dados Internacionais|CIP-BRASIL|SUMÁRIO|PREFÁCIO)/.test(trimmed)
-  ) {
-    return null;
-  }
-  
-  // Dividir por " – " para separar sinônimos de explicação
-  const parts = trimmed.split(' – ');
-  const synPart = parts[0];
-  const contexto = parts.slice(1).join(' – ').trim();
-  
-  // Separar palavra principal dos sinônimos (divididos por vírgula)
-  const wordParts = synPart.split(',').map(s => s.trim()).filter(s => s);
-  
-  if (wordParts.length === 0) return null;
-  
-  // Primeira palavra é a principal (em maiúsculas)
-  const palavra = wordParts[0].toLowerCase();
-  
-  // Restante são sinônimos
-  const sinonimos = wordParts.slice(1)
-    .flatMap(s => s.split(';')) // Separar grupos por ";"
-    .map(s => s.trim().toLowerCase())
-    .filter(s => s && s.length > 1 && /^[a-záàâãéêíóôõúç\s\-]+$/i.test(s));
-  
-  // Validar entrada
-  if (!palavra || sinonimos.length === 0 || !/^[a-záàâãéêíóôõúç\s\-]+$/i.test(palavra)) {
-    return null;
-  }
-  
-  return { palavra, sinonimos, contexto: contexto || undefined };
+  if (!match) return null;
+
+  const mainWord = match[1].trim();
+  const synonymsPart = match[2];
+
+  // Remover numeração dos sinônimos: "1. palavra, 2. palavra" → "palavra, palavra"
+  const cleanSynonyms = synonymsPart.replace(/\d+\.\s*/g, '');
+
+  // Dividir sinônimos por vírgula
+  const synonyms = cleanSynonyms
+    .split(',')
+    .map(s => s.trim())
+    .filter(s => s.length > 0 && s !== mainWord);
+
+  // Validar que temos pelo menos um sinônimo
+  if (synonyms.length === 0) return null;
+
+  return {
+    palavra: mainWord,
+    sinonimos: synonyms,
+    contexto: undefined, // Novo formato não tem contexto separado
+  };
 }
 
 Deno.serve(async (req) => {

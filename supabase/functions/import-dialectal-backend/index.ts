@@ -41,8 +41,8 @@ Deno.serve(async (req) => {
 
     const { offset = 0 } = requestBody;
 
-    // Arquivo unificado - VOLI.txt contém todos os verbetes (Vol I + Vol II)
-    const GAUCHO_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLI.txt';
+    // Arquivo unificado - gaucho.txt contém todos os verbetes
+    const GAUCHO_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/gaucho.txt';
     const tipoDicionario = 'gaucho_unificado';
 
     console.log('📥 Carregando dicionário Gaúcho Unificado do GitHub...');

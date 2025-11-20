@@ -25,6 +25,7 @@ import DeveloperLogs from "./pages/DeveloperLogs";
 import AdminLexiconSetupRefactored from "./pages/AdminLexiconSetupRefactored";
 import AdminNavarroDictValidation from "./pages/AdminNavarroDictValidation";
 import AdminDictionaryValidation from "./pages/AdminDictionaryValidation";
+import AdminDictionaryImport from "./pages/AdminDictionaryImport";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
@@ -116,6 +117,14 @@ const RouterContent = () => {
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminDictionaryValidation />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/dictionary-import" 
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDictionaryImport />
               </ProtectedRoute>
             } 
           />

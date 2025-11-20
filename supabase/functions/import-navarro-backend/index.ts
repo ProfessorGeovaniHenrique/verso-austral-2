@@ -41,8 +41,8 @@ Deno.serve(async (req) => {
 
     const { offset = 0 } = requestBody;
 
-    const tipoDicionario = 'nordestino_navarro';
-    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/corpus/nordestino_navarro_2014.txt';
+    const tipoDicionario = 'navarro_nordeste_2014';
+    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/Dicion%C3%A1rio%20do%20Nordeste%20definitivo.txt';
 
     console.log(`📥 Carregando Dicionário do Nordeste (Navarro 2014) do GitHub...`);
 
