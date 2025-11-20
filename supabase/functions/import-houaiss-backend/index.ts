@@ -18,6 +18,96 @@ interface DictionaryJob {
   metadata: any;
 }
 
+/**
+ * ✅ FASE 2: Validação e Pré-processamento
+ * Detecta e remove ruído antes do processamento
+ */
+function isNoiseOrMetadata(line: string): boolean {
+  const trimmed = line.trim();
+  
+  // Linhas vazias ou muito curtas
+  if (!trimmed || trimmed.length < 3) return true;
+  
+  // Metadados de página
+  if (/^Page \d+$/i.test(trimmed)) return true;
+  
+  // Separadores
+  if (/^={10,}$/.test(trimmed)) return true;
+  
+  // Linhas que são só números ou pontuação
+  if (/^[\d\s.,;:]+$/.test(trimmed)) return true;
+  
+  // Cabeçalhos conhecidos do Houaiss
+  const headers = [
+    'Sumário', 'Chave de uso', 'Prefácio', 'Introdução',
+    'Abreviações', 'Notice', 'Created with', 'The text on',
+    'This book was', 'Internet Archive', 'HOUAISS', 'PUBLIFOLHA',
+    'Equipe Editorial', 'DinproREs', 'francisco'
+  ];
+  if (headers.some(h => trimmed.toLowerCase().includes(h.toLowerCase()))) return true;
+  
+  return false;
+}
+
+function preprocessHouaissFile(content: string): string {
+  const lines = content.split('\n');
+  const cleanedLines: string[] = [];
+  
+  for (const line of lines) {
+    // Ignorar ruído conhecido
+    if (isNoiseOrMetadata(line)) continue;
+    
+    // Normalizar espaços múltiplos
+    const normalized = line.trim().replace(/\s+/g, ' ');
+    
+    if (normalized) {
+      cleanedLines.push(normalized);
+    }
+  }
+  
+  const removedCount = lines.length - cleanedLines.length;
+  const removedPercentage = ((removedCount / lines.length) * 100).toFixed(1);
+  
+  console.log(`🧹 Pré-processamento Houaiss:
+    - Linhas originais: ${lines.length.toLocaleString()}
+    - Linhas limpas: ${cleanedLines.length.toLocaleString()}
+    - Removido: ${removedCount.toLocaleString()} (${removedPercentage}%)
+  `);
+  
+  return cleanedLines.join('\n');
+}
+
+function analyzeFileQuality(content: string): void {
+  const lines = content.split('\n');
+  const sampleSize = Math.min(1000, lines.length);
+  const sample = lines.slice(0, sampleSize);
+
+  let validEntries = 0;
+  let noisyLines = 0;
+
+  for (const line of sample) {
+    if (isNoiseOrMetadata(line)) {
+      noisyLines++;
+    } else if (line.match(/^[a-zàáâãèéêìíòóôõùúçñ\-]+\s*=?\s*«/i)) {
+      validEntries++;
+    }
+  }
+
+  const noisePercentage = (noisyLines / sampleSize) * 100;
+  const validPercentage = (validEntries / sampleSize) * 100;
+
+  console.log(`📊 Análise de qualidade do arquivo Houaiss:
+    - Amostra analisada: ${sampleSize} linhas
+    - Ruído detectado: ${noisePercentage.toFixed(1)}%
+    - Entradas válidas: ${validPercentage.toFixed(1)}%
+    - Tamanho: ${(content.length / 1024 / 1024).toFixed(2)} MB
+  `);
+
+  if (validPercentage < 20) {
+    console.warn(`⚠️ Arquivo com baixa qualidade (${validPercentage.toFixed(1)}% válido)`);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -52,8 +142,12 @@ Deno.serve(async (req) => {
       throw new Error(`Falha ao carregar arquivo do GitHub: ${fileResponse.statusText}`);
     }
 
-    const fileContent = await fileResponse.text();
-    console.log(`✅ Arquivo Houaiss carregado com sucesso: ${(fileContent.length / 1024).toFixed(2)} KB`);
+    const rawFileContent = await fileResponse.text();
+    console.log(`✅ Arquivo Houaiss carregado: ${(rawFileContent.length / 1024).toFixed(2)} KB`);
+
+    // ✅ FASE 2: Analisar qualidade e pré-processar
+    analyzeFileQuality(rawFileContent);
+    const fileContent = preprocessHouaissFile(rawFileContent);
 
     // Verificar se já existe job em andamento
     const { data: existingJobs } = await supabase
@@ -97,8 +191,8 @@ Deno.serve(async (req) => {
       console.log(`✅ Novo job criado: ${job.id}`);
     }
 
-    // Chamar a edge function de processamento
-    console.log(`🔄 Chamando process-houaiss-dictionary...`);
+    // Chamar a edge function de processamento com arquivo pré-processado
+    console.log(`🔄 Chamando process-houaiss-dictionary com arquivo limpo...`);
     const processResponse = await supabase.functions.invoke('process-houaiss-dictionary', {
       body: {
         jobId: job.id,
