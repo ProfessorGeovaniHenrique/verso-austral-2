@@ -243,19 +243,64 @@ export function DictionaryImportInterface() {
           <div className="grid gap-4 md:grid-cols-2">
             <DictionaryMetadataCard
               metadata={{
-                nome: 'Dialectal Gaúcho',
+                nome: 'Dialectal Gaúcho - Volume I',
                 fonte: 'Vocabulário Sul-Rio-Grandense',
-                edicao: 'Volumes I e II',
+                edicao: 'Volume I (A-F)',
                 ano: 1964,
                 tipo: 'dialectal',
-                esperado: 10000,
-                atual: jobs?.find(j => j.tipo_dicionario.includes('DIALECTAL'))?.verbetes_inseridos || 0,
-                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/tree/main/src/data/dictionaries',
-                descricao: 'Léxico regionalista gaúcho com termos campeiros, platinismos e expressões típicas do Rio Grande do Sul.',
-                licenca: 'Domínio Público'
+                esperado: 3500,
+                atual: jobs?.find(j => j.tipo_dicionario === 'dialectal_I')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/tree/main/public/dictionaries',
+                descricao: 'Primeira parte do léxico regionalista gaúcho com termos campeiros, platinismos e expressões típicas.',
+                licenca: 'Domínio Público',
+                customActions: (
+                  <div className="flex gap-2">
+                    <BatchValidationDialog
+                      batchSize={1000}
+                      dictionaryType="dialectal"
+                      onSuccess={() => queryClient.invalidateQueries()}
+                    />
+                    <BatchValidationDialog
+                      batchSize={10000}
+                      dictionaryType="dialectal"
+                      onSuccess={() => queryClient.invalidateQueries()}
+                    />
+                  </div>
+                )
               }}
               onImport={() => importDialectalVolume('I')}
-              isImporting={isImportingVolI || isImportingVolII}
+              isImporting={isImportingVolI}
+            />
+
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'Dialectal Gaúcho - Volume II',
+                fonte: 'Vocabulário Sul-Rio-Grandense',
+                edicao: 'Volume II (G-Z)',
+                ano: 1964,
+                tipo: 'dialectal',
+                esperado: 3500,
+                atual: jobs?.find(j => j.tipo_dicionario === 'dialectal_II')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/tree/main/public/dictionaries',
+                descricao: 'Segunda parte do léxico regionalista gaúcho com termos campeiros, platinismos e expressões típicas.',
+                licenca: 'Domínio Público',
+                customActions: (
+                  <div className="flex gap-2">
+                    <BatchValidationDialog
+                      batchSize={1000}
+                      dictionaryType="dialectal"
+                      onSuccess={() => queryClient.invalidateQueries()}
+                    />
+                    <BatchValidationDialog
+                      batchSize={10000}
+                      dictionaryType="dialectal"
+                      onSuccess={() => queryClient.invalidateQueries()}
+                    />
+                  </div>
+                )
+              }}
+              onImport={() => importDialectalVolume('II')}
+              isImporting={isImportingVolII}
             />
 
             <DictionaryMetadataCard
