@@ -22,7 +22,6 @@ export function DictionaryImportInterface() {
   const [isImportingGaucho, setIsImportingGaucho] = useState(false);
   const [isImportingGutenberg, setIsImportingGutenberg] = useState(false);
   const [isImportingRochaPombo, setIsImportingRochaPombo] = useState(false);
-  const [isImportingUnesp, setIsImportingUnesp] = useState(false);
   const [isImportingNavarro, setIsImportingNavarro] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCleaningCache, setIsCleaningCache] = useState(false);
@@ -125,26 +124,6 @@ export function DictionaryImportInterface() {
     }
   };
 
-  const importUnesp = async () => {
-    setIsImportingUnesp(true);
-    try {
-      toast.info('Iniciando importação do UNESP...');
-      
-      const { data, error } = await supabase.functions.invoke('import-unesp-backend', {
-        body: {}
-      });
-      
-      if (error) throw error;
-      
-      toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
-    } catch (error: any) {
-      toast.error(`Erro ao iniciar importação do UNESP: ${error.message}`);
-    } finally {
-      setIsImportingUnesp(false);
-    }
-  };
-
   const importNavarro = async () => {
     setIsImportingNavarro(true);
     try {
@@ -186,8 +165,6 @@ export function DictionaryImportInterface() {
       setter = setIsImportingGutenberg;
     } else if (job.tipo_dicionario === 'ROCHA_POMBO') {
       setter = setIsImportingRochaPombo;
-    } else if (job.tipo_dicionario === 'UNESP') {
-      setter = setIsImportingUnesp;
     } else if (job.tipo_dicionario === 'nordestino_navarro') {
       setter = setIsImportingNavarro;
     } else {
@@ -266,8 +243,7 @@ export function DictionaryImportInterface() {
       'dialectal_II': 'Gaúcho Vol. II (Legacy)',
       'nordestino_navarro': 'Navarro 2014',
       'GUTENBERG': 'Gutenberg',
-      'ROCHA_POMBO': 'Rocha Pombo (ABL)',
-      'UNESP': 'UNESP'
+      'ROCHA_POMBO': 'Rocha Pombo (ABL)'
     };
     return mapping[tipo] || tipo;
   };
@@ -288,10 +264,10 @@ export function DictionaryImportInterface() {
           onSoundEnabledChange={setSoundEnabled}
         />
 
-        {/* ✅ FASE 3: Metadata Cards dos Dicionários - 5 Dicionários Unificados */}
+        {/* ✅ FASE 3: Metadata Cards dos Dicionários - 4 Dicionários Unificados */}
         <div className="space-y-3">
           <h3 className="text-lg font-semibold">Dicionários Disponíveis</h3>
-          <p className="text-sm text-muted-foreground">Ordem recomendada de importação: Rocha Pombo → UNESP → Navarro → Gaúcho → Gutenberg</p>
+          <p className="text-sm text-muted-foreground">Ordem recomendada de importação: Rocha Pombo → Navarro → Gaúcho → Gutenberg</p>
           <div className="grid gap-4 md:grid-cols-2">
             {/* 1️⃣ Rocha Pombo (ABL) - Sinônimos primeiro */}
             <DictionaryMetadataCard
@@ -325,38 +301,7 @@ export function DictionaryImportInterface() {
               isImporting={isImportingRochaPombo}
             />
 
-            {/* 2️⃣ UNESP - Definições */}
-            <DictionaryMetadataCard
-              metadata={{
-                nome: 'UNESP Definições',
-                fonte: 'Universidade Estadual Paulista',
-                ano: 2023,
-                tipo: 'unesp',
-                esperado: 100000,
-                atual: jobs?.find(j => j.tipo_dicionario === 'UNESP')?.verbetes_inseridos || 0,
-                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/tree/main/src/data/dictionaries',
-                descricao: 'Definições lexicográficas acadêmicas com exemplos contextualizados e registro de uso.',
-                licenca: 'CC BY-NC-SA 4.0',
-                customActions: (
-                  <div className="flex gap-2">
-                    <BatchValidationDialog
-                      batchSize={1000}
-                      dictionaryType="unesp"
-                      onSuccess={() => queryClient.invalidateQueries()}
-                    />
-                    <BatchValidationDialog
-                      batchSize={10000}
-                      dictionaryType="unesp"
-                      onSuccess={() => queryClient.invalidateQueries()}
-                    />
-                  </div>
-                )
-              }}
-              onImport={importUnesp}
-              isImporting={isImportingUnesp}
-            />
-
-            {/* 3️⃣ Navarro 2014 - Regionalismo Nordestino */}
+            {/* 2️⃣ Navarro 2014 - Regionalismo Nordestino */}
             <DictionaryMetadataCard
               metadata={{
                 nome: 'Dicionário do Nordeste',
@@ -388,7 +333,7 @@ export function DictionaryImportInterface() {
               isImporting={isImportingNavarro}
             />
 
-            {/* 4️⃣ Gaúcho Unificado - Regionalismo Gaúcho (NOVO - substitui Vol I e II) */}
+            {/* 3️⃣ Gaúcho Unificado - Regionalismo Gaúcho (NOVO - substitui Vol I e II) */}
             <DictionaryMetadataCard
               metadata={{
                 nome: 'Gaúcho Unificado',
@@ -420,7 +365,7 @@ export function DictionaryImportInterface() {
               isImporting={isImportingGaucho}
             />
 
-            {/* 5️⃣ Gutenberg - Dicionário Geral por último */}
+            {/* 4️⃣ Gutenberg - Dicionário Geral por último */}
             <DictionaryMetadataCard
               metadata={{
                 nome: 'Dicionário Gutenberg',
@@ -616,7 +561,7 @@ export function DictionaryImportInterface() {
                           size="sm" 
                           variant="outline"
                           onClick={() => handleResume(job)}
-                          disabled={isImportingGaucho || isImportingGutenberg || isImportingRochaPombo || isImportingUnesp || isImportingNavarro}
+                          disabled={isImportingGaucho || isImportingGutenberg || isImportingRochaPombo || isImportingNavarro}
                           className="h-8 px-2 text-xs"
                         >
                           <RefreshCw className="h-3 w-3 mr-1" />

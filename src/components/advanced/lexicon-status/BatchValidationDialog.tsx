@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface BatchValidationDialogProps {
   batchSize: 100 | 1000 | 10000;
-  dictionaryType: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'unesp' | 'nordestino';
+  dictionaryType: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'nordestino';
   onSuccess?: () => void;
 }
 
@@ -63,7 +63,7 @@ export function BatchValidationDialog({ batchSize, dictionaryType, onSuccess }: 
       case 'dialectal': return 'Dialectal';
       case 'gutenberg': return 'Gutenberg';
       case 'rochaPombo': return 'Rocha Pombo';
-      case 'unesp': return 'UNESP';
+      case 'nordestino': return 'Navarro 2014';
     }
   };
 

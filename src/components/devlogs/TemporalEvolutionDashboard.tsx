@@ -30,7 +30,6 @@ export function TemporalEvolutionDashboard() {
   // Top 5 arquivos mais problemáticos (mock - seria calculado do scan_data)
   const topProblematicFiles = [
     { file: 'process-houaiss-dictionary/index.ts', issues: 3, severity: 'crítica' },
-    { file: 'process-unesp-dictionary/index.ts', issues: 2, severity: 'alta' },
     { file: 'useAnnotationJobs.ts', issues: 1, severity: 'alta' },
   ];
 

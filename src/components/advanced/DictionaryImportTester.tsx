@@ -10,16 +10,11 @@ import { Database, FileText, Loader2, CheckCircle2, XCircle, Clock } from 'lucid
 
 export function DictionaryImportTester() {
   const [isImportingHouaiss, setIsImportingHouaiss] = useState(false);
-  const [isImportingUnesp, setIsImportingUnesp] = useState(false);
   const { data: jobs, isLoading: jobsLoading } = useDictionaryImportJobs(2000);
 
   const mockHouaissData = `alegre « adj. » 1 feliz, contente: festivo, jovial > triste, melancólico
 triste « adj. » 1 que demonstra tristeza: melancólico, pesaroso > alegre, feliz
 bonito « adj. » 1 que tem beleza: belo, formoso > feio, horrível`;
-
-  const mockUnespData = `alegre adj. que expressa ou demonstra alegria [Os convidados estavam alegres; A música alegre contagiava todos] (Popular)
-
-bonito adj. que tem beleza física ou estética [O jardim estava bonito na primavera; Que bonito esse quadro!] (Informal)`;
 
   const testHouaissImport = async () => {
     setIsImportingHouaiss(true);
@@ -45,33 +40,6 @@ bonito adj. que tem beleza física ou estética [O jardim estava bonito na prima
       toast.error(`Erro: ${error.message}`);
     } finally {
       setIsImportingHouaiss(false);
-    }
-  };
-
-  const testUnespImport = async () => {
-    setIsImportingUnesp(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('process-unesp-dictionary', {
-        body: { fileContent: mockUnespData }
-      });
-
-      if (error) throw error;
-
-      if (data.jobId) {
-        toast.success(`✅ JobId retornado: ${data.jobId}`, {
-          description: data.message,
-          duration: 5000
-        });
-      } else {
-        toast.error('❌ JobId NÃO retornado no response!', {
-          description: 'Esperado: { jobId, message }',
-          duration: 5000
-        });
-      }
-    } catch (error: any) {
-      toast.error(`Erro: ${error.message}`);
-    } finally {
-      setIsImportingUnesp(false);
     }
   };
 
@@ -112,44 +80,23 @@ bonito adj. que tem beleza física ou estética [O jardim estava bonito na prima
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Button 
-              onClick={testHouaissImport} 
-              disabled={isImportingHouaiss}
-              className="w-full"
-            >
-              {isImportingHouaiss ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Testar Houaiss (3 verbetes)
-                </>
-              )}
-            </Button>
-
-            <Button 
-              onClick={testUnespImport} 
-              disabled={isImportingUnesp}
-              className="w-full"
-              variant="secondary"
-            >
-              {isImportingUnesp ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Testar UNESP (2 verbetes)
-                </>
-              )}
-            </Button>
-          </div>
+          <Button 
+            onClick={testHouaissImport} 
+            disabled={isImportingHouaiss}
+            className="w-full"
+          >
+            {isImportingHouaiss ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processando...
+              </>
+            ) : (
+              <>
+                <FileText className="mr-2 h-4 w-4" />
+                Testar Houaiss (3 verbetes)
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

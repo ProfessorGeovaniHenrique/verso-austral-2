@@ -39,9 +39,6 @@ verify_jwt = true
 [functions.import-houaiss-backend]
 verify_jwt = true
 
-[functions.import-unesp-backend]
-verify_jwt = true
-
 [functions.import-navarro-backend]
 verify_jwt = true
 # Importação do Dicionário do Nordeste (Fred Navarro 2014)
@@ -49,4 +46,3 @@ verify_jwt = true
 [functions.process-nordestino-navarro]
 verify_jwt = true
 # Processamento do Dicionário do Nordeste (Fred Navarro 2014)
-

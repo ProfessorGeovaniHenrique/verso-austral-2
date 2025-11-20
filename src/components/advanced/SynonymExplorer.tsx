@@ -162,7 +162,7 @@ export function SynonymExplorer({ palavra }: SynonymExplorerProps) {
           <TabsContent value="definitions" className="space-y-4 mt-4">
             {!definitions || definitions.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
-                Nenhuma definição encontrada no Dicionário UNESP
+                Nenhuma definição encontrada
               </p>
             ) : (
               definitions.map(def => (
