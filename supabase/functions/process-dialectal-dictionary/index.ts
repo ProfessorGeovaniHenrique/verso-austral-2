@@ -529,25 +529,127 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
 
     console.log(`[VOLUME ${volumeNum}] Recebendo ${fileContent.length} caracteres (offset: ${offsetInicial})`);
 
-    // ✅ REFATORADO: Split baseado no padrão de verbete (palavra MAIÚSCULA + marcador de origem)
-    // Isso garante que cada bloco comece exatamente onde um verbete começa
-    const verbeteDelimiter = /(?=\n[A-ZÁÀÃÉÊÍÓÔÚÇ\-]{2,}\s+\((?:BRAS|PLAT|CAST|QUER|PORT|BRAS\/PLAT|PLAT\/CAST)\))/g;
-    const allBlocks = fileContent.split(verbeteDelimiter).map(v => v.trim()).filter(v => v.length > 0);
-    
-    // ✅ REFATORADO: Filtros simplificados - apenas essenciais
-    const verbetes = allBlocks.filter(v => {
-      // Filtro 1: Mínimo 20 caracteres (verbetes dialectais são complexos)
-      if (v.length < 20) return false;
+    // 🔍 DEBUG: Análise da estrutura do arquivo
+    console.log(`🔍 DEBUG - Primeiros 500 caracteres:`);
+    console.log(fileContent.substring(0, 500));
+    console.log(`🔍 DEBUG - Estrutura de quebras:`);
+    console.log(`   - Contém \\n\\n: ${fileContent.includes('\n\n')}`);
+    console.log(`   - Contém \\r\\n: ${fileContent.includes('\r\n')}`);
+    console.log(`   - Total de \\n: ${(fileContent.match(/\n/g) || []).length}`);
+    console.log(`   - Total de caracteres: ${fileContent.length}`);
+
+    // ✅ ESTRATÉGIA CORRETA: Split com captura e reconstrução (port do Python)
+    // Passo 1: Normalizar line breaks (Windows → Unix)
+    const normalizedContent = fileContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+    // Passo 2: Split capturando o delimitador (SEM lookahead)
+    // Regex captura: "palavra MAIÚSCULA + marcador de origem"
+    const verbeteDelimiter = /\n([A-ZÁÀÃÉÊÍÓÔÚÇ\-]{2,}\s+\((?:BRAS|PLAT|CAST|QUER|PORT|BRAS\/PLAT|PLAT\/CAST)\))/g;
+    const parts = normalizedContent.split(verbeteDelimiter);
+
+    console.log(`🔍 Split resultou em ${parts.length} partes (esperado: ímpar)`);
+
+    let allBlocks: string[] = [];
+
+    if (parts.length > 3) {
+      // Split funcionou - partes estão intercaladas: [conteúdo antes, cabeçalho1, corpo1, cabeçalho2, corpo2, ...]
       
-      // Filtro 2: DEVE começar com palavra em MAIÚSCULAS seguida de marcador de origem
-      // Este é o critério definitivo de um verbete dialectal
+      // Parte 0: conteúdo antes do primeiro verbete (introdução/lixo)
+      const intro = parts[0].trim();
+      if (intro.length > 100) {
+        console.log(`📝 Ignorando ${intro.length} caracteres de introdução`);
+      }
+      
+      // Partes ímpares: cabeçalhos de verbetes
+      // Partes pares (exceto 0): corpos de verbetes
+      // Reconstruir: juntar cabeçalho + corpo
+      for (let i = 1; i < parts.length; i += 2) {
+        if (i + 1 < parts.length) {
+          const verbete = (parts[i] + parts[i + 1]).trim();
+          if (verbete.length > 0) {
+            allBlocks.push(verbete);
+          }
+        } else {
+          // Último elemento (cabeçalho sem corpo) - adicionar sozinho
+          const verbete = parts[i].trim();
+          if (verbete.length > 0) {
+            allBlocks.push(verbete);
+          }
+        }
+      }
+      
+      console.log(`✅ Split por padrão de verbete: ${allBlocks.length} blocos`);
+    } else {
+      // FALLBACK: Split não funcionou - tentar por parágrafos
+      console.warn(`⚠️ Split por padrão falhou (apenas ${parts.length} partes). Usando fallback por parágrafos.`);
+      allBlocks = normalizedContent.split(/\n{2,}/).map(v => v.trim()).filter(v => v.length > 0);
+      console.log(`⚠️ Fallback gerou ${allBlocks.length} blocos`);
+    }
+
+    // Log dos primeiros 3 blocos para validação manual
+    console.log(`📋 Primeiros 3 blocos após split:`);
+    allBlocks.slice(0, 3).forEach((bloco, i) => {
+      const primeiraLinha = bloco.split('\n')[0];
+      console.log(`   ${i + 1}. ${primeiraLinha.substring(0, 80)}...`);
+    });
+
+    // ✅ Filtros com logging de rejeições
+    const rejeitados: { index: number; razao: string; preview: string }[] = [];
+
+    const verbetes = allBlocks.filter((v, index) => {
+      // Filtro 1: Mínimo 20 caracteres
+      if (v.length < 20) {
+        if (rejeitados.length < 10) {
+          rejeitados.push({ 
+            index, 
+            razao: 'muito curto', 
+            preview: v.substring(0, 40) 
+          });
+        }
+        return false;
+      }
+      
+      // Filtro 2: Deve começar com palavra MAIÚSCULA + marcador
       const verbetePattern = /^[A-ZÁÀÃÉÊÍÓÔÚÇ\-]{2,}\s+\((?:BRAS|PLAT|CAST|QUER|PORT|BRAS\/PLAT|PLAT\/CAST)\)/;
-      if (!verbetePattern.test(v)) return false;
+      if (!verbetePattern.test(v)) {
+        if (rejeitados.length < 10) {
+          rejeitados.push({ 
+            index, 
+            razao: 'padrão de verbete não encontrado', 
+            preview: v.substring(0, 60) 
+          });
+        }
+        return false;
+      }
       
-      // Filtro 3: Remover seções introdutórias explícitas (apenas padrões principais)
-      if (/^(Prefácio|Metodologia|Introdução|PATROCÍNIO|PRODUÇÃO|FINANCIAMENTO)/i.test(v)) return false;
+      // Filtro 3: Remover seções introdutórias
+      if (/^(Prefácio|Metodologia|Introdução|PATROCÍNIO|PRODUÇÃO|FINANCIAMENTO|SUMÁRIO|ÍNDICE)/i.test(v)) {
+        if (rejeitados.length < 10) {
+          rejeitados.push({ 
+            index, 
+            razao: 'seção introdutória', 
+            preview: v.substring(0, 60) 
+          });
+        }
+        return false;
+      }
       
       return true;
+    });
+
+    // Log dos rejeitados para análise
+    if (rejeitados.length > 0) {
+      console.log(`\n❌ Primeiros ${Math.min(rejeitados.length, 10)} blocos rejeitados:`);
+      rejeitados.forEach(({ index, razao, preview }) => {
+        console.log(`   ${index}: [${razao}] "${preview}..."`);
+      });
+    }
+
+    // Log dos aceitos
+    console.log(`\n✅ Primeiros 5 verbetes ACEITOS:`);
+    verbetes.slice(0, 5).forEach((v, i) => {
+      const primeiraLinha = v.split('\n')[0];
+      console.log(`   ${i + 1}. ${primeiraLinha}`);
     });
 
     // ✅ FASE 3: Estatísticas de pré-processamento
