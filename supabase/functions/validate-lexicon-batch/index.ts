@@ -95,38 +95,59 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Atualizar entradas para validadas
+    // Helper para chunking
+    const chunkArray = <T>(array: T[], size: number): T[][] => {
+      const chunks: T[][] = [];
+      for (let i = 0; i < array.length; i += size) {
+        chunks.push(array.slice(i, i + size));
+      }
+      return chunks;
+    };
+
+    // Atualizar entradas em chunks de 100 (evita URL limit do PostgREST)
     const ids = entries.map(e => e.id);
     const updateField = dictionaryType === 'dialectal' ? 'validado_humanamente' : 'validado';
-    
+    const chunks = chunkArray(ids, 100);
+    let totalUpdated = 0;
+
     console.log(`🔄 Atualizando ${ids.length} entradas na tabela ${tableName}`);
     console.log(`📝 Campo de update: ${updateField} = true`);
-    console.log(`🆔 Primeiros 3 IDs:`, ids.slice(0, 3));
-    
-    const { data: updateData, error: updateError } = await supabase
-      .from(tableName)
-      .update({ [updateField]: true })
-      .in('id', ids)
-      .select('id');
+    console.log(`📦 Processando ${chunks.length} chunks de ~100 IDs cada`);
 
-    if (updateError) {
-      console.error('❌ Erro detalhado do update:', {
-        message: updateError.message,
-        details: updateError.details,
-        hint: updateError.hint,
-        code: updateError.code
-      });
-      throw new Error(`Erro ao atualizar entradas: ${updateError.message} (code: ${updateError.code}, details: ${updateError.details})`);
+    // Processar cada chunk sequencialmente
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      console.log(`🔄 Chunk ${i + 1}/${chunks.length}: ${chunk.length} IDs`);
+
+      const { data, error } = await supabase
+        .from(tableName)
+        .update({ [updateField]: true })
+        .in('id', chunk)
+        .select('id');
+
+      if (error) {
+        console.error(`❌ Erro no chunk ${i + 1}:`, {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Erro ao atualizar chunk ${i + 1}/${chunks.length}: ${error.message}`);
+      }
+
+      totalUpdated += data?.length || 0;
+      console.log(`✅ Chunk ${i + 1} completo: ${data?.length || 0} linhas atualizadas`);
     }
 
-    console.log(`✅ Update bem-sucedido: ${updateData?.length || 0} linhas afetadas`);
+    console.log(`✅ Total atualizado: ${totalUpdated} de ${ids.length} entradas`);
 
     console.log(`✅ ${entries.length} entradas validadas com sucesso`);
 
     return new Response(
       JSON.stringify({
-        validated: entries.length,
+        validated: totalUpdated,
         skipped: batchSize - entries.length,
+        chunks_processed: chunks.length,
         dictionaryType,
         timestamp: new Date().toISOString()
       }),
