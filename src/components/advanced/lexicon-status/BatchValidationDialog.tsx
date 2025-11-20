@@ -17,8 +17,8 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 interface BatchValidationDialogProps {
-  batchSize: 100 | 1000 | 10000;
-  dictionaryType: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'nordestino';
+  batchSize: number;
+  dictionaryType: string;
   onSuccess?: () => void;
 }
 
@@ -59,12 +59,14 @@ export function BatchValidationDialog({ batchSize, dictionaryType, onSuccess }: 
   };
 
   const getDictionaryLabel = () => {
-    switch (dictionaryType) {
-      case 'dialectal': return 'Dialectal';
-      case 'gutenberg': return 'Gutenberg';
-      case 'rochaPombo': return 'Rocha Pombo';
-      case 'nordestino': return 'Navarro 2014';
-    }
+    const labels: Record<string, string> = {
+      'dialectal': 'Gaúcho Unificado',
+      'gutenberg': 'Gutenberg',
+      'rochaPombo': 'Rocha Pombo',
+      'unesp': 'UNESP',
+      'navarro': 'Navarro 2014'
+    };
+    return labels[dictionaryType] || dictionaryType;
   };
 
   return (

@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Loader2, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, AlertCircle, Zap } from 'lucide-react';
 import { useDialectalLexicon } from '@/hooks/useDialectalLexicon';
 import { ValidationInterface } from '@/components/advanced/ValidationInterface';
+import { BatchValidationDialog } from '@/components/advanced/lexicon-status/BatchValidationDialog';
 
 export default function AdminNavarroDictValidation() {
   const [posFilter, setPosFilter] = useState<string>('all');
@@ -174,6 +175,39 @@ export default function AdminNavarroDictValidation() {
                     placeholder="Digite para buscar..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Validação Automática em Lote */}
+              <div className="pt-4 border-t mt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-5 w-5 text-amber-500" />
+                    <h4 className="font-medium">Validação Automática</h4>
+                  </div>
+                  <Badge variant="secondary" className="text-xs">
+                    Confiança ≥ 90%
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Valide múltiplas entradas automaticamente com alta confiança
+                </p>
+                <div className="flex gap-2">
+                  <BatchValidationDialog 
+                    batchSize={100} 
+                    dictionaryType="navarro"
+                    onSuccess={handleValidationSuccess}
+                  />
+                  <BatchValidationDialog 
+                    batchSize={1000} 
+                    dictionaryType="navarro"
+                    onSuccess={handleValidationSuccess}
+                  />
+                  <BatchValidationDialog 
+                    batchSize={10000} 
+                    dictionaryType="navarro"
+                    onSuccess={handleValidationSuccess}
                   />
                 </div>
               </div>
