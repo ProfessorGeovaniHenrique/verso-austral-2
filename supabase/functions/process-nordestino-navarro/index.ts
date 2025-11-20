@@ -7,7 +7,19 @@ const corsHeaders = {
 };
 
 interface ProcessRequest {
+  fileContent?: string;
   offsetInicial?: number;
+}
+
+interface ParsedEntry {
+  verbete: string;
+  verbete_normalizado: string;
+  classe_gramatical: string | null;
+  origem_regionalista: string[];
+  variantes: string[];
+  definicoes: string[];
+  volume_fonte: string;
+  confianca_extracao: number;
 }
 
 serve(async (req) => {
@@ -20,7 +32,7 @@ serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
-    const { offsetInicial = 0 }: ProcessRequest = await req.json();
+    const { fileContent, offsetInicial = 0 }: ProcessRequest = await req.json();
     
     console.log(`📚 Iniciando importação do Dicionário do Nordeste (Navarro 2014) - offset: ${offsetInicial}`);
 
@@ -33,7 +45,7 @@ serve(async (req) => {
         offset_inicial: offsetInicial,
         metadata: {
           fonte: 'Dicionário do Nordeste - Fred Navarro - 2014',
-          url_github: 'https://github.com/your-repo/corpus/nordestino_navarro_2014.txt'
+          url_github: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/blob/main/public/dictionaries/Dicion%C3%A1rio%20do%20Nordeste%20--%20Fred%20Navarro%20--%202014.txt'
         }
       })
       .select()
@@ -44,17 +56,21 @@ serve(async (req) => {
     const jobId = job.id;
     console.log(`✅ Job criado: ${jobId}`);
 
-    // Buscar arquivo do GitHub
-    const githubUrl = 'https://raw.githubusercontent.com/your-repo/main/public/corpus/nordestino_navarro_2014.txt';
-    console.log(`📥 Buscando arquivo: ${githubUrl}`);
+    // Usar conteúdo do body ou buscar do GitHub
+    let content: string;
+    if (fileContent) {
+      console.log('📄 Usando conteúdo fornecido no body');
+      content = fileContent;
+    } else {
+      console.log('📥 Buscando arquivo do GitHub...');
+      const githubUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/Dicion%C3%A1rio%20do%20Nordeste%20--%20Fred%20Navarro%20--%202014.txt';
+      const response = await fetch(githubUrl);
+      if (!response.ok) throw new Error(`Erro ao buscar arquivo: ${response.statusText}`);
+      content = await response.text();
+    }
     
-    const response = await fetch(githubUrl);
-    if (!response.ok) throw new Error(`Erro ao buscar arquivo: ${response.statusText}`);
-    
-    const content = await response.text();
-    const lines = content.split('\n');
-    
-    console.log(`📊 Total de linhas: ${lines.length}`);
+    const lines = content.split('\n').filter(line => line.trim());
+    console.log(`📊 Total de linhas processadas: ${lines.length}`);
 
     // Processar em background
     processInBackground(supabase, jobId, lines, offsetInicial);
@@ -77,6 +93,115 @@ serve(async (req) => {
   }
 });
 
+function parseNordestinoEntry(line: string): ParsedEntry[] {
+  const entries: ParsedEntry[] = [];
+  
+  // Padrões de classe gramatical
+  const posPatterns = ['s.m.', 's.f.', 's.2g.', 'v.t.d.', 'v.t.i.', 'v.int.', 'v.pron.', 'adj.', 'adv.', 'loc.', 'fraseol.'];
+  
+  // Split por bullet point
+  const parts = line.split('•').map(p => p.trim()).filter(p => p);
+  
+  if (parts.length < 2) return entries;
+  
+  const verbete = parts[0].trim();
+  
+  // Detectar múltiplas acepções (padrão: "1 • s.m.", "2 • adj.")
+  const acepcoes: Array<{pos: string, regioes: string[], variantes: string[], definicoes: string[]}> = [];
+  let currentAcepcao = '';
+  
+  for (let i = 1; i < parts.length; i++) {
+    const part = parts[i];
+    
+    // Verificar se é início de nova acepção (número seguido de POS)
+    const acepcaoMatch = part.match(/^(\d+)\s+(.+)/);
+    if (acepcaoMatch) {
+      if (currentAcepcao) {
+        acepcoes.push(parseAcepcao(currentAcepcao));
+      }
+      currentAcepcao = acepcaoMatch[2];
+    } else {
+      currentAcepcao += ' • ' + part;
+    }
+  }
+  
+  // Adicionar última acepção
+  if (currentAcepcao) {
+    acepcoes.push(parseAcepcao(currentAcepcao));
+  }
+  
+  // Se não há acepções numeradas, tratar como única
+  if (acepcoes.length === 0) {
+    acepcoes.push(parseAcepcao(parts.slice(1).join(' • ')));
+  }
+  
+  // Criar uma entrada para cada acepção
+  for (const acepcao of acepcoes) {
+    entries.push({
+      verbete,
+      verbete_normalizado: verbete.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
+      classe_gramatical: acepcao.pos,
+      origem_regionalista: acepcao.regioes,
+      variantes: acepcao.variantes,
+      definicoes: acepcao.definicoes,
+      volume_fonte: 'Navarro 2014',
+      confianca_extracao: 0.92
+    });
+  }
+  
+  return entries;
+}
+
+function parseAcepcao(content: string): {pos: string, regioes: string[], variantes: string[], definicoes: string[]} {
+  const posPatterns = ['s.m.', 's.f.', 's.2g.', 'v.t.d.', 'v.t.i.', 'v.int.', 'v.pron.', 'adj.', 'adv.', 'loc.', 'fraseol.'];
+  let pos: string | null = null;
+  const regioes: string[] = [];
+  const variantes: string[] = [];
+  const definicoes: string[] = [];
+  
+  const parts = content.split('•').map(p => p.trim()).filter(p => p);
+  
+  for (const part of parts) {
+    // Detectar POS
+    if (!pos && posPatterns.some(p => part.toLowerCase().includes(p))) {
+      pos = part;
+      continue;
+    }
+    
+    // Detectar região (códigos de estado: ba, ce, pe, etc. ou n.e.)
+    if (part.match(/^[a-z]{2}$/i)) {
+      regioes.push(part.toUpperCase());
+      continue;
+    }
+    
+    if (part.toLowerCase() === 'n.e.') {
+      regioes.push('NORDESTE');
+      continue;
+    }
+    
+    // Detectar variantes (entre parênteses ou var.)
+    if (part.includes('(') || part.toLowerCase().includes('var.')) {
+      variantes.push(part);
+      continue;
+    }
+    
+    // Resto é definição
+    definicoes.push(part);
+  }
+  
+  // Se não encontrou região, assumir NORDESTE
+  if (regioes.length === 0) {
+    regioes.push('NORDESTE');
+  }
+  
+  return {
+    pos: pos || 's.m.',
+    regioes,
+    variantes,
+    definicoes
+  };
+}
+
 async function processInBackground(supabase: any, jobId: string, lines: string[], offsetInicial: number) {
   const BATCH_SIZE = 100;
   let processados = offsetInicial;
@@ -92,72 +217,19 @@ async function processInBackground(supabase: any, jobId: string, lines: string[]
       })
       .eq('id', jobId);
 
-    // Parse verbetes
     const verbetes: any[] = [];
-    let currentEntry: any = null;
-    let inDefinition = false;
-    let definitionText = '';
 
     for (let i = offsetInicial; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Ignorar linhas vazias e metadados iniciais
-      if (!line || line.startsWith('TÍTULO:') || line.startsWith('AUTOR:') || 
-          line.startsWith('====') || line.startsWith('Créditos') ||
-          line.match(/^\d+:$/)) {
-        continue;
-      }
+      if (!line || !line.includes('•')) continue;
 
-      // Remove número da linha se existir
-      const cleanLine = line.replace(/^\d+:\s*/, '');
-      
-      // Nova entrada - linha com bullet points (•)
-      if (cleanLine.includes('•')) {
-        // Salvar entrada anterior
-        if (currentEntry && definitionText) {
-          currentEntry.definicoes = [definitionText.trim()];
-          verbetes.push(currentEntry);
-        }
-
-        // Parse nova entrada
-        const parts = cleanLine.split('•').map(p => p.trim()).filter(p => p);
-        
-        if (parts.length >= 2) {
-          const verbete = parts[0];
-          const classeParts = parts.slice(1);
-          
-          // Extrair classe gramatical
-          const posPatterns = ['s.m.', 's.f.', 's.2g.', 'v.t.d.', 'v.t.i.', 'v.int.', 'v.pron.', 'adj.', 'adv.', 'loc.', 'fraseol.'];
-          let classe = null;
-          let regiao = null;
-          
-          for (const part of classeParts) {
-            if (posPatterns.some(p => part.includes(p))) {
-              classe = part;
-            } else if (part.match(/^[a-z]{2}$/)) {
-              // Códigos de estado: ba, ce, pe, etc.
-              regiao = part.toUpperCase();
-            } else if (part === 'n.e.') {
-              regiao = 'NORDESTE';
-            }
-          }
-
-          currentEntry = {
-            verbete,
-            verbete_normalizado: verbete.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
-            classe_gramatical: classe,
-            origem_regionalista: regiao ? [regiao] : ['NORDESTE'],
-            volume_fonte: 'Navarro 2014',
-            confianca_extracao: 0.95
-          };
-
-          // Iniciar captura de definição
-          definitionText = parts.slice(2).join(' ');
-          inDefinition = true;
-        }
-      } else if (inDefinition && currentEntry) {
-        // Continuar capturando definição
-        definitionText += ' ' + cleanLine;
+      try {
+        const parsedEntries = parseNordestinoEntry(line);
+        verbetes.push(...parsedEntries);
+      } catch (parseError) {
+        console.error(`Erro ao parsear linha ${i}:`, line, parseError);
+        erros++;
       }
 
       // Processar em lotes

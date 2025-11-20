@@ -149,19 +149,35 @@ export function DictionaryImportInterface() {
 
   const importNavarro = async () => {
     setIsImportingNavarro(true);
+    
     try {
-      toast.info('Iniciando importação do Dicionário do Nordeste (Navarro)...');
+      // Buscar arquivo local
+      const response = await fetch('/corpus/nordestino_navarro_2014.txt');
+      if (!response.ok) throw new Error('Arquivo não encontrado');
       
+      const rawContent = await response.text();
+      
+      // Pré-processar conteúdo
+      const { preprocessNordestinoNavarro } = await import('@/lib/preprocessNordestinoNavarro');
+      const processedContent = preprocessNordestinoNavarro(rawContent);
+      
+      console.log('📊 Conteúdo pré-processado:', processedContent.split('\n').length, 'linhas');
+
+      // Enviar para edge function
       const { data, error } = await supabase.functions.invoke('process-nordestino-navarro', {
-        body: {}
+        body: { 
+          fileContent: processedContent,
+          offsetInicial: 0 
+        }
       });
 
       if (error) throw error;
-      
-      toast.success(`Importação do Navarro iniciada! Job ID: ${data.jobId}`);
+
+      toast.success('Importação do Dicionário do Nordeste iniciada!');
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
     } catch (error: any) {
-      toast.error(`Erro ao iniciar importação do Navarro: ${error.message}`);
+      console.error('Erro ao importar Navarro:', error);
+      toast.error(`Erro: ${error.message}`);
     } finally {
       setIsImportingNavarro(false);
     }
