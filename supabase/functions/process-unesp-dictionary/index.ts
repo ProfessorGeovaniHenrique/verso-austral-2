@@ -59,37 +59,43 @@ function cleanUNESPContent(rawContent: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-  // Pular linhas de metadados e estrutura do eBook
-  if (
-    line === '' ||
-    line.startsWith('Notice') ||
-    line.startsWith('Page ') ||
-    line.startsWith('====') ||
-    line.startsWith('***') ||
-    line.includes('This eBook') ||
-    line.includes('Project Gutenberg') ||
-    line.includes('END OF THIS PROJECT') ||
-    line.includes('START OF THIS PROJECT') ||
-    line.includes('www.gutenberg') ||
-    line.includes('Dicionário') ||
-    line.includes('UNESP') ||
-    line.includes('Editora') ||
-    line.includes('ISBN') ||
-    line.includes('Sumário') ||
-    line.includes('Prefácio') ||
-    line.includes('Apresentação') ||
-    line.includes('Copyright') ||
-    line.match(/^\d+$/) || // Números de página isolados
-    line.match(/^[IVXLCDM]+\.?\s*$/) || // Numeração romana
-    line.match(/^[A-Z\s]{10,}$/) // Linhas com só maiúsculas (títulos)
-  ) {
-    continue;
-  }
-  
-  // Detectar início de conteúdo real (formato UNESP: palavra PALAVRA)
-  if (skipUntilContent && /^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}/i.test(line)) {
-    skipUntilContent = false;
-  }
+    // Pular linhas de metadados e estrutura do eBook
+    if (
+      line === '' ||
+      line.startsWith('Notice') ||
+      line.startsWith('Page ') ||
+      line.startsWith('====') ||
+      line.startsWith('***') ||
+      line.includes('This eBook') ||
+      line.includes('Project Gutenberg') ||
+      line.includes('END OF THIS PROJECT') ||
+      line.includes('START OF THIS PROJECT') ||
+      line.includes('www.gutenberg') ||
+      line.includes('Dicionário') ||
+      line.includes('UNESP') ||
+      line.includes('Editora') ||
+      line.includes('ISBN') ||
+      line.includes('Sumário') ||
+      line.includes('Prefácio') ||
+      line.includes('Apresentação') ||
+      line.includes('Copyright') ||
+      line.match(/^\d+$/) || // Números de página isolados
+      line.match(/^[IVXLCDM]+\.?\s*$/) || // Numeração romana
+      line.match(/^[A-Z\s]{10,}$/) // Linhas com só maiúsculas (títulos)
+    ) {
+      continue;
+    }
+    
+    // Detectar início de conteúdo real (qualquer formato A, B ou C)
+    if (skipUntilContent) {
+      const hasFormatA = /^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]+\s+(Vt|Vi|Adj|Sm|Sf|St|Adv)/i.test(line);
+      const hasFormatB = /^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}[a-záàãéêíóôúç\-:]+(Vt|Vi|Adj|Sm|Sf|St|Adv)/i.test(line);
+      const hasFormatC = /^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s/.test(line);
+      
+      if (hasFormatA || hasFormatB || hasFormatC) {
+        skipUntilContent = false;
+      }
+    }
     
     if (!skipUntilContent) {
       cleanedLines.push(line);
@@ -110,11 +116,13 @@ function normalizePOS(pos: string): string {
     'Vt': 'v.t.',
     'Vi': 'v.i.',
     'Adj': 'adj.',
+    'Adi': 'adj.',
     'Adv': 'adv.',
     'S.m.': 's.m.',
     'S.f.': 's.f.',
     'Sm': 's.m.',
     'Sf': 's.f.',
+    'St': 's.m.',
     'Prep': 'prep.',
     'Conj': 'conj.',
     'Interj': 'interj.'
@@ -123,68 +131,194 @@ function normalizePOS(pos: string): string {
 }
 
 /**
- * Parser para formato REAL do Dicionário UNESP
- * 
- * Formato CORRETO: PALAVRA palavra-silabada POS numero definição
- * Exemplo: MESOTERAPIA me-so-te-ra-pia Sf (Med) tratamento por meio de injeções subcutâneas
+ * 🔍 DETECTOR DE FORMATO MULTI-CAMADA
+ * Identifica qual dos 3 formatos a entrada segue
+ */
+type FormatType = 'A' | 'B' | 'C' | null;
+
+function detectFormat(text: string): FormatType {
+  // Formato A (ideal): MESOTERAPIA me-so-te-ra-pia Sf (Med) tratamento...
+  if (/^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]+\s+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)/i.test(text)) {
+    return 'A';
+  }
+  
+  // Formato B (tokens grudados): abafar ABAFARataarVt 1 sufocar...
+  if (/^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}[a-záàãéêíóôúç\-:]+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)/i.test(text)) {
+    return 'B';
+  }
+  
+  // Formato C (simplificado): ABAJUR abajur Sm peça que...
+  if (/^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s/.test(text)) {
+    return 'C';
+  }
+  
+  return null;
+}
+
+/**
+ * 📖 PARSER FORMATO A (Ideal)
+ * Exemplo: MESOTERAPIA me-so-te-ra-pia Sf (Med) tratamento...
+ */
+function parseFormatA(text: string): UNESPEntry | null {
+  const match = text.match(
+    /^([A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-]+)\s+([a-záàãéêíóôúç][a-záàãéêíóôúç:\-]+)\s+(Adj|Adi|S\.m\.|S\.f\.|Sm|Sf|St|Vt|Vi|Adv|Prep|Conj|Interj)\s+(.+)$/is
+  );
+  
+  if (!match) return null;
+  
+  const palavraMaiuscula = match[1];
+  const palavraSilabada = match[2];
+  const pos = match[3].trim();
+  const restoTexto = match[4].trim();
+  
+  // Extrair número de acepção
+  const acepcaoMatch = restoTexto.match(/^(\d+)\s+/);
+  const acepcao = acepcaoMatch ? parseInt(acepcaoMatch[1]) : 1;
+  const definicaoRaw = acepcaoMatch ? restoTexto.substring(acepcaoMatch[0].length) : restoTexto;
+  
+  // Extrair exemplos (após dois-pontos)
+  const exemploSplit = definicaoRaw.split(':');
+  const definicao = exemploSplit[0].replace(/;/g, ',').trim();
+  const exemplos = exemploSplit.length > 1 ? [exemploSplit.slice(1).join(':').trim()] : [];
+  
+  // Extrair registro de uso
+  const registroMatch = definicaoRaw.match(/^\(([^)]+)\)/);
+  const registro = registroMatch ? registroMatch[1].trim() : '';
+  
+  return {
+    palavra: palavraMaiuscula.toLowerCase().trim(),
+    pos: normalizePOS(pos),
+    definicao,
+    exemplos,
+    registro,
+    variacao: palavraSilabada,
+    acepcao
+  };
+}
+
+/**
+ * 🔧 PARSER FORMATO B (Tokens Grudados - O PROBLEMA ATUAL)
+ * Exemplo: abafar ABAFARataarVt 1 sufocar...
+ * Estratégia: Separar bloco grudado "ABAFARataarVt" em componentes
+ */
+function parseFormatB(text: string): UNESPEntry | null {
+  // Match: palavra_minuscula PALAVRA_MAIUSCULAsilabadaPOS resto
+  const match = text.match(
+    /^([a-záàãéêíóôúç]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]{2,})([a-záàãéêíóôúç\-:]+)(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)\s+(.+)$/i
+  );
+  
+  if (!match) return null;
+  
+  const palavraMin = match[1];
+  const palavraMai = match[2];
+  const silabacao = match[3];
+  const pos = match[4];
+  const resto = match[5].trim();
+  
+  console.log(`🔧 [Formato B] Palavra: "${palavraMin}", Maiúscula: "${palavraMai}", Silabação: "${silabacao}", POS: "${pos}"`);
+  
+  // Extrair número de acepção
+  const acepcaoMatch = resto.match(/^(\d+)\s+/);
+  const acepcao = acepcaoMatch ? parseInt(acepcaoMatch[1]) : 1;
+  const definicaoRaw = acepcaoMatch ? resto.substring(acepcaoMatch[0].length) : resto;
+  
+  // Extrair exemplos
+  const exemploSplit = definicaoRaw.split(':');
+  const definicao = exemploSplit[0].replace(/;/g, ',').trim();
+  const exemplos = exemploSplit.length > 1 ? [exemploSplit.slice(1).join(':').trim()] : [];
+  
+  // Extrair registro
+  const registroMatch = definicaoRaw.match(/^\(([^)]+)\)/);
+  const registro = registroMatch ? registroMatch[1].trim() : '';
+  
+  return {
+    palavra: palavraMin, // Usar minúscula como palavra principal
+    pos: normalizePOS(pos),
+    definicao,
+    exemplos,
+    registro,
+    variacao: silabacao,
+    acepcao
+  };
+}
+
+/**
+ * 📄 PARSER FORMATO C (Simplificado - Fallback)
+ * Exemplo: ABAJUR abajur Sm peça que...
+ */
+function parseFormatC(text: string): UNESPEntry | null {
+  const match = text.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-]+)\s+(.+)$/);
+  if (!match) return null;
+  
+  const palavraMaiuscula = match[1];
+  const resto = match[2].trim();
+  
+  // Tentar extrair POS se houver
+  const posMatch = resto.match(/^([a-záàãéêíóôúç\-:]+)\s+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)\s+(.+)$/i);
+  
+  if (posMatch) {
+    const silabacao = posMatch[1];
+    const pos = posMatch[2];
+    const definicao = posMatch[3].trim();
+    
+    return {
+      palavra: palavraMaiuscula.toLowerCase().trim(),
+      pos: normalizePOS(pos),
+      definicao,
+      exemplos: [],
+      registro: '',
+      variacao: silabacao
+    };
+  }
+  
+  // Fallback total: apenas palavra + resto como definição
+  return {
+    palavra: palavraMaiuscula.toLowerCase().trim(),
+    pos: 'indefinido',
+    definicao: resto,
+    exemplos: [],
+    registro: ''
+  };
+}
+
+/**
+ * 🎯 PARSER PRINCIPAL - ESTRATÉGIA MULTI-CAMADA
+ * Detecta formato e delega para parser específico
  */
 function parseUNESPEntry(text: string): UNESPEntry | null {
   try {
     const trimmed = text.trim();
     if (!trimmed) return null;
     
-    // Match principal: PALAVRA_MAIÚSCULA + palavra-silabada + POS + numero + definição
-    const mainMatch = trimmed.match(
-      /^([A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-]+)\s+([a-záàãéêíóôúç][a-záàãéêíóôúç:\-]+)\s+(Adj|Adi|S\.m\.|S\.f\.|Sm|Sf|St|Vt|Vi|Adv|Prep|Conj|Interj)\s+(.+)$/is
-    );
+    const format = detectFormat(trimmed);
     
-    if (!mainMatch) {
-      // Fallback: Tentar formato simplificado (apenas PALAVRA)
-      const simpleMatch = trimmed.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-]+)/);
-      if (!simpleMatch) return null;
-      
-      return {
-        palavra: simpleMatch[1].toLowerCase().trim(),
-        pos: 'indefinido',
-        definicao: trimmed.substring(simpleMatch[0].length).trim(),
-        exemplos: [],
-        registro: ''
-      };
+    if (!format) {
+      console.warn('⚠️ Formato não reconhecido:', trimmed.substring(0, 100));
+      return null;
     }
     
-    const palavraMaiuscula = mainMatch[1];
-    const palavraSilabada = mainMatch[2];
-    const pos = mainMatch[3].trim();
-    const restoTexto = mainMatch[4].trim();
+    console.log(`🔍 Formato detectado: ${format} para entrada: ${trimmed.substring(0, 80)}...`);
     
-    // Extrair número de acepção (se houver)
-    const acepcaoMatch = restoTexto.match(/^(\d+)\s+/);
-    const acepcao = acepcaoMatch ? parseInt(acepcaoMatch[1]) : 1;
-    const definicaoRaw = acepcaoMatch ? restoTexto.substring(acepcaoMatch[0].length) : restoTexto;
+    let result: UNESPEntry | null = null;
     
-    // Extrair exemplos (após dois-pontos)
-    const exemploSplit = definicaoRaw.split(':');
-    const definicao = exemploSplit[0].replace(/;/g, ',').trim();
-    const exemplos = exemploSplit.length > 1 
-      ? [exemploSplit.slice(1).join(':').trim()] 
-      : [];
+    switch (format) {
+      case 'A':
+        result = parseFormatA(trimmed);
+        break;
+      case 'B':
+        result = parseFormatB(trimmed);
+        break;
+      case 'C':
+        result = parseFormatC(trimmed);
+        break;
+    }
     
-    // Extrair registro de uso (entre parênteses no início)
-    const registroMatch = definicaoRaw.match(/^\(([^)]+)\)/);
-    const registro = registroMatch ? registroMatch[1].trim() : '';
+    if (result) {
+      console.log(`✅ Palavra extraída: "${result.palavra}", POS: "${result.pos}", Acepção: ${result.acepcao || 1}`);
+    }
     
-    // Usar a palavra maiúscula como base (mais confiável que a silabada)
-    const palavra = palavraMaiuscula.toLowerCase().trim();
+    return result;
     
-    return {
-      palavra,
-      pos: normalizePOS(pos),
-      definicao,
-      exemplos,
-      registro,
-      variacao: palavraSilabada,
-      acepcao
-    };
   } catch (error) {
     console.error('❌ Erro ao parsear entrada UNESP:', error);
     return null;
@@ -238,9 +372,9 @@ async function processInBackground(
     const cleanedContent = cleanUNESPContent(rawContent);
     console.log(`🧹 Conteúdo limpo. Tamanho original: ${rawContent.length}, limpo: ${cleanedContent.length}`);
     
-    // Dividir em entradas (formato REAL: PALAVRA palavra-silabada)
+    // Dividir em entradas (suporta formatos A, B e C)
     const entries = cleanedContent
-      .split(/(?=^[A-ZÁÀÃÉÊÍÓÔÚÇ][A-ZÁÀÃÉÊÍÓÔÚÇ\-]+\s+[a-záàãéêíóôúç])/gm)
+      .split(/(?=^(?:[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]|[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}))/gm)
       .filter(e => e.trim().length > 0);
 
     console.log(`📊 [Job ${jobId}] Total de entradas detectadas: ${entries.length}`);
