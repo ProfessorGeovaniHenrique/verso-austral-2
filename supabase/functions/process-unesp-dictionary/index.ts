@@ -79,20 +79,23 @@ function cleanUNESPContent(rawContent: string): string {
       line.includes('Prefácio') ||
       line.includes('Apresentação') ||
       line.includes('Copyright') ||
-      line.match(/^\d+$/) || // Números de página isolados
+      line.match(/^Page\s+\d+$/) || // "Page 12"
+      line.match(/^={20,}$/) ||     // "==============="
+      line.match(/^\s*\d+\s*$/) ||  // Números de página isolados
       line.match(/^[IVXLCDM]+\.?\s*$/) || // Numeração romana
       line.match(/^[A-Z\s]{10,}$/) // Linhas com só maiúsculas (títulos)
     ) {
       continue;
     }
     
-    // Detectar início de conteúdo real (qualquer formato A, B ou C)
+    // Detectar início de conteúdo real (qualquer formato A, B, C ou D)
     if (skipUntilContent) {
+      const hasFormatD = /^([a-záàãéêíóôúç]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]{2,})\s+([a-záàãéêíóôúç\-:]+)\s+(Vt|Vi|Adj|Sm|Sf|St|Adv)/i.test(line);
       const hasFormatA = /^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]+\s+(Vt|Vi|Adj|Sm|Sf|St|Adv)/i.test(line);
       const hasFormatB = /^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}[a-záàãéêíóôúç\-:]+(Vt|Vi|Adj|Sm|Sf|St|Adv)/i.test(line);
       const hasFormatC = /^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s/.test(line);
       
-      if (hasFormatA || hasFormatB || hasFormatC) {
+      if (hasFormatD || hasFormatA || hasFormatB || hasFormatC) {
         skipUntilContent = false;
       }
     }
@@ -134,9 +137,14 @@ function normalizePOS(pos: string): string {
  * 🔍 DETECTOR DE FORMATO MULTI-CAMADA
  * Identifica qual dos 3 formatos a entrada segue
  */
-type FormatType = 'A' | 'B' | 'C' | null;
+type FormatType = 'A' | 'B' | 'C' | 'D' | null;
 
 function detectFormat(text: string): FormatType {
+  // Formato D (palavra duplicada): anóxico ANÓXICO a-nó-xico Adj em que há...
+  if (/^([a-záàãéêíóôúç]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]{2,})\s+([a-záàãéêíóôúç\-:]+)\s+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)/i.test(text)) {
+    return 'D';
+  }
+  
   // Formato A (ideal): MESOTERAPIA me-so-te-ra-pia Sf (Med) tratamento...
   if (/^[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]+\s+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)/i.test(text)) {
     return 'A';
@@ -282,6 +290,51 @@ function parseFormatC(text: string): UNESPEntry | null {
 }
 
 /**
+ * 🆕 PARSER FORMATO D (Palavra Duplicada)
+ * Exemplo: anóxico ANÓXICO a-nó-xico Adj em que há...
+ */
+function parseFormatD(text: string): UNESPEntry | null {
+  // Match: palavra_min PALAVRA_MAI silabação POS resto
+  const match = text.match(
+    /^([a-záàãéêíóôúç]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]{2,})\s+([a-záàãéêíóôúç\-:]+)\s+(Vt|Vi|Adj|Adi|Sm|Sf|St|Adv|Prep|Conj|Interj)\s+(.+)$/i
+  );
+  
+  if (!match) return null;
+  
+  const palavraMin = match[1];
+  const palavraMai = match[2];
+  const silabacao = match[3];
+  const pos = match[4];
+  const resto = match[5].trim();
+  
+  console.log(`🆕 [Formato D] Palavra: "${palavraMin}", Maiúscula: "${palavraMai}", Silabação: "${silabacao}", POS: "${pos}"`);
+  
+  // Extrair número de acepção
+  const acepcaoMatch = resto.match(/^(\d+)\s+/);
+  const acepcao = acepcaoMatch ? parseInt(acepcaoMatch[1]) : 1;
+  const definicaoRaw = acepcaoMatch ? resto.substring(acepcaoMatch[0].length) : resto;
+  
+  // Extrair exemplos (após dois-pontos)
+  const exemploSplit = definicaoRaw.split(':');
+  const definicao = exemploSplit[0].replace(/;/g, ',').trim();
+  const exemplos = exemploSplit.length > 1 ? [exemploSplit.slice(1).join(':').trim()] : [];
+  
+  // Extrair registro de uso
+  const registroMatch = definicaoRaw.match(/^\(([^)]+)\)/);
+  const registro = registroMatch ? registroMatch[1].trim() : '';
+  
+  return {
+    palavra: palavraMin, // Usar minúscula como palavra principal
+    pos: normalizePOS(pos),
+    definicao,
+    exemplos,
+    registro,
+    variacao: silabacao,
+    acepcao
+  };
+}
+
+/**
  * 🎯 PARSER PRINCIPAL - ESTRATÉGIA MULTI-CAMADA
  * Detecta formato e delega para parser específico
  */
@@ -302,6 +355,9 @@ function parseUNESPEntry(text: string): UNESPEntry | null {
     let result: UNESPEntry | null = null;
     
     switch (format) {
+      case 'D':
+        result = parseFormatD(trimmed);
+        break;
       case 'A':
         result = parseFormatA(trimmed);
         break;
@@ -372,9 +428,9 @@ async function processInBackground(
     const cleanedContent = cleanUNESPContent(rawContent);
     console.log(`🧹 Conteúdo limpo. Tamanho original: ${rawContent.length}, limpo: ${cleanedContent.length}`);
     
-    // Dividir em entradas (suporta formatos A, B e C)
+    // Dividir em entradas (suporta formatos A, B, C e D)
     const entries = cleanedContent
-      .split(/(?=^(?:[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]|[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}))/gm)
+      .split(/(?=^(?:[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]|[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}\s+[a-záàãéêíóôúç\-:]|[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}))/gm)
       .filter(e => e.trim().length > 0);
 
     console.log(`📊 [Job ${jobId}] Total de entradas detectadas: ${entries.length}`);
