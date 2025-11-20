@@ -311,7 +311,7 @@ export function DictionaryImportInterface() {
                 tipo: 'nordestino_navarro',
                 esperado: 15000,
                 atual: jobs?.find(j => j.tipo_dicionario === 'nordestino_navarro')?.verbetes_inseridos || 0,
-                githubUrl: 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/corpus/NAVARROCLEAN.txt',
+                githubUrl: 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/corpus/nordestino_navarro_2014.txt',
                 descricao: 'Dicionário especializado do léxico nordestino com regionalismos, expressões idiomáticas e marcadores culturais. Inclui variações dialetais de todos os estados do Nordeste.',
                 licenca: 'CEPE - Uso Acadêmico',
                 customActions: (
