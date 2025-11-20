@@ -35,7 +35,3 @@ verify_jwt = true
 # Importação do dicionário Gutenberg via backend
 # Proteção: Apenas usuários autenticados (admins)
 
-[functions.upload-gutenberg-to-storage]
-verify_jwt = true
-# Upload do dicionário Gutenberg para o Storage
-# Execução única - Proteção: Apenas usuários autenticados (admins)

@@ -135,13 +135,13 @@ Deno.serve(async (req) => {
 
     console.log('🚀 Iniciando importação do Gutenberg via backend...');
 
-    // Buscar o arquivo do Supabase Storage
-    const fileUrl = `${supabaseUrl}/storage/v1/object/public/corpus/dictionaries/gutenberg-completo.txt`;
-    console.log(`📥 Carregando arquivo do Storage: ${fileUrl}`);
+    // Buscar o arquivo diretamente do GitHub
+    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/gutenberg-completo.txt';
+    console.log(`📥 Carregando dicionário Gutenberg do GitHub...`);
     
     const fileResponse = await fetch(fileUrl);
     if (!fileResponse.ok) {
-      throw new Error(`Arquivo não encontrado no Storage: ${fileResponse.status}. Execute a função upload-gutenberg-to-storage primeiro.`);
+      throw new Error(`Erro ao carregar arquivo do GitHub: ${fileResponse.status}. Verifique se o arquivo existe e o repositório é público.`);
     }
 
     const fileContent = await fileResponse.text();
