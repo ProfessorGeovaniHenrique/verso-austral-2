@@ -1,4 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { withRetry } from '../_shared/retry.ts';
+import { Timeouts } from '../_shared/timeout.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,7 +8,7 @@ const corsHeaders = {
 };
 
 const BATCH_SIZE = 1000;
-const MAX_ENTRIES_PER_INVOCATION = 5000;
+const TIMEOUT_MS = Timeouts.DICTIONARY_IMPORT; // 20 minutos
 
 interface VerbeteGutenberg {
   verbete: string;
@@ -118,163 +120,216 @@ function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
       validado: false
     };
   } catch (error) {
-    console.error('Erro ao parsear verbete:', error);
+    console.error('Erro ao processar verbete:', error);
     return null;
   }
 }
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+async function checkCancellation(jobId: string, supabaseClient: any) {
+  const { data: job } = await supabaseClient
+    .from('dictionary_import_jobs')
+    .select('is_cancelling')
+    .eq('id', jobId)
+    .single();
+
+  if (job?.is_cancelling) {
+    console.log('🛑 Cancelamento detectado!');
+    await supabaseClient
+      .from('dictionary_import_jobs')
+      .update({
+        status: 'cancelado',
+        cancelled_at: new Date().toISOString(),
+        tempo_fim: new Date().toISOString()
+      })
+      .eq('id', jobId);
+    throw new Error('JOB_CANCELLED');
   }
+}
+
+async function processInBackground(jobId: string, verbetes: string[]) {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  );
+
+  const startTime = Date.now();
+  let processados = 0;
+  let inseridos = 0;
+
+  console.log(`🚀 Iniciando processamento em background: ${verbetes.length} verbetes`);
+
+  await supabase
+    .from('dictionary_import_jobs')
+    .update({ 
+      status: 'processando', 
+      total_verbetes: verbetes.length,
+      tempo_inicio: new Date().toISOString()
+    })
+    .eq('id', jobId);
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Safe JSON parsing with fallback
-    let requestBody: any = {};
-    try {
-      const text = await req.text();
-      if (text && text.trim()) {
-        requestBody = JSON.parse(text);
+    for (let i = 0; i < verbetes.length; i += BATCH_SIZE) {
+      // Verificar timeout
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        console.log('⏱️ Timeout atingido, pausando job...');
+        await supabase
+          .from('dictionary_import_jobs')
+          .update({
+            status: 'pausado',
+            verbetes_processados: processados,
+            metadata: { last_index: i, message: 'Pausado por timeout' }
+          })
+          .eq('id', jobId);
+        return;
       }
-    } catch (parseError) {
-      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
-    }
 
-    console.log('🚀 Iniciando importação do Gutenberg via backend...');
+      // Verificar cancelamento
+      await checkCancellation(jobId, supabase);
 
-    // Buscar o arquivo diretamente do GitHub
-    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/gutenberg-completo.txt';
-    console.log(`📥 Carregando dicionário Gutenberg do GitHub...`);
-    
-    const fileResponse = await fetch(fileUrl);
-    if (!fileResponse.ok) {
-      throw new Error(`Erro ao carregar arquivo do GitHub: ${fileResponse.status}. Verifique se o arquivo existe e o repositório é público.`);
-    }
-
-    const fileContent = await fileResponse.text();
-    console.log(`✅ Arquivo carregado: ${fileContent.length} bytes`);
-
-    // Dividir em verbetes
-    const verbetes = fileContent.split(/(?=\n\*[A-Za-záàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ\-]+\*,)/);
-    console.log(`📚 ${verbetes.length} verbetes encontrados`);
-
-    // Criar ou atualizar job
-    const { data: existingJob } = await supabase
-      .from('dictionary_import_jobs')
-      .select('*')
-      .eq('tipo_dicionario', 'gutenberg')
-      .in('status', ['processando', 'iniciado'])
-      .single();
-
-    let jobId: string;
-    let startIndex = 0;
-
-    if (existingJob) {
-      jobId = existingJob.id;
-      startIndex = existingJob.verbetes_processados || 0;
-      console.log(`🔄 Retomando job existente: ${jobId} (offset: ${startIndex})`);
-    } else {
-      const { data: newJob, error: jobError } = await supabase
-        .from('dictionary_import_jobs')
-        .insert({
-          tipo_dicionario: 'gutenberg',
-          status: 'processando',
-          total_verbetes: verbetes.length,
-          verbetes_processados: 0,
-          verbetes_inseridos: 0,
-          tempo_inicio: new Date().toISOString()
-        })
-        .select()
-        .single();
-
-      if (jobError) throw jobError;
-      jobId = newJob.id;
-      console.log(`✨ Novo job criado: ${jobId}`);
-    }
-
-    // Processar em lotes
-    let processados = startIndex;
-    let inseridos = 0;
-    const endIndex = Math.min(startIndex + MAX_ENTRIES_PER_INVOCATION, verbetes.length);
-
-    for (let i = startIndex; i < endIndex; i += BATCH_SIZE) {
-      const batch = verbetes.slice(i, Math.min(i + BATCH_SIZE, endIndex));
+      const batch = verbetes.slice(i, Math.min(i + BATCH_SIZE, verbetes.length));
       const parsedBatch = batch
         .map(v => parseGutenbergEntry(v))
-        .filter(v => v !== null);
+        .filter((v): v is VerbeteGutenberg => v !== null);
 
       if (parsedBatch.length > 0) {
-        const { error: insertError } = await supabase
-          .from('gutenberg_lexicon')
-          .insert(parsedBatch);
-
-        if (insertError) {
-          console.error(`❌ Erro ao inserir batch ${i}-${i + batch.length}:`, insertError);
-        } else {
-          inseridos += parsedBatch.length;
-        }
+        await withRetry(async () => {
+          const { error } = await supabase
+            .from('gutenberg_lexicon')
+            .insert(parsedBatch);
+          if (error) throw error;
+        });
+        inseridos += parsedBatch.length;
       }
 
       processados = i + batch.length;
 
-      // Atualizar progresso
+      // Atualizar progresso a cada batch
       await supabase
         .from('dictionary_import_jobs')
         .update({
           verbetes_processados: processados,
-          verbetes_inseridos: inseridos,
-          progresso: Math.floor((processados / verbetes.length) * 100)
+          verbetes_inseridos: inseridos
         })
         .eq('id', jobId);
 
       console.log(`📊 Progresso: ${processados}/${verbetes.length} (${inseridos} inseridos)`);
     }
 
-    // Verificar se completou
-    const isComplete = processados >= verbetes.length;
+    // Marcar como concluído
+    await supabase
+      .from('dictionary_import_jobs')
+      .update({
+        status: 'concluido',
+        tempo_fim: new Date().toISOString(),
+        progresso: 100
+      })
+      .eq('id', jobId);
 
-    if (isComplete) {
-      await supabase
-        .from('dictionary_import_jobs')
-        .update({
-          status: 'concluido',
-          tempo_fim: new Date().toISOString(),
-          progresso: 100
-        })
-        .eq('id', jobId);
+    console.log(`✅ Importação completa! ${inseridos} verbetes inseridos`);
 
-      console.log(`✅ Importação completa! Total: ${inseridos} verbetes`);
-    } else {
-      console.log(`⏸️ Batch processado. Próximo offset: ${processados}`);
+  } catch (error: any) {
+    if (error.message === 'JOB_CANCELLED') {
+      console.log('✅ Job cancelado gracefully');
+      return;
     }
 
+    console.error('❌ Erro no processamento:', error);
+    await supabase
+      .from('dictionary_import_jobs')
+      .update({
+        status: 'erro',
+        erro_mensagem: error.message,
+        tempo_fim: new Date().toISOString()
+      })
+      .eq('id', jobId);
+  }
+}
+
+Deno.serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    console.log('📥 Iniciando importação do Gutenberg Dictionary...');
+
+    // Fetch o arquivo do GitHub
+    const gutenbergUrl = 'https://raw.githubusercontent.com/fsereno/pt_BR/master/V2.0.0/pt_BR.dic';
+    console.log('🌐 Baixando dicionário de:', gutenbergUrl);
+
+    const response = await fetch(gutenbergUrl);
+    if (!response.ok) {
+      throw new Error(`Erro ao baixar dicionário: ${response.status}`);
+    }
+
+    const fileContent = await response.text();
+    console.log('✅ Arquivo baixado com sucesso');
+
+    // Split verbetes
+    const verbetes = fileContent
+      .split(/\n\n+/)
+      .map(v => v.trim())
+      .filter(v => v && v.startsWith('*'));
+
+    console.log(`📚 Total de verbetes encontrados: ${verbetes.length}`);
+
+    if (verbetes.length === 0) {
+      throw new Error('Nenhum verbete válido encontrado no arquivo');
+    }
+
+    // Criar job
+    const { data: job, error: jobError } = await supabase
+      .from('dictionary_import_jobs')
+      .insert({
+        tipo_dicionario: 'gutenberg',
+        status: 'iniciado',
+        total_verbetes: verbetes.length,
+        offset_inicial: 0
+      })
+      .select()
+      .single();
+
+    if (jobError || !job) {
+      console.error('❌ Erro ao criar job:', jobError);
+      throw new Error('Erro ao criar job de importação');
+    }
+
+    console.log(`✅ Job criado: ${job.id}`);
+
+    // Processar em background usando EdgeRuntime.waitUntil()
+    // @ts-ignore - EdgeRuntime is available in Deno Deploy
+    EdgeRuntime.waitUntil(processInBackground(job.id, verbetes));
+
+    // Retornar resposta imediata
     return new Response(
       JSON.stringify({
         success: true,
-        jobId,
-        processados,
-        inseridos,
-        total: verbetes.length,
-        complete: isComplete,
-        nextOffset: processados
+        jobId: job.id,
+        totalVerbetes: verbetes.length,
+        message: 'Processamento iniciado em background'
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { 
+        status: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
     );
 
   } catch (error: any) {
     console.error('❌ Erro fatal:', error);
     return new Response(
-      JSON.stringify({
-        success: false,
-        error: error.message || 'Erro desconhecido'
+      JSON.stringify({ 
+        success: false, 
+        error: error.message 
       }),
       { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
       }
     );
   }
