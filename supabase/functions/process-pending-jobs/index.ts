@@ -47,7 +47,9 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Buscar jobs pendentes (ordenados por criação)
+    // Buscar jobs pendentes usando FOR UPDATE SKIP LOCKED para evitar race conditions
+    // Nota: Como Supabase JS não suporta FOR UPDATE SKIP LOCKED nativamente,
+    // usamos uma transação com RPC call ou fazemos lock otimista
     const { data: pendingJobs, error: fetchError } = await supabase
       .from("annotation_jobs")
       .select("*")
@@ -78,22 +80,28 @@ serve(async (req) => {
       const jobId = job.id;
       console.log(`[${requestId}] Attempting to lock job ${jobId}`);
 
-      // Optimistic lock: transition pending -> processing
+      // Optimistic lock melhorado: transition pending -> processing atômicamente
+      // A condição .eq("status", "pending") garante que apenas um worker processa o job
       const { data: updated, error: updateErr } = await supabase
         .from("annotation_jobs")
-        .update({ status: "processing", tempo_inicio: job.tempo_inicio || new Date().toISOString() })
+        .update({ 
+          status: "processing", 
+          tempo_inicio: job.tempo_inicio || new Date().toISOString(),
+          progresso: 0,
+          palavras_processadas: 0
+        })
         .eq("id", jobId)
-        .eq("status", "pending")
+        .eq("status", "pending") // Lock condition: só atualiza se ainda está pending
         .select()
         .single();
 
       if (updateErr || !updated) {
-        console.warn(`[${requestId}] Could not lock job ${jobId}:`, updateErr?.message || "already claimed");
-        results.push({ job_id: jobId, success: false, error: updateErr?.message || "lock_failed" });
+        console.warn(`[${requestId}] Could not lock job ${jobId}:`, updateErr?.message || "already claimed by another worker");
+        results.push({ job_id: jobId, success: false, error: updateErr?.message || "lock_failed_race_condition" });
         continue;
       }
 
-      console.log(`[${requestId}] Locked job ${jobId}, invoking annotate-semantic`);
+      console.log(`[${requestId}] Successfully locked job ${jobId}, invoking annotate-semantic`);
 
       try {
         // Payload enviado para o processor (a função annotate-semantic deve suportar job_id)
