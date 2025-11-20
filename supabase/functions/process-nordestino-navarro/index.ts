@@ -44,8 +44,8 @@ serve(async (req) => {
         status: 'iniciado',
         offset_inicial: offsetInicial,
         metadata: {
-          fonte: 'Dicionário do Nordeste - Fred Navarro - 2014',
-          url_github: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/blob/main/public/dictionaries/Dicion%C3%A1rio%20do%20Nordeste%20--%20Fred%20Navarro%20--%202014.txt'
+          fonte: 'Dicionário do Nordeste - Fred Navarro - 2014 (Limpo)',
+          url_github: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/blob/main/public/dictionaries/NAVARROCLEAN.txt'
         }
       })
       .select()
@@ -62,8 +62,8 @@ serve(async (req) => {
       console.log('📄 Usando conteúdo fornecido no body');
       content = fileContent;
     } else {
-      console.log('📥 Buscando arquivo do GitHub...');
-      const githubUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/Dicion%C3%A1rio%20do%20Nordeste%20--%20Fred%20Navarro%20--%202014.txt';
+      console.log('📥 Buscando arquivo limpo do GitHub...');
+      const githubUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/NAVARROCLEAN.txt';
       const response = await fetch(githubUrl);
       if (!response.ok) throw new Error(`Erro ao buscar arquivo: ${response.statusText}`);
       content = await response.text();
@@ -93,37 +93,10 @@ serve(async (req) => {
   }
 });
 
-// Função para validar se é um verbete real (não metadado ou título)
+// Função simplificada - arquivo já está limpo de metadados
 function isValidVerbete(verbete: string): boolean {
-  // Excluir verbetes muito longos (>40 chars) - provavelmente títulos
-  if (verbete.length > 40) {
-    console.log(`🚫 Verbete muito longo ignorado: "${verbete}"`);
-    return false;
-  }
-  
-  // Excluir títulos de obras (padrão "A/O + Maiúscula + espaço + Maiúscula")
-  if (/^(A|O|As|Os)\s+[A-ZÁÀÂÃÉÈÊÍÏÓÔÕÖÚÇÑ][a-z]+/.test(verbete)) {
-    console.log(`🚫 Título de obra ignorado: "${verbete}"`);
-    return false;
-  }
-  
-  // Excluir entradas com anos (formato NNNN-NNNN ou vol.N)
-  if (/\d{4}(-\d{4})?|vol\.\s*\d+/i.test(verbete)) {
-    console.log(`🚫 Entrada com ano/volume ignorada: "${verbete}"`);
-    return false;
-  }
-  
-  // Excluir palavras acadêmicas típicas de metadados
-  const metadataKeywords = [
-    'história', 'memória', 'dicionário', 'literatura', 
-    'imprensa', 'educação', 'república', 'revolução',
-    'folclore', 'língua', 'ortografia', 'norma',
-    'canção', 'baião', 'cordel', 'poema'
-  ];
-  
-  const verbeteLower = verbete.toLowerCase();
-  if (metadataKeywords.some(keyword => verbeteLower.includes(keyword) && verbete.length > 15)) {
-    console.log(`🚫 Metadado ignorado: "${verbete}"`);
+  // Apenas validações essenciais
+  if (verbete.length === 0 || verbete.length > 50) {
     return false;
   }
   
@@ -266,28 +239,8 @@ async function processInBackground(supabase: any, jobId: string, lines: string[]
     for (let i = offsetInicial; i < lines.length; i++) {
       const line = lines[i].trim();
       
-      // Filtro 1: Ignorar linhas sem bullet point
+      // Validação básica - arquivo já está limpo
       if (!line || !line.includes('•')) continue;
-      
-      // Filtro 2: Ignorar instruções numeradas (ex: "11. Os sinônimos...")
-      if (/^\d+\.\s+/.test(line)) {
-        console.log(`🚫 Instrução ignorada na linha ${i}`);
-        continue;
-      }
-      
-      // Filtro 3: Ignorar linhas com termos de instrução específicos
-      const instructionTerms = ['sinônimo', 'equivalente', 'grafado', 'aspetas', 'definição do verbete'];
-      if (instructionTerms.some(term => line.toLowerCase().includes(term) && line.length > 50)) {
-        console.log(`🚫 Metadado de instrução ignorado na linha ${i}`);
-        continue;
-      }
-      
-      // Filtro 4: Ignorar títulos muito longos antes do primeiro bullet (>20 chars)
-      const beforeBullet = line.split('•')[0];
-      if (beforeBullet.length > 40) {
-        console.log(`🚫 Título longo ignorado na linha ${i}: "${beforeBullet.substring(0, 30)}..."`);
-        continue;
-      }
 
       try {
         const parsedEntry = parseNordestinoEntry(line);

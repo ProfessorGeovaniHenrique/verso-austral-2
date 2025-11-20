@@ -9,8 +9,7 @@ const corsHeaders = {
 const CHUNK_SIZE = 5000;
 const MAX_RETRIES = 3;
 const DICTIONARY_URLS = [
-  'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/gutenberg-completo.txt',
-  'https://www.gutenberg.org/files/31552/31552-0.txt',
+  'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/GutenbergNOVO.txt',
 ];
 
 interface VerbeteGutenberg {

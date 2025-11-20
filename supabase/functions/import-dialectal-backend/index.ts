@@ -39,33 +39,22 @@ Deno.serve(async (req) => {
       console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
     }
 
-    const { volumeNum, offset = 0 } = requestBody;
+    const { offset = 0 } = requestBody;
 
-    if (!volumeNum || !['I', 'II'].includes(volumeNum)) {
-      return new Response(
-        JSON.stringify({ error: 'Volume inválido. Use "I" ou "II".' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    // Arquivo unificado - VOLI.txt contém todos os verbetes (Vol I + Vol II)
+    const GAUCHO_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLI.txt';
+    const tipoDicionario = 'gaucho_unificado';
 
-    const volumeUrls = {
-      'I': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLI.txt',
-      'II': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLII.txt'
-    };
-
-    const tipoDicionario = `dialectal_${volumeNum}`;
-    const fileUrl = volumeUrls[volumeNum as 'I' | 'II'];
-
-    console.log(`📥 Carregando dicionário Dialectal Volume ${volumeNum} do GitHub...`);
+    console.log('📥 Carregando dicionário Gaúcho Unificado do GitHub...');
 
     // Buscar arquivo do GitHub
-    const fileResponse = await fetch(fileUrl);
+    const fileResponse = await fetch(GAUCHO_URL);
     if (!fileResponse.ok) {
       throw new Error(`Falha ao carregar arquivo do GitHub: ${fileResponse.statusText}`);
     }
 
     const fileContent = await fileResponse.text();
-    console.log(`✅ Arquivo Volume ${volumeNum} carregado com sucesso: ${(fileContent.length / 1024).toFixed(2)} KB`);
+    console.log(`✅ Arquivo Gaúcho Unificado carregado com sucesso: ${(fileContent.length / 1024).toFixed(2)} KB`);
 
     // Verificar se já existe job em andamento
     const { data: existingJobs } = await supabase
@@ -96,7 +85,11 @@ Deno.serve(async (req) => {
           progresso: 0,
           tempo_inicio: new Date().toISOString(),
           offset_inicial: offset,
-          metadata: { offset, volume: volumeNum }
+          metadata: { 
+            offset, 
+            fonte: 'Dicionário Gaúcho Unificado (Vol I + Vol II)',
+            indice_linha: 6226 
+          }
         })
         .select()
         .single();
@@ -115,7 +108,7 @@ Deno.serve(async (req) => {
       body: {
         jobId: job.id,
         fileContent,
-        volumeNum,
+        volumeNum: 'UNIFICADO',
         offset: job.offset_inicial || 0
       }
     });
@@ -133,13 +126,13 @@ Deno.serve(async (req) => {
       .eq('id', job.id)
       .single();
 
-    console.log(`✅ Importação concluída - Volume ${volumeNum}`);
+    console.log('✅ Importação concluída - Dicionário Gaúcho Unificado');
 
     return new Response(
       JSON.stringify({
         success: true,
         jobId: job.id,
-        volumeNum,
+        tipoDicionario: 'gaucho_unificado',
         processados: result.processados || 0,
         inseridos: result.inseridos || 0,
         total: result.total || 0,
