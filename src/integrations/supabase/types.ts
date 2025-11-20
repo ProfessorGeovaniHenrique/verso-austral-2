@@ -690,9 +690,13 @@ export type Database = {
           pagina_fonte: number | null
           referencias_dicionarios: string[] | null
           remissoes: string[] | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sinonimos: string[] | null
           termos_espanhol: string[] | null
           validado_humanamente: boolean | null
+          validation_notes: string | null
+          validation_status: string | null
           variantes: string[] | null
           verbete: string
           verbete_normalizado: string
@@ -716,9 +720,13 @@ export type Database = {
           pagina_fonte?: number | null
           referencias_dicionarios?: string[] | null
           remissoes?: string[] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
           termos_espanhol?: string[] | null
           validado_humanamente?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
           variantes?: string[] | null
           verbete: string
           verbete_normalizado: string
@@ -742,9 +750,13 @@ export type Database = {
           pagina_fonte?: number | null
           referencias_dicionarios?: string[] | null
           remissoes?: string[] | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
           termos_espanhol?: string[] | null
           validado_humanamente?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
           variantes?: string[] | null
           verbete?: string
           verbete_normalizado?: string
@@ -1184,8 +1196,12 @@ export type Database = {
           origem_lingua: string | null
           popular: boolean | null
           regional: boolean | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sinonimos: string[] | null
           validado: boolean | null
+          validation_notes: string | null
+          validation_status: string | null
           verbete: string
           verbete_normalizado: string
         }
@@ -1208,8 +1224,12 @@ export type Database = {
           origem_lingua?: string | null
           popular?: boolean | null
           regional?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
           validado?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
           verbete: string
           verbete_normalizado: string
         }
@@ -1232,8 +1252,12 @@ export type Database = {
           origem_lingua?: string | null
           popular?: boolean | null
           regional?: boolean | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
           validado?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
           verbete?: string
           verbete_normalizado?: string
         }
