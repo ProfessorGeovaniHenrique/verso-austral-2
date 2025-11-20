@@ -57,32 +57,42 @@ function cleanUNESPContent(rawContent: string): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim();
     
-    // Pular linhas de metadados e estrutura do eBook
-    if (
-      line === '' ||
-      line.startsWith('Notice') ||
-      line.startsWith('Page ') ||
-      line.startsWith('====') ||
-      line.startsWith('***') ||
-      line.includes('This eBook') ||
-      line.includes('Project Gutenberg') ||
-      line.includes('END OF THIS PROJECT') ||
-      line.includes('START OF THIS PROJECT') ||
-      line.includes('www.gutenberg') ||
-      line.match(/^\d+$/) // Números de página isolados
-    ) {
-      continue;
-    }
-    
-    // Detectar início de conteúdo real (primeira letra maiúscula seguida de POS)
-    if (skipUntilContent && /^[A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç]+\s+(s\.m\.|s\.f\.|adj\.|v\.|adv\.)/i.test(line)) {
-      skipUntilContent = false;
-    }
+  // Pular linhas de metadados e estrutura do eBook
+  if (
+    line === '' ||
+    line.startsWith('Notice') ||
+    line.startsWith('Page ') ||
+    line.startsWith('====') ||
+    line.startsWith('***') ||
+    line.includes('This eBook') ||
+    line.includes('Project Gutenberg') ||
+    line.includes('END OF THIS PROJECT') ||
+    line.includes('START OF THIS PROJECT') ||
+    line.includes('www.gutenberg') ||
+    line.includes('Dicionário') ||
+    line.includes('UNESP') ||
+    line.includes('Editora') ||
+    line.includes('ISBN') ||
+    line.includes('Sumário') ||
+    line.includes('Prefácio') ||
+    line.match(/^\d+$/) || // Números de página isolados
+    line.match(/^[IVXLCDM]+\.?\s/) // Numeração romana (I., II., III., etc)
+  ) {
+    continue;
+  }
+  
+  // Detectar início de conteúdo real (simplificado para aceitar mais variações)
+  if (skipUntilContent && /^[A-Z][a-z]+.*\s+(s\.|adj\.|v\.|adv\.)/i.test(line)) {
+    skipUntilContent = false;
+  }
     
     if (!skipUntilContent) {
       cleanedLines.push(line);
     }
   }
+  
+  console.log(`✅ UNESP Parser: Linhas limpas: ${cleanedLines.length} de ${lines.length} originais`);
+  console.log(`📝 Primeiras 5 linhas limpas:`, cleanedLines.slice(0, 5));
   
   return cleanedLines.join('\n');
 }
@@ -101,8 +111,8 @@ function parseUNESPEntry(text: string): UNESPEntry | null {
     const trimmed = text.trim();
     if (!trimmed) return null;
     
-    // Regex principal: palavra POS definição [exemplos] (registro)
-    const mainMatch = trimmed.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-]+)\s+(s\.m\.|s\.f\.|adj\.|v\.|adv\.|prep\.|conj\.|interj\.)\s+(.+)$/i);
+    // Regex principal: palavra POS definição [exemplos] (registro) - aceita mais variações
+    const mainMatch = trimmed.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-\s]+?)\s+(s\.m\.|s\.f\.|s\.|adj\.|v\.|adv\.|prep\.|conj\.|interj\.)\s+(.+)$/i);
     
     if (!mainMatch) {
       // Fallback: formato simplificado sem marcadores

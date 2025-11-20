@@ -23,6 +23,7 @@ import AdvancedMode from "./pages/AdvancedMode";
 import DevOpsMetrics from "./pages/DevOpsMetrics";
 import DeveloperLogs from "./pages/DeveloperLogs";
 import AdminLexiconSetupRefactored from "./pages/AdminLexiconSetupRefactored";
+import AdminNavarroDictValidation from "./pages/AdminNavarroDictValidation";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
@@ -100,8 +101,16 @@ const RouterContent = () => {
                 <AdminLexiconSetupRefactored />
               </ProtectedRoute>
             } 
-          />
+          /> 
           <Route 
+            path="/admin/navarro-validation" 
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminNavarroDictValidation />
+              </ProtectedRoute>
+            } 
+          />
+          <Route
             path="/admin/users"
             element={
               <ProtectedRoute requiredRole="admin">

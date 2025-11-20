@@ -1,9 +1,10 @@
 import { useLexiconStats } from '@/hooks/useLexiconStats';
 import { DictionaryStatusCard } from './DictionaryStatusCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCw, TrendingUp, Database } from 'lucide-react';
+import { Loader2, RefreshCw, TrendingUp, Database, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Link } from 'react-router-dom';
 
 export function LexiconStatusDashboardRefactored() {
   const { data: stats, isLoading, refetch, isRefetching } = useLexiconStats();
@@ -130,6 +131,35 @@ export function LexiconStatusDashboardRefactored() {
         />
         </div>
       </div>
+
+      {/* ✅ Card Especial: Validação Navarro 2014 */}
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-primary" />
+            Validação Humana: Navarro 2014
+          </CardTitle>
+          <CardDescription>
+            Valide manualmente os verbetes do dicionário Nordestino para aumentar a precisão
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-between items-center">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Taxa atual de validação: <strong>0.17%</strong>
+            </p>
+            <p className="text-sm text-muted-foreground">
+              1.717 verbetes disponíveis para validação
+            </p>
+          </div>
+          <Link to="/admin/navarro-validation">
+            <Button className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Validar Verbetes
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 }

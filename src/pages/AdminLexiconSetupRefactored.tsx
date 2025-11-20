@@ -1,11 +1,12 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Database, Activity, FileText } from 'lucide-react';
+import { Database, Activity, FileText, Copy } from 'lucide-react';
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
 import { LexiconStatusDashboardRefactored } from '@/components/advanced/lexicon-status/LexiconStatusDashboardRefactored';
 import { SystemHealthDashboard } from '@/components/advanced/system-health/SystemHealthDashboard';
 import { DictionaryImportInterface } from '@/components/advanced/DictionaryImportInterface';
+import { DuplicateAnalysisDashboard } from '@/components/advanced/DuplicateAnalysisDashboard';
 
 export default function AdminLexiconSetupRefactored() {
   return (
@@ -16,7 +17,7 @@ export default function AdminLexiconSetupRefactored() {
         <AdminBreadcrumb currentPage="Configuração de Léxico (Refatorado)" />
         
         <Tabs defaultValue="dashboard" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="dashboard">
               <Database className="h-4 w-4 mr-2" />
               Status
@@ -28,6 +29,10 @@ export default function AdminLexiconSetupRefactored() {
             <TabsTrigger value="import">
               <FileText className="h-4 w-4 mr-2" />
               Importação
+            </TabsTrigger>
+            <TabsTrigger value="duplicates">
+              <Copy className="h-4 w-4 mr-2" />
+              Duplicatas
             </TabsTrigger>
           </TabsList>
 
@@ -41,6 +46,10 @@ export default function AdminLexiconSetupRefactored() {
 
           <TabsContent value="import">
             <DictionaryImportInterface />
+          </TabsContent>
+
+          <TabsContent value="duplicates">
+            <DuplicateAnalysisDashboard />
           </TabsContent>
         </Tabs>
       </div>
