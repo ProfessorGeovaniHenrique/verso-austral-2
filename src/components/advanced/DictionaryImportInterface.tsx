@@ -24,6 +24,7 @@ export function DictionaryImportInterface() {
   const [isImportingGutenberg, setIsImportingGutenberg] = useState(false);
   const [isImportingRochaPombo, setIsImportingRochaPombo] = useState(false);
   const [isImportingUnesp, setIsImportingUnesp] = useState(false);
+  const [isImportingNavarro, setIsImportingNavarro] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isCleaningCache, setIsCleaningCache] = useState(false);
   const { data: jobs } = useDictionaryImportJobs();
@@ -143,6 +144,26 @@ export function DictionaryImportInterface() {
       toast.error(`Erro ao iniciar importação do UNESP: ${error.message}`);
     } finally {
       setIsImportingUnesp(false);
+    }
+  };
+
+  const importNavarro = async () => {
+    setIsImportingNavarro(true);
+    try {
+      toast.info('Iniciando importação do Dicionário do Nordeste (Navarro)...');
+      
+      const { data, error } = await supabase.functions.invoke('process-nordestino-navarro', {
+        body: {}
+      });
+
+      if (error) throw error;
+      
+      toast.success(`Importação do Navarro iniciada! Job ID: ${data.jobId}`);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
+    } catch (error: any) {
+      toast.error(`Erro ao iniciar importação do Navarro: ${error.message}`);
+    } finally {
+      setIsImportingNavarro(false);
     }
   };
 
@@ -364,6 +385,23 @@ export function DictionaryImportInterface() {
               }}
               onImport={importUnesp}
               isImporting={isImportingUnesp}
+            />
+
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'Dicionário do Nordeste',
+                fonte: 'Fred Navarro',
+                edicao: '1ª edição',
+                ano: 2014,
+                tipo: 'nordestino_navarro',
+                esperado: 15000,
+                atual: jobs?.find(j => j.tipo_dicionario === 'nordestino_navarro')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/blob/main/public/corpus/nordestino_navarro_2014.txt',
+                descricao: 'Dicionário especializado do léxico nordestino com regionalismos, expressões idiomáticas e marcadores culturais. Inclui variações dialetais de todos os estados do Nordeste.',
+                licenca: 'CEPE - Uso Acadêmico'
+              }}
+              onImport={importNavarro}
+              isImporting={isImportingNavarro}
             />
           </div>
         </div>

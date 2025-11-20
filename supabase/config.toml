@@ -41,6 +41,8 @@ verify_jwt = true
 
 [functions.import-unesp-backend]
 verify_jwt = true
-# Importação do dicionário Gutenberg via backend
-# Proteção: Apenas usuários autenticados (admins)
+
+[functions.process-nordestino-navarro]
+verify_jwt = true
+# Importação do Dicionário do Nordeste (Fred Navarro 2014)
 

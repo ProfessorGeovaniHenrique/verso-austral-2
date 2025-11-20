@@ -1316,45 +1316,55 @@ async function inferCulturalInsignias(
     insignias.push('Nordestino');
   }
   
-  // Buscar insígnias secundárias no léxico dialectal
-  const { data: dialectalEntry } = await supabase
-    .from('dialectal_lexicon')
-    .select('origem_regionalista, influencia_platina, contextos_culturais')
-    .eq('verbete_normalizado', palavra.toLowerCase())
-    .maybeSingle();
-  
-  if (dialectalEntry) {
-    // Adicionar origens regionalistas
-    if (dialectalEntry.origem_regionalista) {
-      dialectalEntry.origem_regionalista.forEach((origem: string) => {
-        if (origem.toLowerCase().includes('gaúcho') || origem.toLowerCase().includes('rio grande do sul')) {
-          if (!insignias.includes('Gaúcho')) insignias.push('Gaúcho');
-        }
-        if (origem.toLowerCase().includes('nordest')) {
-          if (!insignias.includes('Nordestino')) insignias.push('Nordestino');
-        }
-      });
-    }
+    // Buscar insígnias secundárias nos léxicos dialectal e nordestino
+    const { data: lexiconEntries } = await supabase
+      .from('dialectal_lexicon')
+      .select('origem_regionalista, influencia_platina, contextos_culturais, volume_fonte')
+      .eq('verbete_normalizado', palavra.toLowerCase())
+      .limit(10);
     
-    // Adicionar influência platina
-    if (dialectalEntry.influencia_platina) {
-      insignias.push('Platino');
+    if (lexiconEntries && lexiconEntries.length > 0) {
+      for (const entry of lexiconEntries) {
+        // Detectar origem do dicionário
+        const isNavarro = entry.volume_fonte?.includes('Navarro');
+        
+        // Adicionar origens regionalistas
+        if (entry.origem_regionalista) {
+          entry.origem_regionalista.forEach((origem: string) => {
+            if (origem.toLowerCase().includes('gaúcho') || origem.toLowerCase().includes('rio grande do sul')) {
+              if (!insignias.includes('Gaúcho')) insignias.push('Gaúcho');
+            }
+            if (origem.toLowerCase().includes('nordest') || isNavarro) {
+              if (!insignias.includes('Nordestino')) insignias.push('Nordestino');
+            }
+            // Estados do Nordeste
+            const estadosNordeste = ['BA', 'CE', 'PE', 'RN', 'PB', 'AL', 'SE', 'MA', 'PI'];
+            if (estadosNordeste.includes(origem.toUpperCase())) {
+              if (!insignias.includes('Nordestino')) insignias.push('Nordestino');
+            }
+          });
+        }
+        
+        // Adicionar influência platina
+        if (entry.influencia_platina) {
+          insignias.push('Platino');
+        }
+        
+        // Verificar contextos culturais para outras insígnias
+        if (entry.contextos_culturais) {
+          const contextosStr = JSON.stringify(entry.contextos_culturais).toLowerCase();
+          if (contextosStr.includes('indígena') || contextosStr.includes('guarani')) {
+            insignias.push('Indígena');
+          }
+          if (contextosStr.includes('afro') || contextosStr.includes('africano')) {
+            insignias.push('Afro-Brasileiro');
+          }
+          if (contextosStr.includes('caipira') || contextosStr.includes('interior')) {
+            insignias.push('Caipira');
+          }
+        }
+      }
     }
-    
-    // Verificar contextos culturais para outras insígnias
-    if (dialectalEntry.contextos_culturais) {
-      const contextosStr = JSON.stringify(dialectalEntry.contextos_culturais).toLowerCase();
-      if (contextosStr.includes('indígena') || contextosStr.includes('guarani')) {
-        insignias.push('Indígena');
-      }
-      if (contextosStr.includes('afro') || contextosStr.includes('africano')) {
-        insignias.push('Afro-Brasileiro');
-      }
-      if (contextosStr.includes('caipira') || contextosStr.includes('interior')) {
-        insignias.push('Caipira');
-      }
-    }
-  }
   
   // Remover duplicatas
   return [...new Set(insignias)];

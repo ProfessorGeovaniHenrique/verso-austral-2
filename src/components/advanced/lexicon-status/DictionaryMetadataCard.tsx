@@ -8,7 +8,7 @@ interface DictionaryMetadata {
   fonte: string;
   edicao?: string;
   ano?: number;
-  tipo: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'unesp';
+  tipo: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'unesp' | 'nordestino_navarro';
   esperado: number;
   atual: number;
   githubUrl?: string;
