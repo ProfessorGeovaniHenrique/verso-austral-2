@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
+import { CancelJobDialog } from '@/components/advanced/CancelJobDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
 import { useDictionaryImportJobs } from '@/hooks/useDictionaryImportJobs';
@@ -28,7 +29,6 @@ export default function AdminDictionaryImport() {
   const navigate = useNavigate();
   const { data: jobs, isLoading, refetch } = useDictionaryImportJobs(2000);
   const [importingDict, setImportingDict] = useState<string | null>(null);
-  const [cancellingJob, setCancellingJob] = useState<string | null>(null);
   const [clearingDict, setClearingDict] = useState<string | null>(null);
 
   // Separar jobs ativos e recentes
@@ -61,28 +61,6 @@ export default function AdminDictionaryImport() {
       notifications.error('Erro ao iniciar importação', error.message);
     } finally {
       setImportingDict(null);
-    }
-  };
-
-  const handleCancel = async (jobId: string) => {
-    setCancellingJob(jobId);
-    
-    try {
-      const { data, error } = await supabase.rpc('cancel_job_atomic', {
-        p_job_id: jobId,
-        p_user_id: (await supabase.auth.getUser()).data.user?.id || '',
-        p_reason: 'Cancelamento manual pelo usuário',
-      });
-
-      if (error) throw error;
-      if (!data?.[0]?.success) throw new Error(data?.[0]?.message || 'Falha ao cancelar');
-
-      notifications.success('Job cancelado', data[0].message);
-      await refetch();
-    } catch (error: any) {
-      notifications.error('Erro ao cancelar job', error.message);
-    } finally {
-      setCancellingJob(null);
     }
   };
 
@@ -211,19 +189,11 @@ export default function AdminDictionaryImport() {
                     </>
                   )}
                   {activeJob && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleCancel(activeJob.id)}
-                      disabled={cancellingJob === activeJob.id}
-                      className="flex-1"
-                    >
-                      {cancellingJob === activeJob.id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <><XCircle className="h-4 w-4 mr-1" /> Cancelar</>
-                      )}
-                    </Button>
+                    <CancelJobDialog
+                      jobId={activeJob.id}
+                      jobType={dict.name}
+                      onCancelled={() => refetch()}
+                    />
                   )}
                 </div>
 
@@ -274,18 +244,11 @@ export default function AdminDictionaryImport() {
                       </div>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(job.status)}
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleCancel(job.id)}
-                          disabled={cancellingJob === job.id}
-                        >
-                          {cancellingJob === job.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <XCircle className="h-4 w-4" />
-                          )}
-                        </Button>
+                        <CancelJobDialog
+                          jobId={job.id}
+                          jobType={config?.name || job.tipo_dicionario}
+                          onCancelled={() => refetch()}
+                        />
                       </div>
                     </div>
                     
