@@ -1,8 +1,9 @@
 import { useLexiconStats } from '@/hooks/useLexiconStats';
 import { DictionaryStatusCard } from './DictionaryStatusCard';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw, TrendingUp, Database } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 export function LexiconStatusDashboardRefactored() {
   const { data: stats, isLoading, refetch, isRefetching } = useLexiconStats();
@@ -24,9 +25,12 @@ export function LexiconStatusDashboardRefactored() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Status dos Léxicos</h2>
+        <div>
+          <h2 className="text-2xl font-bold">Status dos Léxicos</h2>
+          <p className="text-sm text-muted-foreground mt-1">Monitoramento em tempo real dos dicionários importados</p>
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -38,7 +42,53 @@ export function LexiconStatusDashboardRefactored() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ✅ FASE 5: Métricas Gerais Destacadas */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Total de Entradas</p>
+                <p className="text-3xl font-bold">{stats.overall.total_entries.toLocaleString()}</p>
+              </div>
+              <Database className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Taxa de Validação</p>
+                <p className="text-3xl font-bold">{(stats.overall.validation_rate * 100).toFixed(1)}%</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Última Importação</p>
+                <p className="text-lg font-bold">
+                  {stats.overall.last_import 
+                    ? new Date(stats.overall.last_import).toLocaleDateString('pt-BR')
+                    : 'N/A'
+                  }
+                </p>
+              </div>
+              <RefreshCw className="h-8 w-8 text-muted-foreground/50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold">Status por Dicionário</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <DictionaryStatusCard
           nome="Dialectal"
           status={stats.dialectal.volumeII === 0 ? 'critical' : stats.dialectal.confianca_media < 0.7 ? 'warning' : 'healthy'}
@@ -78,14 +128,8 @@ export function LexiconStatusDashboardRefactored() {
             confianca: 1.0,
           }}
         />
+        </div>
       </div>
-
-      <Alert>
-        <AlertDescription>
-          <strong>Total geral:</strong> {stats.overall.total_entries.toLocaleString()} entradas | 
-          <strong className="ml-2">Taxa de validação:</strong> {(stats.overall.validation_rate * 100).toFixed(1)}%
-        </AlertDescription>
-      </Alert>
     </div>
   );
 }

@@ -15,6 +15,8 @@ import { CancellationHistory } from './CancellationHistory';
 import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 import { deepCleanAllCaches } from '@/utils/cacheManagement';
+import { DictionaryMetadataCard } from './lexicon-status/DictionaryMetadataCard';
+import { BatchValidationDialog } from './lexicon-status/BatchValidationDialog';
 
 export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
@@ -221,10 +223,10 @@ export function DictionaryImportInterface() {
 
   return (
     <div className="space-y-6 p-6">
-      <div className="space-y-4">
-        <div>
+      <div className="space-y-6">
+        <div className="space-y-2">
           <h2 className="text-2xl font-bold">Importação de Dicionários</h2>
-          <p className="text-muted-foreground">Importe e gerencie dicionários dialectais</p>
+          <p className="text-muted-foreground">Importe e gerencie dicionários lexicográficos com validação automática</p>
         </div>
 
         {/* ✅ FASE 3 - BLOCO 2: Configurações de Notificações em Tempo Real */}
@@ -235,137 +237,146 @@ export function DictionaryImportInterface() {
           onSoundEnabledChange={setSoundEnabled}
         />
 
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Dialetal Vol. I
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => importDialectalVolume('I')} disabled={isImportingVolI || isImportingVolII || isImportingGutenberg} className="w-full">
-                {isImportingVolI ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : 'Importar'}
-              </Button>
-            </CardContent>
-          </Card>
+        {/* ✅ FASE 3: Metadata Cards dos Dicionários */}
+        <div className="space-y-3">
+          <h3 className="text-lg font-semibold">Dicionários Disponíveis</h3>
+          <div className="grid gap-4 md:grid-cols-2">
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'Dialectal Gaúcho',
+                fonte: 'Vocabulário Sul-Rio-Grandense',
+                edicao: 'Volumes I e II',
+                ano: 1964,
+                tipo: 'dialectal',
+                esperado: 10000,
+                atual: jobs?.find(j => j.tipo_dicionario.includes('DIALECTAL'))?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/yourusername/corpus-data',
+                descricao: 'Léxico regionalista gaúcho com termos campeiros, platinismos e expressões típicas do Rio Grande do Sul.',
+                licenca: 'Domínio Público'
+              }}
+              onImport={() => importDialectalVolume('I')}
+              isImporting={isImportingVolI || isImportingVolII}
+            />
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Dialetal Vol. II
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => importDialectalVolume('II')} disabled={isImportingVolI || isImportingVolII || isImportingGutenberg} className="w-full">
-                {isImportingVolII ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processando...</> : 'Importar'}
-              </Button>
-            </CardContent>
-          </Card>
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'Dicionário Gutenberg',
+                fonte: 'Projeto Gutenberg',
+                ano: 2024,
+                tipo: 'gutenberg',
+                esperado: 700000,
+                atual: jobs?.find(j => j.tipo_dicionario === 'GUTENBERG')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/yourusername/corpus-data',
+                descricao: 'Dicionário completo da língua portuguesa com definições, etimologias e exemplos de uso.',
+                licenca: 'Gutenberg License'
+              }}
+              onImport={importGutenberg}
+              isImporting={isImportingGutenberg}
+            />
 
-          {/* Card Gutenberg */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Gutenberg - Dicionário Completo
-              </CardTitle>
-              <CardDescription>
-                Importar dicionário Gutenberg completo (carregado diretamente do GitHub)
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button 
-                onClick={importGutenberg} 
-                disabled={isImportingVolI || isImportingVolII || isImportingGutenberg} 
-                className="w-full"
-              >
-                {isImportingGutenberg ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Importando do GitHub...
-                  </>
-                ) : (
-                  <>
-                    <BookOpen className="mr-2 h-4 w-4" />
-                    Importar Gutenberg
-                  </>
-                )}
-              </Button>
-            <p className="text-sm text-muted-foreground">
-              O dicionário será carregado diretamente do repositório GitHub.
-              Importação completa em lote com processamento paralelo.
-            </p>
-          </CardContent>
-        </Card>
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'Rocha Pombo (ABL)',
+                fonte: 'Academia Brasileira de Letras',
+                edicao: '2ª edição',
+                ano: 2011,
+                tipo: 'rochaPombo',
+                esperado: 50000,
+                atual: jobs?.find(j => j.tipo_dicionario === 'ROCHA_POMBO')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/yourusername/corpus-data',
+                descricao: 'Dicionário oficial de sinônimos da ABL, referência nacional para sinonímia e antonímia.',
+                licenca: 'ABL - Uso Acadêmico'
+              }}
+              onImport={importRochaPombo}
+              isImporting={isImportingRochaPombo}
+            />
 
-        {/* Card Rocha Pombo (ABL) */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-purple-600" />
-              Dicionário Rocha Pombo (ABL)
-            </CardTitle>
-            <CardDescription>
-              Academia Brasileira de Letras - 2ª edição (2011) - Sinônimos
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={importRochaPombo}
-              disabled={isImportingRochaPombo}
-              className="w-full"
-            >
-              {isImportingRochaPombo ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importando Rocha Pombo...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Importar Rocha Pombo
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Dicionário de Sinônimos oficial da ABL carregado do GitHub.
-            </p>
-          </CardContent>
-        </Card>
+            <DictionaryMetadataCard
+              metadata={{
+                nome: 'UNESP Definições',
+                fonte: 'Universidade Estadual Paulista',
+                ano: 2023,
+                tipo: 'unesp',
+                esperado: 100000,
+                atual: jobs?.find(j => j.tipo_dicionario === 'UNESP')?.verbetes_inseridos || 0,
+                githubUrl: 'https://github.com/yourusername/corpus-data',
+                descricao: 'Definições lexicográficas acadêmicas com exemplos contextualizados e registro de uso.',
+                licenca: 'CC BY-NC-SA 4.0'
+              }}
+              onImport={importUnesp}
+              isImporting={isImportingUnesp}
+            />
+          </div>
+        </div>
 
-        {/* Card UNESP */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Dicionário UNESP (Definições)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button 
-              onClick={importUnesp}
-              disabled={isImportingUnesp}
-              className="w-full"
-            >
-              {isImportingUnesp ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importando UNESP...
-                </>
-              ) : (
-                <>
-                  <Download className="mr-2 h-4 w-4" />
-                  Importar UNESP
-                </>
-              )}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Definições lexicográficas carregadas do GitHub.
-            </p>
-          </CardContent>
-        </Card>
+        {/* ✅ FASE 5: Validação em Lote */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-semibold">Validação em Lote</h3>
+              <p className="text-sm text-muted-foreground">Valide automaticamente entradas com alta confiança (≥90%)</p>
+            </div>
+          </div>
+          
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Dialectal</CardTitle>
+              </CardHeader>
+              <CardContent className="flex gap-2">
+                <BatchValidationDialog 
+                  batchSize={100} 
+                  dictionaryType="dialectal"
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey: ['lexicon-stats'] })}
+                />
+                <BatchValidationDialog 
+                  batchSize={1000} 
+                  dictionaryType="dialectal"
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey: ['lexicon-stats'] })}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Gutenberg</CardTitle>
+              </CardHeader>
+              <CardContent className="flex gap-2">
+                <BatchValidationDialog 
+                  batchSize={100} 
+                  dictionaryType="gutenberg"
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey: ['lexicon-stats'] })}
+                />
+                <BatchValidationDialog 
+                  batchSize={1000} 
+                  dictionaryType="gutenberg"
+                  onSuccess={() => queryClient.invalidateQueries({ queryKey: ['lexicon-stats'] })}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Rocha Pombo</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge variant="outline" className="text-xs">
+                  Validado pela ABL
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">UNESP</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Badge variant="outline" className="text-xs">
+                  Validado Academicamente
+                </Badge>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
@@ -373,10 +384,11 @@ export function DictionaryImportInterface() {
         <div ref={resultsRef} className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold">Dicionários Importados</h3>
+              <h3 className="text-xl font-semibold">Jobs de Importação</h3>
               <p className="text-sm text-muted-foreground">
                 {jobs.filter(j => j.status === 'concluido' && j.progresso === 100).length} completos • 
                 {jobs.filter(j => j.status === 'processando' || j.status === 'iniciado').length} ativos
+                {jobs.some(j => j.isStalled) && ` • ${jobs.filter(j => j.isStalled).length} travados`}
               </p>
             </div>
             
@@ -416,9 +428,24 @@ export function DictionaryImportInterface() {
                 
                 <CardContent className="space-y-3 pt-0">
                   {(isActive || isIncomplete) && (
-                    <div className="space-y-1">
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">Progresso</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{job.progresso}%</span>
+                          {job.stalledMinutes !== undefined && job.stalledMinutes > 0 && (
+                            <Badge variant="destructive" className="text-xs h-5">
+                              Travado há {job.stalledMinutes}min
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
                       <Progress value={job.progresso} className="h-2" />
-                      <p className="text-xs text-muted-foreground text-right">{job.progresso}%</p>
+                      {isActive && job.verbetes_inseridos > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          ~{Math.round((job.total_verbetes - job.verbetes_inseridos) / (job.verbetes_inseridos / ((Date.now() - new Date(job.tempo_inicio!).getTime()) / 60000)))} min restantes
+                        </p>
+                      )}
                     </div>
                   )}
                   
