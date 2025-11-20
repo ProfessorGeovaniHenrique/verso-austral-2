@@ -11,10 +11,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ✅ IMPROVED: Larger batches for faster processing
-const BATCH_SIZE = 5000; // Was 1000, now 5x faster
-const TIMEOUT_MS = 180000; // 3 minutes (was 50 seconds)
-const MAX_ENTRIES_PER_JOB = 50000; // Process 50k at a time, auto-resume for next batch
+// ✅ FASE 1: Configurações otimizadas para parser de blocos
+const BATCH_SIZE = 200;
+const TIMEOUT_MS = 90000; // 90 segundos
+const UPDATE_FREQUENCY = 5; // Atualizar a cada 5 batches
 
 interface VerbeteGutenberg {
   verbete: string;
@@ -37,10 +37,9 @@ interface VerbeteGutenberg {
 }
 
 interface ProcessRequest {
+  jobId: string;
   fileContent: string;
-  batchSize?: number;
-  startIndex?: number;
-  autoResumeOnCompletion?: boolean; // ✅ NEW: Enable auto-resume for continuous import
+  offsetInicial?: number;
 }
 
 function validateRequest(data: any): ProcessRequest {
@@ -48,26 +47,21 @@ function validateRequest(data: any): ProcessRequest {
     throw new Error('Payload inválido');
   }
   
-  const { fileContent, batchSize, startIndex } = data;
+  const { jobId, fileContent, offsetInicial = 0 } = data;
+  
+  if (!jobId || typeof jobId !== 'string') {
+    throw new Error('jobId é obrigatório');
+  }
   
   if (!fileContent || typeof fileContent !== 'string') {
     throw new Error('fileContent deve ser uma string válida');
   }
   
-  // ✅ Aumentado de 10MB para 20MB para acomodar overhead de serialização
   if (fileContent.length > 20_000_000) {
     throw new Error('fileContent excede tamanho máximo de 20MB');
   }
   
-  if (batchSize !== undefined && (typeof batchSize !== 'number' || batchSize < 100 || batchSize > 5000)) {
-    throw new Error('batchSize deve estar entre 100 e 5000');
-  }
-  
-  if (startIndex !== undefined && (typeof startIndex !== 'number' || startIndex < 0)) {
-    throw new Error('startIndex deve ser >= 0');
-  }
-  
-  return { fileContent, batchSize, startIndex };
+  return { jobId, fileContent, offsetInicial };
 }
 
 function normalizeWord(word: string): string {
@@ -78,51 +72,77 @@ function normalizeWord(word: string): string {
     .trim();
 }
 
-function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
+/**
+ * ✅ FASE 1: NOVO PARSER - Baseado em blocos de texto
+ * Formato real do arquivo: Blocos separados por linhas vazias
+ */
+function parseGutenbergBlock(block: string): VerbeteGutenberg | null {
   try {
-    const lines = entryText.trim().split('\n').filter(l => l.trim());
-    if (lines.length < 2) return null;
+    // Dividir o bloco em linhas e remover linhas vazias
+    const lines = block.trim().split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+    // Validação: Precisa de pelo menos verbete e uma linha de definição
+    if (lines.length < 2) {
+      return null;
+    }
+
+    // 1. Verbete: Primeira linha (deve ser maiúscula e ter pelo menos 2 caracteres)
+    const verbeteRaw = lines[0];
     
-    const verbeteMatch = lines[0].match(/^\*([A-Za-záàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ\-]+)\*,?/);
-    if (!verbeteMatch) return null;
+    // Validação: deve ser predominantemente maiúsculo e ter caracteres alfabéticos
+    if (verbeteRaw.length < 2 || !/[A-ZÁÀÃÉÊÍÓÔÚÇ]/.test(verbeteRaw)) {
+      return null;
+    }
     
-    const verbete = verbeteMatch[1];
+    const verbete = verbeteRaw.replace(/[.,;:]$/, '').trim();
+
+    // 2. Corpo da definição: Juntar todas as outras linhas
+    const definitionBody = lines.slice(1).join(' ').trim();
+
+    // 3. Tentar extrair classe gramatical (ex: "S.m.", "V.t.", "Adj.")
+    let classeGramatical: string | null = null;
+    let definitionText = definitionBody;
+
+    // Regex para capturar classe gramatical no início da definição
+    const posMatch = definitionBody.match(/^([A-Z][a-z]{0,3}\.(?:\s[a-z]{1,3}\.)?)\s*[-–—]\s*(.+)/);
     
-    const classeMatch = lines[1].match(/_([a-z\s\.]+)_/i);
-    const classeGramatical = classeMatch ? classeMatch[1].trim() : null;
-    
+    if (posMatch) {
+      classeGramatical = posMatch[1].trim();
+      definitionText = posMatch[2].trim();
+    }
+
+    // 4. Extrair gênero se presente na classe gramatical
     let genero: string | null = null;
     if (classeGramatical) {
       if (classeGramatical.includes('f.')) genero = 'feminino';
       else if (classeGramatical.includes('m.')) genero = 'masculino';
     }
-    
-    let defTexto = '';
-    for (let i = 2; i < lines.length && i < 10; i++) {
-      if (lines[i].startsWith('(Do ') || lines[i].startsWith('(Lat.')) break;
-      defTexto += lines[i] + ' ';
-    }
-    
-    const definicoes = [{
-      numero: 1,
-      texto: defTexto.trim().substring(0, 500),
-      contexto: null
-    }];
-    
+
+    // 5. Extrair etimologia se presente
     let etimologia: string | null = null;
     let origemLingua: string | null = null;
-    const etimologiaMatch = entryText.match(/\((Do|Lat\.|Do lat\.|Do gr\.)\s+([^)]+)\)/i);
+    const etimologiaMatch = definitionText.match(/\((Do|Lat\.|Do lat\.|Do gr\.)\s+([^)]+)\)/i);
     if (etimologiaMatch) {
       etimologia = etimologiaMatch[2];
-      if (etimologiaMatch[1].includes('lat')) origemLingua = 'latim';
-      else if (etimologiaMatch[1].includes('gr')) origemLingua = 'grego';
+      if (etimologiaMatch[1].toLowerCase().includes('lat')) origemLingua = 'latim';
+      else if (etimologiaMatch[1].toLowerCase().includes('gr')) origemLingua = 'grego';
     }
-    
-    const arcaico = entryText.includes('Ant.') || entryText.includes('Antigo');
-    const regional = entryText.includes('Prov.') || entryText.includes('Provincial') || entryText.includes('Bras.');
-    const figurado = entryText.includes('Fig.');
-    const popular = entryText.includes('Pop.');
-    
+
+    // 6. Detectar marcadores de uso
+    const arcaico = definitionText.includes('Ant.') || definitionText.includes('Antigo');
+    const regional = definitionText.includes('Prov.') || definitionText.includes('Provincial') || definitionText.includes('Bras.');
+    const figurado = definitionText.includes('Fig.');
+    const popular = definitionText.includes('Pop.');
+
+    // 7. Estruturar a definição
+    const definicoes = [{
+      numero: 1,
+      texto: definitionText.substring(0, 1000), // Limite de segurança
+      contexto: null
+    }];
+
+    console.log(`✅ Bloco parseado: ${verbete} (${classeGramatical || 'sem classe'})`);
+
     return {
       verbete,
       verbeteNormalizado: normalizeWord(verbete),
@@ -139,12 +159,13 @@ function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
       popular
     };
   } catch (error) {
+    console.error("❌ Erro no parser de bloco:", error);
     return null;
   }
 }
 
 /**
- * ✅ FASE 3 - BLOCO 1: Detectar cancelamento de job
+ * ✅ FASE 1: Detectar cancelamento de job
  */
 async function checkCancellation(jobId: string, supabaseClient: any) {
   const { data: job } = await supabaseClient
@@ -170,29 +191,31 @@ async function checkCancellation(jobId: string, supabaseClient: any) {
   }
 }
 
-async function processInBackground(jobId: string, verbetes: string[]) {
+async function processInBackground(jobId: string, blocks: string[]) {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
   );
 
   const startTime = Date.now();
+  const totalBlocks = blocks.length;
   
   logJobStart({
     fonte: 'Gutenberg',
     jobId,
-    totalEntries: verbetes.length,
+    totalEntries: totalBlocks,
     batchSize: BATCH_SIZE,
     timeoutMs: TIMEOUT_MS,
-    maxRetries: 5
+    maxRetries: 3
   });
 
   await supabase
     .from('dictionary_import_jobs')
     .update({
       status: 'processando',
-      total_verbetes: verbetes.length,
-      tempo_inicio: new Date().toISOString()
+      total_verbetes: totalBlocks,
+      tempo_inicio: new Date().toISOString(),
+      metadata: { metodo_parsing: 'blocos_v2' }
     })
     .eq('id', jobId);
 
@@ -200,12 +223,13 @@ async function processInBackground(jobId: string, verbetes: string[]) {
   let inseridos = 0;
   let erros = 0;
   let batchCount = 0;
-  const errorLog: string[] = [];
+  let blocosInvalidos = 0;
 
   try {
-    for (let i = 0; i < verbetes.length; i += BATCH_SIZE) {
+    for (let i = 0; i < totalBlocks; i += BATCH_SIZE) {
+      // Verificar timeout
       if (Date.now() - startTime > TIMEOUT_MS) {
-        console.log(`[JOB ${jobId}] Timeout. Pausando em ${processados}/${verbetes.length}`);
+        console.log(`[JOB ${jobId}] ⏱️ Timeout. Pausando em ${processados}/${totalBlocks}`);
         await supabase
           .from('dictionary_import_jobs')
           .update({
@@ -213,61 +237,73 @@ async function processInBackground(jobId: string, verbetes: string[]) {
             verbetes_processados: processados,
             verbetes_inseridos: inseridos,
             erros: erros,
-            metadata: { last_index: i }
+            metadata: { last_index: i, blocos_invalidos: blocosInvalidos }
           })
           .eq('id', jobId);
         return;
       }
 
-      const batch = verbetes.slice(i, Math.min(i + BATCH_SIZE, verbetes.length));
-      const parsedBatch = batch
-        .map(v => parseGutenbergEntry(v))
-        .filter(v => v !== null)
-        .map(v => ({
-          verbete: v!.verbete,
-          verbete_normalizado: v!.verbeteNormalizado,
-          classe_gramatical: v!.classeGramatical,
-          genero: v!.genero,
-          definicoes: v!.definicoes,
-          etimologia: v!.etimologia,
-          origem_lingua: v!.origemLingua,
-          sinonimos: v!.sinonimos,
-          exemplos: v!.exemplos,
-          arcaico: v!.arcaico,
-          regional: v!.regional,
-          figurado: v!.figurado,
-          popular: v!.popular,
-          confianca_extracao: 0.85
-        }));
+      const batch = blocks.slice(i, Math.min(i + BATCH_SIZE, totalBlocks));
+      const parsedBatch: any[] = [];
 
+      for (const block of batch) {
+        const parsed = parseGutenbergBlock(block);
+        
+        if (parsed) {
+          parsedBatch.push({
+            verbete: parsed.verbete,
+            verbete_normalizado: parsed.verbeteNormalizado,
+            classe_gramatical: parsed.classeGramatical,
+            genero: parsed.genero,
+            definicoes: parsed.definicoes,
+            etimologia: parsed.etimologia,
+            origem_lingua: parsed.origemLingua,
+            sinonimos: parsed.sinonimos,
+            exemplos: parsed.exemplos,
+            arcaico: parsed.arcaico,
+            regional: parsed.regional,
+            figurado: parsed.figurado,
+            popular: parsed.popular,
+            confianca_extracao: parsed.classeGramatical ? 0.95 : 0.85
+          });
+        } else {
+          erros++;
+          blocosInvalidos++;
+          
+          // Log apenas dos primeiros 5 erros
+          if (erros <= 5) {
+            console.warn(`⚠️ Bloco rejeitado (${block.substring(0, 50)}...)`);
+          }
+        }
+        
+        processados++;
+      }
+
+      // Inserir batch se houver dados válidos
       if (parsedBatch.length > 0) {
         await withRetry(async () => {
-          const { data, error: insertError } = await supabase
+          const { error: insertError } = await supabase
             .from('gutenberg_lexicon')
-            .insert(parsedBatch)
-            .select();
+            .upsert(parsedBatch, { onConflict: 'verbete_normalizado', ignoreDuplicates: false });
 
           if (insertError) {
             console.error(`[JOB ${jobId}] ❌ Erro batch ${i}:`, insertError);
             throw insertError;
           }
           
-          inseridos += data?.length || 0;
-        }, 5, 3000, 2);
+          inseridos += parsedBatch.length;
+        }, 3, 2000, 2);
         
-        console.log(`[JOB ${jobId}] ✅ Batch de ${parsedBatch.length} verbetes inserido com sucesso`);
+        console.log(`[JOB ${jobId}] ✅ Batch de ${parsedBatch.length} verbetes inserido`);
       }
 
-      processados += batch.length;
       batchCount++;
 
-      // ✅ FASE 3 - BLOCO 1: Verificar cancelamento a cada 5 batches
       // Atualizar progresso a cada 5 batches
-      if (batchCount % 5 === 0) {
-        // Checar se job foi cancelado
+      if (batchCount % UPDATE_FREQUENCY === 0 || processados >= totalBlocks) {
         await checkCancellation(jobId, supabase);
         
-        const progressPercent = Math.round((processados / verbetes.length) * 100);
+        const progressPercent = Math.round((processados / totalBlocks) * 100);
         
         await withRetry(async () => {
           const { error } = await supabase
@@ -277,7 +313,8 @@ async function processInBackground(jobId: string, verbetes: string[]) {
               verbetes_inseridos: inseridos,
               erros: erros,
               progresso: progressPercent,
-              atualizado_em: new Date().toISOString()
+              atualizado_em: new Date().toISOString(),
+              metadata: { blocos_invalidos: blocosInvalidos }
             })
             .eq('id', jobId);
           
@@ -287,7 +324,7 @@ async function processInBackground(jobId: string, verbetes: string[]) {
         logJobProgress({
           jobId,
           processed: processados,
-          totalEntries: verbetes.length,
+          totalEntries: totalBlocks,
           inserted: inseridos,
           errors: erros,
           startTime
@@ -295,6 +332,7 @@ async function processInBackground(jobId: string, verbetes: string[]) {
       }
     }
 
+    // Finalização
     const finalStatus = erros > processados * 0.5 ? 'erro' : 'concluido';
     const totalTime = Date.now() - startTime;
     
@@ -307,7 +345,7 @@ async function processInBackground(jobId: string, verbetes: string[]) {
         erros: erros,
         progresso: 100,
         tempo_fim: new Date().toISOString(),
-        metadata: { errorLog: errorLog.slice(0, 50) }
+        metadata: { blocos_invalidos: blocosInvalidos }
       })
       .eq('id', jobId);
 
@@ -315,14 +353,19 @@ async function processInBackground(jobId: string, verbetes: string[]) {
       fonte: 'Gutenberg',
       jobId,
       processed: processados,
-      totalEntries: verbetes.length,
+      totalEntries: totalBlocks,
       inserted: inseridos,
       errors: erros,
       totalTime
     });
 
-  } catch (error) {
-    console.error(`[JOB ${jobId}] Erro fatal:`, error);
+  } catch (error: any) {
+    console.error(`[JOB ${jobId}] ❌ Erro fatal:`, error);
+    
+    // Não cancelar se for erro de cancelamento intencional
+    if (error.message === 'JOB_CANCELLED') {
+      return;
+    }
     
     if (error instanceof Error) {
       logJobError({ fonte: 'Gutenberg', jobId, error });
@@ -342,7 +385,7 @@ async function processInBackground(jobId: string, verbetes: string[]) {
 serve(withInstrumentation('process-gutenberg-dictionary', async (req) => {
   // Health check endpoint
   if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
-    const health = await createHealthCheck('process-gutenberg-dictionary', '1.0.0');
+    const health = await createHealthCheck('process-gutenberg-dictionary', '2.0.0');
     return new Response(JSON.stringify(health), {
       status: health.status === 'healthy' ? 200 : 503,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -360,64 +403,49 @@ serve(withInstrumentation('process-gutenberg-dictionary', async (req) => {
     );
 
     const rawBody = await req.json();
-    const { fileContent } = validateRequest(rawBody);
+    const { jobId, fileContent } = validateRequest(rawBody);
     
-    // ✅ FASE 3 - BLOCO 2: Validação pré-importação
-    const validation = validateGutenbergFile(fileContent);
-    logValidationResult('Gutenberg', validation);
+    console.log(`[process-gutenberg] Iniciando processamento para job ${jobId}`);
     
-    if (!validation.valid) {
-      return new Response(
-        JSON.stringify({ 
-          error: 'Validação falhou', 
-          details: validation.errors,
-          warnings: validation.warnings,
-          metadata: validation.metadata
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
-        }
-      );
-    }
+    // ✅ FASE 1: Split por blocos (uma ou mais linhas vazias)
+    const blocks = fileContent
+      .split(/\n\s*\n/)
+      .map(b => b.trim())
+      .filter(b => b.length > 0);
     
-    const verbetes = fileContent.split(/(?=\n\*[A-Za-záàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ\-]+\*,)/);
-    
-    console.log(`[process-gutenberg] ${verbetes.length} verbetes encontrados`);
+    console.log(`[process-gutenberg] ${blocks.length} blocos encontrados`);
 
-    const { data: job, error: jobError } = await supabase
+    // Atualizar job com total de blocos
+    await supabase
       .from('dictionary_import_jobs')
-      .insert({
-        tipo_dicionario: 'gutenberg',
-        status: 'pendente',
-        total_verbetes: verbetes.length
+      .update({
+        total_verbetes: blocks.length,
+        status: 'iniciado'
       })
-      .select()
-      .single();
+      .eq('id', jobId);
 
-    if (jobError || !job) {
-      throw new Error('Erro ao criar job: ' + (jobError?.message || 'Job não retornado'));
-    }
-
-    // @ts-ignore
-    EdgeRuntime.waitUntil(processInBackground(job.id, verbetes));
+    // @ts-ignore - EdgeRuntime é global no Deno Deploy
+    EdgeRuntime.waitUntil(processInBackground(jobId, blocks));
 
     return new Response(
       JSON.stringify({
         success: true,
-        jobId: job.id,
-        totalVerbetes: verbetes.length,
-        message: `Processamento iniciado. Job ID: ${job.id}`
+        jobId,
+        totalBlocos: blocks.length,
+        message: `Processamento iniciado com ${blocks.length} blocos`
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       }
     );
-  } catch (error) {
-    console.error('[process-gutenberg] Erro:', error);
+  } catch (error: any) {
+    console.error('[process-gutenberg] ❌ Erro:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,

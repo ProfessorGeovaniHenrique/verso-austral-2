@@ -104,6 +104,15 @@ function normalizeWord(word: string): string {
   return word.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
 
+/**
+ * ✅ FASE 2: Extrai marcadores de uso estruturados
+ * Remove colchetes e divide por barra ou espaço
+ */
+function extractMarkers(text: string | null): string[] {
+  if (!text) return [];
+  return text.replace(/[\[\]]/g, '').split(/[\/\s]+/).filter(m => m.length > 0);
+}
+
 function inferCategorias(verbete: string, definicoes: any[], contextos: any): string[] {
   const categorias: Set<string> = new Set();
   const texto = `${verbete} ${JSON.stringify(definicoes)} ${JSON.stringify(contextos)}`.toLowerCase();
@@ -157,10 +166,14 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
  */
 function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | null {
   try {
-    
-    // Regex principal melhorado para aceitar mais variações
-    // Formato: PALAVRA (ORIGEM) POS MARCADORES - Definição
-    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+?)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT|PORT)\s?\)\s+([^-]+?)(?:\s+-\s+|\n)(.+)$/s;
+    // ✅ FASE 2: REGEX REFINADA - Captura explícita de marcadores entre colchetes
+    // Grupo 1: Verbete
+    // Grupo 2: Origem (BRAS|PLAT...)
+    // Grupo 3: Classe Gramatical (antes dos colchetes)
+    // Grupo 4: Marcadores (dentro dos colchetes) - OPCIONAL
+    // Grupo 5: Resto da Classe Gramatical (após colchetes) - OPCIONAL
+    // Grupo 6: Definição (após hífen)
+    const headerRegex = /^([A-ZÁÀÃÉÊÍÓÔÚÇ\-\(\)\s]+?)\s+\((BRAS|PLAT|CAST|QUER|BRAS\/PLAT|PORT)\s?\)\s+([^[\-]+?)(?:\[(.*?)\])?([^\-]*?)(?:\s+\-\s+|\n)(.+)$/s;
     const match = normalizedText.match(headerRegex);
     
     if (!match) {
@@ -239,19 +252,34 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
       return null;
     }
     
-    // Parse com match bem-sucedido
-    const [_, verbete, origem, classeGramBruta, restoDefinicao] = match;
-    const classeGram = classeGramBruta.replace(/\b(ANT|DES|BRAS|PLAT)\b/g, '').trim();
-    const temANT = /\bANT\b/.test(classeGramBruta);
-    const temDES = /\bDES\b/.test(classeGramBruta);
+    // ✅ FASE 2: Parse com match bem-sucedido usando nova regex
+    const [_, verbete, origem, classeGramPre, marcadoresRaw, classeGramPost, restoDefinicao] = match;
+    
+    // Combinar partes da classe gramatical e limpar
+    const classeGramatical = (classeGramPre + (classeGramPost || '')).trim().replace(/\s+/g, ' ');
+    
+    // ✅ FASE 2: Extrair marcadores estruturados
+    const marcadores = extractMarkers(marcadoresRaw);
+    
+    // Extrair marcação temporal das partes da classe gramatical
+    const temANT = /\bANT\b/.test(classeGramatical);
+    const temDES = /\bDES\b/.test(classeGramatical);
     const marcacao_temporal = temANT && temDES ? 'ANT/DES' : (temANT ? 'ANT' : (temDES ? 'DES' : null));
+    
+    // Remover marcações temporais da classe gramatical final
+    const classeGram = classeGramatical.replace(/\b(ANT|DES|BRAS|PLAT)\b/g, '').trim();
+    
+    // Extrair frequência de uso da definição
     const freqMatch = restoDefinicao.match(/\[(r\/us|m\/us|n\/d)\]/);
+    
+    // Separar definições múltiplas por '//'
     const definicoesBrutas = restoDefinicao.split('//').map((d: string) => d.trim()).filter((d: string) => d.length > 0);
     const definicoes = definicoesBrutas.map((def: string, idx: number) => ({
       texto: def.replace(/\[(r\/us|m\/us|n\/d)\]/g, '').trim(),
       acepcao: idx + 1
     }));
     
+    // Extrair remissões (V., Cf.)
     const remissoes: string[] = [];
     const remissoesRegex = /(?:V\.|Cf\.)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ\-]+)/g;
     let remMatch;
@@ -267,13 +295,14 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
       classe_gramatical: classeGram || null,
       marcacao_temporal,
       frequencia_uso: freqMatch ? freqMatch[1] : null,
+      marcadores_uso: marcadores.length > 0 ? marcadores : null, // ✅ FASE 2: NOVO CAMPO
       definicoes,
       remissoes: remissoes.length > 0 ? remissoes : null,
       contextos_culturais,
       categorias_tematicas: categorias.length > 0 ? categorias : null,
       volume_fonte: volumeNum,
       pagina_fonte: null,
-      confianca_extracao: 0.98, // Parsing completo - máxima confiança
+      confianca_extracao: 0.99, // ✅ FASE 2: Confiança aumentada com regex refinada
       validado_humanamente: false,
       variantes: [],
       sinonimos: [],
@@ -282,7 +311,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
       origem_regionalista: [origem]
     };
     
-    console.log(`✅ Verbete parseado: ${result.verbete} (Volume ${volumeNum})`);
+    console.log(`✅ Verbete parseado: ${result.verbete} (Volume ${volumeNum}) - Marcadores: [${marcadores.join(', ')}]`);
     return sanitizeObject(result);
     
   } catch (error: any) {

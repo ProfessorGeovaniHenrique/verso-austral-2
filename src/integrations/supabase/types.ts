@@ -684,6 +684,7 @@ export type Database = {
           id: string
           influencia_platina: boolean | null
           marcacao_temporal: string | null
+          marcadores_uso: string[] | null
           origem_primaria: string | null
           origem_regionalista: string[] | null
           pagina_fonte: number | null
@@ -709,6 +710,7 @@ export type Database = {
           id?: string
           influencia_platina?: boolean | null
           marcacao_temporal?: string | null
+          marcadores_uso?: string[] | null
           origem_primaria?: string | null
           origem_regionalista?: string[] | null
           pagina_fonte?: number | null
@@ -734,6 +736,7 @@ export type Database = {
           id?: string
           influencia_platina?: boolean | null
           marcacao_temporal?: string | null
+          marcadores_uso?: string[] | null
           origem_primaria?: string | null
           origem_regionalista?: string[] | null
           pagina_fonte?: number | null

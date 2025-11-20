@@ -12,6 +12,7 @@ export interface DialectalEntry {
   classe_gramatical: string | null;
   marcacao_temporal: string | null;
   frequencia_uso: string;
+  marcadores_uso: string[] | null; // ✅ FASE 2: Novo campo
   definicoes: Array<{
     numero: number;
     texto: string;
@@ -72,7 +73,7 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
 
         if (error) throw error;
 
-        return (data || []) as DialectalEntry[];
+        return (data || []) as unknown as DialectalEntry[];
       }, {
         maxRetries: 5,
         baseDelay: 500,
@@ -134,7 +135,7 @@ export function useDialectalEntry(palavra: string) {
 
         if (error) throw error;
 
-        return data as DialectalEntry | null;
+        return data as unknown as DialectalEntry | null;
       }, {
         maxRetries: 3,
         baseDelay: 500
