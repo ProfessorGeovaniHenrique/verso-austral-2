@@ -47,14 +47,17 @@ function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
     if (lines.length === 0) return null;
 
     const firstLine = lines[0];
-    if (!firstLine.startsWith('*')) return null;
+    
+    // ✅ VALIDAR: Deve conter o padrão *palavra*,
+    const asteriskMatch = firstLine.match(/^\*([A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+)\*,?\s*(.+)?/);
+    if (!asteriskMatch) {
+      console.error(`🔴 DEBUG - Linha sem padrão *palavra*,: "${firstLine}"`);
+      return null;
+    }
 
-    // Extrair verbete e classe gramatical
-    const headerMatch = firstLine.match(/^\*([^,]+)(?:,\s*(.+))?/);
-    if (!headerMatch) return null;
-
-    const verbete = headerMatch[1].trim();
-    const classe_gramatical = headerMatch[2]?.trim();
+    // ✅ EXTRAIR: Remover asteriscos e vírgula
+    const verbete = asteriskMatch[1].trim();
+    const classe_gramatical = asteriskMatch[2]?.trim();
 
     // Extrair definições
     const definicoes: Array<{ tipo?: string; texto: string }> = [];
@@ -62,6 +65,17 @@ function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
       const line = lines[i];
       if (line.match(/^[A-Z]/)) {
         definicoes.push({ texto: line });
+      }
+    }
+
+    // 🔍 DEBUG - DETECTAR DEFINIÇÕES VAZIAS
+    if (definicoes.length === 0) {
+      console.error(`\n🔴 DEBUG - DEFINIÇÃO VAZIA!`);
+      console.error(`   Verbete: "${verbete}"`);
+      console.error(`   Primeira linha: "${firstLine}"`);
+      console.error(`   Total de linhas: ${lines.length}`);
+      if (lines.length > 1) {
+        console.error(`   Segunda linha: "${lines[1]}"`);
       }
     }
 
@@ -120,11 +134,23 @@ async function processChunk(
     const endIndex = Math.min(startIndex + CHUNK_SIZE, verbetes.length);
     const chunk = verbetes.slice(startIndex, endIndex);
 
+    let definicoesVazias = 0; // ✅ NOVO CONTADOR
+
     const parsedBatch = chunk
-      .map(v => parseGutenbergEntry(v))
+      .map(v => {
+        const parsed = parseGutenbergEntry(v);
+        
+        // ✅ VERIFICAR SE DEFINIÇÃO ESTÁ VAZIA
+        if (parsed && (!parsed.definicoes || parsed.definicoes.length === 0)) {
+          definicoesVazias++;
+        }
+        
+        return parsed;
+      })
       .filter((v): v is VerbeteGutenberg => v !== null);
 
     console.log(`✅ Parsed ${parsedBatch.length} verbetes válidos de ${chunk.length} tentativas`);
+    console.log(`⚠️ Definições vazias detectadas: ${definicoesVazias}`);
 
     if (parsedBatch.length > 0) {
       await withRetry(
@@ -292,6 +318,12 @@ Deno.serve(async (req) => {
       throw new Error('Nenhuma URL de dicionário disponível ou acessível');
     }
 
+    // 🔍 DEBUG URGENTE - CONTEÚDO BRUTO DO ARQUIVO
+    console.log("\n🔍 DEBUG - Início do arquivo (primeiros 500 chars):");
+    console.log("---INÍCIO---");
+    console.log(fileContent.substring(0, 500));
+    console.log("---FIM DOS 500 CHARS---\n");
+
     // Log das primeiras linhas para debug
     const firstLines = fileContent.split('\n').slice(0, 10);
     console.log('📝 Primeiras 10 linhas do arquivo:');
@@ -313,17 +345,31 @@ Deno.serve(async (req) => {
       console.log('✂️ Removido cabeçalho/rodapé do Project Gutenberg');
     }
 
-    // Split por verbetes (linhas começando com * seguido de letra maiúscula)
+    // Split por verbetes - PADRÃO CORRIGIDO: *Palavra*,
+    console.log('🔍 Aplicando split com padrão *palavra*,...');
     const verbetes = contentToParse
-      .split(/\n(?=\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ])/)
+      .split(/(?=\n\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+\*,)/)
       .map(v => v.trim())
-      .filter(v => v.startsWith('*') && v.length > 5);
+      .filter(v => {
+        const match = v.match(/^\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+\*,/);
+        return match !== null && v.length > 10;
+      });
 
-    console.log(`📚 Total de verbetes identificados: ${verbetes.length}`);
-    console.log(`📊 Estatísticas:`);
+    // 🔍 DEBUG - RESULTADO DO SPLIT
+    console.log(`\n🔍 DEBUG - Total de verbetes após split: ${verbetes.length}`);
+    console.log("\n🔍 DEBUG - Primeiros 3 verbetes para inspeção:\n");
+    verbetes.slice(0, 3).forEach((v, i) => {
+      console.log(`--- VERBETE ${i} (primeiros 200 chars) ---`);
+      console.log(v.substring(0, 200));
+      console.log(`--- FIM VERBETE ${i} ---\n`);
+    });
+
+    console.log(`\n📚 Total de verbetes identificados: ${verbetes.length}`);
+    console.log(`📊 Estatísticas de Split:`);
     console.log(`   - Linhas totais: ${fileContent.split('\n').length}`);
-    console.log(`   - Verbetes válidos: ${verbetes.length}`);
+    console.log(`   - Verbetes válidos (padrão *palavra*,): ${verbetes.length}`);
     console.log(`   - Média de caracteres por verbete: ${Math.round(contentToParse.length / verbetes.length)}`);
+    console.log(`   - Blocos rejeitados no filter: ${contentToParse.split(/(?=\n\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+\*,)/).length - verbetes.length}`);
 
     if (verbetes.length === 0) {
       console.error('❌ Nenhum verbete válido encontrado!');
