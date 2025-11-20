@@ -14,6 +14,8 @@ import { useDialectalLexicon } from '@/hooks/useDialectalLexicon';
 import { useBackendLexicon } from '@/hooks/useBackendLexicon';
 import { ValidationInterface } from '@/components/advanced/ValidationInterface';
 import { BatchValidationDialog } from '@/components/advanced/lexicon-status/BatchValidationDialog';
+import { ClearDictionariesCard } from '@/components/advanced/lexicon-status/ClearDictionariesCard';
+import { useLexiconStats } from '@/hooks/useLexiconStats';
 
 const DICTIONARY_CONFIG: Record<string, { 
   displayName: string; 
@@ -45,6 +47,7 @@ export default function AdminDictionaryValidation() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
   const [validationOpen, setValidationOpen] = useState(false);
+  const { data: lexiconStats, refetch: refetchStats } = useLexiconStats();
 
   // Buscar dados baseado na tabela configurada
   const { entries: dialectalEntries, isLoading: dialectalLoading, refetch: dialectalRefetch } = useDialectalLexicon({
@@ -184,6 +187,15 @@ export default function AdminDictionaryValidation() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Card de Limpeza */}
+          <ClearDictionariesCard 
+            stats={lexiconStats}
+            onSuccess={() => {
+              refetchStats();
+              refetch();
+            }}
+          />
 
           {/* Filtros */}
           <Card>

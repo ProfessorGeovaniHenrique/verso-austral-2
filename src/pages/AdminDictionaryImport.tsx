@@ -10,6 +10,8 @@ import { CancelJobDialog } from '@/components/advanced/CancelJobDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
 import { useDictionaryImportJobs } from '@/hooks/useDictionaryImportJobs';
+import { ClearDictionariesCard } from '@/components/advanced/lexicon-status/ClearDictionariesCard';
+import { useLexiconStats } from '@/hooks/useLexiconStats';
 import { DICTIONARY_CONFIG, DICTIONARY_LIST, getDictionaryConfig } from '@/config/dictionaries';
 import { 
   PlayCircle, 
@@ -30,6 +32,7 @@ export default function AdminDictionaryImport() {
   const { data: jobs, isLoading, refetch } = useDictionaryImportJobs(2000);
   const [importingDict, setImportingDict] = useState<string | null>(null);
   const [clearingDict, setClearingDict] = useState<string | null>(null);
+  const { data: lexiconStats, refetch: refetchStats } = useLexiconStats();
 
   // Separar jobs ativos e recentes
   const activeJobs = jobs?.filter(j => 
@@ -127,6 +130,17 @@ export default function AdminDictionaryImport() {
       <div className="container mx-auto pt-32 pb-8 px-4 max-w-7xl">
         <AdminBreadcrumb currentPage="Importação de Dicionários" />
         
+        {/* Card de Limpeza */}
+        <div className="mb-6">
+          <ClearDictionariesCard 
+            stats={lexiconStats}
+            onSuccess={() => {
+              refetchStats();
+              refetch();
+            }}
+          />
+        </div>
+
         {/* Quick Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {DICTIONARY_LIST.map((dict) => {
