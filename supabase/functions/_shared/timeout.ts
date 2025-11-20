@@ -36,9 +36,9 @@ export const Timeouts = {
     Deno.env.get('TIMEOUT_CORPUS_ANNOTATION_MS') || '600000'
   ),
   
-  // Timeout para cancelamento de job (padrão: 30s)
+  // Timeout para cancelamento de job (padrão: 45s - aumentado para lidar com locks)
   JOB_CANCELLATION: parseInt(
-    Deno.env.get('TIMEOUT_JOB_CANCELLATION_MS') || '30000'
+    Deno.env.get('TIMEOUT_JOB_CANCELLATION_MS') || '45000'
   ),
   
   // Timeout para operações de banco (padrão: 10s)
