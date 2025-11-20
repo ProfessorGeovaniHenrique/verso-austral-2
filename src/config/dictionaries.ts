@@ -78,6 +78,13 @@ export const DB_TYPE_TO_CONFIG_KEY: Record<string, string> = {
   'navarro_nordeste_2014': 'navarro',
   'pombo_abl': 'pombo',
   'gutenberg': 'gutenberg',
+  // 🔧 Mapeamentos de compatibilidade (Legacy/Dados antigos)
+  'dialectal_I': 'gaucho',
+  'dialectal_II': 'gaucho',
+  'nordestino_navarro': 'navarro',
+  'GUTENBERG': 'gutenberg',
+  'ROCHA_POMBO': 'pombo',
+  'rocha_pombo': 'pombo',
 };
 
 /**

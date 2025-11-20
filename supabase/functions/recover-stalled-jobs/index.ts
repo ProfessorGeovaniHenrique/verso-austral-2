@@ -26,7 +26,7 @@ serve(async (req) => {
       .select('*')
       .in('status', ['processando', 'iniciado'])
       .lt('atualizado_em', stalledThreshold.toISOString())
-      .in('tipo_dicionario', ['dialectal_I', 'dialectal_II', 'gutenberg', 'rocha_pombo', 'unesp']);
+      .in('tipo_dicionario', ['gaucho_unificado', 'navarro_nordeste_2014', 'gutenberg', 'pombo_abl']);
 
     if (fetchError) throw fetchError;
 

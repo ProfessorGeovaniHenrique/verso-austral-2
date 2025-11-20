@@ -40,7 +40,7 @@ serve(async (req) => {
     const { data: job, error: jobError } = await supabase
       .from('dictionary_import_jobs')
       .insert({
-        tipo_dicionario: 'nordestino_navarro',
+        tipo_dicionario: 'navarro_nordeste_2014',
         status: 'iniciado',
         offset_inicial: offsetInicial,
         metadata: {
