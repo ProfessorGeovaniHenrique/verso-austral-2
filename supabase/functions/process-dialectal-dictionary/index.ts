@@ -523,6 +523,15 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
       // Filtro 6: Remover linhas muito curtas mesmo após trim
       if (v.replace(/\s+/g, '').length < 5) return false;
       
+      // ✅ FILTRO 7: Remover seções introdutórias (prefácio, metodologia, etc.)
+      const secaoIntro = /^(Prefácio|Agradecimentos?|Metodologia|Objetivos?|Introdução|Apresentação|Justificativ|Formação|Trecho|Autores?|Dicionário|Enquadramento|Recolhe|Abonação|Caracteriza-se|Uma questão|Foi necessário|Com isso|O leitor|A leitura|Alterações|PATROCÍNIO|PRODUÇÃO|FINANCIAMENTO|Composto com|Este dicionário|Neste|O presente|Nossa|A obra|O trabalho|Cabe destacar|É importante|Considerando|Conforme|Segundo|De acordo)/i;
+      if (secaoIntro.test(v)) return false;
+      
+      // ✅ FILTRO 8: CRÍTICO - Verbete dialectal DEVE ter marcador de origem nos primeiros 200 caracteres
+      // Verbetes sempre têm (BRAS), (PLAT), (CAST), (QUER), (PORT), etc.
+      const temOrigem = /\((?:BRAS|PLAT|CAST|QUER|PORT|BRAS\/PLAT|PLAT\/CAST)\s?\)/;
+      if (!temOrigem.test(v.substring(0, 200))) return false;
+      
       return true;
     });
 
