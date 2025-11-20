@@ -50,14 +50,30 @@ export default function AdminDictionaryImport() {
       const config = Object.values(DICTIONARY_CONFIG).find(c => c.id === dictId);
       if (!config) throw new Error(`Dicionário ${dictId} não configurado`);
       
-      const { data, error } = await supabase.functions.invoke(config.importEndpoint);
+      // Timeout de 30s para evitar travamento do frontend
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke(config.importEndpoint, {
+          signal: controller.signal,
+        });
 
-      if (error) throw error;
+        clearTimeout(timeoutId);
 
-      notifications.success(
-        'Importação iniciada',
-        `${config.name}: ${data.message || 'Processando em background'}`
-      );
+        if (error) throw error;
+
+        notifications.success(
+          'Importação iniciada',
+          `${config.name}: ${data.message || 'Processando em background'}`
+        );
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err.name === 'AbortError') {
+          throw new Error('Timeout ao iniciar importação. A operação pode ainda estar sendo processada no servidor.');
+        }
+        throw err;
+      }
       
       await refetch();
     } catch (error: any) {

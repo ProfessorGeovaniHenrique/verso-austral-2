@@ -34,6 +34,11 @@ interface VerbeteGutenberg {
   confianca_extracao: number;
 }
 
+interface RequestBody {
+  resumeJobId?: string;
+  startIndex?: number;
+}
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -257,25 +262,47 @@ async function processChunk(
 }
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+  
+  console.log(`\n${'='.repeat(70)}`);
+  console.log(`🔵 REQUEST RECEBIDA [${requestId}]`);
+  console.log(`   Method: ${req.method}`);
+  console.log(`   URL: ${req.url}`);
+  console.log(`   Timestamp: ${new Date().toISOString()}`);
+  console.log(`${'='.repeat(70)}\n`);
+  
   if (req.method === 'OPTIONS') {
+    console.log('✅ Respondendo CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     console.log('🚀 VERSÃO 4.0 - Split e Parser CORRIGIDOS + Logs Detalhados');
+    console.log(`📊 Request ID: ${requestId}`);
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    const body = await req.json().catch(() => ({}));
+    let body: RequestBody = {};
+    try {
+      body = await req.json();
+      console.log('📦 Body recebido:', JSON.stringify(body, null, 2));
+    } catch (parseError) {
+      console.log('ℹ️ Nenhum body enviado (ou JSON inválido), usando body vazio');
+    }
 
     // ===== FLUXO DE CONTINUAÇÃO (Chunk subsequente) =====
     if (body.resumeJobId) {
-      console.log(`🔄 Continuando job: ${body.resumeJobId}, startIndex: ${body.startIndex}`);
-      
       const { resumeJobId, startIndex } = body;
+      
+      if (typeof startIndex !== 'number') {
+        throw new Error('startIndex deve ser um número');
+      }
+      
+      console.log(`🔄 Continuando job: ${resumeJobId}, startIndex: ${startIndex}`);
 
       // Baixar verbetes do Storage
       const { data: downloadData, error: downloadError } = await supabase.storage
@@ -447,8 +474,17 @@ Deno.serve(async (req) => {
     console.log(`💾 Verbetes salvos no Storage: temp-imports/gutenberg-${job.id}.json`);
 
     // Processar primeiro chunk em background
-    console.log('🚀 Iniciando processamento do primeiro chunk...');
+    console.log('🚀 Iniciando processamento do primeiro chunk em background...');
     processChunk(job.id, verbetes, 0, supabase).catch(console.error);
+
+    const responseTime = Date.now() - startTime;
+    console.log(`\n${'='.repeat(70)}`);
+    console.log(`✅ RESPOSTA ENVIADA [${requestId}]`);
+    console.log(`   Status: 200 OK`);
+    console.log(`   Tempo de resposta: ${responseTime}ms`);
+    console.log(`   Job ID: ${job.id}`);
+    console.log(`   Total verbetes: ${verbetes.length}`);
+    console.log(`${'='.repeat(70)}\n`);
 
     return new Response(
       JSON.stringify({
@@ -457,19 +493,28 @@ Deno.serve(async (req) => {
         totalVerbetes: verbetes.length,
         totalChunks: Math.ceil(verbetes.length / CHUNK_SIZE),
         message: `Importação iniciada com ${verbetes.length} verbetes`,
+        requestId,
+        responseTime: `${responseTime}ms`,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error: any) {
-    console.error('❌ ERRO FATAL:', error);
-    console.error('Stack:', error.stack);
+    const responseTime = Date.now() - startTime;
+    console.error(`\n${'='.repeat(70)}`);
+    console.error(`❌ ERRO FATAL [${requestId}]`);
+    console.error(`   Tempo até erro: ${responseTime}ms`);
+    console.error(`   Erro: ${error.message}`);
+    console.error(`   Stack: ${error.stack}`);
+    console.error(`${'='.repeat(70)}\n`);
     
     return new Response(
       JSON.stringify({ 
         success: false, 
         error: error.message,
-        stack: error.stack 
+        stack: error.stack,
+        requestId,
+        responseTime: `${responseTime}ms`,
       }),
       { 
         status: 500, 
