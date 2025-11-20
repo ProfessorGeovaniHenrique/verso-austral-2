@@ -7,7 +7,7 @@ export interface DialectalEntry {
   id: string;
   verbete: string;
   verbete_normalizado: string;
-  origem_regionalista: string[];
+  origem_regionalista: string[] | null;
   origem_primaria: string;
   classe_gramatical: string | null;
   marcacao_temporal: string | null;
@@ -19,19 +19,19 @@ export interface DialectalEntry {
     exemplos: string[];
     citacoesAutores: string[];
   }>;
-  sinonimos: string[];
-  remissoes: string[];
-  variantes: string[];
+  sinonimos: string[] | null;
+  remissoes: string[] | null;
+  variantes: string[] | null;
   contextos_culturais: {
     costumes?: string[];
     crencas?: string[];
     divertimentos?: string[];
     fraseologias?: string[];
-  };
+  } | null;
   influencia_platina: boolean;
-  termos_espanhol: string[];
-  referencias_dicionarios: string[];
-  categorias_tematicas: string[];
+  termos_espanhol: string[] | null;
+  referencias_dicionarios: string[] | null;
+  categorias_tematicas: string[] | null;
   volume_fonte: string | null;
   pagina_fonte: number | null;
   confianca_extracao: number;
@@ -99,7 +99,7 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
     }, {} as Record<string, number>) || {},
     comInfluenciaPlatina: queryResult.data?.filter(e => e.influencia_platina).length || 0,
     categorias: queryResult.data?.reduce((acc, e) => {
-      e.categorias_tematicas.forEach(cat => {
+      e.categorias_tematicas?.forEach(cat => {
         acc[cat] = (acc[cat] || 0) + 1;
       });
       return acc;
