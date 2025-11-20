@@ -87,7 +87,9 @@ export function DictionaryImportInterface() {
     try {
       toast.info('Iniciando importação do Gutenberg...');
       
-      const { data, error } = await supabase.functions.invoke('import-gutenberg-backend');
+      const { data, error } = await supabase.functions.invoke('import-gutenberg-backend', {
+        body: {}
+      });
       
       if (error) throw error;
       
@@ -105,7 +107,9 @@ export function DictionaryImportInterface() {
     try {
       toast.info('Iniciando importação do Houaiss...');
       
-      const { data, error } = await supabase.functions.invoke('import-houaiss-backend');
+      const { data, error } = await supabase.functions.invoke('import-houaiss-backend', {
+        body: {}
+      });
       
       if (error) throw error;
       
@@ -123,7 +127,9 @@ export function DictionaryImportInterface() {
     try {
       toast.info('Iniciando importação do UNESP...');
       
-      const { data, error } = await supabase.functions.invoke('import-unesp-backend');
+      const { data, error } = await supabase.functions.invoke('import-unesp-backend', {
+        body: {}
+      });
       
       if (error) throw error;
       

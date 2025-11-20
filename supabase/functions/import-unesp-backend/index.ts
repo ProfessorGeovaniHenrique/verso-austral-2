@@ -28,7 +28,18 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { offset = 0 } = await req.json();
+    // Safe JSON parsing with fallback
+    let requestBody: any = {};
+    try {
+      const text = await req.text();
+      if (text && text.trim()) {
+        requestBody = JSON.parse(text);
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
+    }
+
+    const { offset = 0 } = requestBody;
 
     const tipoDicionario = 'unesp';
     const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/src/data/dictionaries/unesp-definicoes.txt';

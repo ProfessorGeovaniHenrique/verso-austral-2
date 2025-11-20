@@ -28,7 +28,18 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { volumeNum, offset = 0 } = await req.json();
+    // Safe JSON parsing with fallback
+    let requestBody: any = {};
+    try {
+      const text = await req.text();
+      if (text && text.trim()) {
+        requestBody = JSON.parse(text);
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
+    }
+
+    const { volumeNum, offset = 0 } = requestBody;
 
     if (!volumeNum || !['I', 'II'].includes(volumeNum)) {
       return new Response(

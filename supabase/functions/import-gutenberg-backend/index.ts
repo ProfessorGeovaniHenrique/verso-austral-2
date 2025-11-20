@@ -133,6 +133,17 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Safe JSON parsing with fallback
+    let requestBody: any = {};
+    try {
+      const text = await req.text();
+      if (text && text.trim()) {
+        requestBody = JSON.parse(text);
+      }
+    } catch (parseError) {
+      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
+    }
+
     console.log('🚀 Iniciando importação do Gutenberg via backend...');
 
     // Buscar o arquivo diretamente do GitHub
