@@ -12,45 +12,69 @@ interface RochaPomboEntry {
 }
 
 function parseRochaPomboLine(line: string): RochaPomboEntry | null {
-  // Remover numeração inicial (ex: "1. ", "120. ")
-  const cleanLine = line
-    .replace(/^\d+\.\s*/, '') 
+  const trimmed = line.trim();
+  
+  // Ignorar linhas vazias ou muito curtas
+  if (!trimmed || trimmed.length < 5) return null;
+  
+  // Ignorar separadores e cabeçalhos
+  if (trimmed.match(/^[=\-_]{3,}$/)) return null;
+  if (trimmed.match(/^(DICIONÁRIO|SINÔNIMOS|VOLUME|PÁGINA|Figura|Tabela)/i)) return null;
+  
+  // Ignorar linhas que começam com minúscula ou caracteres especiais (definições/explicações)
+  if (trimmed.match(/^[a-z\(\)\[\]\{\}\d\.\,\;\:\-]/)) return null;
+  
+  // Formato esperado: "PALAVRA PRINCIPAL, sinônimo1, sinônimo2, ..."
+  // Deve começar com letra maiúscula
+  if (!trimmed.match(/^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]/)) return null;
+  
+  // Encontrar primeira vírgula que separa palavra principal dos sinônimos
+  const firstCommaIndex = trimmed.indexOf(',');
+  if (firstCommaIndex === -1) return null;
+  
+  // Extrair palavra principal
+  let mainWord = trimmed.substring(0, firstCommaIndex).trim();
+  
+  // Limpar caracteres especiais da palavra principal
+  mainWord = mainWord
+    .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, '') // Remover sobrescritos
+    .replace(/[\(\)\[\]\{\}]/g, '') // Remover parênteses/colchetes
+    .replace(/\s+/g, ' ') // Normalizar espaços
     .trim();
-
-  // Ignorar linhas vazias ou cabeçalhos irrelevantes
-  if (!cleanLine || cleanLine.length < 3) return null;
-  if (cleanLine.includes('===') || cleanLine.includes('---')) return null;
-  if (cleanLine.match(/^(DICIONÁRIO|SINÔNIMOS|VOLUME|PÁGINA)/i)) return null;
-
-  // 🔥 DEBUG: REGEX ULTRA-PERMISSIVA
-  // Pega QUALQUER coisa que tenha um ponto separando duas partes
-  const match = cleanLine.match(/^(.+?)\.\s+(.+)$/);
-
-  if (!match) {
-    // 🔥 LOG DE FALHA CRÍTICA: Mostra TODAS as linhas que falharam
-    console.error("FALHA CRÍTICA PARSE: ", cleanLine);
-    return null;
-  }
-
-  const mainWord = match[1].trim();
-  const synonymsPart = match[2];
-
-  // Remover numeração dos sinônimos: "1. palavra, 2. palavra" → "palavra, palavra"
-  const cleanSynonyms = synonymsPart.replace(/\d+\.\s*/g, '');
-
+  
+  if (!mainWord || mainWord.length < 2) return null;
+  
+  // Extrair parte dos sinônimos
+  const synonymsPart = trimmed.substring(firstCommaIndex + 1).trim();
+  if (!synonymsPart) return null;
+  
   // Dividir sinônimos por vírgula ou ponto e vírgula
-  const synonyms = cleanSynonyms
+  const synonyms = synonymsPart
     .split(/[,;]/)
-    .map(s => s.trim())
-    .filter(s => s.length > 0 && s !== mainWord && s !== '.');
-
-  // Validar que temos pelo menos um sinônimo
+    .map(s => {
+      // Limpar cada sinônimo
+      return s
+        .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, '')
+        .replace(/[\(\)\[\]\{\}]/g, '')
+        .replace(/\s+/g, ' ')
+        .replace(/\.$/, '') // Remover ponto final
+        .trim();
+    })
+    .filter(s => {
+      // Filtrar sinônimos válidos
+      if (s.length < 2) return false;
+      if (s === mainWord) return false;
+      if (s.match(/^[\d\.\,\;\:\-\s]+$/)) return false; // Apenas números/pontuação
+      return true;
+    });
+  
+  // Validar que temos pelo menos um sinônimo válido
   if (synonyms.length === 0) return null;
-
+  
   return {
     palavra: mainWord,
-    sinonimos: synonyms,
-    contexto: undefined, // Novo formato não tem contexto separado
+    sinonimos: synonyms.slice(0, 20), // Limitar a 20 sinônimos por entrada
+    contexto: undefined,
   };
 }
 

@@ -1414,6 +1414,7 @@ export type Database = {
           antonimos: string[] | null
           contexto_uso: string | null
           criado_em: string | null
+          entry_type: string | null
           fonte: string | null
           id: string
           palavra: string
@@ -1426,6 +1427,7 @@ export type Database = {
           antonimos?: string[] | null
           contexto_uso?: string | null
           criado_em?: string | null
+          entry_type?: string | null
           fonte?: string | null
           id?: string
           palavra: string
@@ -1438,6 +1440,7 @@ export type Database = {
           antonimos?: string[] | null
           contexto_uso?: string | null
           criado_em?: string | null
+          entry_type?: string | null
           fonte?: string | null
           id?: string
           palavra?: string
