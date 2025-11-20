@@ -147,35 +147,22 @@ export function DictionaryImportInterface() {
 
   const importNavarro = async () => {
     setIsImportingNavarro(true);
-    
     try {
-      // Buscar arquivo local
-      const response = await fetch('/corpus/nordestino_navarro_2014.txt');
-      if (!response.ok) throw new Error('Arquivo não encontrado');
+      toast.info('Iniciando importação do Dicionário do Nordeste - Fred Navarro (2014)...');
       
-      const rawContent = await response.text();
-      
-      // Pré-processar conteúdo
-      const { preprocessNordestinoNavarro } = await import('@/lib/preprocessNordestinoNavarro');
-      const processedContent = preprocessNordestinoNavarro(rawContent);
-      
-      console.log('📊 Conteúdo pré-processado:', processedContent.split('\n').length, 'linhas');
-
-      // Enviar para edge function
-      const { data, error } = await supabase.functions.invoke('process-nordestino-navarro', {
-        body: { 
-          fileContent: processedContent,
-          offsetInicial: 0 
+      const { data, error } = await supabase.functions.invoke('import-navarro-backend', {
+        body: {
+          offset: 0
         }
       });
 
       if (error) throw error;
-
-      toast.success('Importação do Dicionário do Nordeste iniciada!');
+      
+      toast.success(`✅ Importação do Navarro 2014 iniciada! Job ID: ${data.jobId}`);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
     } catch (error: any) {
       console.error('Erro ao importar Navarro:', error);
-      toast.error(`Erro: ${error.message}`);
+      toast.error(`❌ Erro ao importar Navarro: ${error.message}`);
     } finally {
       setIsImportingNavarro(false);
     }
@@ -351,7 +338,7 @@ export function DictionaryImportInterface() {
                 tipo: 'nordestino_navarro',
                 esperado: 15000,
                 atual: jobs?.find(j => j.tipo_dicionario === 'nordestino_navarro')?.verbetes_inseridos || 0,
-                githubUrl: 'https://github.com/ProfessorGeovaniHenrique/estilisticadecorpus/blob/main/public/corpus/nordestino_navarro_2014.txt',
+                githubUrl: 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/corpus/NAVARROCLEAN.txt',
                 descricao: 'Dicionário especializado do léxico nordestino com regionalismos, expressões idiomáticas e marcadores culturais. Inclui variações dialetais de todos os estados do Nordeste.',
                 licenca: 'CEPE - Uso Acadêmico'
               }}
