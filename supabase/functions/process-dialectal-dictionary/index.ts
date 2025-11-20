@@ -347,21 +347,21 @@ async function processVerbetesInternal(jobId: string, verbetes: string[], volume
       const parsed = parseVerbete(verbeteRaw, volumeNum);
       if (!parsed) {
         erros++;
-        console.error(`❌ Parse falhou para verbete: ${verbeteRaw.substring(0, 100)}`);
         
-        // ✅ Log failed entry for debugging
-        try {
-          await supabase.from('dictionary_import_jobs').insert({
-            tipo_dicionario: `dialectal-volume-${volumeNum}-FAILED`,
-            status: 'erro',
-            erro_mensagem: `Parse failed: ${verbeteRaw.substring(0, 200)}`,
-            metadata: { original_verbete: verbeteRaw }
-          });
-        } catch (logError) {
-          console.error('Failed to log error:', logError);
+        // ✅ Log detalhado apenas para primeiros 5 erros (evitar spam)
+        if (erros <= 5) {
+          console.error(`❌ Parse falhou para verbete #${erros}: ${verbeteRaw.substring(0, 100)}`);
         }
+        
+        // ✅ Não logar no banco (economizar recursos)
         continue;
       }
+      
+      // ✅ Verbete parseado com sucesso - apenas log periódico
+      if (parsedBatch.length % 100 === 0 && parsedBatch.length > 0) {
+        console.log(`✅ ${parsedBatch.length} verbetes parseados no batch atual`);
+      }
+      
       
       // ✅ VALIDATION: Double-check volume_fonte
       if (!parsed.volume_fonte) {
@@ -500,12 +500,41 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
 
     console.log(`[VOLUME ${volumeNum}] Recebendo ${fileContent.length} caracteres (offset: ${offsetInicial})`);
 
-    const verbetes = fileContent
-      .split(/\n{2,}/)
-      .map(v => v.trim())
-      .filter(v => v.length > 10);
+    // ✅ FASE 1: Split e pré-processamento
+    const allBlocks = fileContent.split(/\n{2,}/).map(v => v.trim());
+    
+    // ✅ FASE 2: Filtros aprimorados para remover ruído
+    const verbetes = allBlocks.filter(v => {
+      // Filtro 1: Mínimo 10 caracteres
+      if (v.length < 10) return false;
+      
+      // Filtro 2: Remover separadores de página (linhas de ====)
+      if (/^[=\-_]{10,}$/.test(v)) return false;
+      
+      // Filtro 3: Remover marcadores de página
+      if (/^PÁGINA\s+\d+\s+de\s+\d+/i.test(v)) return false;
+      
+      // Filtro 4: Remover linhas que são apenas números
+      if (/^\d+$/.test(v)) return false;
+      
+      // Filtro 5: Verbete válido deve começar com letra maiúscula
+      if (!/^[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ]/.test(v)) return false;
+      
+      // Filtro 6: Remover linhas muito curtas mesmo após trim
+      if (v.replace(/\s+/g, '').length < 5) return false;
+      
+      return true;
+    });
 
-    console.log(`${verbetes.length} verbetes identificados`);
+    // ✅ FASE 3: Estatísticas de pré-processamento
+    const filteredOut = allBlocks.length - verbetes.length;
+    const filterRate = ((filteredOut / allBlocks.length) * 100).toFixed(1);
+    
+    console.log(`📊 Estatísticas de pré-processamento:`);
+    console.log(`  - Total de blocos: ${allBlocks.length}`);
+    console.log(`  - Verbetes válidos: ${verbetes.length}`);
+    console.log(`  - Blocos filtrados: ${filteredOut}`);
+    console.log(`  - Taxa de filtro: ${filterRate}%`);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
