@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { BookOpen, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Trash2, CheckSquare } from 'lucide-react';
+import { BookOpen, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Trash2, CheckSquare, Download } from 'lucide-react';
 import { useDictionaryImportJobs, verifyDictionaryIntegrity, clearAndReimport, resumeImport } from '@/hooks/useDictionaryImportJobs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DictionaryImportTester } from './DictionaryImportTester';
@@ -15,12 +15,12 @@ import { CancellationHistory } from './CancellationHistory';
 import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
 import { useQueryClient } from '@tanstack/react-query';
 
-const MAX_FILE_SIZE = 20_000_000; // 20MB (chunks de 5MB com overhead)
-
 export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
   const [isImportingVolII, setIsImportingVolII] = useState(false);
   const [isImportingGutenberg, setIsImportingGutenberg] = useState(false);
+  const [isImportingHouaiss, setIsImportingHouaiss] = useState(false);
+  const [isImportingUnesp, setIsImportingUnesp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const { data: jobs } = useDictionaryImportJobs();
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -65,54 +65,18 @@ export function DictionaryImportInterface() {
     const setter = volumeNum === 'I' ? setIsImportingVolI : setIsImportingVolII;
     setter(true);
     try {
-      const fileName = volumeNum === 'I' 
-        ? '/src/data/dictionaries/dialectal-volume-I-raw.txt' 
-        : '/src/data/dictionaries/dialectal-volume-II-raw.txt';
+      toast.info(`Iniciando importação do Volume ${volumeNum}...`);
       
-      const response = await fetch(fileName);
-      if (!response.ok) {
-        if (response.status === 404) {
-          toast.error(`Arquivo não encontrado: Volume ${volumeNum}`);
-          setter(false);
-          return;
-        }
-        throw new Error(`Erro ${response.status}: ${response.statusText}`);
-      }
-      
-      const rawContent = await response.text();
-      
-      // ✅ SPRINT 2: Validação de tamanho de arquivo (10MB máx)
-      const fileSizeBytes = new Blob([rawContent]).size;
-      if (fileSizeBytes > MAX_FILE_SIZE) {
-        toast.error(
-          `Arquivo muito grande: ${(fileSizeBytes / 1_000_000).toFixed(2)}MB (máximo: 10MB)`,
-          { duration: 5000 }
-        );
-        setter(false);
-        return;
-      }
-      
-      if (!rawContent || rawContent.trim().length === 0) {
-        toast.error(`Arquivo vazio: Volume ${volumeNum}`);
-        setter(false);
-        return;
-      }
-      
-      const { preprocessDialectalText, getPreprocessingStats } = await import('@/lib/preprocessDialectalText');
-      const processedContent = preprocessDialectalText(rawContent, volumeNum);
-      const stats = getPreprocessingStats(processedContent);
-      
-      toast.info(`Volume ${volumeNum}: ${stats.estimatedVerbetes} verbetes. Processando...`);
-
-      const { data, error } = await supabase.functions.invoke('process-dialectal-dictionary', {
-        body: { fileContent: processedContent, volumeNum, offsetInicial: 0 }
+      const { data, error } = await supabase.functions.invoke('import-dialectal-backend', {
+        body: { volumeNum }
       });
 
       if (error) throw error;
+      
       toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
     } catch (error: any) {
-      toast.error(`Erro ao iniciar importação do Volume ${volumeNum}`);
+      toast.error(`Erro ao iniciar importação do Volume ${volumeNum}: ${error.message}`);
     } finally {
       setter(false);
     }
@@ -121,47 +85,54 @@ export function DictionaryImportInterface() {
   const importGutenberg = async () => {
     setIsImportingGutenberg(true);
     try {
-      toast.info('Iniciando importação do Gutenberg via backend...');
+      toast.info('Iniciando importação do Gutenberg...');
       
-      // Chamar nova edge function que processa direto do repositório
-      let complete = false;
-      let callCount = 0;
+      const { data, error } = await supabase.functions.invoke('import-gutenberg-backend');
       
-      while (!complete && callCount < 50) {
-        const { data, error } = await supabase.functions.invoke('import-gutenberg-backend');
-        
-        if (error) {
-          throw new Error(error.message);
-        }
-        
-        if (data?.success) {
-          complete = data.complete;
-          toast.info(
-            `Processados: ${data.processados}/${data.total} (${data.inseridos} inseridos)`,
-            { duration: 2000 }
-          );
-          
-          if (!complete) {
-            // Aguardar 2s antes da próxima chamada
-            await new Promise(resolve => setTimeout(resolve, 2000));
-          }
-        } else {
-          throw new Error(data?.error || 'Erro desconhecido');
-        }
-        
-        callCount++;
-      }
+      if (error) throw error;
       
-      if (complete) {
-        toast.success('Importação do Gutenberg concluída com sucesso!');
-        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
-      } else {
-        toast.warning('Importação ainda em andamento. Continue chamando a função ou aguarde.');
-      }
+      toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
     } catch (error: any) {
-      toast.error(`Erro ao importar Gutenberg: ${error.message}`);
+      toast.error(`Erro ao iniciar importação do Gutenberg: ${error.message}`);
     } finally {
       setIsImportingGutenberg(false);
+    }
+  };
+
+  const importHouaiss = async () => {
+    setIsImportingHouaiss(true);
+    try {
+      toast.info('Iniciando importação do Houaiss...');
+      
+      const { data, error } = await supabase.functions.invoke('import-houaiss-backend');
+      
+      if (error) throw error;
+      
+      toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
+    } catch (error: any) {
+      toast.error(`Erro ao iniciar importação do Houaiss: ${error.message}`);
+    } finally {
+      setIsImportingHouaiss(false);
+    }
+  };
+
+  const importUnesp = async () => {
+    setIsImportingUnesp(true);
+    try {
+      toast.info('Iniciando importação do UNESP...');
+      
+      const { data, error } = await supabase.functions.invoke('import-unesp-backend');
+      
+      if (error) throw error;
+      
+      toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
+      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
+    } catch (error: any) {
+      toast.error(`Erro ao iniciar importação do UNESP: ${error.message}`);
+    } finally {
+      setIsImportingUnesp(false);
     }
   };
 
@@ -177,29 +148,16 @@ export function DictionaryImportInterface() {
     const volumeNum = job.tipo_dicionario.includes('_I') ? 'I' : 'II';
     const setter = volumeNum === 'I' ? setIsImportingVolI : setIsImportingVolII;
     setter(true);
-    const fileName = volumeNum === 'I' 
-      ? '/src/data/dictionaries/dialectal-volume-I-raw.txt' 
-      : '/src/data/dictionaries/dialectal-volume-II-raw.txt';
     
-    const response = await fetch(fileName);
-    const rawContent = await response.text();
-    
-    // ✅ SPRINT 2: Validação de tamanho de arquivo (10MB máx)
-    const fileSizeBytes = new Blob([rawContent]).size;
-    if (fileSizeBytes > MAX_FILE_SIZE) {
-      toast.error(
-        `Arquivo muito grande: ${(fileSizeBytes / 1_000_000).toFixed(2)}MB (máximo: 10MB)`,
-        { duration: 5000 }
-      );
+    try {
+      toast.info(`Retomando importação do ${job.tipo_dicionario}...`);
+      await resumeImport(job, ''); // Edge function busca o arquivo diretamente do GitHub
+      toast.success('Importação retomada com sucesso!');
+    } catch (error: any) {
+      toast.error(`Erro ao retomar: ${error.message}`);
+    } finally {
       setter(false);
-      return;
     }
-    
-    const { preprocessDialectalText } = await import('@/lib/preprocessDialectalText');
-    const processedContent = preprocessDialectalText(rawContent, volumeNum);
-    
-    await resumeImport(job, processedContent);
-    setter(false);
   };
 
   const handleClearAndReimport = async (tipoDicionario: string) => {
@@ -222,33 +180,34 @@ export function DictionaryImportInterface() {
   const getStatusBadge = (job: any) => {
     if (job.isStalled) {
       return (
-        <Badge variant="destructive" className="animate-pulse">
-          ⚠️ Travado (sem atualização &gt; 5min)
+        <Badge variant="destructive" className="text-xs h-6 animate-pulse">
+          ⚠️ Travado
         </Badge>
       );
     }
     
     const isIncomplete = job.status === 'concluido' && job.progresso < 100;
     if (isIncomplete) {
-      return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-500 border-yellow-500">Parcial ({job.progresso}%)</Badge>;
+      return (
+        <Badge variant="outline" className="text-xs h-6 bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+          Parcial
+        </Badge>
+      );
     }
     
     switch (job.status) {
       case 'iniciado':
-        return <Badge variant="secondary">🔄 Iniciado</Badge>;
+        return <Badge variant="secondary" className="text-xs h-6">Iniciado</Badge>;
       case 'processando':
-        return (
-          <Badge className="bg-blue-600">
-            <Loader2 className="w-3 h-3 mr-1 inline animate-spin" />
-            Processando
-          </Badge>
-        );
+        return <Badge className="text-xs h-6 bg-blue-600">Processando</Badge>;
       case 'concluido':
-        return <Badge className="bg-green-600">✅ Concluído</Badge>;
+        return <Badge className="text-xs h-6 bg-green-600">✓ Completo</Badge>;
       case 'erro':
-        return <Badge variant="destructive">❌ Erro</Badge>;
+        return <Badge variant="destructive" className="text-xs h-6">Erro</Badge>;
+      case 'cancelado':
+        return <Badge variant="outline" className="text-xs h-6">Cancelado</Badge>;
       default:
-        return <Badge>{job.status}</Badge>;
+        return <Badge variant="outline" className="text-xs h-6">{job.status}</Badge>;
     }
   };
 
@@ -344,10 +303,10 @@ export function DictionaryImportInterface() {
           <CardContent className="space-y-4">
             <Button 
               onClick={importHouaiss}
-              disabled={importStates.isImportingHouaiss}
+              disabled={isImportingHouaiss}
               className="w-full"
             >
-              {importStates.isImportingHouaiss ? (
+              {isImportingHouaiss ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Importando Houaiss...
@@ -376,10 +335,10 @@ export function DictionaryImportInterface() {
           <CardContent className="space-y-4">
             <Button 
               onClick={importUnesp}
-              disabled={importStates.isImportingUnesp}
+              disabled={isImportingUnesp}
               className="w-full"
             >
-              {importStates.isImportingUnesp ? (
+              {isImportingUnesp ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Importando UNESP...
@@ -402,113 +361,120 @@ export function DictionaryImportInterface() {
       {jobs && jobs.length > 0 && (
         <div ref={resultsRef} className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Histórico de Importações</h3>
-            {jobs.some(j => j.isStalled) && (
-              <Badge variant="destructive" className="animate-pulse">
-                ⚠️ {jobs.filter(j => j.isStalled).length} job(s) travado(s)
-              </Badge>
-            )}
-            {jobs.some(j => j.status === 'processando' || j.status === 'iniciado') && !jobs.some(j => j.isStalled) && (
-              <Badge variant="secondary" className="animate-pulse">
-                {jobs.filter(j => j.status === 'processando' || j.status === 'iniciado').length} ativo(s)
-              </Badge>
-            )}
+            <div>
+              <h3 className="text-xl font-semibold">Dicionários Importados</h3>
+              <p className="text-sm text-muted-foreground">
+                {jobs.filter(j => j.status === 'concluido' && j.progresso === 100).length} completos • 
+                {jobs.filter(j => j.status === 'processando' || j.status === 'iniciado').length} ativos
+              </p>
+            </div>
+            
+            <div className="flex gap-2">
+              {jobs.some(j => j.isStalled) && (
+                <Badge variant="destructive" className="animate-pulse">
+                  {jobs.filter(j => j.isStalled).length} travado{jobs.filter(j => j.isStalled).length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
           </div>
+
           {jobs.map(job => {
             const isIncomplete = job.status === 'concluido' && job.progresso < 100;
+            const isActive = job.status === 'processando' || job.status === 'iniciado';
+            
             return (
               <Card 
                 key={job.id} 
                 className={`${isIncomplete ? 'border-yellow-500' : ''} ${job.isStalled ? 'border-destructive bg-destructive/5' : ''}`}
               >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      {getStatusIcon(job.status, job.isStalled)}
-                      {job.tipo_dicionario}
-                    </CardTitle>
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {getStatusIcon(job.status, job.isStalled)}
+                        {job.tipo_dicionario.replace(/_/g, ' ')}
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        {job.verbetes_inseridos.toLocaleString()} / {job.total_verbetes.toLocaleString()} verbetes
+                        {job.erros > 0 && <span className="text-destructive ml-2">• {job.erros} erros</span>}
+                      </CardDescription>
+                    </div>
                     {getStatusBadge(job)}
                   </div>
-                  <CardDescription>
-                    {job.verbetes_inseridos}/{job.total_verbetes} verbetes inseridos
-                    {job.erros > 0 && ` • ${job.erros} erros`}
-                  </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <Progress value={job.progresso} />
+                
+                <CardContent className="space-y-3 pt-0">
+                  {(isActive || isIncomplete) && (
+                    <div className="space-y-1">
+                      <Progress value={job.progresso} className="h-2" />
+                      <p className="text-xs text-muted-foreground text-right">{job.progresso}%</p>
+                    </div>
+                  )}
                   
                   {isIncomplete && (
-                    <div className="bg-yellow-500/10 border border-yellow-500 rounded-md p-3 text-sm">
-                      <p className="text-yellow-600 dark:text-yellow-400 font-medium">
-                        ⚠️ Importação incompleta: Apenas {job.progresso}% processado
+                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-2 text-xs">
+                      <p className="text-yellow-700 dark:text-yellow-400 font-medium">
+                        ⚠️ Importação incompleta
                       </p>
                     </div>
                   )}
                   
-                  <div className="flex flex-wrap gap-2">
-                    {/* ✅ FASE 3 - BLOCO 3: Botão de Cancelamento para jobs ativos */}
-                    {(job.status === 'iniciado' || job.status === 'processando') && (
-                      <CancelJobDialog
-                        jobId={job.id}
-                        jobType={job.tipo_dicionario}
-                        onCancelled={() => queryClient.invalidateQueries({ queryKey: ['dictionary-import-jobs'] })}
-                      />
-                    )}
-                    
-                    {isIncomplete && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => handleResume(job)}
-                        disabled={isImportingVolI || isImportingVolII || isImportingGutenberg}
-                        className="flex items-center gap-1"
-                      >
-                        <RefreshCw className="h-3 w-3" />
-                        Retomar
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleVerifyIntegrity(job.tipo_dicionario)}
-                      disabled={isVerifying}
-                      className="flex items-center gap-1"
-                    >
-                      <CheckSquare className="h-3 w-3" />
-                      Verificar
-                    </Button>
+                  <div className="flex items-center justify-between pt-1">
+                    <div className="flex gap-1.5">
+                      {isActive && (
+                        <CancelJobDialog
+                          jobId={job.id}
+                          jobType={job.tipo_dicionario}
+                          onCancelled={() => queryClient.invalidateQueries({ queryKey: ['dictionary-import-jobs'] })}
+                        />
+                      )}
+                      
+                      {isIncomplete && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleResume(job)}
+                          disabled={isImportingVolI || isImportingVolII || isImportingGutenberg || isImportingHouaiss || isImportingUnesp}
+                          className="h-8 px-2 text-xs"
+                        >
+                          <RefreshCw className="h-3 w-3 mr-1" />
+                          Retomar
+                        </Button>
+                      )}
+                    </div>
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button 
                           size="sm" 
-                          variant="destructive"
-                          className="flex items-center gap-1"
+                          variant="ghost"
+                          className="h-8 px-2 text-xs text-muted-foreground hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />
-                          Limpar
                         </Button>
                       </AlertDialogTrigger>
                       <AlertDialogContent>
                         <AlertDialogHeader>
                           <AlertDialogTitle>Confirmar Limpeza</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Isso irá remover TODAS as {job.verbetes_inseridos} entradas do {job.tipo_dicionario} do banco de dados. 
-                            Você precisará reimportar manualmente após esta ação.
+                            Remover {job.verbetes_inseridos.toLocaleString()} verbetes do {job.tipo_dicionario}?
+                            Você precisará reimportar após esta ação.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>Cancelar</AlertDialogCancel>
                           <AlertDialogAction onClick={() => handleClearAndReimport(job.tipo_dicionario)}>
-                            Confirmar Limpeza
+                            Confirmar
                           </AlertDialogAction>
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
                   </div>
-
+                  
                   {job.erro_mensagem && (
-                    <p className="text-sm text-destructive">{job.erro_mensagem}</p>
+                    <p className="text-xs text-destructive bg-destructive/10 p-2 rounded">
+                      {job.erro_mensagem}
+                    </p>
                   )}
                 </CardContent>
               </Card>
