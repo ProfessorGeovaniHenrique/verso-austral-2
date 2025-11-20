@@ -1,11 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BookOpen, CheckCircle2, AlertCircle, TrendingUp } from 'lucide-react';
+import { BookOpen, CheckCircle2, AlertCircle, TrendingUp, Database } from 'lucide-react';
 
 interface DictionaryStatusCardProps {
   nome: string;
-  status: 'healthy' | 'warning' | 'critical';
+  status: 'healthy' | 'warning' | 'critical' | 'empty';
   metricas: {
     total: number;
     validados: number;
@@ -24,6 +24,7 @@ export function DictionaryStatusCard({ nome, status, metricas, acoes }: Dictiona
     healthy: { color: 'bg-green-500', icon: CheckCircle2, text: 'Saudável' },
     warning: { color: 'bg-yellow-500', icon: AlertCircle, text: 'Atenção' },
     critical: { color: 'bg-red-500', icon: AlertCircle, text: 'Crítico' },
+    empty: { color: 'bg-gray-500', icon: Database, text: 'Vazio' },
   };
 
   const config = statusConfig[status];
@@ -42,29 +43,36 @@ export function DictionaryStatusCard({ nome, status, metricas, acoes }: Dictiona
         </Badge>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Total:</span>
-            <span className="font-semibold">{metricas.total.toLocaleString()}</span>
+        {metricas.total === 0 ? (
+          <div className="py-4 text-center">
+            <Database className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
+            <p className="text-sm text-muted-foreground">⏳ Aguardando importação</p>
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Validados:</span>
-            <span className="font-semibold">{metricas.validados.toLocaleString()}</span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Confiança:</span>
-            <span className="font-semibold flex items-center gap-1">
-              {(metricas.confianca * 100).toFixed(1)}%
-              <TrendingUp className="h-3 w-3" />
-            </span>
-          </div>
-          {metricas.ultimaImportacao && (
+        ) : (
+          <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Última import:</span>
-              <span className="text-xs">{metricas.ultimaImportacao.toLocaleDateString()}</span>
+              <span className="text-muted-foreground">Total:</span>
+              <span className="font-semibold">{metricas.total.toLocaleString()}</span>
             </div>
-          )}
-        </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Validados:</span>
+              <span className="font-semibold">{metricas.validados.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Confiança:</span>
+              <span className="font-semibold flex items-center gap-1">
+                {(metricas.confianca * 100).toFixed(1)}%
+                <TrendingUp className="h-3 w-3" />
+              </span>
+            </div>
+            {metricas.ultimaImportacao && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Última import:</span>
+                <span className="text-xs">{metricas.ultimaImportacao.toLocaleDateString()}</span>
+              </div>
+            )}
+          </div>
+        )}
         {acoes && acoes.length > 0 && (
           <div className="flex gap-2 mt-4">
             {acoes.map((acao, idx) => (

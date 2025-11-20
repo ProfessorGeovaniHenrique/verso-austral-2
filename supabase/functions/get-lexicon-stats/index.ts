@@ -7,14 +7,17 @@ const corsHeaders = {
 };
 
 interface LexiconStats {
-  dialectal: {
+  gaucho: {
     total: number;
-    volumeI: number;
-    volumeII: number;
     validados: number;
     confianca_media: number;
     campeiros: number;
     platinismos: number;
+  };
+  navarro: {
+    total: number;
+    validados: number;
+    confianca_media: number;
   };
   gutenberg: {
     total: number;
@@ -47,9 +50,10 @@ serve(async (req) => {
     console.log('🔍 Fetching lexicon stats (aggregated)...');
 
     // Parallel queries for maximum performance
-    const [dialectalResult, gutenbergResult, rochaPomboResult, unespResult, lastImportResult] = await Promise.all([
-      // Dialectal
-      supabase.rpc('get_dialectal_stats', {}, { count: 'exact' }),
+    const [dialectalData, gutenbergResult, rochaPomboResult, unespResult, lastImportResult] = await Promise.all([
+      // Dialectal - Buscar dados completos para separar Gaúcho e Navarro
+      supabase.from('dialectal_lexicon')
+        .select('volume_fonte, validado_humanamente, confianca_extracao, origem_regionalista, influencia_platina'),
       // Gutenberg
       supabase.rpc('get_gutenberg_stats', {}, { count: 'exact' }),
       // Rocha Pombo (ABL) count
@@ -65,15 +69,39 @@ serve(async (req) => {
         .single()
     ]);
 
-    // Process dialectal data
-    const dialectalCount = dialectalResult.data?.[0] || {
-      total: 0,
-      volume_i: 0,
-      volume_ii: 0,
-      validados: 0,
-      confianca_media: 0,
-      campeiros: 0,
-      platinismos: 0
+    // Separar verbetes Gaúcho e Navarro baseado em volume_fonte
+    const allDialectal = dialectalData.data || [];
+    
+    const gauchoVerbetes = allDialectal.filter(d => {
+      const vol = (d.volume_fonte || '').toLowerCase();
+      return vol.includes('i') || vol.includes('ii') || vol.includes('gaúcho') || vol.includes('gaucho');
+    });
+    
+    const navarroVerbetes = allDialectal.filter(d => {
+      const vol = (d.volume_fonte || '').toLowerCase();
+      return vol.includes('navarro') || vol.includes('nordeste') || vol.includes('2014');
+    });
+
+    // Calcular stats Gaúcho
+    const gauchoStats = {
+      total: gauchoVerbetes.length,
+      validados: gauchoVerbetes.filter(v => v.validado_humanamente).length,
+      confianca_media: gauchoVerbetes.length > 0
+        ? gauchoVerbetes.reduce((sum, v) => sum + (v.confianca_extracao || 0), 0) / gauchoVerbetes.length
+        : 0,
+      campeiros: gauchoVerbetes.filter(v => 
+        Array.isArray(v.origem_regionalista) && v.origem_regionalista.includes('campeiro')
+      ).length,
+      platinismos: gauchoVerbetes.filter(v => v.influencia_platina).length,
+    };
+
+    // Calcular stats Navarro
+    const navarroStats = {
+      total: navarroVerbetes.length,
+      validados: navarroVerbetes.filter(v => v.validado_humanamente).length,
+      confianca_media: navarroVerbetes.length > 0
+        ? navarroVerbetes.reduce((sum, v) => sum + (v.confianca_extracao || 0), 0) / navarroVerbetes.length
+        : 0,
     };
 
     // Process gutenberg data
@@ -84,15 +112,8 @@ serve(async (req) => {
     };
 
     const stats: LexiconStats = {
-      dialectal: {
-        total: dialectalCount.total || 0,
-        volumeI: dialectalCount.volume_i || 0,
-        volumeII: dialectalCount.volume_ii || 0,
-        validados: dialectalCount.validados || 0,
-        confianca_media: parseFloat(dialectalCount.confianca_media || '0'),
-        campeiros: dialectalCount.campeiros || 0,
-        platinismos: dialectalCount.platinismos || 0,
-      },
+      gaucho: gauchoStats,
+      navarro: navarroStats,
       gutenberg: {
         total: gutenbergCount.total || 0,
         validados: gutenbergCount.validados || 0,
@@ -106,13 +127,14 @@ serve(async (req) => {
       },
       overall: {
         total_entries: 
-          (dialectalCount.total || 0) + 
+          gauchoStats.total + 
+          navarroStats.total +
           (gutenbergCount.total || 0) + 
           (rochaPomboResult.count || 0) + 
           (unespResult.count || 0),
         validation_rate: 
-          ((dialectalCount.validados || 0) + (gutenbergCount.validados || 0)) /
-          Math.max(1, (dialectalCount.total || 0) + (gutenbergCount.total || 0)),
+          (gauchoStats.validados + navarroStats.validados + (gutenbergCount.validados || 0)) /
+          Math.max(1, gauchoStats.total + navarroStats.total + (gutenbergCount.total || 0)),
         last_import: lastImportResult.data?.tempo_fim || null,
       },
     };
