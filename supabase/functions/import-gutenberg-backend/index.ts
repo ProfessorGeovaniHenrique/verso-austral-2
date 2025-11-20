@@ -260,7 +260,7 @@ Deno.serve(async (req) => {
     console.log('📥 Iniciando importação do Gutenberg Dictionary...');
 
     // Fetch o arquivo do GitHub
-    const gutenbergUrl = 'https://raw.githubusercontent.com/fsereno/pt_BR/master/V2.0.0/pt_BR.dic';
+    const gutenbergUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/gutenberg-completo.txt';
     console.log('🌐 Baixando dicionário de:', gutenbergUrl);
 
     const response = await fetch(gutenbergUrl);
