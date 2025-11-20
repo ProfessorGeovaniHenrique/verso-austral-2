@@ -283,8 +283,8 @@ export function validateUNESPFile(content: string): ValidationResult {
   let validEntries = 0;
   
   for (const line of lines) {
-    // Formato esperado: Palavra s.m./s.f./adj./etc. definição
-    if (/^[A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-]+\s+(s\.m\.|s\.f\.|adj\.|v\.|adv\.)/i.test(line)) {
+    // Formato REAL do UNESP: palavra PALAVRA...POS
+    if (/^[a-záàãéêíóôúç\-]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}/i.test(line)) {
       validEntries++;
     }
   }

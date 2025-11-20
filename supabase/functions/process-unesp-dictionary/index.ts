@@ -43,6 +43,8 @@ interface UNESPEntry {
   definicao: string;
   exemplos: string[];
   registro: string;
+  variacao?: string;
+  acepcao?: number;
 }
 
 /**
@@ -75,14 +77,17 @@ function cleanUNESPContent(rawContent: string): string {
     line.includes('ISBN') ||
     line.includes('Sumário') ||
     line.includes('Prefácio') ||
+    line.includes('Apresentação') ||
+    line.includes('Copyright') ||
     line.match(/^\d+$/) || // Números de página isolados
-    line.match(/^[IVXLCDM]+\.?\s/) // Numeração romana (I., II., III., etc)
+    line.match(/^[IVXLCDM]+\.?\s*$/) || // Numeração romana
+    line.match(/^[A-Z\s]{10,}$/) // Linhas com só maiúsculas (títulos)
   ) {
     continue;
   }
   
-  // Detectar início de conteúdo real (simplificado para aceitar mais variações)
-  if (skipUntilContent && /^[A-Z][a-z]+.*\s+(s\.|adj\.|v\.|adv\.)/i.test(line)) {
+  // Detectar início de conteúdo real (formato UNESP: palavra PALAVRA)
+  if (skipUntilContent && /^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,}/i.test(line)) {
     skipUntilContent = false;
   }
     
@@ -98,67 +103,80 @@ function cleanUNESPContent(rawContent: string): string {
 }
 
 /**
- * Parser para formato real do Dicionário UNESP
+ * Normalizar classes gramaticais do formato UNESP
+ */
+function normalizePOS(pos: string): string {
+  const posMap: Record<string, string> = {
+    'Vt': 'v.t.',
+    'Vi': 'v.i.',
+    'Adj': 'adj.',
+    'Adv': 'adv.',
+    'S.m.': 's.m.',
+    'S.f.': 's.f.',
+    'Sm': 's.m.',
+    'Sf': 's.f.',
+    'Prep': 'prep.',
+    'Conj': 'conj.',
+    'Interj': 'interj.'
+  };
+  return posMap[pos] || pos.toLowerCase();
+}
+
+/**
+ * Parser para formato REAL do Dicionário UNESP
  * 
- * Formatos suportados:
- * 1. "Açafrão s.m. planta da família das iridáceas"
- * 2. "Palavra s.f. definição [exemplo; exemplo2] (Pop.)"
- * 3. "Termo adj. descrição (Fig.)"
- * 4. Entradas multi-linha com definições estendidas
+ * Formato: palavra PALAVRA[variacao]POS numero definição
+ * Exemplo: abafar ABAFARataarVt 1 sufocar; asfixiar: Omormaço abafava todos nós.
  */
 function parseUNESPEntry(text: string): UNESPEntry | null {
   try {
     const trimmed = text.trim();
     if (!trimmed) return null;
     
-    // Regex principal: palavra POS definição [exemplos] (registro) - aceita mais variações
-    const mainMatch = trimmed.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-\s]+?)\s+(s\.m\.|s\.f\.|s\.|adj\.|v\.|adv\.|prep\.|conj\.|interj\.)\s+(.+)$/i);
+    // Match principal: palavra + PALAVRA_MAIÚSCULA + [variacao opcional] + POS + numero + definição
+    const mainMatch = trimmed.match(
+      /^([a-záàãéêíóôúç\-]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]+)([a-záàãéêíóôúç\-]*)(Adj|S\.m\.|S\.f\.|Sm|Sf|Vt|Vi|Adv|Prep|Conj|Interj)\.?\s+(\d+)\s+(.+)$/is
+    );
     
     if (!mainMatch) {
-      // Fallback: formato simplificado sem marcadores
-      const simpleMatch = trimmed.match(/^([A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-]+)\s+(.{3,})$/);
+      // Fallback: Tentar formato simplificado (palavra PALAVRA)
+      const simpleMatch = trimmed.match(/^([a-záàãéêíóôúç\-]+)\s+([A-ZÁÀÃÉÊÍÓÔÚÇ]+)/);
       if (!simpleMatch) return null;
       
       return {
         palavra: simpleMatch[1].toLowerCase().trim(),
         pos: 'indefinido',
-        definicao: simpleMatch[2].trim(),
+        definicao: trimmed.substring(simpleMatch[0].length).trim(),
         exemplos: [],
         registro: ''
       };
     }
     
     const palavra = mainMatch[1].toLowerCase().trim();
-    const pos = mainMatch[2].trim();
-    const restContent = mainMatch[3].trim();
+    const variacao = mainMatch[3] ? mainMatch[3].toLowerCase() : '';
+    const pos = mainMatch[4].trim();
+    const acepcao = parseInt(mainMatch[5]);
+    const definicaoRaw = mainMatch[6].trim();
     
-    // Extrair exemplos (entre colchetes)
-    const exemplosMatch = restContent.match(/\[([^\]]+)\]/);
-    const exemplos = exemplosMatch
-      ? exemplosMatch[1].split(';').map(e => e.trim()).filter(e => e.length > 0)
+    // Extrair exemplos (após dois-pontos)
+    const exemploSplit = definicaoRaw.split(':');
+    const definicao = exemploSplit[0].replace(/;/g, ',').trim();
+    const exemplos = exemploSplit.length > 1 
+      ? [exemploSplit.slice(1).join(':').trim()] 
       : [];
     
     // Extrair registro de uso (entre parênteses)
-    const registroMatch = restContent.match(/\(([^)]+)\)/);
+    const registroMatch = definicaoRaw.match(/\(([^)]+)\)/);
     const registro = registroMatch ? registroMatch[1].trim() : '';
-    
-    // Extrair definição (remover exemplos e registro)
-    let definicao = restContent
-      .replace(/\[([^\]]+)\]/g, '') // Remove exemplos
-      .replace(/\(([^)]+)\)/g, '') // Remove registro
-      .trim();
-    
-    // Se definição ficou vazia, usar o conteúdo completo
-    if (!definicao) {
-      definicao = restContent;
-    }
     
     return {
       palavra,
-      pos,
+      pos: normalizePOS(pos),
       definicao,
       exemplos,
-      registro
+      registro,
+      variacao,
+      acepcao
     };
   } catch (error) {
     console.error('❌ Erro ao parsear entrada UNESP:', error);
@@ -213,9 +231,9 @@ async function processInBackground(
     const cleanedContent = cleanUNESPContent(rawContent);
     console.log(`🧹 Conteúdo limpo. Tamanho original: ${rawContent.length}, limpo: ${cleanedContent.length}`);
     
-    // Dividir em entradas (cada linha que começa com maiúscula + POS)
+    // Dividir em entradas (formato REAL: palavra PALAVRA)
     const entries = cleanedContent
-      .split(/(?=^[A-ZÁÀÃÉÊÍÓÔÚÇ][a-záàãéêíóôúç\-]+\s+(?:s\.m\.|s\.f\.|adj\.|v\.|adv\.))/gm)
+      .split(/(?=^[a-záàãéêíóôúç]+\s+[A-ZÁÀÃÉÊÍÓÔÚÇ]{2,})/gm)
       .filter(e => e.trim().length > 0);
 
     console.log(`📊 [Job ${jobId}] Total de entradas detectadas: ${entries.length}`);
@@ -227,6 +245,9 @@ async function processInBackground(
         total_verbetes: entries.length
       })
       .eq('id', jobId);
+
+    // Consolidar entradas (agrupar múltiplas acepções)
+    const consolidatedMap = new Map<string, any>();
 
     // Processar entradas
     for (let i = 0; i < entries.length; i++) {
@@ -244,14 +265,26 @@ async function processInBackground(
 
         processed++;
 
-        definitionBatches.push({
-          palavra: entry.palavra,
-          pos: entry.pos,
-          definicao: entry.definicao,
-          exemplos: entry.exemplos.length > 0 ? entry.exemplos : null,
-          registro_uso: entry.registro || null,
-          fonte: 'unesp'
-        });
+        // Consolidar acepções do mesmo verbete
+        const verbeteKey = `${entry.palavra}_${entry.pos}`;
+
+        if (!consolidatedMap.has(verbeteKey)) {
+          consolidatedMap.set(verbeteKey, {
+            palavra: entry.palavra,
+            pos: entry.pos,
+            definicao: entry.definicao,
+            exemplos: entry.exemplos || [],
+            registro_uso: entry.registro || null,
+            fonte: 'unesp'
+          });
+        } else {
+          // Acepção adicional - concatenar definição
+          const existing = consolidatedMap.get(verbeteKey);
+          existing.definicao += ` | ${entry.definicao}`;
+          if (entry.exemplos && entry.exemplos.length > 0) {
+            existing.exemplos.push(...entry.exemplos);
+          }
+        }
 
       } catch (err) {
         console.error(`❌ [Job ${jobId}] Erro processando entrada ${i}:`, err);
@@ -259,6 +292,18 @@ async function processInBackground(
         if (errorLog.length < 10) {
           errorLog.push(`Entrada ${i}: ${err instanceof Error ? err.message : String(err)}`);
         }
+      }
+
+      // Adicionar verbete consolidado ao batch
+      if (consolidatedMap.size > 0 && i % 100 === 0) {
+        // A cada 100 entradas, inserir batch de consolidados
+        const batchData = Array.from(consolidatedMap.values());
+        
+        for (const item of batchData) {
+          definitionBatches.push(item);
+        }
+        
+        consolidatedMap.clear();
       }
 
       // Inserir batch quando atingir tamanho
@@ -289,6 +334,15 @@ async function processInBackground(
           })
           .eq('id', jobId);
       }
+    }
+
+    // Adicionar últimas entradas consolidadas ao batch final
+    if (consolidatedMap.size > 0) {
+      const finalBatchData = Array.from(consolidatedMap.values());
+      for (const item of finalBatchData) {
+        definitionBatches.push(item);
+      }
+      consolidatedMap.clear();
     }
 
     // Inserir batch final
