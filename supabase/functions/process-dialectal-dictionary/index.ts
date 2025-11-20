@@ -189,6 +189,8 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
         const pos = posMatch ? posMatch[1] : null;
         const definicao = posMatch ? posMatch[2] : restoConteudo;
         
+        const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
+        
         const result = {
           verbete: verbete.trim(),
           verbete_normalizado: normalizeWord(verbete),
@@ -200,6 +202,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
           remissoes: [],
           contextos_culturais: {},
           categorias_tematicas: [],
+          entry_type,
           volume_fonte: volumeNum,
           pagina_fonte: null,
           confianca_extracao: 0.92, // Parsing parcial - agora elegível para validação
@@ -223,6 +226,8 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
       if (lastMatch) {
         const [_, verbete, conteudo] = lastMatch;
         
+        const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
+        
         const result = {
           verbete: verbete.trim(),
           verbete_normalizado: normalizeWord(verbete),
@@ -234,6 +239,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
           remissoes: [],
           contextos_culturais: {},
           categorias_tematicas: [],
+          entry_type,
           volume_fonte: volumeNum,
           pagina_fonte: null,
           confianca_extracao: 0.88, // Parsing simples - próximo ao threshold
@@ -287,6 +293,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
     
     const contextos_culturais = { autores_citados: [], regioes_mencionadas: [], notas: [] };
     const categorias = inferCategorias(verbete, definicoes, contextos_culturais);
+    const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
     
     const result = {
       verbete: verbete.trim(),
@@ -300,6 +307,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
       remissoes: remissoes.length > 0 ? remissoes : null,
       contextos_culturais,
       categorias_tematicas: categorias.length > 0 ? categorias : null,
+      entry_type,
       volume_fonte: volumeNum,
       pagina_fonte: null,
       confianca_extracao: 0.99, // ✅ FASE 2: Confiança aumentada com regex refinada

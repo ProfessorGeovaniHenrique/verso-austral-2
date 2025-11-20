@@ -119,13 +119,17 @@ Deno.serve(async (req) => {
       const batch = entries.slice(i, i + batchSize);
       
       // Inserir no banco
-      const insertData = batch.map(entry => ({
-        palavra: entry.palavra,
-        sinonimos: entry.sinonimos,
-        contexto_uso: entry.contexto,
-        fonte: 'rocha_pombo',
-        pos: null
-      }));
+      const insertData = batch.map(entry => {
+        const entry_type = entry.palavra.trim().includes(' ') ? 'mwe' : 'word';
+        return {
+          palavra: entry.palavra,
+          sinonimos: entry.sinonimos,
+          contexto_uso: entry.contexto,
+          fonte: 'rocha_pombo',
+          pos: null,
+          entry_type
+        };
+      });
 
       const { data, error } = await supabase
         .from('lexical_synonyms')

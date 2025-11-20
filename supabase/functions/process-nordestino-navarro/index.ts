@@ -19,6 +19,7 @@ interface ParsedEntry {
   origem_regionalista: string[];
   variantes: string[];
   definicoes: string[];
+  entry_type: 'word' | 'mwe';
   volume_fonte: string;
   confianca_extracao: number;
 }
@@ -147,6 +148,9 @@ function parseNordestinoEntry(line: string): ParsedEntry | null {
   const allVariantes = [...new Set(acepcoes.flatMap(a => a.variantes))];
   const allDefinicoes = acepcoes.flatMap(a => a.definicoes);
   
+  
+  const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
+  
   return {
     verbete,
     verbete_normalizado: verbete.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
@@ -154,6 +158,7 @@ function parseNordestinoEntry(line: string): ParsedEntry | null {
     origem_regionalista: allRegioes,
     variantes: allVariantes,
     definicoes: allDefinicoes,
+    entry_type,
     volume_fonte: 'Navarro 2014',
     confianca_extracao: 0.92
   };
