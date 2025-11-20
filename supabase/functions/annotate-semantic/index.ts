@@ -930,6 +930,43 @@ async function processCorpusWithAI(
         });
       }
 
+      // ✅ FASE 2.5: Propagar anotações via sinônimos (Rocha Pombo)
+      const annotatedWordsMap = new Map<string, { palavra: string; annotation: AIAnnotation }>();
+      batch.forEach((word, idx) => {
+        if (preAnnotations[idx]) {
+          annotatedWordsMap.set(word.palavra.toLowerCase(), {
+            palavra: word.palavra,
+            annotation: preAnnotations[idx]
+          });
+        }
+      });
+
+      const synonymAnnotations = await propagateSynonymAnnotations(annotatedWordsMap, supabase);
+
+      // Adicionar sinônimos anotados ao batch para processamento na Fase 3
+      if (synonymAnnotations.size > 0) {
+        console.log(`📊 Expandindo batch com ${synonymAnnotations.size} sinônimos anotados`);
+        
+        // Converter sinônimos em CorpusWord para processar na Fase 3
+        const synonymWords: ExtendedCorpusWord[] = Array.from(synonymAnnotations.entries()).map(([sinonimo, data]) => ({
+          palavra: sinonimo,
+          posicao_no_corpus: -1,  // Marcador de "palavra propagada"
+          artista: batch[0]?.artista || '',
+          musica: batch[0]?.musica || '',
+          linha_numero: batch[0]?.linha_numero || 0,
+          verso_completo: `[Sinônimo de ${data.sinonimo_de}]`,
+          contexto_esquerdo: '',
+          contexto_direito: ''
+        }));
+        
+        // Adicionar ao batch e preAnnotations
+        synonymWords.forEach((word) => {
+          batch.push(word);
+          const data = synonymAnnotations.get(word.palavra.toLowerCase());
+          preAnnotations.push(data?.annotation || null);
+        });
+      }
+
       // Fase 3: Processar insígnias e montar registros finais com análise comparativa
       // ✅ OTIMIZAÇÃO: processar em sub-batches para evitar resource exhaustion
       const INSIGNIA_BATCH_SIZE = 10;
@@ -972,6 +1009,12 @@ async function processCorpusWithAI(
               }
             }
             
+            // ✅ Detectar se é sinônimo propagado
+            const isPropagatedSynonym = word.posicao_no_corpus === -1;
+            const propagatedFrom = isPropagatedSynonym 
+              ? (word.verso_completo?.match(/\[Sinônimo de (.+)\]/)?.[1] || null)
+              : null;
+            
             return {
               job_id: jobId,
               palavra: word.palavra,
@@ -982,22 +1025,24 @@ async function processCorpusWithAI(
               tagsets: [ann.tagset_codigo],
               prosody: ann.prosody,
               confianca: ann.confianca,
-              contexto_esquerdo: word.contexto_esquerdo,
-              contexto_direito: word.contexto_direito,
-              posicao_no_corpus: word.posicao_no_corpus,
-              insignias_culturais: insignias,
-              freq_study_corpus: freqCE,
-              freq_reference_corpus: freqCR,
-              ll_score: llScore,
-              mi_score: miScore,
-              is_cultural_marker: isCulturalMarker,
-              significance_level: significanceLevel,
+              contexto_esquerdo: isPropagatedSynonym ? '[PROPAGADO]' : word.contexto_esquerdo,
+              contexto_direito: isPropagatedSynonym ? '[PROPAGADO]' : word.contexto_direito,
+              posicao_no_corpus: isPropagatedSynonym ? null : word.posicao_no_corpus,
+              insignias_culturais: isPropagatedSynonym ? [] : insignias,
+              freq_study_corpus: isPropagatedSynonym ? 0 : freqCE,
+              freq_reference_corpus: isPropagatedSynonym ? 0 : freqCR,
+              ll_score: isPropagatedSynonym ? null : llScore,
+              mi_score: isPropagatedSynonym ? null : miScore,
+              is_cultural_marker: isPropagatedSynonym ? false : isCulturalMarker,
+              significance_level: isPropagatedSynonym ? null : significanceLevel,
               metadata: {
                 artista: word.artista,
                 musica: word.musica,
                 linha_numero: word.linha_numero,
                 verso_completo: word.verso_completo,
-                justificativa: ann.justificativa
+                justificativa: ann.justificativa,
+                is_propagated_synonym: isPropagatedSynonym,
+                propagated_from: propagatedFrom
               }
             };
           })
@@ -1339,4 +1384,79 @@ async function annotateBatchFromLexicon(
       is_new_category: false
     };
   });
+}
+
+// ============ PROPAGAÇÃO DE ANOTAÇÕES VIA SINÔNIMOS (ROCHA POMBO) ============
+async function propagateSynonymAnnotations(
+  annotatedWords: Map<string, { palavra: string; annotation: AIAnnotation }>,
+  supabase: any
+): Promise<Map<string, { palavra: string; annotation: AIAnnotation; sinonimo_de: string }>> {
+  
+  const palavrasAnotadas = Array.from(annotatedWords.keys());
+  
+  if (palavrasAnotadas.length === 0) {
+    return new Map();
+  }
+  
+  // 1️⃣ Buscar sinônimos no Rocha Pombo (batch query)
+  const { data: synonymData, error } = await supabase
+    .from('lexical_synonyms')
+    .select('palavra, sinonimos')
+    .eq('fonte', 'rocha_pombo')
+    .in('palavra', palavrasAnotadas);
+  
+  if (error || !synonymData) {
+    console.warn(`⚠️ Erro ao buscar sinônimos: ${error?.message || 'Nenhum resultado'}`);
+    return new Map();
+  }
+  
+  console.log(`📚 Rocha Pombo: ${synonymData.length} entradas com sinônimos encontradas`);
+  
+  // 2️⃣ Mapear sinônimos → palavra original
+  const synonymToOriginal = new Map<string, string>();
+  
+  synonymData.forEach((entry: any) => {
+    const palavraOriginal = entry.palavra.toLowerCase();
+    const sinonimos = entry.sinonimos || [];
+    
+    sinonimos.forEach((sinonimo: string) => {
+      const sinonimoClean = sinonimo.trim().toLowerCase();
+      
+      // Validar que sinônimo não está já anotado e tem tamanho mínimo
+      if (!annotatedWords.has(sinonimoClean) && sinonimoClean.length > 2) {
+        synonymToOriginal.set(sinonimoClean, palavraOriginal);
+      }
+    });
+  });
+  
+  console.log(`🔄 ${synonymToOriginal.size} sinônimos únicos mapeados para propagação`);
+  
+  // 3️⃣ Propagar anotações
+  const propagatedAnnotations = new Map<string, { palavra: string; annotation: AIAnnotation; sinonimo_de: string }>();
+  
+  for (const [sinonimo, palavraOriginal] of synonymToOriginal.entries()) {
+    const originalData = annotatedWords.get(palavraOriginal);
+    if (!originalData) continue;
+    
+    const { annotation: originalAnn } = originalData;
+    
+    // Criar anotação propagada (confiança reduzida em 15%)
+    const propagatedAnn: AIAnnotation = {
+      tagset_codigo: originalAnn.tagset_codigo,
+      prosody: originalAnn.prosody,
+      confianca: Math.round(originalAnn.confianca * 0.85 * 100) / 100,
+      justificativa: `Propagado via sinônimo de "${palavraOriginal}" (Rocha Pombo). Original: ${originalAnn.justificativa}`,
+      is_new_category: false
+    };
+    
+    propagatedAnnotations.set(sinonimo, {
+      palavra: sinonimo,
+      annotation: propagatedAnn,
+      sinonimo_de: palavraOriginal
+    });
+  }
+  
+  console.log(`✅ ${propagatedAnnotations.size} anotações propagadas via sinônimos`);
+  
+  return propagatedAnnotations;
 }
