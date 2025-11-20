@@ -252,6 +252,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('🚀 VERSÃO 2.0 - Edge Function Refatorada com logs de debug');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
