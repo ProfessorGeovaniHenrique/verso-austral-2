@@ -21,6 +21,7 @@ import { SessionHistoryTab } from './SessionHistoryTab';
 import { RoadmapTab } from './RoadmapTab';
 import { MetadataQualityDashboard } from './MetadataQualityDashboard';
 import { BatchEnrichmentPanel } from './BatchEnrichmentPanel';
+import { VirtualizedSongList } from './VirtualizedSongList';
 import { useEnrichmentPersistence } from '@/hooks/useEnrichmentPersistence';
 import { useMultiTabSync } from '@/hooks/useMultiTabSync';
 import { useSaveIndicator } from '@/hooks/useSaveIndicator';
@@ -30,6 +31,7 @@ import { saveSessionToCloud, loadSessionFromCloud, resolveConflict } from '@/ser
 import { useAuth } from '@/hooks/useAuth';
 import { logger } from '@/lib/logger';
 import { fetchWithTimeoutRetry } from '@/lib/fetch';
+import { debounce } from '@/lib/performanceUtils';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -43,7 +45,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface EnrichedSongData extends SongMetadata {
-  status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error' | 'applied';
+  status: 'pending' | 'enriching' | 'enriched' | 'validated' | 'rejected' | 'error' | 'applied';
   sugestao?: {
     compositor?: string;
     artista?: string;
@@ -186,6 +188,7 @@ export function MetadataEnrichmentInterface() {
   /**
    * Salvar sessão com MUTEX (FASE 2.1)
    * Previne race conditions de múltiplas chamadas simultâneas
+   * FASE 4: Debounced para evitar salvamentos excessivos
    */
   const saveCurrentSession = useCallback(async () => {
     if (songs.length === 0) return;
@@ -269,6 +272,12 @@ export function MetadataEnrichmentInterface() {
       }
     }
   }, [songs, corpusType, currentIndex, isEnriching, isPaused, metrics, sessionStartTime, user, isOnline, cloudSessionId, persistence, startSaving, completeSaving, setSaveError, broadcastSessionUpdate]);
+
+  // FASE 4: Versão debounced do saveCurrentSession (5s de delay)
+  const debouncedSave = useMemo(
+    () => debounce(saveCurrentSession, 5000),
+    [saveCurrentSession]
+  );
 
   // Carregar sessão ao montar (FASE 1: Com guard para evitar loop)
   useEffect(() => {
@@ -424,22 +433,31 @@ export function MetadataEnrichmentInterface() {
 
       const data = await response.json();
 
-      setSongs(prev => {
-        const newSongs = prev.map((s, i) => 
-          i === index ? { 
-            ...s, 
-            status: 'pending' as const, 
-            sugestao: data 
-          } : s
-        );
+      // FASE 1: Status correto + auto-validação atômica
+      setSongs(prev => prev.map((s, i) => {
+        if (i !== index) return s;
         
-        return newSongs;
-      });
-
-      // Auto-validate high confidence results
-      if (data.confianca >= 90) {
-        validateSong(index, true);
-      }
+        // Auto-validar se alta confiança (≥90%) e não é not-found
+        if (data.confianca >= 90 && data.fonte !== 'not-found') {
+          return {
+            ...s,
+            status: 'validated' as const,
+            compositor: data.compositor || s.compositor,
+            album: data.album || s.album,
+            ano: data.ano || s.ano,
+            fonte: data.fonte,
+            fonteValidada: data.fonte,
+            sugestao: data
+          };
+        }
+        
+        // Senão, marcar como enriched (aguardando validação manual)
+        return { 
+          ...s, 
+          status: 'enriched' as const, 
+          sugestao: data 
+        };
+      }));
 
     } catch (error: any) {
       console.error(`Erro ao enriquecer "${song.musica}":`, error);
@@ -527,9 +545,9 @@ export function MetadataEnrichmentInterface() {
       
       songsSinceLastSave += batch.length;
       
-      // Salvamento periódico
+      // Salvamento periódico (FASE 4: debounced)
       if (songsSinceLastSave >= SAVE_INTERVAL) {
-        saveCurrentSession();
+        debouncedSave();
         songsSinceLastSave = 0;
         logger.info(`💾 Checkpoint: ${i + batch.length}/${songsToEnrich.length} músicas processadas`);
       }
@@ -631,8 +649,8 @@ export function MetadataEnrichmentInterface() {
     }));
     
     toast.success(`${indices.length} músicas ${accept ? 'validadas' : 'rejeitadas'} com sucesso!`);
-    saveCurrentSession();
-  }, [saveCurrentSession]);
+    debouncedSave(); // FASE 4: debounced save
+  }, [debouncedSave]);
 
   const validateAllHighConfidence = useCallback(() => {
     const highConfidenceIndices = songs
@@ -1266,8 +1284,8 @@ export function MetadataEnrichmentInterface() {
                   </Button>
                 </div>
 
-                {/* Mass Actions Section */}
-                {statusFilter === 'enriched' && displaySongs.length > 0 && (
+                {/* Mass Actions Section - FASE 6: Botões sempre visíveis quando há músicas enriched */}
+                {songs.some(s => s.status === 'enriched' && s.sugestao) && (
                   <div className="border-t pt-4 mt-4">
                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                       <Zap className="h-4 w-4" />

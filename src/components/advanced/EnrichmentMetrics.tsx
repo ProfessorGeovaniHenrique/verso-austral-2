@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Database, Sparkles, Clock, TrendingUp } from 'lucide-react';
 
 export interface EnrichedSongData {
-  status: 'pending' | 'enriching' | 'validated' | 'rejected' | 'error' | 'applied';
+  status: 'pending' | 'enriching' | 'enriched' | 'validated' | 'rejected' | 'error' | 'applied';
   compositor?: string;
   sugestao?: {
     compositor?: string;

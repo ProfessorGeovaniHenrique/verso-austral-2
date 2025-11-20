@@ -2,58 +2,32 @@ project_id = "kywmhuubbsvclkorxrse"
 
 [functions.process-pending-jobs]
 verify_jwt = false
-# Motivo: Função interna do sistema para processar jobs pendentes
-# Proteção: Usa service role key, invocada por cron/scheduler
 
-# ============================================
-# CONFIGURAÇÃO DE AUTENTICAÇÃO DAS EDGE FUNCTIONS
-# ============================================
-# verify_jwt = false: Função pública (sem JWT)
-# verify_jwt = true (padrão): Função requer autenticação
-
-# Funções públicas com validação interna
 [functions.annotate-pos]
 verify_jwt = false
-# Motivo: Suporta demo_mode para usuários não autenticados
-# Validação: Verifica internamente se demo_mode=true ou se há JWT válido
 
 [functions.annotate-semantic]
 verify_jwt = false
-# Motivo: Suporta demo_mode para usuários não autenticados  
-# Validação: Verifica internamente se demo_mode=true ou se há JWT válido
-# Proteção adicional: Em modo demo, não salva dados permanentes
 
-# Funções internas do sistema (webhooks, alertas)
 [functions.send-critical-alert]
 verify_jwt = false
-# Motivo: Chamada por sistemas externos (webhooks)
-# Proteção: Valida assinatura/chave secreta internamente
 
 [functions.refine-tagset-suggestions]
 verify_jwt = false
-# Motivo: Processamento assíncrono iniciado pelo sistema
-# Proteção: Usa service role key, não depende de JWT de usuário
 
 [functions.calculate-priority-score]
 verify_jwt = false
-# Motivo: Cálculo de métricas iniciado pelo sistema
-# Proteção: Usa service role key, não depende de JWT de usuário
 
 [functions.enrich-corpus-metadata]
 verify_jwt = true
-# Motivo: Requer autenticação para enriquecimento de metadados
-# Proteção: Apenas usuários autenticados podem enriquecer corpus
 
 [functions.batch-enrich-corpus]
 verify_jwt = true
-# Motivo: Requer autenticação para processamento batch de enriquecimento
-# Proteção: Apenas usuários autenticados (admins) podem processar corpus em lote
 
 [functions.upload-corpus-to-storage]
 verify_jwt = true
-# Motivo: Requer autenticação para upload de corpus para Storage
-# Proteção: Apenas usuários autenticados (admins) podem fazer upload de arquivos grandes
 
-# Funções protegidas por JWT (padrão)
-# send-invite-email: Requer JWT + verificação de role admin
-# Outras funções não listadas usam verify_jwt = true por padrão
+[functions.divide-and-upload-corpus]
+verify_jwt = true
+# Motivo: Requer autenticação para dividir e fazer upload de corpus
+# Proteção: Apenas usuários autenticados (admins) podem processar corpus

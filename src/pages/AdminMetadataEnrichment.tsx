@@ -5,6 +5,7 @@ import { Sparkles, Database, FileText, Info, Upload } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { CacheManagementPanel } from "@/components/admin/CacheManagementPanel";
 import { UploadCorpusButton } from "@/components/admin/metadata/UploadCorpusButton";
+import { DivideCorpusButton } from "@/components/admin/metadata/DivideCorpusButton";
 
 export default function AdminMetadataEnrichment() {
   return (
@@ -79,15 +80,24 @@ export default function AdminMetadataEnrichment() {
             <CardContent>
               <Alert className="mb-4">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Importante</AlertTitle>
+                <AlertTitle>Preparação do Corpus</AlertTitle>
                 <AlertDescription>
-                  O corpus gaúcho (~45MB) precisa estar no Storage para ser processado corretamente. 
-                  Execute o upload apenas uma vez. O sistema verificará se o arquivo já existe.
+                  <strong>Passo 1:</strong> Divida o corpus gaúcho em 3 partes para processamento eficiente (necessário apenas uma vez)<br />
+                  <strong>Passo 2:</strong> Faça o upload das partes divididas para o Supabase Storage
                 </AlertDescription>
               </Alert>
-              <div className="flex gap-4">
-                <UploadCorpusButton corpusType="gaucho" />
-                <UploadCorpusButton corpusType="nordestino" />
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">1. Dividir Corpus (Execute primeiro)</h4>
+                  <DivideCorpusButton corpusType="gaucho" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold mb-2">2. Upload para Storage</h4>
+                  <div className="flex gap-4">
+                    <UploadCorpusButton corpusType="gaucho" />
+                    <UploadCorpusButton corpusType="nordestino" />
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
