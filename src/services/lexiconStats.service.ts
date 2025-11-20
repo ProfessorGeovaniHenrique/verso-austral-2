@@ -15,7 +15,7 @@ export interface LexiconStats {
     validados: number;
     confianca_media: number;
   };
-  houaiss: {
+  rochaPombo: {
     total: number;
   };
   unesp: {

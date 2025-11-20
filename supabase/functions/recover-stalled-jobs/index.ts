@@ -25,7 +25,8 @@ serve(async (req) => {
       .from('dictionary_import_jobs')
       .select('*')
       .in('status', ['processando', 'iniciado'])
-      .lt('atualizado_em', stalledThreshold.toISOString());
+      .lt('atualizado_em', stalledThreshold.toISOString())
+      .in('tipo_dicionario', ['dialectal_I', 'dialectal_II', 'gutenberg', 'rocha_pombo', 'unesp']);
 
     if (fetchError) throw fetchError;
 

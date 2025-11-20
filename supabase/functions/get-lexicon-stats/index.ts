@@ -21,7 +21,7 @@ interface LexiconStats {
     validados: number;
     confianca_media: number;
   };
-  houaiss: {
+  rochaPombo: {
     total: number;
   };
   unesp: {
@@ -47,13 +47,13 @@ serve(async (req) => {
     console.log('🔍 Fetching lexicon stats (aggregated)...');
 
     // Parallel queries for maximum performance
-    const [dialectalResult, gutenbergResult, houaissResult, unespResult, lastImportResult] = await Promise.all([
+    const [dialectalResult, gutenbergResult, rochaPomboResult, unespResult, lastImportResult] = await Promise.all([
       // Dialectal
       supabase.rpc('get_dialectal_stats', {}, { count: 'exact' }),
       // Gutenberg
       supabase.rpc('get_gutenberg_stats', {}, { count: 'exact' }),
-      // Houaiss count
-      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }),
+      // Rocha Pombo (ABL) count
+      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'rocha_pombo'),
       // UNESP count
       supabase.from('lexical_definitions').select('*', { count: 'exact', head: true }),
       // Last import
@@ -98,8 +98,8 @@ serve(async (req) => {
         validados: gutenbergCount.validados || 0,
         confianca_media: parseFloat(gutenbergCount.confianca_media || '0'),
       },
-      houaiss: {
-        total: houaissResult.count || 0,
+      rochaPombo: {
+        total: rochaPomboResult.count || 0,
       },
       unesp: {
         total: unespResult.count || 0,
@@ -108,7 +108,7 @@ serve(async (req) => {
         total_entries: 
           (dialectalCount.total || 0) + 
           (gutenbergCount.total || 0) + 
-          (houaissResult.count || 0) + 
+          (rochaPomboResult.count || 0) + 
           (unespResult.count || 0),
         validation_rate: 
           ((dialectalCount.validados || 0) + (gutenbergCount.validados || 0)) /

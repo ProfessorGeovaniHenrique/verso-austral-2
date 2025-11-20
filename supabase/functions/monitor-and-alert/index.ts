@@ -34,7 +34,8 @@ serve(async (req) => {
             .from('dictionary_import_jobs')
             .select('*')
             .in('status', ['processando', 'iniciado'])
-            .lt('atualizado_em', new Date(Date.now() - 15 * 60 * 1000).toISOString());
+            .lt('atualizado_em', new Date(Date.now() - 15 * 60 * 1000).toISOString())
+            .in('tipo_dicionario', ['dialectal_I', 'dialectal_II', 'gutenberg', 'rocha_pombo', 'unesp']);
 
           if (stalledJobs && stalledJobs.length > 0) {
             return {

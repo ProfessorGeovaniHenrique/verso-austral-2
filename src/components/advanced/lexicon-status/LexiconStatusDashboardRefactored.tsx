@@ -60,11 +60,11 @@ export function LexiconStatusDashboardRefactored() {
         />
 
         <DictionaryStatusCard
-          nome="Houaiss"
+          nome="Rocha Pombo (ABL)"
           status="healthy"
           metricas={{
-            total: stats.houaiss.total,
-            validados: stats.houaiss.total,
+            total: stats.rochaPombo.total,
+            validados: stats.rochaPombo.total,
             confianca: 1.0,
           }}
         />

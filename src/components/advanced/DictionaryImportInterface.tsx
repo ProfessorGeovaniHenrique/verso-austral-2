@@ -19,7 +19,7 @@ export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
   const [isImportingVolII, setIsImportingVolII] = useState(false);
   const [isImportingGutenberg, setIsImportingGutenberg] = useState(false);
-  const [isImportingHouaiss, setIsImportingHouaiss] = useState(false);
+  const [isImportingRochaPombo, setIsImportingRochaPombo] = useState(false);
   const [isImportingUnesp, setIsImportingUnesp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const { data: jobs } = useDictionaryImportJobs();
@@ -102,23 +102,23 @@ export function DictionaryImportInterface() {
     }
   };
 
-  const importHouaiss = async () => {
-    setIsImportingHouaiss(true);
+  const importRochaPombo = async () => {
+    setIsImportingRochaPombo(true);
     try {
-      toast.info('Iniciando importação do Houaiss...');
+      toast.info('Iniciando importação do Dicionário Rocha Pombo (ABL)...');
       
-      const { data, error } = await supabase.functions.invoke('import-houaiss-backend', {
+      const { data, error } = await supabase.functions.invoke('import-rocha-pombo-backend', {
         body: {}
       });
       
       if (error) throw error;
       
-      toast.success(`Importação iniciada! Job ID: ${data.jobId}`);
+      toast.success(`Importação do Rocha Pombo iniciada! Job ID: ${data.jobId}`);
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 500);
     } catch (error: any) {
-      toast.error(`Erro ao iniciar importação do Houaiss: ${error.message}`);
+      toast.error(`Erro ao iniciar importação do Rocha Pombo: ${error.message}`);
     } finally {
-      setIsImportingHouaiss(false);
+      setIsImportingRochaPombo(false);
     }
   };
 
@@ -298,34 +298,37 @@ export function DictionaryImportInterface() {
           </CardContent>
         </Card>
 
-        {/* Card Houaiss */}
+        {/* Card Rocha Pombo (ABL) */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5" />
-              Dicionário Houaiss (Sinônimos)
+              <BookOpen className="h-5 w-5 text-purple-600" />
+              Dicionário Rocha Pombo (ABL)
             </CardTitle>
+            <CardDescription>
+              Academia Brasileira de Letras - 2ª edição (2011) - Sinônimos
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Button 
-              onClick={importHouaiss}
-              disabled={isImportingHouaiss}
+              onClick={importRochaPombo}
+              disabled={isImportingRochaPombo}
               className="w-full"
             >
-              {isImportingHouaiss ? (
+              {isImportingRochaPombo ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Importando Houaiss...
+                  Importando Rocha Pombo...
                 </>
               ) : (
                 <>
                   <Download className="mr-2 h-4 w-4" />
-                  Importar Houaiss
+                  Importar Rocha Pombo
                 </>
               )}
             </Button>
             <p className="text-sm text-muted-foreground">
-              Sinônimos e relações lexicais carregados do GitHub.
+              Dicionário de Sinônimos oficial da ABL carregado do GitHub.
             </p>
           </CardContent>
         </Card>
@@ -440,7 +443,7 @@ export function DictionaryImportInterface() {
                           size="sm" 
                           variant="outline"
                           onClick={() => handleResume(job)}
-                          disabled={isImportingVolI || isImportingVolII || isImportingGutenberg || isImportingHouaiss || isImportingUnesp}
+                          disabled={isImportingVolI || isImportingVolII || isImportingGutenberg || isImportingRochaPombo || isImportingUnesp}
                           className="h-8 px-2 text-xs"
                         >
                           <RefreshCw className="h-3 w-3 mr-1" />

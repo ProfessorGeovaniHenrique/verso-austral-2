@@ -71,6 +71,55 @@ export function validateDialectalFile(content: string, volumeNum: string): Valid
 }
 
 /**
+ * Valida arquivo do Dicionário Rocha Pombo (ABL - Sinônimos) antes de processar
+ */
+export function validateRochaPomboFile(content: string): ValidationResult {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  
+  // Verificar tamanho mínimo
+  if (content.length < 1000) {
+    errors.push('Arquivo muito pequeno (< 1KB)');
+  }
+  
+  // Pular metadados (primeiras ~200 linhas)
+  const lines = content.split('\n');
+  const contentLines = lines.slice(200);
+  
+  // Verificar formato esperado: PALAVRA, sinônimo1, sinônimo2 – explicação
+  const sampleSize = Math.min(1000, contentLines.length);
+  const sample = contentLines.slice(0, sampleSize).filter(l => l.trim());
+  
+  let validEntries = 0;
+  for (const line of sample) {
+    // Formato: Palavra em MAIÚSCULAS seguida de vírgula e sinônimos
+    if (line.match(/^[A-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÇ\s]+,\s*\w+/)) {
+      validEntries++;
+    }
+  }
+  
+  const sampleValidationRate = sample.length > 0 ? (validEntries / sample.length) * 100 : 0;
+  
+  if (sampleValidationRate < 30) {
+    warnings.push(`Taxa de validação baixa: ${sampleValidationRate.toFixed(1)}%`);
+  }
+  
+  return {
+    valid: errors.length === 0 && sampleValidationRate > 20,
+    errors,
+    warnings,
+    sampleValidationRate,
+    metadata: {
+      fileSize: content.length,
+      totalLines: lines.length,
+      contentLinesStart: 200,
+      validEntriesInSample: validEntries,
+      expectedEntries: contentLines.length
+    }
+  };
+}
+
+/**
  * Valida arquivo do Dicionário Gutenberg antes de processar
  */
 export function validateGutenbergFile(content: string): ValidationResult {

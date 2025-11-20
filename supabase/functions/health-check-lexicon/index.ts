@@ -44,6 +44,8 @@ serve(async (req) => {
     }
 
     const results: HealthCheckResult[] = [];
+    const now = new Date().toISOString();
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
 
     // 1. Check Dialectal
     const { data: dialectalData, count: dialectalCount } = await supabase
@@ -112,7 +114,33 @@ serve(async (req) => {
       });
     }
 
-    // 3. Check for stalled jobs
+    // 3. Check Rocha Pombo (ABL)
+    const { count: rochaPomboCount } = await supabase
+      .from('lexical_synonyms')
+      .select('*', { count: 'exact', head: true })
+      .eq('fonte', 'rocha_pombo');
+
+    const rochaPomboStatus = rochaPomboCount && rochaPomboCount > 10000 ? 'healthy' : 
+                              rochaPomboCount && rochaPomboCount > 5000 ? 'warning' : 'critical';
+    
+    await supabase.from('lexicon_health_status').upsert({
+      check_type: 'rocha_pombo',
+      status: rochaPomboStatus,
+      message: `Rocha Pombo (ABL): ${rochaPomboCount || 0} sinônimos`,
+      metrics: { total: rochaPomboCount || 0, expected: 20000 },
+      checked_at: now,
+      expires_at: expiresAt
+    });
+
+    results.push({
+      check_type: 'rocha_pombo',
+      status: rochaPomboStatus,
+      message: `Rocha Pombo (ABL): ${rochaPomboCount || 0} sinônimos`,
+      details: { count: rochaPomboCount, expected: 20000 },
+      metrics: { total: rochaPomboCount || 0 }
+    });
+
+    // 4. Check for stalled jobs
     const { data: stalledJobs } = await supabase
       .from('dictionary_import_jobs')
       .select('*')
@@ -154,9 +182,6 @@ serve(async (req) => {
     });
 
     // Save results to cache
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
-
     for (const result of results) {
       await supabase
         .from('lexicon_health_status')
@@ -166,8 +191,8 @@ serve(async (req) => {
           message: result.message,
           details: result.details,
           metrics: result.metrics,
-          checked_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
+          checked_at: now,
+          expires_at: expiresAt,
           checked_by: 'system'
         }, { onConflict: 'check_type' });
     }
