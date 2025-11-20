@@ -815,6 +815,97 @@ export type Database = {
         }
         Relationships: []
       }
+      dictionary_import_quality: {
+        Row: {
+          batch_number: number
+          created_at: string | null
+          id: string
+          job_id: string | null
+          lines_failed: number
+          lines_processed: number
+          lines_success: number
+          parsing_strategy: string | null
+          sample_failures: Json | null
+          success_rate: number | null
+        }
+        Insert: {
+          batch_number: number
+          created_at?: string | null
+          id?: string
+          job_id?: string | null
+          lines_failed: number
+          lines_processed: number
+          lines_success: number
+          parsing_strategy?: string | null
+          sample_failures?: Json | null
+          success_rate?: number | null
+        }
+        Update: {
+          batch_number?: number
+          created_at?: string | null
+          id?: string
+          job_id?: string | null
+          lines_failed?: number
+          lines_processed?: number
+          lines_success?: number
+          parsing_strategy?: string | null
+          sample_failures?: Json | null
+          success_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_import_quality_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dictionary_job_recovery_log: {
+        Row: {
+          created_at: string | null
+          error_message: string | null
+          id: string
+          job_id: string | null
+          metadata: Json | null
+          recovered_by: string | null
+          recovery_attempt: number
+          strategy: string
+          success: boolean
+        }
+        Insert: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json | null
+          recovered_by?: string | null
+          recovery_attempt?: number
+          strategy: string
+          success: boolean
+        }
+        Update: {
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          job_id?: string | null
+          metadata?: Json | null
+          recovered_by?: string | null
+          recovery_attempt?: number
+          strategy?: string
+          success?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dictionary_job_recovery_log_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "dictionary_import_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       edge_function_logs: {
         Row: {
           created_at: string | null
@@ -1322,6 +1413,42 @@ export type Database = {
         }
         Relationships: []
       }
+      lexicon_health_status: {
+        Row: {
+          check_type: string
+          checked_at: string | null
+          checked_by: string | null
+          details: Json | null
+          expires_at: string | null
+          id: string
+          message: string | null
+          metrics: Json | null
+          status: string
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string | null
+          checked_by?: string | null
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          metrics?: Json | null
+          status: string
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string | null
+          checked_by?: string | null
+          details?: Json | null
+          expires_at?: string | null
+          id?: string
+          message?: string | null
+          metrics?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
       metadata_application_history: {
         Row: {
           application_source: string
@@ -1719,6 +1846,42 @@ export type Database = {
           },
         ]
       }
+      system_logs: {
+        Row: {
+          category: string
+          created_at: string | null
+          id: string
+          level: string
+          message: string
+          metadata: Json | null
+          source: string | null
+          trace_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          id?: string
+          level: string
+          message: string
+          metadata?: Json | null
+          source?: string | null
+          trace_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          id?: string
+          level?: string
+          message?: string
+          metadata?: Json | null
+          source?: string | null
+          trace_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       technical_decisions: {
         Row: {
           alternatives: Json | null
@@ -1823,7 +1986,29 @@ export type Database = {
           success: boolean
         }[]
       }
+      clean_expired_health_checks: { Args: never; Returns: undefined }
+      clean_old_system_logs: { Args: never; Returns: undefined }
       generate_invite_key: { Args: never; Returns: string }
+      get_dialectal_stats: {
+        Args: never
+        Returns: {
+          campeiros: number
+          confianca_media: number
+          platinismos: number
+          total: number
+          validados: number
+          volume_i: number
+          volume_ii: number
+        }[]
+      }
+      get_gutenberg_stats: {
+        Args: never
+        Returns: {
+          confianca_media: number
+          total: number
+          validados: number
+        }[]
+      }
       get_users_with_roles: {
         Args: never
         Returns: {
