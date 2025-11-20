@@ -19,6 +19,7 @@ export interface LexiconEntry {
 }
 
 interface Filters {
+  table?: 'semantic_lexicon' | 'gutenberg_lexicon';
   pos?: string;
   validationStatus?: 'all' | 'validated' | 'pending';
   searchTerm?: string;
@@ -26,27 +27,46 @@ interface Filters {
 
 export function useBackendLexicon(filters?: Filters) {
   const { toast } = useToast();
+  const tableName = filters?.table || 'semantic_lexicon';
 
   const queryResult = useQuery({
     queryKey: ['backend-lexicon', filters],
     queryFn: async () => {
-      let query = supabase
-        .from('semantic_lexicon')
+      let query = (supabase
+        .from(tableName) as any)
         .select('*')
         .order('criado_em', { ascending: false });
 
-      if (filters?.pos && filters.pos !== 'all') {
-        query = query.eq('pos', filters.pos);
-      }
+      if (tableName === 'gutenberg_lexicon') {
+        // Lógica para gutenberg_lexicon
+        if (filters?.pos && filters.pos !== 'all') {
+          query = query.eq('classe_gramatical', filters.pos);
+        }
 
-      if (filters?.validationStatus === 'validated') {
-        query = query.eq('validado', true);
-      } else if (filters?.validationStatus === 'pending') {
-        query = query.eq('validado', false);
-      }
+        if (filters?.validationStatus === 'validated') {
+          query = query.or('validado.eq.true,validado_humanamente.eq.true');
+        } else if (filters?.validationStatus === 'pending') {
+          query = query.eq('validado', false).eq('validado_humanamente', false);
+        }
 
-      if (filters?.searchTerm) {
-        query = query.ilike('palavra', `%${filters.searchTerm}%`);
+        if (filters?.searchTerm) {
+          query = query.ilike('verbete_normalizado', `%${filters.searchTerm}%`);
+        }
+      } else {
+        // Lógica para semantic_lexicon (padrão)
+        if (filters?.pos && filters.pos !== 'all') {
+          query = query.eq('pos', filters.pos);
+        }
+
+        if (filters?.validationStatus === 'validated') {
+          query = query.eq('validado', true);
+        } else if (filters?.validationStatus === 'pending') {
+          query = query.eq('validado', false);
+        }
+
+        if (filters?.searchTerm) {
+          query = query.ilike('palavra', `%${filters.searchTerm}%`);
+        }
       }
 
       const { data, error } = await query;
@@ -58,6 +78,25 @@ export function useBackendLexicon(filters?: Filters) {
           description: error.message
         });
         throw error;
+      }
+
+      // Mapear dados para formato unificado
+      if (tableName === 'gutenberg_lexicon') {
+        const rawData = data as any[];
+        return (rawData || []).map((entry) => ({
+          id: entry.id,
+          palavra: entry.verbete,
+          lema: entry.verbete_normalizado,
+          pos: entry.classe_gramatical,
+          tagset_codigo: entry.classe_gramatical || 'unknown',
+          prosody: 0,
+          confianca: entry.confianca_extracao || 0,
+          validado: entry.validado || entry.validado_humanamente || false,
+          fonte: 'gutenberg',
+          contexto_exemplo: entry.definicoes?.[0]?.texto || null,
+          criado_em: entry.criado_em,
+          atualizado_em: entry.atualizado_em
+        })) as LexiconEntry[];
       }
 
       return (data || []) as LexiconEntry[];

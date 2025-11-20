@@ -52,6 +52,7 @@ export default function AdminDictionaryValidation() {
   });
 
   const { lexicon: gutenbergEntries, isLoading: gutenbergLoading, refetch: gutenbergRefetch } = useBackendLexicon({
+    table: 'gutenberg_lexicon',
     searchTerm: searchTerm || undefined,
   });
 
