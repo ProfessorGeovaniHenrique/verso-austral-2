@@ -6,7 +6,6 @@ export { TabBackendLexicon } from './TabBackendLexicon';
 
 // Backend Lexicon Components
 export { LexiconViewer } from './LexiconViewer';
-export { LexiconStatusDashboard } from './LexiconStatusDashboard';
 export { LexiconEntryViewer } from './LexiconEntryViewer';
 export { ValidationInterface } from './ValidationInterface';
 export { TagsetManager } from './TagsetManager';

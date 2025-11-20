@@ -1,0 +1,35 @@
+name: recover-stalled-jobs
+# FASE 4: Recovery Automático de Jobs Travados
+# Executa a cada 10 minutos para detectar e recuperar jobs travados
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # A cada 10 minutos
+  workflow_dispatch:
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Invoke recover-stalled-jobs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -e
+          echo "🔄 Checking for stalled dictionary import jobs at $(date -u)"
+          resp=$(curl -s -X POST "https://${{ secrets.SUPABASE_PROJECT_REF }}.supabase.co/functions/v1/recover-stalled-jobs" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' )
+          echo "Response:"
+          echo "$resp" | jq .
+          
+          # Verificar se houve recuperações
+          recovered=$(echo "$resp" | jq -r '.recovered // 0')
+          if [ "$recovered" -gt 0 ]; then
+            echo "✅ Recovered $recovered stalled job(s)"
+          else
+            echo "✅ No stalled jobs found"
+          fi

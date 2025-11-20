@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CorpusProvider } from "@/contexts/CorpusContext";
@@ -13,14 +13,6 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import AppLayout from "./pages/AppLayout";
 import AdminLayout from "./components/AdminLayout";
-// Prototypes archived - accessible via Admin Gallery
-// import Dashboard from "./pages/Dashboard";
-// import Dashboard2 from "./pages/Dashboard2";
-// import Dashboard3 from "./pages/Dashboard3";
-// import Dashboard4 from "./pages/Dashboard4";
-// import Dashboard5 from "./pages/Dashboard5";
-// import Dashboard7 from "./pages/Dashboard7";
-// import Dashboard8 from "./pages/Dashboard8";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminMetrics from "./pages/AdminMetrics";
 import AdminPrototypeGallery from "./pages/AdminPrototypeGallery";
@@ -30,7 +22,7 @@ import Onboarding from "./pages/Onboarding";
 import AdvancedMode from "./pages/AdvancedMode";
 import DevOpsMetrics from "./pages/DevOpsMetrics";
 import DeveloperLogs from "./pages/DeveloperLogs";
-import AdminLexiconSetup from "./pages/AdminLexiconSetup";
+import AdminLexiconSetupRefactored from "./pages/AdminLexiconSetupRefactored";
 import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
@@ -96,16 +88,21 @@ const RouterContent = () => {
               </ProtectedRoute>
             } 
           />
+          {/* FASE 2: Redirect antigo para nova interface refatorada */}
           <Route 
             path="/admin/lexicon-setup" 
+            element={<Navigate to="/admin/lexicon-setup-refactored" replace />}
+          />
+          <Route 
+            path="/admin/lexicon-setup-refactored" 
             element={
               <ProtectedRoute requiredRole="admin">
-                <AdminLexiconSetup />
+                <AdminLexiconSetupRefactored />
               </ProtectedRoute>
             } 
           />
           <Route 
-            path="/admin/users" 
+            path="/admin/users"
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminUsers />

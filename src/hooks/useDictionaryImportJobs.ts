@@ -21,15 +21,17 @@ export interface DictionaryImportJob {
   criado_em: string;
   atualizado_em: string;
   offset_inicial?: number;
-  isStalled?: boolean; // Job travado (sem atualização > 5min)
+  isStalled?: boolean; // Job travado (sem atualização > 10min)
+  stalledMinutes?: number; // Há quantos minutos está travado
 }
 
 /**
- * Detecta se um job está travado (sem atualização > 5 minutos)
+ * FASE 4: Detecta se um job está travado (sem atualização > 10 minutos)
+ * Threshold reduzido de 15min → 10min para detecção mais rápida
  */
 function detectStalledJobs(jobs: DictionaryImportJob[]): DictionaryImportJob[] {
   const now = new Date();
-  const STALLED_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutos
+  const STALLED_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutos (reduzido de 15min)
 
   return jobs.map(job => {
     if ((job.status === 'processando' || job.status === 'iniciado') && job.atualizado_em) {
@@ -37,10 +39,15 @@ function detectStalledJobs(jobs: DictionaryImportJob[]): DictionaryImportJob[] {
       const timeSinceUpdate = now.getTime() - lastUpdate.getTime();
       
       if (timeSinceUpdate > STALLED_THRESHOLD_MS) {
-        return { ...job, isStalled: true };
+        const stalledMinutes = Math.floor(timeSinceUpdate / 60000);
+        return { 
+          ...job, 
+          isStalled: true,
+          stalledMinutes // Adiciona campo para exibir há quanto tempo está travado
+        };
       }
     }
-    return { ...job, isStalled: false };
+    return { ...job, isStalled: false, stalledMinutes: 0 };
   });
 }
 

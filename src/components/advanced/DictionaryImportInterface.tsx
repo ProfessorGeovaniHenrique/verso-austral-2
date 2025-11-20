@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { BookOpen, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Trash2, CheckSquare, Download } from 'lucide-react';
+import { BookOpen, Loader2, CheckCircle2, XCircle, Clock, AlertCircle, RefreshCw, Trash2, CheckSquare, Download, Database, Eraser } from 'lucide-react';
 import { useDictionaryImportJobs, verifyDictionaryIntegrity, clearAndReimport, resumeImport } from '@/hooks/useDictionaryImportJobs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { DictionaryImportTester } from './DictionaryImportTester';
@@ -14,6 +14,7 @@ import { CancelJobDialog } from './CancelJobDialog';
 import { CancellationHistory } from './CancellationHistory';
 import { useDictionaryJobNotifications } from '@/hooks/useDictionaryJobNotifications';
 import { useQueryClient } from '@tanstack/react-query';
+import { deepCleanAllCaches } from '@/utils/cacheManagement';
 
 export function DictionaryImportInterface() {
   const [isImportingVolI, setIsImportingVolI] = useState(false);
@@ -22,6 +23,7 @@ export function DictionaryImportInterface() {
   const [isImportingRochaPombo, setIsImportingRochaPombo] = useState(false);
   const [isImportingUnesp, setIsImportingUnesp] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isCleaningCache, setIsCleaningCache] = useState(false);
   const { data: jobs } = useDictionaryImportJobs();
   const resultsRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
