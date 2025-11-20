@@ -12,21 +12,30 @@ interface RochaPomboEntry {
 }
 
 function parseRochaPomboLine(line: string): RochaPomboEntry | null {
-  // Remover numeração, espaços extras e limpar
+  // Remover numeração inicial (ex: "1. ", "120. ")
   const cleanLine = line
-    .replace(/^\d+\.\s*/, '') // Remove "1. ", "2. " etc
+    .replace(/^\d+\.\s*/, '') 
     .trim();
 
-  // Ignorar linhas vazias ou cabeçalhos
+  // Ignorar linhas vazias ou cabeçalhos irrelevantes
   if (!cleanLine || cleanLine.length < 3) return null;
   if (cleanLine.includes('===') || cleanLine.includes('---')) return null;
   if (cleanLine.match(/^(DICIONÁRIO|SINÔNIMOS|VOLUME|PÁGINA)/i)) return null;
 
-  // NOVO REGEX para formato: "1. PALAVRA. sinonimo1, 2. sinonimo2, 3. sinonimo3"
-  // Captura palavra principal antes do primeiro ponto, depois todos os sinônimos (com ou sem números)
-  const match = cleanLine.match(/^([A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑ][A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑ\s\-,]+?)\.\s+(.+)/);
-  
-  if (!match) return null;
+  // ✅ NOVA REGEX: 
+  // 1. Começa com letra maiúscula ou acentuada
+  // 2. Permite letras minúsculas, espaços, hífens e vírgulas no meio
+  // 3. Termina com ponto final seguido de espaço
+  const match = cleanLine.match(/^([A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑ][a-zA-ZÁÀÃÂÉÊÍÓÔÕÚÇÑáàãâéêíóôõúçñ\s\-,]*?)\.\s+(.+)/);
+
+  if (!match) {
+    // LOG DE DEBUG: Ajuda a identificar por que linhas estão sendo rejeitadas
+    // (Limitado a 0.1% das linhas para não poluir o log)
+    if (Math.random() < 0.001) { 
+      console.log(`[Pombo] Linha rejeitada (formato não bateu): ${cleanLine.substring(0, 80)}...`);
+    }
+    return null;
+  }
 
   const mainWord = match[1].trim();
   const synonymsPart = match[2];
@@ -34,11 +43,11 @@ function parseRochaPomboLine(line: string): RochaPomboEntry | null {
   // Remover numeração dos sinônimos: "1. palavra, 2. palavra" → "palavra, palavra"
   const cleanSynonyms = synonymsPart.replace(/\d+\.\s*/g, '');
 
-  // Dividir sinônimos por vírgula
+  // Dividir sinônimos por vírgula ou ponto e vírgula
   const synonyms = cleanSynonyms
-    .split(',')
+    .split(/[,;]/)
     .map(s => s.trim())
-    .filter(s => s.length > 0 && s !== mainWord);
+    .filter(s => s.length > 0 && s !== mainWord && s !== '.');
 
   // Validar que temos pelo menos um sinônimo
   if (synonyms.length === 0) return null;
