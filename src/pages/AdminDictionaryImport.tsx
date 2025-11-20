@@ -9,7 +9,7 @@ import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
 import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
 import { useDictionaryImportJobs } from '@/hooks/useDictionaryImportJobs';
-import { DICTIONARY_CONFIG, DICTIONARY_LIST } from '@/config/dictionaries';
+import { DICTIONARY_CONFIG, DICTIONARY_LIST, getDictionaryConfig } from '@/config/dictionaries';
 import { 
   PlayCircle, 
   XCircle, 
@@ -44,7 +44,9 @@ export default function AdminDictionaryImport() {
     setImportingDict(dictId);
     
     try {
-      const config = DICTIONARY_CONFIG[dictId];
+      const config = Object.values(DICTIONARY_CONFIG).find(c => c.id === dictId);
+      if (!config) throw new Error(`Dicionário ${dictId} não configurado`);
+      
       const { data, error } = await supabase.functions.invoke(config.importEndpoint);
 
       if (error) throw error;
@@ -85,14 +87,16 @@ export default function AdminDictionaryImport() {
   };
 
   const handleClear = async (dictId: string) => {
-    if (!confirm(`⚠️ Confirma limpeza de TODOS os dados do dicionário ${DICTIONARY_CONFIG[dictId].name}?`)) {
+    const config = Object.values(DICTIONARY_CONFIG).find(c => c.id === dictId);
+    if (!config) throw new Error(`Dicionário ${dictId} não configurado`);
+    
+    if (!confirm(`⚠️ Confirma limpeza de TODOS os dados do dicionário ${config.name}?`)) {
       return;
     }
 
     setClearingDict(dictId);
     
     try {
-      const config = DICTIONARY_CONFIG[dictId];
       const { error } = await supabase.from(config.table).delete().neq('id', '00000000-0000-0000-0000-000000000000');
 
       if (error) throw error;
@@ -248,7 +252,11 @@ export default function AdminDictionaryImport() {
             </h2>
             <div className="space-y-4">
               {activeJobs.map((job) => {
-                const config = DICTIONARY_CONFIG[job.tipo_dicionario.replace(/_/g, '')];
+                const config = getDictionaryConfig(job.tipo_dicionario);
+                if (!config) {
+                  console.error(`Config não encontrado para: ${job.tipo_dicionario}`);
+                  return null;
+                }
                 return (
                   <div key={job.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -317,7 +325,11 @@ export default function AdminDictionaryImport() {
             </h2>
             <div className="space-y-3">
               {recentJobs.map((job) => {
-                const config = DICTIONARY_CONFIG[job.tipo_dicionario.replace(/_/g, '')];
+                const config = getDictionaryConfig(job.tipo_dicionario);
+                if (!config) {
+                  console.error(`Config não encontrado para: ${job.tipo_dicionario}`);
+                  return null;
+                }
                 return (
                   <div key={job.id} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">

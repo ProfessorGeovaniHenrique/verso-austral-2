@@ -68,3 +68,24 @@ export const DICTIONARY_CONFIG: Record<string, DictionaryConfig> = {
 };
 
 export const DICTIONARY_LIST = Object.values(DICTIONARY_CONFIG);
+
+/**
+ * Mapeamento reverso: tipo_dicionario (banco) → chave do DICTIONARY_CONFIG
+ * Usado para buscar config a partir de dados vindos do backend
+ */
+export const DB_TYPE_TO_CONFIG_KEY: Record<string, string> = {
+  'gaucho_unificado': 'gaucho',
+  'navarro_nordeste_2014': 'navarro',
+  'pombo_abl': 'pombo',
+  'gutenberg': 'gutenberg',
+};
+
+/**
+ * Helper seguro para buscar configuração a partir do tipo do banco
+ * @param dbType - Valor de tipo_dicionario vindo do banco de dados
+ * @returns DictionaryConfig ou undefined se não encontrado
+ */
+export function getDictionaryConfig(dbType: string): DictionaryConfig | undefined {
+  const configKey = DB_TYPE_TO_CONFIG_KEY[dbType];
+  return configKey ? DICTIONARY_CONFIG[configKey] : undefined;
+}
