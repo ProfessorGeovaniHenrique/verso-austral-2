@@ -34,6 +34,7 @@ interface VerbeteGutenberg {
   regional: boolean;
   figurado: boolean;
   popular: boolean;
+  entry_type: 'word' | 'mwe';
 }
 
 interface ProcessRequest {
@@ -142,6 +143,8 @@ function parseGutenbergBlock(block: string): VerbeteGutenberg | null {
     }];
 
     console.log(`✅ Bloco parseado: ${verbete} (${classeGramatical || 'sem classe'})`);
+    
+    const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
 
     return {
       verbete,
@@ -156,7 +159,8 @@ function parseGutenbergBlock(block: string): VerbeteGutenberg | null {
       arcaico,
       regional,
       figurado,
-      popular
+      popular,
+      entry_type
     };
   } catch (error) {
     console.error("❌ Erro no parser de bloco:", error);
