@@ -8,7 +8,12 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:corpus": "tsx scripts/test-corpus-ci.ts",
+    "test:corpus:audit": "tsx scripts/audit-corpus.ts",
+    "test:corpus:report": "tsx scripts/generate-test-report.ts",
+    "test:corpus:report-html": "tsx scripts/generate-test-report.ts --format html"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
