@@ -1,3 +1,4 @@
+// ✅ VERSÃO 2.0 - Filtros aprimorados contra texto introdutório (deploy forçado)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withRetry } from "../_shared/retry.ts";
