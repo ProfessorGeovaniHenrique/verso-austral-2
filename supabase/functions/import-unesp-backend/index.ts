@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     const { offset = 0 } = requestBody;
 
     const tipoDicionario = 'unesp';
-    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/src/data/dictionaries/unesp-definicoes.txt';
+    const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/dicionariounesp2005previa.txt';
 
     console.log(`📥 Carregando dicionário UNESP do GitHub...`);
 

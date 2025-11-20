@@ -49,8 +49,8 @@ Deno.serve(async (req) => {
     }
 
     const volumeUrls = {
-      'I': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/src/data/dictionaries/dialectal-volume-I-raw.txt',
-      'II': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/src/data/dictionaries/dialectal-volume-II-raw.txt'
+      'I': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLI.txt',
+      'II': 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/dictionaries/VOLII.txt'
     };
 
     const tipoDicionario = `dialectal_${volumeNum}`;
