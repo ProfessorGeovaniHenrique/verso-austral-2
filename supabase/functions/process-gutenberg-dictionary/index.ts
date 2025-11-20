@@ -146,6 +146,18 @@ function parseGutenbergBlock(block: string): VerbeteGutenberg | null {
       contexto: null
     }];
 
+    // 🔍 DEBUG URGENTE - DETECTAR DEFINIÇÕES VAZIAS
+    if (!definitionText || definitionText.trim() === '') {
+      console.error(`\n🔴 DEBUG - DEFINIÇÃO VAZIA DETECTADA!`);
+      console.error(`   Verbete extraído: "${verbete}"`);
+      console.error(`   Bloco original (primeiros 200 chars): "${block.substring(0, 200)}"`);
+      console.error(`   Total de linhas no bloco: ${lines.length}`);
+      console.error(`   Primeira linha: "${lines[0]}"`);
+      if (lines.length > 1) {
+        console.error(`   Segunda linha: "${lines[1]}"`);
+      }
+    }
+
     // Removido log individual para evitar poluição - logs consolidados no final
     
     const entry_type = verbete.trim().includes(' ') ? 'mwe' : 'word';
@@ -232,6 +244,7 @@ async function processInBackground(jobId: string, blocks: string[]) {
   let erros = 0;
   let batchCount = 0;
   let blocosInvalidos = 0;
+  let definicoesVazias = 0; // ✅ NOVO CONTADOR
   
   // Para estatísticas de parsing detalhadas
   const parsingErrors: { type: string, sample: string }[] = [];
@@ -261,6 +274,16 @@ async function processInBackground(jobId: string, blocks: string[]) {
         const parsed = parseGutenbergBlock(block);
         
         if (parsed) {
+          // ✅ VERIFICAR SE DEFINIÇÃO ESTÁ VAZIA
+          const temDefinicao = parsed.definicoes && 
+                              parsed.definicoes.length > 0 && 
+                              parsed.definicoes[0].texto && 
+                              parsed.definicoes[0].texto.trim() !== '';
+          
+          if (!temDefinicao) {
+            definicoesVazias++;
+          }
+          
           parsedBatch.push({
             verbete: parsed.verbete,
             verbete_normalizado: parsed.verbeteNormalizado,
@@ -368,8 +391,10 @@ async function processInBackground(jobId: string, blocks: string[]) {
       `   - Blocos processados: ${processados}\n` +
       `   - Verbetes inseridos: ${inseridos}\n` +
       `   - Falhas de parsing: ${blocosInvalidos}\n` +
+      `   - Definições vazias: ${definicoesVazias}\n` +
       `   - Taxa de sucesso: ${((inseridos / processados) * 100).toFixed(1)}%\n` +
-      `   - Taxa de falha: ${((blocosInvalidos / processados) * 100).toFixed(1)}%\n`);
+      `   - Taxa de falha: ${((blocosInvalidos / processados) * 100).toFixed(1)}%\n` +
+      `   - Taxa de definições vazias: ${((definicoesVazias / processados) * 100).toFixed(1)}%\n`);
     
     if (parsingErrors.length > 0) {
       console.log(`\n📊 [Gutenberg] AMOSTRAGEM DE ERROS DE PARSING (até 5):`);
@@ -436,6 +461,12 @@ serve(withInstrumentation('process-gutenberg-dictionary', async (req) => {
     
     console.log(`[process-gutenberg] Iniciando processamento para job ${jobId}`);
     
+    // 🔍 DEBUG URGENTE - CONTEÚDO BRUTO DO ARQUIVO
+    console.log("\n🔍 DEBUG - Início do arquivo (primeiros 500 chars):");
+    console.log("---INÍCIO---");
+    console.log(fileContent.substring(0, 500));
+    console.log("---FIM DOS 500 CHARS---\n");
+    
     // 📊 LOGS DIAGNÓSTICOS - Arquivo Recebido
     const fileStats = {
       tamanho: fileContent.length,
@@ -456,6 +487,15 @@ serve(withInstrumentation('process-gutenberg-dictionary', async (req) => {
     let blocks = fileContent.split(verbeteStartRegex)
       .map(b => b.trim())
       .filter(b => b.length > 0);
+    
+    // 🔍 DEBUG URGENTE - RESULTADO DO SPLIT
+    console.log(`\n🔍 DEBUG - Total de blocos após split: ${blocks.length}`);
+    console.log("\n🔍 DEBUG - Primeiros 3 blocos para inspeção:\n");
+    blocks.slice(0, 3).forEach((bloco, i) => {
+      console.log(`--- BLOCO ${i} (primeiros 150 chars) ---`);
+      console.log(bloco.substring(0, 150));
+      console.log(`--- FIM BLOCO ${i} ---\n`);
+    });
     
     // 📊 LOGS DIAGNÓSTICOS - Split
     console.log(`\n📊 [Gutenberg] SPLIT POR REGEX (asteriscos):\n` +
