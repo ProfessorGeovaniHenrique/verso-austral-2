@@ -13,8 +13,8 @@ export default function AdminLayout() {
           <AdminSidebar />
           
           <div className="flex-1 flex flex-col">
-            <div className="border-b bg-muted/20 backdrop-blur-sm sticky top-[88px] z-40">
-              <div className="container mx-auto px-6 py-3 flex items-center gap-4">
+            <div className="border-b bg-background sticky top-[88px] z-40">
+              <div className="container mx-auto px-6 py-6 flex items-center gap-4">
                 <SidebarTrigger className="-ml-2" title="Alternar Sidebar (Ctrl+B / Cmd+B)" />
                 <DynamicBreadcrumb />
               </div>
