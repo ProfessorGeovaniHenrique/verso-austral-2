@@ -3,15 +3,16 @@ import { lexiconStatsService, type LexiconStats } from '@/services/lexiconStats.
 
 /**
  * Hook otimizado para buscar estatísticas do léxico
- * Usa cache de 24h pois os dados mudam raramente
+ * Cache reduzido para permitir atualização após validações
  */
 export function useLexiconStats() {
   return useQuery({
     queryKey: ['lexicon-stats'],
     queryFn: () => lexiconStatsService.fetchStats(),
-    staleTime: 24 * 60 * 60 * 1000, // 24 horas
-    gcTime: 48 * 60 * 60 * 1000, // 48 horas
-    refetchOnWindowFocus: false,
+    staleTime: 30 * 1000, // 30 segundos - permite atualizações rápidas após validações
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
     retry: 2,
   });
 }

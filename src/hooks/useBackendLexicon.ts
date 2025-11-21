@@ -122,10 +122,10 @@ export function useBackendLexicon(filters?: Filters) {
       volume_fonte: entry.volume_fonte,
     })) as LexiconEntry[];
     },
-    staleTime: 24 * 60 * 60 * 1000, // 24 horas
-    gcTime: 48 * 60 * 60 * 1000, // 48 horas
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 30 * 1000, // 30 segundos - permite atualizações rápidas
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const stats = {
