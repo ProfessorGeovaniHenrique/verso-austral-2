@@ -50,43 +50,35 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport, o
     }
   };
 
-  const getStatusBadge = (status: string = 'pending') => {
-    const badges = {
-      pending: {
-        icon: <AlertCircle className="h-3 w-3" />,
-        label: 'Pendente',
-        className: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20'
-      },
-      enriched: {
-        icon: <CheckCircle2 className="h-3 w-3" />,
-        label: 'Enriquecido',
-        className: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'
-      },
-      processed: {
-        icon: <CheckCircle2 className="h-3 w-3" />,
-        label: 'Processado',
-        className: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20'
-      }
+  const getStatusBadge = (status?: string) => {
+    if (!status) return null;
+    
+    const statusConfig = {
+      pending: { label: 'Pendente', variant: 'warning' as const, icon: AlertCircle },
+      enriched: { label: 'Enriquecida', variant: 'success' as const, icon: CheckCircle2 },
+      processed: { label: 'Processada', variant: 'info' as const, icon: CheckCircle2 },
+      error: { label: 'Erro', variant: 'destructive' as const, icon: AlertCircle }
     };
 
-    const badge = badges[status as keyof typeof badges] || badges.pending;
+    const config = statusConfig[status as keyof typeof statusConfig];
+    if (!config) return null;
+
+    const Icon = config.icon;
 
     return (
-      <Badge variant="outline" className={badge.className}>
-        {badge.icon}
-        <span className="ml-1">{badge.label}</span>
+      <Badge variant={config.variant} className="flex items-center gap-1">
+        <Icon className="w-3 h-3" />
+        {config.label}
       </Badge>
     );
   };
 
-  const getConfidenceBadge = (confidence: number) => {
-    if (confidence >= 80) {
-      return <Badge className="bg-green-500">Alta</Badge>;
-    } else if (confidence >= 50) {
-      return <Badge className="bg-yellow-500">Média</Badge>;
-    } else {
-      return <Badge variant="destructive">Baixa</Badge>;
-    }
+  const getConfidenceBadge = (confidence?: number) => {
+    if (!confidence || confidence === 0) return <span className="text-muted-foreground text-sm">-</span>;
+    
+    const variant = confidence >= 0.8 ? 'success' as const : confidence >= 0.5 ? 'warning' as const : 'destructive' as const;
+    
+    return <Badge variant={variant}>✓ {(confidence * 100).toFixed(0)}%</Badge>;
   };
 
   const columns: ColumnDef<EnrichedSong>[] = [

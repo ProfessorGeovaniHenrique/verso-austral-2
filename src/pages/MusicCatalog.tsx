@@ -27,6 +27,7 @@ export default function MusicCatalog() {
     avgConfidence: 0,
     pendingSongs: 0
   });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
@@ -34,14 +35,14 @@ export default function MusicCatalog() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [statusFilter]);
 
   const loadData = async () => {
     try {
       setLoading(true);
 
       // Carregar músicas com artistas
-      const { data: songsData, error: songsError } = await supabase
+      let query = supabase
         .from('songs')
         .select(`
           *,
@@ -50,7 +51,13 @@ export default function MusicCatalog() {
             name,
             genre
           )
-        `)
+        `);
+
+      if (statusFilter !== 'all') {
+        query = query.eq('status', statusFilter);
+      }
+
+      const { data: songsData, error: songsError } = await query
         .order('created_at', { ascending: false })
         .limit(100);
 
@@ -189,13 +196,49 @@ export default function MusicCatalog() {
   return (
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">Catálogo de Músicas</h1>
-          <p className="text-muted-foreground">
-            {stats.totalSongs} músicas | {stats.totalArtists} artistas | 
-            Confiança média: {stats.avgConfidence.toFixed(1)}/100
-            {stats.pendingSongs > 0 && ` | ${stats.pendingSongs} aguardando enriquecimento`}
-          </p>
+        <div className="space-y-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Catálogo de Músicas</h1>
+            <p className="text-muted-foreground">
+              {stats.totalSongs} músicas | {stats.totalArtists} artistas | 
+              Confiança média: {stats.avgConfidence.toFixed(1)}/100
+              {stats.pendingSongs > 0 && ` | ${stats.pendingSongs} aguardando enriquecimento`}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Filtrar por status:</span>
+            <div className="flex gap-2">
+              <Button
+                variant={statusFilter === 'all' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('all')}
+              >
+                Todas
+              </Button>
+              <Button
+                variant={statusFilter === 'pending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('pending')}
+              >
+                Pendentes
+              </Button>
+              <Button
+                variant={statusFilter === 'enriched' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('enriched')}
+              >
+                Enriquecidas
+              </Button>
+              <Button
+                variant={statusFilter === 'processed' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setStatusFilter('processed')}
+              >
+                Processadas
+              </Button>
+            </div>
+          </div>
         </div>
         
         <div className="flex gap-2">
