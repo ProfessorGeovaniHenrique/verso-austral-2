@@ -122,58 +122,106 @@ serve(async (req) => {
       }
     }
 
-    // 2. Gemini API - Extract metadata
+    // 2. Gemini API - Extract metadata (PRIMARY SOURCE)
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
     if (geminiApiKey && !song.composer) {
       try {
-        console.log(`[enrich-music-data] Querying Gemini for metadata`);
-        const prompt = `Provide metadata for the song "${song.title}" by ${artistName}. 
-        Return ONLY a JSON object with these fields (use null if unknown):
-        {
-          "composer": "composer name",
-          "releaseYear": "YYYY",
-          "album": "album name",
-          "genre": "genre"
-        }`;
+        console.log(`[enrich-music-data] Querying Gemini API for metadata`);
+        
+        // Contexto adicional do YouTube se disponível
+        const youtubeContext = enrichedData.youtubeVideoId 
+          ? `YouTube Video ID encontrado: ${enrichedData.youtubeVideoId}` 
+          : 'Nenhum vídeo do YouTube encontrado';
+
+        const systemPrompt = `Você é um especialista em metadados musicais.
+Sua tarefa é identificar o Compositor e o Ano de Lançamento da música.
+
+Entrada:
+Artista: ${artistName}
+Música: ${song.title}
+Contexto Extra (YouTube): ${youtubeContext}
+
+Saída Obrigatória (JSON):
+{
+  "composer": "Nome do Compositor (ou null)",
+  "release_year": "Ano YYYY (ou null)",
+  "confidence": "high/medium/low"
+}
+Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
 
         const geminiResponse = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
+              contents: [
+                {
+                  parts: [{ text: systemPrompt }]
+                }
+              ],
               generationConfig: {
-                temperature: 0.2,
-                maxOutputTokens: 256,
-              },
+                temperature: 0.1,
+                maxOutputTokens: 200,
+                responseMimeType: "application/json"
+              }
             }),
           }
         );
 
-        if (geminiResponse.ok) {
-          const geminiData = await geminiResponse.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
-          
-          // Extract JSON from response
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!geminiResponse.ok) {
+          const errorText = await geminiResponse.text();
+          console.error(`[enrich-music-data] Gemini API HTTP Error ${geminiResponse.status}:`, errorText);
+          throw new Error(`Gemini API returned ${geminiResponse.status}`);
+        }
+
+        const geminiData = await geminiResponse.json();
+        console.log('[enrich-music-data] Gemini raw response:', JSON.stringify(geminiData));
+        
+        const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        console.log('[enrich-music-data] Gemini text extracted:', rawText);
+        
+        if (!rawText) {
+          throw new Error('Gemini retornou resposta vazia');
+        }
+
+        // Parse JSON response
+        let metadata;
+        try {
+          // Tentar parse direto (JSON mode)
+          metadata = JSON.parse(rawText);
+        } catch (parseError) {
+          // Fallback: extrair JSON de texto com markdown
+          const jsonMatch = rawText.match(/\{[\s\S]*\}/);
           if (jsonMatch) {
-            const metadata = JSON.parse(jsonMatch[0]);
-            if (metadata.composer) {
-              enrichedData.composer = metadata.composer;
-              confidenceScore += 25;
-            }
-            if (metadata.releaseYear) {
-              enrichedData.releaseYear = metadata.releaseYear;
-              confidenceScore += 15;
-            }
-            if (metadata.album) enrichedData.album = metadata.album;
-            if (metadata.genre) enrichedData.genre = metadata.genre;
-            sources.push('gemini');
+            metadata = JSON.parse(jsonMatch[0]);
+          } else {
+            throw new Error('Não foi possível extrair JSON da resposta do Gemini');
           }
         }
+
+        console.log('[enrich-music-data] Gemini parsed metadata:', metadata);
+
+        // Processar resultados
+        if (metadata.composer && metadata.composer !== 'null') {
+          enrichedData.composer = metadata.composer;
+          
+          // Ajustar confidence baseado na resposta do Gemini
+          const confidenceMap = { high: 40, medium: 25, low: 15 };
+          confidenceScore += confidenceMap[metadata.confidence as keyof typeof confidenceMap] || 25;
+        }
+
+        if (metadata.release_year && metadata.release_year !== 'null') {
+          enrichedData.releaseYear = metadata.release_year;
+          confidenceScore += 20;
+        }
+
+        sources.push('gemini');
+        console.log(`[enrich-music-data] Gemini enrichment successful: composer=${metadata.composer}, year=${metadata.release_year}`);
+
       } catch (error) {
         console.error('[enrich-music-data] Gemini API error:', error);
+        console.error('[enrich-music-data] Error details:', error instanceof Error ? error.message : String(error));
       }
     }
 
