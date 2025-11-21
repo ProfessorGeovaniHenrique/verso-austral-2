@@ -791,7 +791,8 @@ export default function MusicCatalog() {
                     confidence: song.confidence_score || 0,
                     status: song.status || 'pending',
                     corpusName: song.corpora?.name,
-                    corpusColor: song.corpora?.color
+                    corpusColor: song.corpora?.color,
+                    youtubeUrl: song.youtube_url
                   }}
                   onEdit={(s) => handleEditSong(s.id)}
                   onEnrich={handleEnrichSongUI}

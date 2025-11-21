@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder } from 'lucide-react';
+import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ export interface Song {
   status?: string;
   corpusName?: string | null;
   corpusColor?: string | null;
+  youtubeUrl?: string | null;
 }
 
 interface SongCardProps {
@@ -205,6 +206,26 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
                 <Folder className="w-3 h-3 mr-1" />
                 {song.corpusName}
               </Badge>
+            )}
+            {song.youtubeUrl && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-xs border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      onClick={() => window.open(song.youtubeUrl!, '_blank', 'noopener,noreferrer')}
+                    >
+                      <Youtube className="w-3 h-3 mr-1" />
+                      YouTube
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Assistir vídeo no YouTube</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
             {song.album && (
               <span className="line-clamp-1" title={song.album}>📀 {song.album}</span>

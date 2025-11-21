@@ -345,6 +345,9 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
 
     if (enrichedData.composer) updateData.composer = enrichedData.composer;
     if (enrichedData.releaseYear) updateData.release_year = enrichedData.releaseYear;
+    if (enrichedData.youtubeVideoId) {
+      updateData.youtube_url = `https://www.youtube.com/watch?v=${enrichedData.youtubeVideoId}`;
+    }
     if (enrichedData.album || enrichedData.genre) {
       updateData.raw_data = {
         ...(song as any).raw_data,
