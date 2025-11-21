@@ -22,6 +22,7 @@ export type { ErrorEntry } from './ErrorLog';
 
 export { EnrichedDataTable } from './EnrichedDataTable';
 export type { EnrichedSong } from './EnrichedDataTable';
+export { EnrichmentBatchModal } from './EnrichmentBatchModal';
 export { DataTable } from './DataTable';
 export type { ColumnDef } from './DataTable';
 export { SongCard } from './SongCard';

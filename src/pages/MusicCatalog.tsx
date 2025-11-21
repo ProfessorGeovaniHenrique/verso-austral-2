@@ -7,10 +7,12 @@ import {
   StatsCard,
   AdvancedExportMenu 
 } from '@/components/music';
+import { EnrichmentBatchModal } from '@/components/music/EnrichmentBatchModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutGrid, LayoutList, Search } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function MusicCatalog() {
@@ -26,6 +28,8 @@ export default function MusicCatalog() {
     pendingSongs: 0
   });
   const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
+  const [batchModalOpen, setBatchModalOpen] = useState(false);
+  const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -84,11 +88,7 @@ export default function MusicCatalog() {
     }
   };
 
-  const handleEnrichSong = async (songId: string) => {
-    if (enrichingIds.has(songId)) return; // Evitar cliques duplicados
-    
-    setEnrichingIds(prev => new Set(prev).add(songId));
-    
+  const handleEnrichSong = async (songId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     try {
       // Timeout de 30s
       const enrichPromise = supabase.functions.invoke('enrich-music-data', {
@@ -104,11 +104,10 @@ export default function MusicCatalog() {
       if (error) throw error;
       
       if (data?.success) {
-        toast({
-          title: "✨ Música enriquecida!",
-          description: `${data.enrichedData?.composer || 'Compositor encontrado'} - Confiança: ${data.confidenceScore}%`
-        });
-        await loadData(); // Recarregar dados
+        return {
+          success: true,
+          message: `${data.enrichedData?.composer || 'Compositor'} - ${data.confidenceScore}%`
+        };
       } else {
         throw new Error(data?.error || 'Erro desconhecido ao enriquecer');
       }
@@ -121,11 +120,34 @@ export default function MusicCatalog() {
         .update({ status: 'pending' })
         .eq('id', songId);
       
-      toast({
-        title: "Erro ao enriquecer",
-        description: error.message || 'Falha ao buscar metadados. Tente novamente.',
-        variant: "destructive"
-      });
+      return {
+        success: false,
+        error: error.message || 'Falha ao buscar metadados'
+      };
+    }
+  };
+
+  const handleEnrichSongUI = async (songId: string) => {
+    if (enrichingIds.has(songId)) return;
+    
+    setEnrichingIds(prev => new Set(prev).add(songId));
+    
+    try {
+      const result = await handleEnrichSong(songId);
+      
+      if (result.success) {
+        toast({
+          title: "✨ Música enriquecida!",
+          description: result.message
+        });
+        await loadData();
+      } else {
+        toast({
+          title: "Erro ao enriquecer",
+          description: result.error,
+          variant: "destructive"
+        });
+      }
     } finally {
       setEnrichingIds(prev => {
         const next = new Set(prev);
@@ -133,6 +155,25 @@ export default function MusicCatalog() {
         return next;
       });
     }
+  };
+
+  const handleBatchEnrich = () => {
+    const pending = songs.filter(s => s.status === 'pending');
+    setPendingSongsForBatch(pending);
+    setBatchModalOpen(true);
+    
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  };
+
+  const handleBatchComplete = async () => {
+    await loadData();
+    toast({
+      title: "🎉 Enriquecimento concluído!",
+      description: "Todas as músicas foram processadas."
+    });
   };
 
   const filteredSongs = songs.filter(song => {
@@ -178,6 +219,28 @@ export default function MusicCatalog() {
         </div>
       </div>
 
+      {/* Batch Enrichment Alert */}
+      {stats.pendingSongs > 0 && (
+        <Alert className="border-primary/50 bg-primary/5">
+          <AlertCircle className="h-4 w-4 text-primary" />
+          <AlertTitle>Músicas Aguardando Enriquecimento</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              {stats.pendingSongs} música{stats.pendingSongs > 1 ? 's' : ''} precisa
+              {stats.pendingSongs > 1 ? 'm' : ''} ser enriquecida{stats.pendingSongs > 1 ? 's' : ''} com metadados externos.
+            </span>
+            <Button 
+              size="sm" 
+              onClick={handleBatchEnrich}
+              className="ml-4"
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Enriquecer Todas ({stats.pendingSongs})
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex gap-4">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -216,7 +279,7 @@ export default function MusicCatalog() {
                 status: s.status || 'pending'
               }))}
               onExport={() => {}}
-              onEnrich={handleEnrichSong}
+              onEnrich={handleEnrichSongUI}
               enrichingIds={enrichingIds}
             />
           ) : (
@@ -235,7 +298,7 @@ export default function MusicCatalog() {
                     status: song.status || 'pending'
                   }}
                   onEdit={() => {}}
-                  onEnrich={handleEnrichSong}
+                  onEnrich={handleEnrichSongUI}
                   isEnriching={enrichingIds.has(song.id)}
                 />
               ))}
@@ -297,6 +360,19 @@ export default function MusicCatalog() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Batch Enrichment Modal */}
+      <EnrichmentBatchModal
+        open={batchModalOpen}
+        onOpenChange={setBatchModalOpen}
+        songs={pendingSongsForBatch.map(s => ({
+          id: s.id,
+          title: s.title,
+          artist: s.artists?.name || 'Desconhecido'
+        }))}
+        onEnrich={handleEnrichSong}
+        onComplete={handleBatchComplete}
+      />
     </div>
   );
 }
