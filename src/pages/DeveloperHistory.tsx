@@ -21,6 +21,7 @@ import type { SearchResult } from "@/hooks/useDevHistorySearch";
 export default function DeveloperHistory() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("timeline");
+  const [editMode, setEditMode] = useState(false);
 
   const handleSearchResultClick = (result: SearchResult) => {
     // Navegar para a aba correta baseado no tipo
@@ -65,6 +66,12 @@ export default function DeveloperHistory() {
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
+            <Button 
+              variant={editMode ? "default" : "outline"}
+              onClick={() => setEditMode(!editMode)}
+            >
+              {editMode ? "Sair do Modo Edição" : "Modo Edição"}
+            </Button>
             <UpdateStatusButton />
             <ExportMenu />
             <Button variant="ghost" onClick={() => navigate("/admin/dashboard")}>
@@ -96,7 +103,7 @@ export default function DeveloperHistory() {
           </TabsList>
 
           <TabsContent value="timeline" className="space-y-4 mt-6">
-            <PhaseTimeline />
+            <PhaseTimeline editMode={editMode} />
           </TabsContent>
 
           <TabsContent value="velocity" className="space-y-4 mt-6">

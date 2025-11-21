@@ -4,8 +4,27 @@ import { CheckCircle2, Circle, Clock } from "lucide-react";
 import { constructionLog } from "@/data/developer-logs";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EditableSection } from "./EditableSection";
+import { useDevHistoryPersistence } from "@/hooks/useDevHistoryPersistence";
 
-export function PhaseTimeline() {
+interface PhaseTimelineProps {
+  editMode?: boolean;
+}
+
+export function PhaseTimeline({ editMode = false }: PhaseTimelineProps) {
+  const { saveOverride, restoreOriginal, mergePhaseWithOverrides, hasOverride } = useDevHistoryPersistence();
+
+  const generatePhaseId = (phaseName: string) => {
+    return phaseName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  };
+
+  const handleSaveField = async (phaseId: string, fieldPath: string, originalValue: string, newValue: string) => {
+    await saveOverride(phaseId, fieldPath, originalValue, newValue);
+  };
+
+  const handleRestoreField = async (phaseId: string, fieldPath: string) => {
+    await restoreOriginal(phaseId, fieldPath);
+  };
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -30,7 +49,11 @@ export function PhaseTimeline() {
 
   return (
     <div className="space-y-6">
-      {constructionLog.map((phase, index) => (
+      {constructionLog.map((phase, index) => {
+        const mergedPhase = mergePhaseWithOverrides(phase);
+        const phaseId = generatePhaseId(phase.phase);
+        
+        return (
         <Card key={phase.phase} className="relative">
           {/* Timeline connector */}
           {index < constructionLog.length - 1 && (
@@ -60,7 +83,14 @@ export function PhaseTimeline() {
           <CardContent className="space-y-4 ml-9">
             <div>
               <h4 className="font-semibold mb-2">Objetivo</h4>
-              <p className="text-sm text-muted-foreground">{phase.objective}</p>
+              <EditableSection
+                value={mergedPhase.objective}
+                onSave={(newValue) => handleSaveField(phaseId, 'objective', phase.objective, newValue)}
+                onRestore={() => handleRestoreField(phaseId, 'objective')}
+                editable={editMode}
+                hasOverride={hasOverride(phaseId, 'objective')}
+                className="text-muted-foreground"
+              />
             </div>
 
             {phase.decisions.length > 0 && (
@@ -121,7 +151,8 @@ export function PhaseTimeline() {
             )}
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

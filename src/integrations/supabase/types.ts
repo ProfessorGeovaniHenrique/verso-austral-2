@@ -671,6 +671,48 @@ export type Database = {
         }
         Relationships: []
       }
+      dev_history_overrides: {
+        Row: {
+          active: boolean | null
+          created_at: string | null
+          edited_at: string | null
+          edited_by: string | null
+          field_path: string
+          id: string
+          original_value: string | null
+          override_value: string
+          phase_id: string
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          field_path: string
+          id?: string
+          original_value?: string | null
+          override_value: string
+          phase_id: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string | null
+          edited_at?: string | null
+          edited_by?: string | null
+          field_path?: string
+          id?: string
+          original_value?: string | null
+          override_value?: string
+          phase_id?: string
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: []
+      }
       dialectal_lexicon: {
         Row: {
           atualizado_em: string | null
