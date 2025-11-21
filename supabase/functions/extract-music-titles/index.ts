@@ -13,6 +13,7 @@ interface ParsedMusic {
   ano?: string;
   compositor?: string;
   genero?: string;
+  letra?: string;  // ✅ FASE 0: Adicionar campo letra
 }
 
 interface DeduplicationResult {
@@ -158,6 +159,7 @@ serve(async (req) => {
           artist_id: artistId,
           composer: song.compositor || null,
           release_year: song.ano || null,
+          lyrics: song.letra || null,  // ✅ FASE 0: Salvar letra no banco
           status: 'pending',
           upload_id: uploadId || null,
           corpus_id: corpusId || null,

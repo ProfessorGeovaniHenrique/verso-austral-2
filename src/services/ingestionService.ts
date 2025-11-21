@@ -8,6 +8,7 @@ export interface ParsedMusic {
   ano?: string;
   compositor?: string;
   genero?: string;
+  letra?: string;  // ✅ FASE 0: Adicionar letra
 }
 
 export interface EnrichmentResult {
