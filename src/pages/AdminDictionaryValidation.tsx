@@ -11,11 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, CheckCircle2, Clock, AlertCircle, Zap, Keyboard, RefreshCw, Database } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useDialectalLexicon } from '@/hooks/useDialectalLexicon';
 import { useBackendLexicon, type LexiconEntry } from '@/hooks/useBackendLexicon';
 import { ValidationInterface } from '@/components/advanced/ValidationInterface';
 import { BatchValidationDialog } from '@/components/advanced/lexicon-status/BatchValidationDialog';
 import { ClearDictionariesCard } from '@/components/advanced/lexicon-status/ClearDictionariesCard';
+import { KeyboardShortcutsHelper } from '@/components/validation/KeyboardShortcutsHelper';
 import { useLexiconStats } from '@/hooks/useLexiconStats';
 import { VerbeteCard } from '@/components/validation/VerbeteCard';
 import { useValidationShortcuts } from '@/hooks/useValidationShortcuts';
@@ -56,6 +58,8 @@ export default function AdminDictionaryValidation() {
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
   const [dbDiagnostics, setDbDiagnostics] = useState<any>(null);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const { data: lexiconStats, refetch: refetchStats } = useLexiconStats();
 
   const ITEMS_PER_PAGE = 24;
@@ -283,7 +287,31 @@ export default function AdminDictionaryValidation() {
       <div className="container mx-auto py-8 px-4">
         <AdminBreadcrumb currentPage={`Validação ${config.displayName}`} />
 
-        <div className="space-y-6 mt-6">
+        <div className="flex justify-between items-center my-6">
+          <h1 className="text-3xl font-bold">
+            Validação: {config.displayName}
+          </h1>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowShortcuts(true)}
+            >
+              <Keyboard className="h-4 w-4 mr-2" />
+              Atalhos
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleForceRefresh}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar Cache
+            </Button>
+          </div>
+        </div>
+
+        <div className="space-y-6">
           {/* Estatísticas com Progresso */}
           <Card>
             <CardHeader>
@@ -375,67 +403,86 @@ export default function AdminDictionaryValidation() {
             }}
           />
 
-          {/* 🔍 Painel de Diagnóstico (apenas para Gutenberg) */}
+          {/* 🔧 Ferramentas de Desenvolvimento - Collapsible (apenas Gutenberg) */}
           {config.table === 'gutenberg' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>🔍 Diagnóstico e Debugging</CardTitle>
-                <CardDescription>
-                  Ferramentas para diagnosticar problemas com dados do Gutenberg
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Button
-                    onClick={checkDatabaseState}
-                    disabled={isCheckingDb}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Database className="h-4 w-4 mr-2" />
-                    {isCheckingDb ? 'Verificando...' : 'Verificar Banco'}
-                  </Button>
-                  <Button
-                    onClick={handleForceRefresh}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Forçar Atualização
-                  </Button>
-                </div>
+            <Collapsible 
+              open={isDiagnosticsOpen} 
+              onOpenChange={setIsDiagnosticsOpen}
+            >
+              <Card className="border-yellow-500/50 bg-yellow-50 dark:bg-yellow-950/20">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-yellow-800 dark:text-yellow-200">
+                        🔧 Ferramentas de Desenvolvimento
+                      </CardTitle>
+                      <Badge variant="secondary" className="text-xs">DEV TOOLS</Badge>
+                    </div>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm">
+                        {isDiagnosticsOpen ? 'Ocultar' : 'Mostrar'}
+                      </Button>
+                    </CollapsibleTrigger>
+                  </div>
+                  <CardDescription>
+                    Ferramentas para diagnosticar problemas com dados do Gutenberg
+                  </CardDescription>
+                </CardHeader>
+                <CollapsibleContent>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={checkDatabaseState}
+                        disabled={isCheckingDb}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <Database className="h-4 w-4 mr-2" />
+                        {isCheckingDb ? 'Verificando...' : 'Verificar Banco'}
+                      </Button>
+                      <Button
+                        onClick={handleForceRefresh}
+                        variant="outline"
+                        size="sm"
+                      >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Forçar Atualização
+                      </Button>
+                    </div>
 
-                {/* ⚠️ Alerta de Dados Incompletos */}
-                {allEntries.length > 0 && !allEntries[0].classe_gramatical && !allEntries[0].definicoes && (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>⚠️ Dados Incompletos Detectados</AlertTitle>
-                    <AlertDescription>
-                      Os verbetes estão sem classe_gramatical e definições. Clique em "Verificar Banco" 
-                      para diagnóstico ou "Forçar Atualização" para limpar o cache.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                    {/* ⚠️ Alerta de Dados Incompletos */}
+                    {allEntries.length > 0 && !allEntries[0].classe_gramatical && !allEntries[0].definicoes && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>⚠️ Dados Incompletos Detectados</AlertTitle>
+                        <AlertDescription>
+                          Os verbetes estão sem classe_gramatical e definições. Clique em "Verificar Banco" 
+                          para diagnóstico ou "Forçar Atualização" para limpar o cache.
+                        </AlertDescription>
+                      </Alert>
+                    )}
 
-                {/* 📊 Diagnóstico do Banco (se disponível) */}
-                {dbDiagnostics && (
-                  <Alert>
-                    <Database className="h-4 w-4" />
-                    <AlertTitle>📊 Resultado do Diagnóstico</AlertTitle>
-                    <AlertDescription>
-                      <div className="text-sm space-y-1 mt-2">
-                        <div>📊 Total de registros: <strong>{dbDiagnostics.totalRecords}</strong></div>
-                        <div>📝 Tem classe_gramatical: <strong>{dbDiagnostics.hasClasseGramatical ? '✅ Sim' : '❌ Não'}</strong></div>
-                        <div>📚 Tem definições: <strong>{dbDiagnostics.hasDefinicoes ? '✅ Sim' : '❌ Não'}</strong></div>
-                        <div className="text-xs text-muted-foreground mt-2">
-                          Última verificação: {new Date(dbDiagnostics.timestamp).toLocaleString('pt-BR')}
-                        </div>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </CardContent>
-            </Card>
+                    {/* 📊 Diagnóstico do Banco (se disponível) */}
+                    {dbDiagnostics && (
+                      <Alert>
+                        <Database className="h-4 w-4" />
+                        <AlertTitle>📊 Resultado do Diagnóstico</AlertTitle>
+                        <AlertDescription>
+                          <div className="text-sm space-y-1 mt-2">
+                            <div>📊 Total de registros: <strong>{dbDiagnostics.totalRecords}</strong></div>
+                            <div>📝 Tem classe_gramatical: <strong>{dbDiagnostics.hasClasseGramatical ? '✅ Sim' : '❌ Não'}</strong></div>
+                            <div>📚 Tem definições: <strong>{dbDiagnostics.hasDefinicoes ? '✅ Sim' : '❌ Não'}</strong></div>
+                            <div className="text-xs text-muted-foreground mt-2">
+                              Última verificação: {new Date(dbDiagnostics.timestamp).toLocaleString('pt-BR')}
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
           )}
 
           {/* Filtros */}
@@ -567,6 +614,12 @@ export default function AdminDictionaryValidation() {
           onSuccess={handleValidationSuccess}
         />
       )}
+
+      {/* Modal de Atalhos de Teclado */}
+      <KeyboardShortcutsHelper 
+        open={showShortcuts} 
+        onOpenChange={setShowShortcuts} 
+      />
 
       <MVPFooter />
     </div>
