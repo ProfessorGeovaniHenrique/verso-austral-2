@@ -123,25 +123,46 @@ export default function AdminDictionaryValidation() {
   const checkDatabaseState = async () => {
     setIsCheckingDb(true);
     try {
-      const { data, error, count } = await supabase
-        .from('gutenberg_lexicon')
-        .select('id, verbete, classe_gramatical, definicoes', { count: 'exact' })
-        .limit(5);
+      if (tipo === 'rocha_pombo') {
+        const { data, error, count } = await supabase
+          .from('lexical_synonyms')
+          .select('id, palavra, pos, sinonimos', { count: 'exact' })
+          .eq('fonte', 'houaiss')
+          .limit(5);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      const diagnostics = {
-        totalRecords: count || 0,
-        sampleData: data || [],
-        hasClasseGramatical: data?.[0]?.classe_gramatical !== undefined,
-        hasDefinicoes: data?.[0]?.definicoes !== undefined,
-        timestamp: new Date().toISOString()
-      };
+        const diagnostics = {
+          totalRecords: count || 0,
+          sampleData: data || [],
+          hasPOS: data?.[0]?.pos !== undefined,
+          hasSinonimos: data?.[0]?.sinonimos !== undefined,
+          timestamp: new Date().toISOString()
+        };
 
-      console.log('🔍 DIAGNÓSTICO DO BANCO (Gutenberg):', diagnostics);
-      setDbDiagnostics(diagnostics);
+        console.log('🔍 DIAGNÓSTICO DO BANCO (Rocha Pombo):', diagnostics);
+        setDbDiagnostics(diagnostics);
+        toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
+      } else {
+        const { data, error, count } = await supabase
+          .from('gutenberg_lexicon')
+          .select('id, verbete, classe_gramatical, definicoes', { count: 'exact' })
+          .limit(5);
 
-      toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
+        if (error) throw error;
+
+        const diagnostics = {
+          totalRecords: count || 0,
+          sampleData: data || [],
+          hasClasseGramatical: data?.[0]?.classe_gramatical !== undefined,
+          hasDefinicoes: data?.[0]?.definicoes !== undefined,
+          timestamp: new Date().toISOString()
+        };
+
+        console.log('🔍 DIAGNÓSTICO DO BANCO (Gutenberg):', diagnostics);
+        setDbDiagnostics(diagnostics);
+        toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
+      }
     } catch (error: any) {
       console.error('❌ Erro ao verificar banco:', error);
       toast.error(`Erro no Diagnóstico: ${error.message}`);
@@ -184,9 +205,12 @@ export default function AdminDictionaryValidation() {
     return true;
   });
 
-  const validatedCount = allEntries.filter((e: any) => 
-    e.validation_status && e.validation_status !== 'pending'
-  ).length;
+  const validatedCount = allEntries.filter((e: any) => {
+    if (config.table === 'dialectal' || config.table === 'synonyms') {
+      return e.validado_humanamente === true || e.validation_status === 'approved';
+    }
+    return e.validado === true || e.validation_status === 'approved';
+  }).length;
   const pendingCount = allEntries.filter((e: any) => 
     !e.validation_status || e.validation_status === 'pending'
   ).length;
@@ -249,14 +273,18 @@ export default function AdminDictionaryValidation() {
 
   const handleApprove = async (id: string) => {
     try {
-      const tableName = config.table === 'dialectal' ? 'dialectal_lexicon' : 'gutenberg_lexicon';
+      const tableName = config.table === 'dialectal' 
+        ? 'dialectal_lexicon' 
+        : config.table === 'synonyms'
+        ? 'lexical_synonyms'
+        : 'gutenberg_lexicon';
       
       const updates: any = {
         validation_status: 'approved',
         reviewed_at: new Date().toISOString(),
       };
       
-      if (config.table === 'dialectal') {
+      if (config.table === 'dialectal' || config.table === 'synonyms') {
         updates.validado_humanamente = true;
       } else {
         updates.validado = true;
@@ -277,7 +305,11 @@ export default function AdminDictionaryValidation() {
 
   const handleReject = async (id: string) => {
     try {
-      const tableName = config.table === 'dialectal' ? 'dialectal_lexicon' : 'gutenberg_lexicon';
+      const tableName = config.table === 'dialectal' 
+        ? 'dialectal_lexicon' 
+        : config.table === 'synonyms'
+        ? 'lexical_synonyms'
+        : 'gutenberg_lexicon';
       
       const updates: any = {
         validation_status: 'rejected',
@@ -285,7 +317,7 @@ export default function AdminDictionaryValidation() {
         validation_notes: 'Rejeitado durante revisão manual'
       };
       
-      if (config.table === 'dialectal') {
+      if (config.table === 'dialectal' || config.table === 'synonyms') {
         updates.validado_humanamente = false;
       } else {
         updates.validado = false;
