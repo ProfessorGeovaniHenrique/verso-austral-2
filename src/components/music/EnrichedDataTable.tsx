@@ -3,7 +3,8 @@ import { DataTable, ColumnDef } from './DataTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Eye, Edit, Trash2, Download } from 'lucide-react';
+import { Eye, Edit, Trash2, Download, Sparkles, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export interface EnrichedSong {
   id: string;
@@ -13,6 +14,7 @@ export interface EnrichedSong {
   year?: string;
   genre?: string;
   confidence: number;
+  status?: string;
 }
 
 interface EnrichedDataTableProps {
@@ -21,9 +23,11 @@ interface EnrichedDataTableProps {
   onEdit?: (song: EnrichedSong) => void;
   onDelete?: (ids: string[]) => void;
   onExport?: (ids: string[]) => void;
+  onEnrich?: (songId: string) => void;
+  enrichingIds?: Set<string>;
 }
 
-export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport }: EnrichedDataTableProps) {
+export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport, onEnrich, enrichingIds = new Set() }: EnrichedDataTableProps) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const toggleSelection = (id: string) => {
@@ -46,6 +50,35 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport }:
     }
   };
 
+  const getStatusBadge = (status: string = 'pending') => {
+    const badges = {
+      pending: {
+        icon: <AlertCircle className="h-3 w-3" />,
+        label: 'Pendente',
+        className: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20'
+      },
+      enriched: {
+        icon: <CheckCircle2 className="h-3 w-3" />,
+        label: 'Enriquecido',
+        className: 'bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20'
+      },
+      processed: {
+        icon: <CheckCircle2 className="h-3 w-3" />,
+        label: 'Processado',
+        className: 'bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20'
+      }
+    };
+
+    const badge = badges[status as keyof typeof badges] || badges.pending;
+
+    return (
+      <Badge variant="outline" className={badge.className}>
+        {badge.icon}
+        <span className="ml-1">{badge.label}</span>
+      </Badge>
+    );
+  };
+
   const getConfidenceBadge = (confidence: number) => {
     if (confidence >= 80) {
       return <Badge className="bg-green-500">Alta</Badge>;
@@ -66,6 +99,12 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport }:
           onCheckedChange={() => toggleSelection(row.id)}
         />
       ),
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      sortable: true,
+      render: (value) => getStatusBadge(value as string),
     },
     {
       key: 'title',
@@ -110,34 +149,61 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport }:
     {
       key: 'actions',
       label: 'Ações',
-      render: (_, row) => (
-        <div className="flex items-center gap-1">
-          {onView && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onView(row);
-              }}
-            >
-              <Eye className="h-4 w-4" />
-            </Button>
-          )}
-          {onEdit && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit(row);
-              }}
-            >
-              <Edit className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      ),
+      render: (_, row) => {
+        const isEnriching = enrichingIds.has(row.id);
+        return (
+          <div className="flex items-center gap-1">
+            {onEnrich && row.status === 'pending' && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEnrich(row.id);
+                      }}
+                      disabled={isEnriching}
+                    >
+                      {isEnriching ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Enriquecer música</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {onView && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView(row);
+                }}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {onEdit && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit(row);
+                }}
+              >
+                <Edit className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 

@@ -22,8 +22,10 @@ export default function MusicCatalog() {
   const [stats, setStats] = useState({
     totalSongs: 0,
     totalArtists: 0,
-    avgConfidence: 0
+    avgConfidence: 0,
+    pendingSongs: 0
   });
+  const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
   useEffect(() => {
@@ -64,11 +66,12 @@ export default function MusicCatalog() {
       // Calcular estatísticas
       const totalSongs = songsData?.length || 0;
       const totalArtists = artistsData?.length || 0;
+      const pendingSongs = (songsData as any[])?.filter(s => s.status === 'pending').length || 0;
       const avgConfidence = songsData?.length 
         ? (songsData as any[]).reduce((acc, s) => acc + (s.confidence_score || 0), 0) / songsData.length
         : 0;
 
-      setStats({ totalSongs, totalArtists, avgConfidence });
+      setStats({ totalSongs, totalArtists, avgConfidence, pendingSongs });
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       toast({
@@ -78,6 +81,57 @@ export default function MusicCatalog() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnrichSong = async (songId: string) => {
+    if (enrichingIds.has(songId)) return; // Evitar cliques duplicados
+    
+    setEnrichingIds(prev => new Set(prev).add(songId));
+    
+    try {
+      // Timeout de 30s
+      const enrichPromise = supabase.functions.invoke('enrich-music-data', {
+        body: { songId }
+      });
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: operação demorou mais de 30s')), 30000)
+      );
+      
+      const { data, error } = await Promise.race([enrichPromise, timeoutPromise]) as any;
+      
+      if (error) throw error;
+      
+      if (data?.success) {
+        toast({
+          title: "✨ Música enriquecida!",
+          description: `${data.enrichedData?.composer || 'Compositor encontrado'} - Confiança: ${data.confidenceScore}%`
+        });
+        await loadData(); // Recarregar dados
+      } else {
+        throw new Error(data?.error || 'Erro desconhecido ao enriquecer');
+      }
+    } catch (error: any) {
+      console.error('Erro ao enriquecer música:', error);
+      
+      // Reverter status em caso de erro
+      await supabase
+        .from('songs')
+        .update({ status: 'pending' })
+        .eq('id', songId);
+      
+      toast({
+        title: "Erro ao enriquecer",
+        description: error.message || 'Falha ao buscar metadados. Tente novamente.',
+        variant: "destructive"
+      });
+    } finally {
+      setEnrichingIds(prev => {
+        const next = new Set(prev);
+        next.delete(songId);
+        return next;
+      });
     }
   };
 
@@ -99,6 +153,7 @@ export default function MusicCatalog() {
           <p className="text-muted-foreground">
             {stats.totalSongs} músicas | {stats.totalArtists} artistas | 
             Confiança média: {stats.avgConfidence.toFixed(1)}/100
+            {stats.pendingSongs > 0 && ` | ${stats.pendingSongs} aguardando enriquecimento`}
           </p>
         </div>
         
@@ -157,9 +212,12 @@ export default function MusicCatalog() {
                 composer: s.composer,
                 year: s.release_year,
                 genre: s.artists?.genre,
-                confidence: s.confidence_score || 0
+                confidence: s.confidence_score || 0,
+                status: s.status || 'pending'
               }))}
               onExport={() => {}}
+              onEnrich={handleEnrichSong}
+              enrichingIds={enrichingIds}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -173,9 +231,12 @@ export default function MusicCatalog() {
                     album: song.raw_data?.album,
                     year: song.release_year,
                     genre: song.artists?.genre,
-                    confidence: song.confidence_score || 0
+                    confidence: song.confidence_score || 0,
+                    status: song.status || 'pending'
                   }}
                   onEdit={() => {}}
+                  onEnrich={handleEnrichSong}
+                  isEnriching={enrichingIds.has(song.id)}
                 />
               ))}
             </div>
