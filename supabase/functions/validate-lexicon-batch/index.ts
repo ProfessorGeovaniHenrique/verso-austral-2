@@ -47,15 +47,13 @@ Deno.serve(async (req) => {
         break;
       
       case 'rochaPombo':
-        // Rocha Pombo não tem campo de validação (já é confiável)
-        return new Response(
-          JSON.stringify({ 
-            validated: 0, 
-            skipped: 0, 
-            message: 'Rocha Pombo já possui dados validados pela ABL' 
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-        );
+        tableName = 'lexical_synonyms';
+        validationCriteria = {
+          validado_humanamente: false,
+          confianca_extracao: { gte: 0.90 },
+          fonte: 'houaiss'
+        };
+        break;
       
       case 'unesp':
         // UNESP não tem campo de validação (já é confiável)
@@ -73,15 +71,21 @@ Deno.serve(async (req) => {
     }
 
     // Buscar entradas não validadas com alta confiança
-    const { data: entries, error: fetchError } = await supabase
+    let query = supabase
       .from(tableName)
       .select('id')
-      .eq(
-        dictionaryType === 'dialectal' ? 'validado_humanamente' : 'validado', 
-        false
-      )
       .gte('confianca_extracao', 0.90)
       .limit(batchSize);
+
+    if (dictionaryType === 'rochaPombo') {
+      query = query.eq('fonte', 'houaiss').eq('validado_humanamente', false);
+    } else if (dictionaryType === 'dialectal') {
+      query = query.eq('validado_humanamente', false);
+    } else {
+      query = query.eq('validado', false);
+    }
+
+    const { data: entries, error: fetchError } = await query;
 
     if (fetchError) {
       throw new Error(`Erro ao buscar entradas: ${fetchError.message}`);
@@ -106,7 +110,9 @@ Deno.serve(async (req) => {
 
     // Atualizar entradas em chunks de 100 (evita URL limit do PostgREST)
     const ids = entries.map(e => e.id);
-    const updateField = dictionaryType === 'dialectal' ? 'validado_humanamente' : 'validado';
+    const updateField = (dictionaryType === 'dialectal' || dictionaryType === 'rochaPombo') 
+      ? 'validado_humanamente' 
+      : 'validado';
     const chunks = chunkArray(ids, 100);
     let totalUpdated = 0;
 

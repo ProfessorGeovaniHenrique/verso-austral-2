@@ -27,18 +27,18 @@ import { useQueryClient } from '@tanstack/react-query';
 
 const DICTIONARY_CONFIG: Record<string, { 
   displayName: string; 
-  table: 'dialectal' | 'gutenberg'; 
-  tipoDicionario?: string; // ✅ NOVO: Substituindo volumeFilter
+  table: 'dialectal' | 'gutenberg' | 'synonyms'; 
+  tipoDicionario?: string;
 }> = {
   'gaucho_unificado': { 
     displayName: 'Gaúcho Unificado',
     table: 'dialectal',
-    tipoDicionario: 'gaucho_unificado' // ✅ Agora usa tipo de dicionário ao invés de volume
+    tipoDicionario: 'gaucho_unificado'
   },
   'rocha_pombo': { 
     displayName: 'Rocha Pombo (ABL)',
-    table: 'dialectal',
-    tipoDicionario: 'dialectal_II' // ✅ Volume II continua sendo dialectal_II
+    table: 'synonyms',
+    tipoDicionario: 'rocha_pombo'
   },
   'gutenberg': { 
     displayName: 'Gutenberg',
@@ -68,13 +68,19 @@ export default function AdminDictionaryValidation() {
 
   // Buscar dados baseado na tabela configurada
   const { entries: dialectalEntries, isLoading: dialectalLoading, refetch: dialectalRefetch } = useDialectalLexicon({
-    tipo_dicionario: config?.tipoDicionario, // ✅ Usar tipo_dicionario ao invés de volumeFilter
+    tipo_dicionario: config?.tipoDicionario,
     searchTerm: searchTerm || undefined,
   });
 
   const { lexicon: gutenbergEntries, isLoading: gutenbergLoading, refetch: gutenbergRefetch } = useBackendLexicon({
     table: 'gutenberg_lexicon',
     searchTerm: searchTerm || undefined,
+  });
+
+  const { lexicon: synonymEntries, isLoading: synonymLoading, refetch: synonymRefetch } = useBackendLexicon({
+    table: 'lexical_synonyms',
+    searchTerm: searchTerm || undefined,
+    fonte: 'houaiss',
   });
 
   if (!config) {
@@ -95,9 +101,23 @@ export default function AdminDictionaryValidation() {
     );
   }
 
-  const isLoading = config.table === 'dialectal' ? dialectalLoading : gutenbergLoading;
-  const allEntries = config.table === 'dialectal' ? dialectalEntries : gutenbergEntries;
-  const refetch = config.table === 'dialectal' ? dialectalRefetch : gutenbergRefetch;
+  const isLoading = config.table === 'dialectal' 
+    ? dialectalLoading 
+    : config.table === 'synonyms'
+    ? synonymLoading
+    : gutenbergLoading;
+
+  const allEntries = config.table === 'dialectal' 
+    ? dialectalEntries 
+    : config.table === 'synonyms'
+    ? synonymEntries
+    : gutenbergEntries;
+
+  const refetch = config.table === 'dialectal' 
+    ? dialectalRefetch 
+    : config.table === 'synonyms'
+    ? synonymRefetch
+    : gutenbergRefetch;
 
   // 🔍 DIAGNÓSTICO: Verificar estado do banco
   const checkDatabaseState = async () => {
@@ -436,7 +456,7 @@ export default function AdminDictionaryValidation() {
           </div>
 
           {/* Validação em Lote Destacada */}
-          {tipo && !['rocha_pombo'].includes(tipo) && pendingHighConfidenceCount > 0 && (
+          {tipo && pendingHighConfidenceCount > 0 && (
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background">
               <CardHeader>
                 <div className="flex items-center justify-between">

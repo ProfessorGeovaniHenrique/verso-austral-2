@@ -25,10 +25,11 @@ export interface LexiconEntry {
 }
 
 interface Filters {
-  table?: 'semantic_lexicon' | 'gutenberg_lexicon';
+  table?: 'semantic_lexicon' | 'gutenberg_lexicon' | 'lexical_synonyms';
   pos?: string;
   validationStatus?: 'all' | 'validated' | 'pending';
   searchTerm?: string;
+  fonte?: string;
 }
 
 export function useBackendLexicon(filters?: Filters) {
@@ -57,6 +58,25 @@ export function useBackendLexicon(filters?: Filters) {
 
         if (filters?.searchTerm) {
           query = query.ilike('verbete_normalizado', `%${filters.searchTerm}%`);
+        }
+      } else if (tableName === 'lexical_synonyms') {
+        // Lógica para lexical_synonyms
+        if (filters?.fonte) {
+          query = query.eq('fonte', filters.fonte);
+        }
+
+        if (filters?.pos && filters.pos !== 'all') {
+          query = query.eq('pos', filters.pos);
+        }
+
+        if (filters?.validationStatus === 'validated') {
+          query = query.eq('validado_humanamente', true);
+        } else if (filters?.validationStatus === 'pending') {
+          query = query.eq('validado_humanamente', false);
+        }
+
+        if (filters?.searchTerm) {
+          query = query.ilike('palavra', `%${filters.searchTerm}%`);
         }
       } else {
         // Lógica para semantic_lexicon (padrão)
@@ -106,6 +126,30 @@ export function useBackendLexicon(filters?: Filters) {
           definicoes: entry.definicoes || [],
           classe_gramatical: entry.classe_gramatical,
           verbete: entry.verbete,
+        })) as LexiconEntry[];
+
+        return mapped;
+      }
+
+      if (tableName === 'lexical_synonyms') {
+        const rawData = data as any[];
+        const mapped = (rawData || []).map((entry) => ({
+          id: entry.id,
+          palavra: entry.palavra,
+          lema: entry.palavra,
+          pos: entry.pos,
+          tagset_codigo: entry.pos || 'unknown',
+          prosody: 0,
+          confianca: entry.confianca_extracao || 0,
+          validado: entry.validado_humanamente || false,
+          validation_status: entry.validation_status,
+          fonte: entry.fonte,
+          contexto_exemplo: entry.contexto_uso || null,
+          criado_em: entry.criado_em,
+          atualizado_em: entry.atualizado_em,
+          definicoes: entry.sinonimos ? [{ texto: `Sinônimos: ${entry.sinonimos.join(', ')}` }] : [],
+          classe_gramatical: entry.pos,
+          verbete: entry.palavra,
         })) as LexiconEntry[];
 
         return mapped;

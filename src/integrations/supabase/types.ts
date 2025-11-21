@@ -1418,6 +1418,8 @@ export type Database = {
           acepcao_descricao: string | null
           acepcao_numero: number | null
           antonimos: string[] | null
+          atualizado_em: string | null
+          confianca_extracao: number | null
           contexto_uso: string | null
           criado_em: string | null
           entry_type: string | null
@@ -1425,12 +1427,19 @@ export type Database = {
           id: string
           palavra: string
           pos: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           sinonimos: string[] | null
+          validado_humanamente: boolean | null
+          validation_notes: string | null
+          validation_status: string | null
         }
         Insert: {
           acepcao_descricao?: string | null
           acepcao_numero?: number | null
           antonimos?: string[] | null
+          atualizado_em?: string | null
+          confianca_extracao?: number | null
           contexto_uso?: string | null
           criado_em?: string | null
           entry_type?: string | null
@@ -1438,12 +1447,19 @@ export type Database = {
           id?: string
           palavra: string
           pos?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
+          validado_humanamente?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
         }
         Update: {
           acepcao_descricao?: string | null
           acepcao_numero?: number | null
           antonimos?: string[] | null
+          atualizado_em?: string | null
+          confianca_extracao?: number | null
           contexto_uso?: string | null
           criado_em?: string | null
           entry_type?: string | null
@@ -1451,7 +1467,12 @@ export type Database = {
           id?: string
           palavra?: string
           pos?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           sinonimos?: string[] | null
+          validado_humanamente?: boolean | null
+          validation_notes?: string | null
+          validation_status?: string | null
         }
         Relationships: []
       }
