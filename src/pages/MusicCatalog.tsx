@@ -36,10 +36,10 @@ export default function MusicCatalog() {
 
       // Carregar músicas com artistas
       const { data: songsData, error: songsError } = await supabase
-        .from('songs')
+        .from('music_songs')
         .select(`
           *,
-          artists (
+          music_artists (
             id,
             name,
             genre
@@ -53,7 +53,7 @@ export default function MusicCatalog() {
 
       // Carregar artistas únicos
       const { data: artistsData, error: artistsError } = await supabase
-        .from('artists')
+        .from('music_artists')
         .select('*')
         .order('name');
 

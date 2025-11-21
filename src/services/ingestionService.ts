@@ -168,7 +168,7 @@ export const ingestionService = {
    */
   async getSongsByStatus(status: string): Promise<any[]> {
     const { data, error } = await supabase
-      .from('songs')
+      .from('music_songs')
       .select(`
         id,
         title,
@@ -206,7 +206,7 @@ export const ingestionService = {
     avgConfidence: number;
   }> {
     const { data, error } = await supabase
-      .from('songs')
+      .from('music_songs')
       .select('status, confidence_score');
 
     if (error) {
