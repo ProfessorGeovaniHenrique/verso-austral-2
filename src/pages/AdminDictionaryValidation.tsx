@@ -37,6 +37,12 @@ const DICTIONARY_CONFIG: Record<string, {
     tipoDicionario: 'gaucho_unificado',
     edgeFunctionType: 'dialectal'
   },
+  'navarro': {
+    displayName: 'Navarro 2014',
+    table: 'dialectal',
+    tipoDicionario: 'navarro_2014',
+    edgeFunctionType: 'dialectal'
+  },
   'rocha_pombo': { 
     displayName: 'Rocha Pombo (ABL)',
     table: 'synonyms',

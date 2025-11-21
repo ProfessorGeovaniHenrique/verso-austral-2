@@ -208,7 +208,7 @@ export default function AdminDictionaryImport() {
               )}
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Gutenberg */}
               <div className="space-y-3 p-4 rounded-lg border bg-card">
                 <div className="flex items-center justify-between">
@@ -265,6 +265,34 @@ export default function AdminDictionaryImport() {
                 </div>
               </div>
 
+              {/* Navarro */}
+              <div className="space-y-3 p-4 rounded-lg border bg-card">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    ☀️ Navarro
+                  </span>
+                  <Badge variant="outline" className="font-mono">
+                    {lexiconStats?.navarro?.total > 0 
+                      ? ((lexiconStats.navarro.validados / lexiconStats.navarro.total) * 100).toFixed(1)
+                      : 0}%
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>✅ Validados: {lexiconStats?.navarro?.validados?.toLocaleString('pt-BR') || 0}</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>⏳ Pendentes: {((lexiconStats?.navarro?.total || 0) - (lexiconStats?.navarro?.validados || 0)).toLocaleString('pt-BR')}</span>
+                  </div>
+                  <Progress 
+                    value={lexiconStats?.navarro?.total > 0 
+                      ? (lexiconStats.navarro.validados / lexiconStats.navarro.total) * 100
+                      : 0} 
+                    className="h-2"
+                  />
+                </div>
+              </div>
+
               {/* Geral */}
               <div className="space-y-3 p-4 rounded-lg border bg-card">
                 <div className="flex items-center justify-between">
@@ -279,10 +307,10 @@ export default function AdminDictionaryImport() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>✅ Validados: {((lexiconStats?.gaucho?.validados || 0) + (lexiconStats?.gutenberg?.validados || 0)).toLocaleString('pt-BR')}</span>
+                    <span>✅ Validados: {((lexiconStats?.gaucho?.validados || 0) + (lexiconStats?.navarro?.validados || 0) + (lexiconStats?.gutenberg?.validados || 0)).toLocaleString('pt-BR')}</span>
                   </div>
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>⏳ Pendentes: {(((lexiconStats?.gaucho?.total || 0) - (lexiconStats?.gaucho?.validados || 0)) + ((lexiconStats?.gutenberg?.total || 0) - (lexiconStats?.gutenberg?.validados || 0))).toLocaleString('pt-BR')}</span>
+                    <span>⏳ Pendentes: {(((lexiconStats?.gaucho?.total || 0) - (lexiconStats?.gaucho?.validados || 0)) + ((lexiconStats?.navarro?.total || 0) - (lexiconStats?.navarro?.validados || 0)) + ((lexiconStats?.gutenberg?.total || 0) - (lexiconStats?.gutenberg?.validados || 0))).toLocaleString('pt-BR')}</span>
                   </div>
                   <Progress 
                     value={lexiconStats?.overall?.validation_rate 
@@ -403,6 +431,124 @@ export default function AdminDictionaryImport() {
                 <Button
                   onClick={() => navigate('/admin/dictionary-validation/rocha_pombo')}
                   className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  size="lg"
+                  variant="outline"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  🔍 Validar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* ☀️ Card Navarro 2014 (Nordestino) */}
+        <Card className="mb-6 border-2 border-yellow-500/30 bg-gradient-to-br from-yellow-50 to-background dark:from-yellow-950/20 dark:to-background">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">☀️</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
+                    Navarro 2014
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Dicionário do Nordeste - Fred Navarro
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="border-yellow-500 text-yellow-600 font-mono">
+                {lexiconStats?.navarro?.total > 0 
+                  ? ((lexiconStats.navarro.validados / lexiconStats.navarro.total) * 100).toFixed(1)
+                  : 0}%
+              </Badge>
+            </div>
+
+            <div className="space-y-3">
+              {/* Estatísticas */}
+              <div className="grid grid-cols-3 gap-4 p-4 rounded-lg border bg-card">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {lexiconStats?.navarro?.total?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">✅ Validados</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {lexiconStats?.navarro?.validados?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">⏳ Pendentes</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {((lexiconStats?.navarro?.total || 0) - (lexiconStats?.navarro?.validados || 0)).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Barra de Progresso */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Progresso de Validação</span>
+                  <span className="font-semibold">
+                    {lexiconStats?.navarro?.total > 0 
+                      ? ((lexiconStats.navarro.validados / lexiconStats.navarro.total) * 100).toFixed(1)
+                      : 0}%
+                  </span>
+                </div>
+                <Progress 
+                  value={lexiconStats?.navarro?.total > 0 
+                    ? (lexiconStats.navarro.validados / lexiconStats.navarro.total) * 100
+                    : 0} 
+                  className="h-3"
+                />
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    setImportingDict('nordestino_navarro');
+                    try {
+                      const { data, error } = await supabase.functions.invoke(
+                        'import-nordestino-navarro'
+                      );
+                      
+                      if (error) throw error;
+                      
+                      notifications.success(
+                        'Importação iniciada',
+                        'Navarro 2014 em processamento'
+                      );
+                      await refetch();
+                      await refetchStats();
+                    } catch (error: any) {
+                      notifications.error('Erro na importação', error.message);
+                    } finally {
+                      setImportingDict(null);
+                    }
+                  }}
+                  disabled={importingDict === 'nordestino_navarro'}
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700"
+                  size="lg"
+                >
+                  {importingDict === 'nordestino_navarro' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      📥 Importar
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => navigate('/admin/dictionary-validation/navarro')}
+                  className="flex-1 bg-yellow-600 hover:bg-yellow-700"
                   size="lg"
                   variant="outline"
                 >
