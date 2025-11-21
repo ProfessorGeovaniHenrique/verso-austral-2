@@ -359,15 +359,57 @@ export default function AdminDictionaryImport() {
                 />
               </div>
 
-              {/* Botão de Validação */}
-              <Button
-                onClick={() => navigate('/admin/dictionary-validation/rocha_pombo')}
-                className="w-full bg-blue-600 hover:bg-blue-700"
-                size="lg"
-              >
-                <Database className="h-4 w-4 mr-2" />
-                🔍 Validar Entradas
-              </Button>
+              {/* Botões de Ação */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={async () => {
+                    setImportingDict('pombo_abl');
+                    try {
+                      const { data, error } = await supabase.functions.invoke(
+                        'import-rocha-pombo-backend'
+                      );
+                      
+                      if (error) throw error;
+                      
+                      notifications.success(
+                        'Importação iniciada',
+                        'Rocha Pombo (ABL) em processamento'
+                      );
+                      await refetch();
+                      await refetchStats();
+                    } catch (error: any) {
+                      notifications.error('Erro na importação', error.message);
+                    } finally {
+                      setImportingDict(null);
+                    }
+                  }}
+                  disabled={importingDict === 'pombo_abl'}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  size="lg"
+                >
+                  {importingDict === 'pombo_abl' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Importando...
+                    </>
+                  ) : (
+                    <>
+                      <PlayCircle className="h-4 w-4 mr-2" />
+                      📥 Importar
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  onClick={() => navigate('/admin/dictionary-validation/rocha_pombo')}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700"
+                  size="lg"
+                  variant="outline"
+                >
+                  <Database className="h-4 w-4 mr-2" />
+                  🔍 Validar
+                </Button>
+              </div>
             </div>
           </div>
         </Card>
