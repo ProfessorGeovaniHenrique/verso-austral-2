@@ -74,6 +74,7 @@ const TIMEOUT_MS = 90000; // ✅ FASE 3: Padronizado para 90s
 interface ProcessRequest {
   fileContent: string;
   volumeNum: string;
+  tipoDicionario: string; // ✅ NOVO: Identificador do tipo de dicionário
   offsetInicial?: number; // ✅ NOVO: Suporte a retomada
 }
 
@@ -82,7 +83,7 @@ function validateRequest(data: any): ProcessRequest {
     throw new Error('Payload inválido');
   }
   
-  const { fileContent, volumeNum, offsetInicial = 0 } = data;
+  const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0 } = data;
   
   if (!fileContent || typeof fileContent !== 'string') {
     throw new Error('fileContent deve ser uma string válida');
@@ -97,7 +98,11 @@ function validateRequest(data: any): ProcessRequest {
     throw new Error('volumeNum deve ser "I" ou "II"');
   }
   
-  return { fileContent, volumeNum, offsetInicial };
+  if (!tipoDicionario || typeof tipoDicionario !== 'string') {
+    throw new Error('tipoDicionario deve ser uma string válida');
+  }
+  
+  return { fileContent, volumeNum, tipoDicionario, offsetInicial };
 }
 
 function normalizeWord(word: string): string {
@@ -133,7 +138,7 @@ function inferCategorias(verbete: string, definicoes: any[], contextos: any): st
  * ✅ FASE 2: Parser melhorado com regex mais robusto
  * Suporta múltiplas variações de formato do Dialectal Volume II
  */
-function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
+function parseVerbete(verbeteRaw: string, volumeNum: string, tipoDicionario: string): any | null {
   try {
     // ✅ Sanitizar texto de entrada removendo null bytes
     const cleanText = sanitizeText(verbeteRaw) || '';
@@ -150,11 +155,11 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
       const cleanedText = cleanText.substring(0, firstSubEnd).trim();
       console.log(`⚠️ Sub-verbetes detectados: ${subVerbetes.length}. Processando apenas primeiro verbete.`);
       const normalizedText = cleanedText.replace(/\s+/g, ' ').replace(/[-–—]/g, '-');
-      return parseVerbeteSingle(normalizedText, volumeNum);
+      return parseVerbeteSingle(normalizedText, volumeNum, tipoDicionario);
     }
     
     const normalizedText = cleanText.replace(/\s+/g, ' ').replace(/[-–—]/g, '-');
-    return parseVerbeteSingle(normalizedText, volumeNum);
+    return parseVerbeteSingle(normalizedText, volumeNum, tipoDicionario);
   } catch (error: any) {
     console.error(`❌ Erro no parseVerbete:`, error.message);
     return null;
@@ -164,7 +169,7 @@ function parseVerbete(verbeteRaw: string, volumeNum: string): any | null {
 /**
  * ✅ Parser interno - extrai dados de um único verbete
  */
-function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | null {
+function parseVerbeteSingle(normalizedText: string, volumeNum: string, tipoDicionario: string): any | null {
   try {
     // ✅ FASE 2: REGEX REFINADA - Captura explícita de marcadores entre colchetes
     // Grupo 1: Verbete
@@ -194,6 +199,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
         const result = {
           verbete: verbete.trim(),
           verbete_normalizado: normalizeWord(verbete),
+          tipo_dicionario: tipoDicionario, // ✅ NOVO CAMPO
           origem_primaria: origem.replace(/\s/g, ''),
           classe_gramatical: pos,
           marcacao_temporal: null,
@@ -231,6 +237,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
         const result = {
           verbete: verbete.trim(),
           verbete_normalizado: normalizeWord(verbete),
+          tipo_dicionario: tipoDicionario, // ✅ NOVO CAMPO
           origem_primaria: 'BRAS',
           classe_gramatical: null,
           marcacao_temporal: null,
@@ -298,6 +305,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
     const result = {
       verbete: verbete.trim(),
       verbete_normalizado: normalizeWord(verbete),
+      tipo_dicionario: tipoDicionario, // ✅ NOVO CAMPO
       origem_primaria: origem,
       classe_gramatical: classeGram || null,
       marcacao_temporal,
@@ -328,7 +336,7 @@ function parseVerbeteSingle(normalizedText: string, volumeNum: string): any | nu
   }
 }
 
-async function processInBackground(jobId: string, verbetes: string[], volumeNum: string, offsetInicial: number) {
+async function processInBackground(jobId: string, verbetes: string[], volumeNum: string, tipoDicionario: string, offsetInicial: number) {
   const MAX_PROCESSING_TIME = 30 * 60 * 1000;
   const timeoutPromise = new Promise((_, reject) => 
     setTimeout(() => reject(new Error('Timeout: 30 minutos excedidos')), MAX_PROCESSING_TIME)
@@ -336,7 +344,7 @@ async function processInBackground(jobId: string, verbetes: string[], volumeNum:
 
   try {
     await Promise.race([
-      processVerbetesInternal(jobId, verbetes, volumeNum, offsetInicial),
+      processVerbetesInternal(jobId, verbetes, volumeNum, tipoDicionario, offsetInicial),
       timeoutPromise
     ]);
   } catch (error: any) {
@@ -384,7 +392,7 @@ async function checkCancellation(jobId: string, supabaseClient: any) {
   }
 }
 
-async function processVerbetesInternal(jobId: string, verbetes: string[], volumeNum: string, offsetInicial: number) {
+async function processVerbetesInternal(jobId: string, verbetes: string[], volumeNum: string, tipoDicionario: string, offsetInicial: number) {
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -418,7 +426,7 @@ async function processVerbetesInternal(jobId: string, verbetes: string[], volume
     };
 
     for (const verbeteRaw of batch) {
-      const parsed = parseVerbete(verbeteRaw, volumeNum);
+      const parsed = parseVerbete(verbeteRaw, volumeNum, tipoDicionario);
       if (!parsed) {
         erros++;
         parseErrors.total++;
@@ -442,10 +450,14 @@ async function processVerbetesInternal(jobId: string, verbetes: string[], volume
       }
       
       
-      // ✅ VALIDATION: Double-check volume_fonte
+      // ✅ VALIDATION: Double-check volume_fonte e tipo_dicionario
       if (!parsed.volume_fonte) {
         console.error(`⚠️ CRITICAL: volume_fonte missing, setting to ${volumeNum}`);
         parsed.volume_fonte = volumeNum;
+      }
+      if (!parsed.tipo_dicionario) {
+        console.error(`⚠️ CRITICAL: tipo_dicionario missing, setting to ${tipoDicionario}`);
+        parsed.tipo_dicionario = tipoDicionario;
       }
       
       // ✅ Sanitização adicional como double-check de segurança
@@ -565,7 +577,7 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
 
   try {
     const rawBody = await req.json();
-    const { fileContent, volumeNum, offsetInicial = 0 } = validateRequest(rawBody);
+    const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0 } = validateRequest(rawBody);
 
     // ✅ FASE 3 - BLOCO 2: Validação pré-importação
     const validation = validateDialectalFile(fileContent, volumeNum);
@@ -770,7 +782,7 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
 
     console.log(`[JOB ${jobData.id}] Criado para Volume ${volumeNum}`);
 
-    processInBackground(jobData.id, verbetes, volumeNum, offsetInicial);
+    processInBackground(jobData.id, verbetes, volumeNum, tipoDicionario, offsetInicial);
 
     return new Response(
       JSON.stringify({ 

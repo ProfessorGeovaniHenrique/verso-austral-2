@@ -108,7 +108,8 @@ Deno.serve(async (req) => {
       body: {
         jobId: job.id,
         fileContent,
-        volumeNum: 'I', // Processo unificado usa volume I como padrão
+        volumeNum: 'I',
+        tipoDicionario: 'gaucho_unificado', // ✅ Identificador único do dicionário
         offset: job.offset_inicial || 0
       }
     });

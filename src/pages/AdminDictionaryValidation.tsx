@@ -28,17 +28,17 @@ import { useQueryClient } from '@tanstack/react-query';
 const DICTIONARY_CONFIG: Record<string, { 
   displayName: string; 
   table: 'dialectal' | 'gutenberg'; 
-  volumeFilter?: string;
+  tipoDicionario?: string; // ✅ NOVO: Substituindo volumeFilter
 }> = {
   'gaucho_unificado': { 
     displayName: 'Gaúcho Unificado',
     table: 'dialectal',
-    volumeFilter: 'I'
+    tipoDicionario: 'gaucho_unificado' // ✅ Agora usa tipo de dicionário ao invés de volume
   },
   'rocha_pombo': { 
     displayName: 'Rocha Pombo (ABL)',
     table: 'dialectal',
-    volumeFilter: 'II'
+    tipoDicionario: 'dialectal_II' // ✅ Volume II continua sendo dialectal_II
   },
   'gutenberg': { 
     displayName: 'Gutenberg',
@@ -68,6 +68,7 @@ export default function AdminDictionaryValidation() {
 
   // Buscar dados baseado na tabela configurada
   const { entries: dialectalEntries, isLoading: dialectalLoading, refetch: dialectalRefetch } = useDialectalLexicon({
+    tipo_dicionario: config?.tipoDicionario, // ✅ Usar tipo_dicionario ao invés de volumeFilter
     searchTerm: searchTerm || undefined,
   });
 
@@ -155,35 +156,30 @@ export default function AdminDictionaryValidation() {
     }
   }, [allEntries, config.table]);
 
-  // Filtrar por volume se aplicável
-  const volumeEntries = config.volumeFilter 
-    ? allEntries.filter((e: any) => e.volume_fonte === config.volumeFilter)
-    : allEntries;
-
-  // Aplicar filtros adicionais
-  const filteredEntries = volumeEntries.filter((entry: any) => {
+  // Aplicar filtros adicionais (filtro de tipo_dicionario já aplicado no hook)
+  const filteredEntries = allEntries.filter((entry: any) => {
     if (posFilter !== 'all' && entry.classe_gramatical !== posFilter) return false;
     if (validationFilter === 'validated' && (!entry.validation_status || entry.validation_status === 'pending')) return false;
     if (validationFilter === 'pending' && (entry.validation_status && entry.validation_status !== 'pending')) return false;
     return true;
   });
 
-  const validatedCount = volumeEntries.filter((e: any) => 
+  const validatedCount = allEntries.filter((e: any) => 
     e.validation_status && e.validation_status !== 'pending'
   ).length;
-  const pendingCount = volumeEntries.filter((e: any) => 
+  const pendingCount = allEntries.filter((e: any) => 
     !e.validation_status || e.validation_status === 'pending'
   ).length;
-  const validationRate = volumeEntries.length > 0 
-    ? ((validatedCount / volumeEntries.length) * 100).toFixed(2) 
+  const validationRate = allEntries.length > 0 
+    ? ((validatedCount / allEntries.length) * 100).toFixed(2) 
     : '0.00';
 
   // 📊 DEBUG: Log sample data to verify validation_status
   React.useEffect(() => {
-    if (volumeEntries.length > 0 && config.table === 'gutenberg') {
-      const sample = volumeEntries.slice(0, 5);
+    if (allEntries.length > 0 && config.table === 'gutenberg') {
+      const sample = allEntries.slice(0, 5);
       console.log('📊 AMOSTRA GUTENBERG:', {
-        total: volumeEntries.length,
+        total: allEntries.length,
         validatedCount,
         pendingCount,
         validationRate: `${validationRate}%`,
@@ -194,9 +190,9 @@ export default function AdminDictionaryValidation() {
         }))
       });
     }
-  }, [volumeEntries.length, validatedCount, config.table, validationRate]);
+  }, [allEntries.length, validatedCount, config.table, validationRate]);
 
-  const pendingHighConfidenceCount = volumeEntries.filter((e: any) => 
+  const pendingHighConfidenceCount = allEntries.filter((e: any) => 
     (!e.validation_status || e.validation_status === 'pending') &&
     (e.confianca_extracao || e.confianca || 0) >= 0.9
   ).length;
@@ -397,7 +393,7 @@ export default function AdminDictionaryValidation() {
                       {validatedCount.toLocaleString('pt-BR')}
                     </span>
                     <span className="text-lg text-muted-foreground">
-                      / {volumeEntries.length.toLocaleString('pt-BR')}
+                      / {allEntries.length.toLocaleString('pt-BR')}
                     </span>
                   </div>
                   <Progress value={parseFloat(validationRate)} className="h-2 bg-green-500/20" />

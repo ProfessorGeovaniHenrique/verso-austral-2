@@ -695,6 +695,7 @@ export type Database = {
           reviewed_by: string | null
           sinonimos: string[] | null
           termos_espanhol: string[] | null
+          tipo_dicionario: string | null
           validado_humanamente: boolean | null
           validation_notes: string | null
           validation_status: string | null
@@ -726,6 +727,7 @@ export type Database = {
           reviewed_by?: string | null
           sinonimos?: string[] | null
           termos_espanhol?: string[] | null
+          tipo_dicionario?: string | null
           validado_humanamente?: boolean | null
           validation_notes?: string | null
           validation_status?: string | null
@@ -757,6 +759,7 @@ export type Database = {
           reviewed_by?: string | null
           sinonimos?: string[] | null
           termos_espanhol?: string[] | null
+          tipo_dicionario?: string | null
           validado_humanamente?: boolean | null
           validation_notes?: string | null
           validation_status?: string | null

@@ -42,6 +42,7 @@ export interface DialectalEntry {
 }
 
 interface DialectalFilters {
+  tipo_dicionario?: string; // ✅ NOVO: Filtro por tipo de dicionário
   origem?: string;
   categoria?: string;
   searchTerm?: string;
@@ -56,6 +57,11 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
           .from('dialectal_lexicon')
           .select('*')
           .order('verbete', { ascending: true });
+
+        // ✅ NOVO: Filtrar por tipo de dicionário
+        if (filters?.tipo_dicionario) {
+          query = query.eq('tipo_dicionario', filters.tipo_dicionario);
+        }
 
         if (filters?.origem) {
           query = query.eq('origem_primaria', filters.origem);
