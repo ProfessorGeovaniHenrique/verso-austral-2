@@ -1,4 +1,4 @@
-// 🔥 DEPLOY TIMESTAMP: 2025-01-20T19:00:00Z - v5.2: Hybrid Strategy (Regex First, AI Fallback)
+// 🔥 DEPLOY TIMESTAMP: 2025-01-20T20:00:00Z - v6.0: Radical Simplification (No AI, No Complex Regex)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { withRetry } from '../_shared/retry.ts';
 
@@ -48,220 +48,59 @@ function normalizeText(text: string): string {
 }
 
 /**
- * 🆕 v5.2: Parsing com REGEX (fallback para IA)
- * Tenta extrair dados estruturados usando padrões regex
- * Retorna null se não conseguir extrair dados mínimos
+ * 🆕 v6.0: Parser RADICAL SIMPLES
+ * - Primeira linha: verbete + classe gramatical
+ * - Resto do bloco: definições
+ * - SEM IA, SEM REGEXES COMPLEXAS
  */
-function parseWithRegex(entryText: string): VerbeteGutenberg | null {
+function parseVerbeteSimples(blocoTexto: string): VerbeteGutenberg | null {
   try {
-    // Extrair verbete (primeira linha entre asteriscos)
-    const verbeteMatch = entryText.match(/\*([^*]+)\*/);
-    if (!verbeteMatch) return null;
+    const linhas = blocoTexto.trim().split('\n').filter(l => l.trim());
     
-    const verbete = verbeteMatch[1].trim();
-    if (!verbete || verbete.length < 2) return null;
-
-    // Extrair classe gramatical (padrão _texto._ ou _texto_)
-    const classMatches = entryText.match(/_([^_]+)_/g);
-    let classeGramatical: string | null = null;
+    if (linhas.length === 0) return null;
     
-    if (classMatches && classMatches.length > 0) {
-      // Pegar a primeira classe encontrada e limpar
-      classeGramatical = classMatches[0]
-        .replace(/_/g, '')
-        .replace(/\./g, '')
-        .trim();
+    // ============ PRIMEIRA LINHA: VERBETE + CLASSE ============
+    const primeiraLinha = linhas[0];
+    
+    // Regex simples: /^\*([^*]+)\*(?:,\s*(.*))?/
+    // Captura: *VERBETE*, CLASSE_GRAMATICAL (opcional)
+    const match = primeiraLinha.match(/^\*([^*]+)\*(?:,\s*(.*))?/);
+    
+    if (!match) {
+      return null;
     }
-
-    // Extrair definições (linhas que não são metadados)
-    const lines = entryText.split(/\r?\n/).filter(l => l.trim());
-    const definicoes: string[] = [];
     
-    for (const line of lines) {
-      const cleaned = line
-        .replace(/\*[^*]+\*/g, '') // Remove verbetes
-        .replace(/_[^_]+_/g, '')   // Remove itálicos
-        .replace(/\([^)]+\)/g, '') // Remove parênteses
-        .trim();
-      
-      if (cleaned.length > 10 && !cleaned.match(/^[A-Z\s]+$/)) {
-        definicoes.push(cleaned);
-      }
+    const verbete = match[1].trim();
+    const classeGramatical = match[2]?.trim() || undefined;
+    
+    if (!verbete || verbete.length < 2) {
+      return null;
     }
-
-    // Validar se temos dados mínimos
-    if (definicoes.length === 0) return null;
-
-    // Extrair exemplos (textos entre aspas)
-    const exemplosMatch = entryText.match(/"([^"]+)"/g);
-    const exemplos = exemplosMatch 
-      ? exemplosMatch.map(e => e.replace(/"/g, '').trim()).filter(e => e.length > 5)
-      : [];
-
-    // Tentar extrair etimologia (texto entre parênteses no final)
-    const etimologiaMatch = entryText.match(/\(([^)]+)\)[^(]*$/);
-    const etimologia = etimologiaMatch ? etimologiaMatch[1].trim() : null;
-
+    
+    // ============ RESTO DAS LINHAS: DEFINIÇÕES ============
+    const definicoes = linhas.slice(1) // Pula primeira linha
+      .filter(linha => linha.trim().length > 5) // Ignora linhas muito curtas
+      .map(linha => ({
+        texto: linha.trim()
+      }));
+    
+    // Validar se tem pelo menos 1 definição
+    if (definicoes.length === 0) {
+      return null;
+    }
+    
     return {
       verbete,
       verbete_normalizado: normalizeText(verbete),
-      classe_gramatical: classeGramatical || undefined,
-      definicoes: definicoes.slice(0, 3).map(texto => ({ texto })),
-      exemplos: exemplos.length > 0 ? exemplos : undefined,
-      etimologia: etimologia || undefined,
-      genero: undefined,
-      sinonimos: undefined,
-      antonimos: undefined,
-      derivados: undefined,
-      expressoes: undefined,
-      areas_conhecimento: undefined,
-      origem_lingua: undefined,
-      arcaico: false,
-      popular: false,
-      figurado: false,
-      regional: false,
-      confianca_extracao: 0.6 // Confiança média para regex
+      classe_gramatical: classeGramatical,
+      definicoes,
+      confianca_extracao: 0.95, // Alta confiança (formato esperado)
     };
+    
   } catch (error) {
-    console.warn(`⚠️ Regex parsing failed: ${error instanceof Error ? error.message : 'Unknown'}`);
+    console.error('❌ Erro ao parsear bloco:', error);
     return null;
   }
-}
-
-// ============= PARSING INTELIGENTE COM GEMINI FLASH =============
-
-async function parseWithGemini(entryText: string): Promise<VerbeteGutenberg | null> {
-  try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('❌ LOVABLE_API_KEY não configurada');
-      return null;
-    }
-
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        temperature: 0,
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um linguista especializado em dicionários antigos. Sua tarefa é extrair informações estruturadas de verbetes brutos do Dicionário Gutenberg. O formato é instável, então use seu julgamento para identificar o verbete principal, a classe gramatical (se houver) e todas as linhas que compõem a definição.'
-          },
-          {
-            role: 'user',
-            content: `Analise o seguinte verbete cru e retorne APENAS um objeto JSON no formato abaixo. Se não for um verbete válido, retorne null.
-
-Formato JSON desejado:
-{
-  "verbete": "string (sem asteriscos ou vírgulas)",
-  "classe_gramatical": "string ou null",
-  "definicoes": ["string", "string", ...]
-}
-
-Verbete Cru:
-"""
-${entryText}
-"""
-
-Retorne APENAS o JSON, sem texto adicional.`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        console.warn('⚠️ Rate limit atingido (429)');
-        throw new Error('RATE_LIMIT');
-      }
-      console.error(`❌ Gemini API error: ${response.status}`);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-    
-    if (!content) return null;
-
-    // Extrair JSON do conteúdo
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn('⚠️ Resposta sem JSON válido');
-      return null;
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-    
-    if (!parsed.verbete || typeof parsed.verbete !== 'string') {
-      return null;
-    }
-
-    const verbeteData: VerbeteGutenberg = {
-      verbete: parsed.verbete.trim(),
-      verbete_normalizado: normalizeText(parsed.verbete),
-      classe_gramatical: parsed.classe_gramatical || undefined,
-      definicoes: parsed.definicoes?.map((d: string) => ({ texto: d })) || undefined,
-      confianca_extracao: 0.98,
-    };
-
-    return verbeteData;
-    
-  } catch (error: any) {
-    if (error.message === 'RATE_LIMIT') {
-      throw error;
-    }
-    console.error('❌ Erro ao parsear com Gemini:', error.message);
-    return null;
-  }
-}
-
-async function parseWithGeminiRetry(entryText: string, maxRetries = 3): Promise<VerbeteGutenberg | null> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await parseWithGemini(entryText);
-    } catch (error: any) {
-      if (error.message === 'RATE_LIMIT') {
-        const delay = attempt * 5000; // 5s, 10s, 15s
-        if (attempt < maxRetries) {
-          console.warn(`⚠️ Rate limit - aguardando ${delay/1000}s (tentativa ${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          continue;
-        }
-      }
-      throw error;
-    }
-  }
-  return null;
-}
-
-async function processBatchWithConcurrency<T, R>(
-  items: T[],
-  processFn: (item: T) => Promise<R>,
-  concurrencyLimit: number = 5
-): Promise<R[]> {
-  const results: R[] = [];
-  
-  for (let i = 0; i < items.length; i += concurrencyLimit) {
-    const batch = items.slice(i, i + concurrencyLimit);
-    const batchResults = await Promise.all(
-      batch.map(item => processFn(item))
-    );
-    results.push(...batchResults);
-    
-    console.log(`   ✅ Processados ${Math.min(i + concurrencyLimit, items.length)}/${items.length} verbetes com IA`);
-    
-    // Pausa de 1s entre batches para evitar rate limiting
-    if (i + concurrencyLimit < items.length) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
-  }
-  
-  return results;
 }
 
 async function checkCancellation(jobId: string, supabaseClient: any): Promise<void> {
@@ -297,81 +136,26 @@ async function processChunk(
   supabaseClient: any
 ): Promise<void> {
   try {
-    console.log(`📦 Processando chunk: ${startIndex} a ${Math.min(startIndex + CHUNK_SIZE, verbetes.length)}`);
+    console.log(`\n📦 Processando chunk: ${startIndex} a ${Math.min(startIndex + CHUNK_SIZE, verbetes.length)}`);
     
     await checkCancellation(jobId, supabaseClient);
 
     const endIndex = Math.min(startIndex + CHUNK_SIZE, verbetes.length);
     const chunk = verbetes.slice(startIndex, endIndex);
 
-    let definicoesVazias = 0;
-
-    console.log(`\n🔄 ESTRATÉGIA HÍBRIDA v5.2`);
-    console.log(`   Fase 1: Parsing com REGEX (rápido)`);
-    console.log(`   Fase 2: IA apenas para falhas (1 chamada/8s)`);
+    // ✨ NOVO: Parser simples e direto
+    console.log(`🔄 v6.0: Parsing SIMPLES (sem IA, sem regex complexa)`);
+    console.log(`   Processando ${chunk.length} verbetes...`);
     
-    // ========== FASE 1: REGEX PARSING (RÁPIDO) ==========
-    console.log(`\n📊 Fase 1/2: Tentando regex em ${chunk.length} verbetes...`);
-    const regexResults = chunk.map(v => parseWithRegex(v));
-    const regexSuccess = regexResults.filter((v): v is VerbeteGutenberg => v !== null);
-    const regexFailedIndices = regexResults
-      .map((result, idx) => result === null ? idx : -1)
-      .filter(idx => idx !== -1);
-    
-    console.log(`✅ Regex extraiu ${regexSuccess.length}/${chunk.length} verbetes (${Math.round(regexSuccess.length/chunk.length*100)}%)`);
-    console.log(`⚠️  ${regexFailedIndices.length} verbetes precisam de IA`);
-
-    // ========== FASE 2: IA PARA FALHAS (LENTO MAS PRECISO) ==========
-    let aiParsed: VerbeteGutenberg[] = [];
-    
-    if (regexFailedIndices.length > 0) {
-      console.log(`\n🤖 Fase 2/2: Processando ${regexFailedIndices.length} verbetes com IA...`);
-      console.log(`   Taxa: 1 chamada a cada 8 segundos (rate limit safe)`);
-      console.log(`   Tempo estimado: ~${Math.ceil(regexFailedIndices.length * 8 / 60)} minutos`);
-      
-      for (let i = 0; i < regexFailedIndices.length; i++) {
-        const verbeteIdx = regexFailedIndices[i];
-        const verbete = chunk[verbeteIdx];
-        
-        try {
-          // Verificar cancelamento a cada 10 verbetes
-          if (i % 10 === 0) {
-            await checkCancellation(jobId, supabaseClient);
-          }
-          
-          const parsed = await parseWithGeminiRetry(verbete);
-          if (parsed) {
-            aiParsed.push(parsed);
-            if (!parsed.definicoes || parsed.definicoes.length === 0) {
-              definicoesVazias++;
-            }
-          }
-          
-          // Delay de 8s entre chamadas para respeitar rate limit
-          if (i < regexFailedIndices.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 8000));
-          }
-          
-          // Log de progresso a cada 5 verbetes
-          if ((i + 1) % 5 === 0 || i === regexFailedIndices.length - 1) {
-            console.log(`   IA: ${i + 1}/${regexFailedIndices.length} processados`);
-          }
-        } catch (error) {
-          console.error(`❌ Erro ao processar verbete ${verbeteIdx}:`, error);
-        }
-      }
-    }
-
-    // ========== COMBINAR RESULTADOS ==========
-    const validParsed = [...regexSuccess, ...aiParsed];
+    const parsedResults = chunk.map(v => parseVerbeteSimples(v));
+    const validParsed = parsedResults.filter((v): v is VerbeteGutenberg => v !== null);
     
     console.log(`\n📊 RESUMO DO CHUNK:`);
-    console.log(`   Total processado: ${chunk.length}`);
-    console.log(`   ✅ Regex: ${regexSuccess.length}`);
-    console.log(`   🤖 IA: ${aiParsed.length}`);
+    console.log(`   Total: ${chunk.length}`);
+    console.log(`   ✅ Válidos: ${validParsed.length} (${Math.round(validParsed.length/chunk.length*100)}%)`);
     console.log(`   ❌ Rejeitados: ${chunk.length - validParsed.length}`);
-    console.log(`   ⚠️  Definições vazias: ${definicoesVazias}`);
 
+    // Inserir no banco
     if (validParsed.length > 0) {
       await withRetry(
         async () => {
@@ -397,7 +181,7 @@ async function processChunk(
       })
       .eq('id', jobId);
 
-    console.log(`📊 Progresso: ${endIndex}/${verbetes.length} (${progressPercentage}%) - ${validParsed.length} inseridos`);
+    console.log(`📊 Progresso: ${endIndex}/${verbetes.length} (${progressPercentage}%)`);
 
     // Se ainda há verbetes, invocar próximo chunk
     if (endIndex < verbetes.length) {
@@ -480,7 +264,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 VERSÃO 5.2 - Hybrid Strategy (Regex First, AI Fallback)');
+    console.log('🚀 VERSÃO 6.0 - Radical Simplification');
+    console.log('   ✨ Split por linhas vazias');
+    console.log('   ✨ Filtro simples por asterisco');
+    console.log('   ✨ Parser de 2 linhas de código');
+    console.log('   ⚡ Execução em segundos (não minutos)');
     console.log(`📊 Request ID: ${requestId}`);
     
     const supabase = createClient(
@@ -498,229 +286,171 @@ Deno.serve(async (req) => {
 
     // ===== FLUXO DE CONTINUAÇÃO (Chunk subsequente) =====
     if (body.resumeJobId) {
-      const { resumeJobId, startIndex } = body;
+      console.log(`\n🔄 Continuando job existente: ${body.resumeJobId}`);
+      console.log(`   Retomando do índice: ${body.startIndex || 0}`);
       
-      if (typeof startIndex !== 'number') {
-        throw new Error('startIndex deve ser um número');
-      }
+      const jobId = body.resumeJobId;
+      const startIndex = body.startIndex || 0;
       
-      console.log(`🔄 Continuando job: ${resumeJobId}, startIndex: ${startIndex}`);
-
-      // Baixar verbetes do Storage
-      const { data: downloadData, error: downloadError } = await supabase.storage
+      // Carregar verbetes do Storage
+      const { data: fileData, error: downloadError } = await supabase.storage
         .from('corpus')
-        .download(`temp-imports/gutenberg-${resumeJobId}.json`);
+        .download(`temp-imports/gutenberg-${jobId}.json`);
 
-      if (downloadError || !downloadData) {
-        throw new Error(`Erro ao baixar arquivo temporário: ${downloadError?.message}`);
+      if (downloadError || !fileData) {
+        throw new Error(`Erro ao carregar arquivo: ${downloadError?.message || 'File not found'}`);
       }
 
-      const fileContent = await downloadData.text();
+      const fileContent = await fileData.text();
       const verbetes = JSON.parse(fileContent);
+      
+      console.log(`📋 Verbetes carregados do Storage: ${verbetes.length}`);
+      console.log(`🎯 Processando a partir do índice: ${startIndex}`);
 
-      console.log(`📚 Verbetes carregados do Storage: ${verbetes.length}`);
+      // Processar próximo chunk em background (sem await)
+      processChunk(jobId, verbetes, startIndex, supabase).catch(error => {
+        console.error('❌ Erro no processamento em background:', error);
+      });
 
-      // Processar chunk em background
-      processChunk(resumeJobId, verbetes, startIndex, supabase).catch(console.error);
+      const responseTime = Date.now() - startTime;
+      console.log(`\n${'='.repeat(70)}`);
+      console.log(`✅ RESPOSTA ENVIADA [${requestId}]`);
+      console.log(`   Status: 200 OK`);
+      console.log(`   Continuando processamento em background`);
+      console.log(`   Tempo de resposta: ${responseTime}ms`);
+      console.log(`${'='.repeat(70)}\n`);
 
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `Processando chunk ${startIndex}`,
-          chunk: startIndex 
+        JSON.stringify({
+          success: true,
+          message: 'Chunk em processamento',
+          jobId: jobId,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // ===== FLUXO INICIAL (Primeira invocação) =====
-    console.log('📥 Iniciando nova importação...');
-
-    // Tentar baixar de múltiplas URLs
-    let fileContent = '';
-    let usedUrl = '';
-
-    for (const url of DICTIONARY_URLS) {
-      console.log(`🌐 Tentando baixar de: ${url}`);
-      try {
-        const response = await fetch(url);
-        if (response.ok) {
-          fileContent = await response.text();
-          usedUrl = url;
-          console.log(`✅ Arquivo baixado com sucesso de: ${url}`);
-          console.log(`📄 Tamanho: ${fileContent.length} caracteres`);
-          break;
-        }
-      } catch (fetchError) {
-        console.warn(`⚠️ Erro ao baixar de ${url}:`, fetchError);
-      }
-    }
-
-    if (!fileContent) {
-      throw new Error('Nenhuma URL de dicionário disponível ou acessível');
-    }
-
-    // 🔍 DEBUG DETALHADO - CONTEÚDO BRUTO DO ARQUIVO
-    console.log("\n🔍 DEBUG - Início do arquivo (primeiros 1000 chars):");
-    console.log("═══════════════════════════════════════════════════════════");
-    console.log(fileContent.substring(0, 1000));
-    console.log("═══════════════════════════════════════════════════════════\n");
-
-    // Log das primeiras linhas para debug
-    const firstLines = fileContent.split('\n').slice(0, 10);
-    console.log('📝 Primeiras 10 linhas do arquivo:');
-    firstLines.forEach((line, idx) => console.log(`   ${idx + 1}: ${line.substring(0, 80)}`));
-
-    // Parse verbetes com estratégia CORRIGIDA
-    console.log('🔍 Aplicando estratégia de parsing corrigida...');
+    // ===== FLUXO DE INÍCIO (Nova importação) =====
+    console.log('\n🆕 Iniciando nova importação do Dicionário Gutenberg...');
+    console.log(`📥 Baixando dicionário de: ${DICTIONARY_URLS[0]}`);
     
-    // Remover cabeçalhos do Project Gutenberg se existirem
-    const startMarker = fileContent.indexOf('*** START');
-    const endMarker = fileContent.indexOf('*** END');
-    
-    let contentToParse = fileContent;
-    if (startMarker !== -1) {
-      const startPos = fileContent.indexOf('\n', startMarker) + 1;
-      contentToParse = endMarker !== -1 
-        ? fileContent.substring(startPos, endMarker)
-        : fileContent.substring(startPos);
-      console.log('✂️ Removido cabeçalho/rodapé do Project Gutenberg');
+    const response = await fetch(DICTIONARY_URLS[0]);
+    if (!response.ok) {
+      throw new Error(`Erro ao baixar dicionário: ${response.status}`);
     }
+    
+    const fileContent = await response.text();
+    console.log(`📄 Arquivo baixado: ${fileContent.length} caracteres`);
 
-    // Split por verbetes - REGEX CORRIGIDO: Quebra em \n seguido de *palavra*,
-    console.log('🔍 Aplicando split CORRIGIDO: /\\n(?=\\*[A-ZÁ-Ú][^*]*\\*,)/');
-    const verbetes = contentToParse
-      .split(/\n(?=\*[A-ZÁ-Ú][^*]*\*,)/)
-      .map(v => v.trim())
-      .filter(v => {
-        // Validar: Deve começar com *palavra*, e ter conteúdo
-        const match = v.match(/^\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+\*,/);
-        const isValid = match !== null && v.length > 10;
-        
-        if (!isValid && v.length > 0) {
-          console.log(`❌ [REJEITADO] "${v.substring(0, 50)}..."`);
-        }
-        
-        return isValid;
-      });
+    // ✨ NOVO: Split simples por linhas vazias
+    console.log('\n🔍 Aplicando split SIMPLES por linhas vazias...');
+    const blocosBrutos = fileContent.split(/\n\s*\n+/);
+    console.log(`📦 Total de blocos brutos encontrados: ${blocosBrutos.length}`);
 
-    // 🔍 DEBUG COMPLETO - RESULTADO DO SPLIT
-    console.log(`\n🔍 DEBUG - Total de verbetes após split: ${verbetes.length}`);
-    console.log("\n🔍 DEBUG - Primeiros 5 verbetes COMPLETOS para inspeção:\n");
-    verbetes.slice(0, 5).forEach((v, i) => {
-      console.log(`╔════════════════════════════════════════════════════════════╗`);
-      console.log(`║ VERBETE ${i + 1} (primeiros 300 chars)                          ║`);
-      console.log(`╠════════════════════════════════════════════════════════════╣`);
-      console.log(v.substring(0, 300));
-      console.log(`╚════════════════════════════════════════════════════════════╝\n`);
+    // ✨ NOVO: Filtrar apenas blocos que começam com *
+    const verbetesValidos = blocosBrutos.filter(bloco => {
+      const primeiraLinha = bloco.trim().split('\n')[0];
+      return primeiraLinha && primeiraLinha.startsWith('*');
     });
 
-    console.log(`\n📚 Total de verbetes identificados: ${verbetes.length}`);
-    console.log(`📊 Estatísticas de Split:`);
-    console.log(`   - Linhas totais: ${fileContent.split('\n').length}`);
-    console.log(`   - Verbetes válidos (padrão *palavra*,): ${verbetes.length}`);
-    console.log(`   - Média de caracteres por verbete: ${Math.round(contentToParse.length / verbetes.length)}`);
-    console.log(`   - Blocos rejeitados no filter: ${contentToParse.split(/(?=\n\*[A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+\*,)/).length - verbetes.length}`);
+    console.log(`✅ Verbetes válidos (começam com *): ${verbetesValidos.length}`);
+    console.log(`❌ Blocos rejeitados: ${blocosBrutos.length - verbetesValidos.length}`);
 
-    if (verbetes.length === 0) {
-      console.error('❌ Nenhum verbete válido encontrado!');
-      console.log('📄 Amostra do conteúdo (primeiros 500 chars):');
-      console.log(contentToParse.substring(0, 500));
-      throw new Error('Nenhum verbete válido encontrado no arquivo. Verifique o formato.');
-    }
-
-    // Criar job
+    // Criar job de importação
     const { data: job, error: jobError } = await supabase
       .from('dictionary_import_jobs')
       .insert({
         tipo_dicionario: 'gutenberg',
         status: 'processando',
-        total_verbetes: verbetes.length,
+        total_verbetes: verbetesValidos.length,
         verbetes_processados: 0,
         verbetes_inseridos: 0,
         progresso: 0,
-        metadata: { 
-          source_url: usedUrl,
-          chunk_size: CHUNK_SIZE,
-          total_chunks: Math.ceil(verbetes.length / CHUNK_SIZE)
-        },
         tempo_inicio: new Date().toISOString(),
+        metadata: {
+          blocos_totais: blocosBrutos.length,
+          blocos_rejeitados: blocosBrutos.length - verbetesValidos.length,
+          versao: 'v6.0-radical-simplification',
+          estrategia: 'split-linhas-vazias + filtro-asterisco + parser-simples'
+        }
       })
       .select()
       .single();
 
     if (jobError || !job) {
-      console.error('❌ Erro ao criar job:', jobError);
-      throw new Error(`Erro ao criar job: ${jobError?.message}`);
+      throw new Error(`Erro ao criar job: ${jobError?.message || 'Unknown error'}`);
     }
 
-    console.log(`✅ Job criado: ${job.id}`);
+    const jobId = job.id;
+    console.log(`✅ Job criado: ${jobId}`);
 
-    // Salvar verbetes no Storage para uso nos próximos chunks
+    // Salvar verbetes no Storage para processamento em chunks
+    const storageKey = `temp-imports/gutenberg-${jobId}.json`;
     const { error: uploadError } = await supabase.storage
       .from('corpus')
-      .upload(
-        `temp-imports/gutenberg-${job.id}.json`,
-        JSON.stringify(verbetes),
-        {
-          contentType: 'application/json',
-          upsert: true,
-        }
-      );
+      .upload(storageKey, JSON.stringify(verbetesValidos), {
+        contentType: 'application/json',
+        upsert: true
+      });
 
     if (uploadError) {
-      console.error('❌ Erro ao salvar no Storage:', uploadError);
-      throw new Error(`Erro ao salvar arquivo temporário: ${uploadError.message}`);
+      throw new Error(`Erro ao salvar no Storage: ${uploadError.message}`);
     }
 
-    console.log(`💾 Verbetes salvos no Storage: temp-imports/gutenberg-${job.id}.json`);
+    console.log(`💾 Verbetes salvos no Storage: ${storageKey}`);
 
-    // Processar primeiro chunk em background
+    // Iniciar processamento do primeiro chunk em background
     console.log('🚀 Iniciando processamento do primeiro chunk em background...');
-    processChunk(job.id, verbetes, 0, supabase).catch(console.error);
+    console.log(`📦 Processando chunk: 0 a ${Math.min(CHUNK_SIZE, verbetesValidos.length)}`);
+    
+    // Processar primeiro chunk em background (sem await)
+    processChunk(jobId, verbetesValidos, 0, supabase).catch(error => {
+      console.error('❌ Erro no processamento em background:', error);
+    });
 
     const responseTime = Date.now() - startTime;
     console.log(`\n${'='.repeat(70)}`);
     console.log(`✅ RESPOSTA ENVIADA [${requestId}]`);
     console.log(`   Status: 200 OK`);
+    console.log(`   Job ID: ${jobId}`);
+    console.log(`   Total verbetes: ${verbetesValidos.length}`);
     console.log(`   Tempo de resposta: ${responseTime}ms`);
-    console.log(`   Job ID: ${job.id}`);
-    console.log(`   Total verbetes: ${verbetes.length}`);
     console.log(`${'='.repeat(70)}\n`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        jobId: job.id,
-        totalVerbetes: verbetes.length,
-        totalChunks: Math.ceil(verbetes.length / CHUNK_SIZE),
-        message: `Importação iniciada com ${verbetes.length} verbetes`,
-        requestId,
-        responseTime: `${responseTime}ms`,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
-  } catch (error: any) {
-    const responseTime = Date.now() - startTime;
-    console.error(`\n${'='.repeat(70)}`);
-    console.error(`❌ ERRO FATAL [${requestId}]`);
-    console.error(`   Tempo até erro: ${responseTime}ms`);
-    console.error(`   Erro: ${error.message}`);
-    console.error(`   Stack: ${error.stack}`);
-    console.error(`${'='.repeat(70)}\n`);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message,
-        stack: error.stack,
-        requestId,
-        responseTime: `${responseTime}ms`,
+        message: 'Importação iniciada com sucesso',
+        jobId: jobId,
+        totalVerbetes: verbetesValidos.length,
+        metadata: {
+          blocos_totais: blocosBrutos.length,
+          blocos_rejeitados: blocosBrutos.length - verbetesValidos.length,
+          taxa_rejeicao: `${Math.round((blocosBrutos.length - verbetesValidos.length) / blocosBrutos.length * 100)}%`
+        }
       }),
       { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 200
+      }
+    );
+  } catch (error: any) {
+    const responseTime = Date.now() - startTime;
+    console.error(`\n❌ ERRO FATAL [${requestId}]:`);
+    console.error(`   Mensagem: ${error.message}`);
+    console.error(`   Stack: ${error.stack}`);
+    console.error(`   Tempo até falha: ${responseTime}ms`);
+    console.error(`${'='.repeat(70)}\n`);
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        stack: error.stack,
+      }),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 500
       }
     );
   }
