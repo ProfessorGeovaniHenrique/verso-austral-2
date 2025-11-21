@@ -1039,6 +1039,7 @@ export type Database = {
           failed_requests: number | null
           function_name: string
           id: string
+          labels: Json | null
           max_response_time_ms: number | null
           min_response_time_ms: number | null
           p50_response_time_ms: number | null
@@ -1062,6 +1063,7 @@ export type Database = {
           failed_requests?: number | null
           function_name: string
           id?: string
+          labels?: Json | null
           max_response_time_ms?: number | null
           min_response_time_ms?: number | null
           p50_response_time_ms?: number | null
@@ -1085,6 +1087,7 @@ export type Database = {
           failed_requests?: number | null
           function_name?: string
           id?: string
+          labels?: Json | null
           max_response_time_ms?: number | null
           min_response_time_ms?: number | null
           p50_response_time_ms?: number | null
