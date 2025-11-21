@@ -1,194 +1,82 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { ProcessingProvider, useProcessing } from '@/contexts/ProcessingContext';
 import { BatchProcessingProvider } from '@/contexts/BatchProcessingContext';
 import { ResultsProvider } from '@/contexts/ResultsContext';
-import { WorkflowProvider, useWorkflow, WorkflowStep } from '@/contexts/WorkflowContext';
+import { WorkflowProvider } from '@/contexts/WorkflowContext';
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { 
-  FileUpload, 
-  ColumnMapper, 
-  ProcessingPipeline, 
-  DraggableQueueTable,
-  EnrichmentProgress,
-  EnrichedDataTable,
-  WorkflowTabs,
-  ActionButtons,
-  ProcessingControl,
-  ProcessingProgress,
-  ProcessingLog,
-  TitleExtractionResults,
-  ValidationTable,
-  ErrorLog
-} from '@/components/music';
+import { EmptyStateMusicEnrichment } from '@/components/music/EmptyStateMusicEnrichment';
+import { MusicAnalysisResult } from '@/components/music/MusicAnalysisResult';
+import { MusicUploadDialog } from '@/components/music/MusicUploadDialog';
 
 function MusicEnrichmentContent() {
-  const { uploadFile, uploadState, progress, error, parsedData, fileName } = useProcessing();
-  const { currentStep, completedSteps, goToStep, completeStep, canProceed, saveProgress } = useWorkflow();
+  const { uploadFile, uploadState, progress, error, parsedData, fileName, resetProcessing } = useProcessing();
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const navigate = useNavigate();
 
   const handleFileSelect = useCallback(async (file: File) => {
     try {
       await uploadFile(file);
+      setShowUploadDialog(false);
+      toast.success(`Arquivo processado com sucesso!`);
     } catch (err) {
       toast.error('Erro ao processar arquivo');
     }
   }, [uploadFile]);
 
-  useEffect(() => {
-    if (uploadState === 'complete' && parsedData.length > 0 && !completedSteps.includes('upload')) {
-      completeStep('upload');
-      if (fileName) {
-        saveProgress({ uploadedFileName: fileName });
-      }
-      toast.success(`${parsedData.length} músicas encontradas!`);
-    }
-  }, [uploadState, parsedData, completedSteps, completeStep, saveProgress, fileName]);
+  const handleCancel = useCallback(() => {
+    resetProcessing();
+    setShowUploadDialog(false);
+    toast.info('Operação cancelada');
+  }, [resetProcessing]);
 
-  const handleNext = useCallback(() => {
-    if (!canProceed) {
-      toast.error('Complete o passo atual antes de continuar');
-      return;
-    }
-    
-    const stepOrder: WorkflowStep[] = ['upload', 'mapping', 'processing', 'enrichment', 'results'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    const nextStep = stepOrder[currentIndex + 1];
-    
-    if (nextStep) {
-      goToStep(nextStep);
-    }
-  }, [canProceed, currentStep, goToStep]);
+  const handleImport = useCallback(() => {
+    toast.success(`${parsedData.length} músicas importadas com sucesso!`);
+    navigate('/music-catalog');
+  }, [parsedData.length, navigate]);
 
-  const handleBack = useCallback(() => {
-    const stepOrder: WorkflowStep[] = ['upload', 'mapping', 'processing', 'enrichment', 'results'];
-    const currentIndex = stepOrder.indexOf(currentStep);
-    
-    if (currentIndex > 0) {
-      goToStep(stepOrder[currentIndex - 1]);
-    }
-  }, [currentStep, goToStep]);
+  // Estado: Análise completa (arquivo processado)
+  if (uploadState === 'complete' && parsedData.length > 0) {
+    return (
+      <MusicAnalysisResult
+        fileName={fileName || 'arquivo.xlsx'}
+        totalSongs={parsedData.length}
+        previewData={parsedData}
+        onCancel={handleCancel}
+        onImport={handleImport}
+      />
+    );
+  }
 
+  // Estado: Processando
+  if (uploadState === 'uploading' || uploadState === 'processing') {
+    return (
+      <MusicUploadDialog
+        open={true}
+        onOpenChange={() => {}}
+        onFileSelect={handleFileSelect}
+        isUploading={true}
+        progress={progress}
+        error={error}
+      />
+    );
+  }
+
+  // Estado: Vazio (idle ou error)
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Enriquecimento de Metadados Musicais</h1>
-        <p className="text-muted-foreground">
-          Sistema completo de processamento e enriquecimento de dados musicais
-        </p>
-      </div>
-
-      <ProcessingPipeline 
-        currentStep={currentStep} 
-        completedSteps={completedSteps}
-        onStepClick={goToStep}
+    <>
+      <EmptyStateMusicEnrichment 
+        onImportClick={() => setShowUploadDialog(true)}
       />
-
-      <WorkflowTabs 
-        currentStep={currentStep}
-        completedSteps={completedSteps}
-        onStepChange={goToStep}
+      <MusicUploadDialog
+        open={showUploadDialog}
+        onOpenChange={setShowUploadDialog}
+        onFileSelect={handleFileSelect}
+        isUploading={false}
+        progress={progress}
+        error={error}
       />
-
-      <div className="min-h-[500px]">
-        {currentStep === 'upload' && (
-          <div className="space-y-4">
-            <FileUpload 
-              onFileSelect={handleFileSelect}
-              isUploading={uploadState === 'uploading'}
-              progress={progress}
-              error={error}
-            />
-          </div>
-        )}
-
-        {currentStep === 'mapping' && (
-          <div className="space-y-4">
-            <ColumnMapper 
-              detectedColumns={[]}
-              onMappingComplete={() => {}}
-              previewData={[]}
-            />
-          </div>
-        )}
-
-        {currentStep === 'processing' && (
-          <div className="space-y-4">
-            <TitleExtractionResults results={{
-              totalSongs: 0,
-              uniqueArtists: 0,
-              duplicatesRemoved: 0,
-              artists: []
-            }} />
-            <ValidationTable 
-              entries={[]}
-              onEdit={() => {}}
-              onRemove={() => {}}
-              onAutoFix={() => {}}
-            />
-            <ProcessingControl 
-              isProcessing={false}
-              isPaused={false}
-              onStart={() => {}}
-              onPause={() => {}}
-              onResume={() => {}}
-              onCancel={() => {}}
-            />
-            <ProcessingProgress 
-              current={0}
-              total={100}
-              startTime={new Date()}
-              status="idle"
-            />
-            <ProcessingLog entries={[]} />
-          </div>
-        )}
-
-        {currentStep === 'enrichment' && (
-          <div className="space-y-4">
-            <DraggableQueueTable 
-              queue={[]}
-              onReorder={() => {}}
-              onRemove={() => {}}
-              onRetry={() => {}}
-            />
-            <EnrichmentProgress 
-              completed={0}
-              total={0}
-              averageConfidence={0}
-              successRate={0}
-              apis={{
-                youtube: false,
-                gemini: false,
-                perplexity: false
-              }}
-            />
-            <ErrorLog 
-              errors={[]}
-              onRetry={() => {}}
-              onRetryAll={() => {}}
-            />
-          </div>
-        )}
-
-        {currentStep === 'results' && (
-          <div className="space-y-4">
-            <EnrichedDataTable 
-              songs={[]}
-              onExport={() => {}}
-            />
-          </div>
-        )}
-      </div>
-
-      <ActionButtons 
-        currentStep={currentStep}
-        onNext={handleNext}
-        onBack={handleBack}
-        onCancel={() => {}}
-        onExport={() => {}}
-        onReset={() => {}}
-        isProcessing={uploadState === 'uploading' || uploadState === 'processing'}
-      />
-    </div>
+    </>
   );
 }
 

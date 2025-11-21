@@ -38,3 +38,6 @@ export { ProcessingDashboard } from './ProcessingDashboard';
 
 export { WorkflowTabs } from './WorkflowTabs';
 export { ActionButtons } from './ActionButtons';
+export { EmptyStateMusicEnrichment } from './EmptyStateMusicEnrichment';
+export { MusicAnalysisResult } from './MusicAnalysisResult';
+export { MusicUploadDialog } from './MusicUploadDialog';
