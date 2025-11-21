@@ -1158,6 +1158,51 @@ export type Database = {
         }
         Relationships: []
       }
+      gemini_cache: {
+        Row: {
+          artist: string
+          cache_key: string
+          composer: string | null
+          confidence: string | null
+          created_at: string | null
+          expires_at: string | null
+          hits_count: number | null
+          id: string
+          last_hit_at: string | null
+          release_year: string | null
+          title: string
+          tokens_used: number | null
+        }
+        Insert: {
+          artist: string
+          cache_key: string
+          composer?: string | null
+          confidence?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          hits_count?: number | null
+          id?: string
+          last_hit_at?: string | null
+          release_year?: string | null
+          title: string
+          tokens_used?: number | null
+        }
+        Update: {
+          artist?: string
+          cache_key?: string
+          composer?: string | null
+          confidence?: string | null
+          created_at?: string | null
+          expires_at?: string | null
+          hits_count?: number | null
+          id?: string
+          last_hit_at?: string | null
+          release_year?: string | null
+          title?: string
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null
@@ -2116,6 +2161,7 @@ export type Database = {
           success: boolean
         }[]
       }
+      clean_expired_gemini_cache: { Args: never; Returns: undefined }
       clean_expired_health_checks: { Args: never; Returns: undefined }
       clean_old_system_logs: { Args: never; Returns: undefined }
       generate_invite_key: { Args: never; Returns: string }

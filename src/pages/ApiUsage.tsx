@@ -52,6 +52,16 @@ export default function ApiUsage() {
   const outputCost = (totalOutputTokens / 1_000_000) * PRICE_PER_M_OUTPUT;
   const totalCost = inputCost + outputCost;
 
+  // Calcular economia com cache
+  const cacheHits = usageData?.filter(u => u.request_type === 'enrich_song_cache_hit').length || 0;
+  const apiCalls = usageData?.filter(u => u.request_type === 'enrich_song').length || 0;
+  const cacheHitRate = totalCalls > 0 ? ((cacheHits / totalCalls) * 100).toFixed(1) : 0;
+  
+  // Estimativa de tokens economizados (média de ~150 tokens por chamada)
+  const avgTokensPerCall = apiCalls > 0 ? totalTokens / apiCalls : 150;
+  const tokensSaved = cacheHits * avgTokensPerCall;
+  const costSaved = (tokensSaved / 1_000_000) * ((PRICE_PER_M_INPUT + PRICE_PER_M_OUTPUT) / 2);
+
   // Dados por dia (últimos 7 dias)
   const last7Days = Array.from({ length: 7 }, (_, i) => {
     const date = startOfDay(subDays(new Date(), 6 - i));
@@ -103,7 +113,7 @@ export default function ApiUsage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <StatsCard
           title="Total de Chamadas"
           value={totalCalls.toLocaleString()}
@@ -111,16 +121,23 @@ export default function ApiUsage() {
           subtitle={`${successRate}% sucesso`}
         />
         <StatsCard
+          title="Cache Hit Rate"
+          value={`${cacheHitRate}%`}
+          icon={TrendingUp}
+          subtitle={`${cacheHits} hits de ${totalCalls} chamadas`}
+          trend={{ value: Number(cacheHitRate), isPositive: Number(cacheHitRate) > 50 }}
+        />
+        <StatsCard
           title="Tokens Consumidos"
           value={(totalTokens / 1000).toFixed(1) + "K"}
           icon={TrendingUp}
-          subtitle={`${(totalInputTokens / 1000).toFixed(1)}K input / ${(totalOutputTokens / 1000).toFixed(1)}K output`}
+          subtitle={`${(tokensSaved / 1000).toFixed(1)}K economizados`}
         />
         <StatsCard
-          title="Custo Estimado"
+          title="Custo Real"
           value={`$${totalCost.toFixed(4)}`}
           icon={DollarSign}
-          subtitle={`$${inputCost.toFixed(4)} input + $${outputCost.toFixed(4)} output`}
+          subtitle={`$${costSaved.toFixed(4)} economizado`}
         />
         <StatsCard
           title="Falhas"
