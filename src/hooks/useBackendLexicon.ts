@@ -12,11 +12,12 @@ export interface LexiconEntry {
   prosody: number;
   confianca: number;
   validado: boolean;
+  validado_humanamente?: boolean;
+  validation_status?: string;
   fonte: string | null;
   contexto_exemplo: string | null;
   criado_em: string;
   atualizado_em: string;
-  // Campos opcionais para Gutenberg e Dialectal
   definicoes?: Array<{ texto: string }>;
   classe_gramatical?: string;
   verbete?: string;
@@ -96,12 +97,12 @@ export function useBackendLexicon(filters?: Filters) {
           tagset_codigo: entry.classe_gramatical || 'unknown',
           prosody: 0,
           confianca: entry.confianca_extracao || 0,
-          validado: entry.validado || entry.validado_humanamente || false,
+          validado: entry.validado || false,
+          validation_status: entry.validation_status,
           fonte: 'gutenberg',
           contexto_exemplo: entry.definicoes?.[0]?.texto || null,
           criado_em: entry.criado_em,
           atualizado_em: entry.atualizado_em,
-          // Campos específicos do Gutenberg
           definicoes: entry.definicoes || [],
           classe_gramatical: entry.classe_gramatical,
           verbete: entry.verbete,
@@ -111,13 +112,15 @@ export function useBackendLexicon(filters?: Filters) {
       }
 
       // Para semantic_lexicon e dialectal_lexicon
-      return (data || []).map((entry: any) => ({
-        ...entry,
-        definicoes: entry.definicoes || [],
-        classe_gramatical: entry.classe_gramatical,
-        verbete: entry.verbete,
-        volume_fonte: entry.volume_fonte,
-      })) as LexiconEntry[];
+    return (data || []).map((entry: any) => ({
+      ...entry,
+      validado_humanamente: entry.validado_humanamente,
+      validation_status: entry.validation_status,
+      definicoes: entry.definicoes || [],
+      classe_gramatical: entry.classe_gramatical,
+      verbete: entry.verbete,
+      volume_fonte: entry.volume_fonte,
+    })) as LexiconEntry[];
     },
     staleTime: 24 * 60 * 60 * 1000, // 24 horas
     gcTime: 48 * 60 * 60 * 1000, // 48 horas

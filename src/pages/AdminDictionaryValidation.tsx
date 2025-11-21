@@ -161,20 +161,23 @@ export default function AdminDictionaryValidation() {
   // Aplicar filtros adicionais
   const filteredEntries = volumeEntries.filter((entry: any) => {
     if (posFilter !== 'all' && entry.classe_gramatical !== posFilter) return false;
-    if (validationFilter === 'validated' && !entry.validado_humanamente && !entry.validado) return false;
-    if (validationFilter === 'pending' && (entry.validado_humanamente || entry.validado)) return false;
+    if (validationFilter === 'validated' && (!entry.validation_status || entry.validation_status === 'pending')) return false;
+    if (validationFilter === 'pending' && (entry.validation_status && entry.validation_status !== 'pending')) return false;
     return true;
   });
 
-  const validatedCount = volumeEntries.filter((e: any) => e.validado_humanamente || e.validado).length;
-  const pendingCount = volumeEntries.length - validatedCount;
+  const validatedCount = volumeEntries.filter((e: any) => 
+    e.validation_status && e.validation_status !== 'pending'
+  ).length;
+  const pendingCount = volumeEntries.filter((e: any) => 
+    !e.validation_status || e.validation_status === 'pending'
+  ).length;
   const validationRate = volumeEntries.length > 0 
     ? ((validatedCount / volumeEntries.length) * 100).toFixed(2) 
     : '0.00';
 
   const pendingHighConfidenceCount = volumeEntries.filter((e: any) => 
-    !e.validado_humanamente && 
-    !e.validado && 
+    (!e.validation_status || e.validation_status === 'pending') &&
     (e.confianca_extracao || e.confianca || 0) >= 0.9
   ).length;
 
@@ -211,9 +214,21 @@ export default function AdminDictionaryValidation() {
   const handleApprove = async (id: string) => {
     try {
       const tableName = config.table === 'dialectal' ? 'dialectal_lexicon' : 'gutenberg_lexicon';
+      
+      const updates: any = {
+        validation_status: 'approved',
+        reviewed_at: new Date().toISOString(),
+      };
+      
+      if (config.table === 'dialectal') {
+        updates.validado_humanamente = true;
+      } else {
+        updates.validado = true;
+      }
+      
       await supabase
         .from(tableName)
-        .update({ validado_humanamente: true })
+        .update(updates)
         .eq('id', id);
       
       toast.success('Verbete aprovado com sucesso');
@@ -227,12 +242,22 @@ export default function AdminDictionaryValidation() {
   const handleReject = async (id: string) => {
     try {
       const tableName = config.table === 'dialectal' ? 'dialectal_lexicon' : 'gutenberg_lexicon';
+      
+      const updates: any = {
+        validation_status: 'rejected',
+        reviewed_at: new Date().toISOString(),
+        validation_notes: 'Rejeitado durante revisão manual'
+      };
+      
+      if (config.table === 'dialectal') {
+        updates.validado_humanamente = false;
+      } else {
+        updates.validado = false;
+      }
+      
       await supabase
         .from(tableName)
-        .update({ 
-          validado_humanamente: false,
-          validation_status: 'rejected' 
-        })
+        .update(updates)
         .eq('id', id);
       
       toast.success('Verbete rejeitado');
