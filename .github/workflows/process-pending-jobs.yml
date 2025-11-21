@@ -3,8 +3,9 @@ name: process-pending-jobs
 
 on:
   schedule:
-    - cron: '*/5 * * * *' # every 5 minutes (reduced from 1m to prevent race conditions)
+    - cron: '*/5 * * * *'  # mudou de '*/1' para '*/5' para reduzir risco de race conditions
   workflow_dispatch:
+# ... restante do workflow permanece igual ...
 
 jobs:
   invoke:
