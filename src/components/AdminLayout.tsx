@@ -14,13 +14,13 @@ export default function AdminLayout() {
           
           <div className="flex-1 flex flex-col">
             <div className="border-b bg-background sticky top-[88px] z-40">
-              <div className="container mx-auto px-6 py-6 flex items-center gap-4">
+              <div className="container mx-auto px-6 py-4 flex items-center gap-4">
                 <SidebarTrigger className="-ml-2" title="Alternar Sidebar (Ctrl+B / Cmd+B)" />
                 <DynamicBreadcrumb />
               </div>
             </div>
             
-            <main className="flex-1 container mx-auto px-6 py-8">
+            <main className="flex-1 container mx-auto px-6 pt-12 pb-8">
               <Outlet />
             </main>
           </div>
