@@ -56,7 +56,7 @@ const Header = () => {
             className="h-full w-auto object-contain"
           />
         </div>
-        <div className="h-20 w-auto logo-animated">
+        <div className="h-24 w-auto logo-animated mx-auto">
           <img 
             src={logoVersoAustral} 
             alt="VersoAustral - Análise de Estilística de Corpus" 
