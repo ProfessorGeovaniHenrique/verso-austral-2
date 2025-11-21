@@ -12,7 +12,7 @@ export interface DialectalEntry {
   classe_gramatical: string | null;
   marcacao_temporal: string | null;
   frequencia_uso: string;
-  marcadores_uso: string[] | null; // ✅ FASE 2: Novo campo
+  marcadores_uso: string[] | null;
   definicoes: Array<{
     numero: number;
     texto: string;
@@ -37,6 +37,12 @@ export interface DialectalEntry {
   pagina_fonte: number | null;
   confianca_extracao: number;
   validado_humanamente: boolean;
+  // ✅ FASE 1: Campos de validação
+  validation_status?: string;
+  reviewed_at?: string;
+  reviewed_by?: string;
+  manually_edited?: boolean;
+  validation_notes?: string;
   criado_em: string;
   atualizado_em: string;
 }
@@ -91,11 +97,11 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
         }
       });
     },
-    // ✅ CACHE TTL: Atualiza após validações em lote
-    staleTime: 5 * 60 * 1000, // 5 minutos (permite updates frequentes)
+    // ✅ FASE 3: Cache otimizado para atualizações rápidas
+    staleTime: 30 * 1000, // 30 segundos (atualização mais rápida)
     gcTime: 30 * 60 * 1000, // 30 minutos
-    refetchOnWindowFocus: false,
-    refetchOnMount: true, // ✅ Recarrega quando componente monta após invalidação
+    refetchOnWindowFocus: true, // ✅ Refetch ao voltar para aba
+    refetchOnMount: true,
   });
 
   const stats = {

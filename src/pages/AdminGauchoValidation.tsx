@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
@@ -21,7 +22,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { LexiconEntry } from '@/hooks/useBackendLexicon';
 
+// ✅ FASE 2: Função unificada para determinar se verbete está validado
+const isEntryValidated = (entry: any): boolean => {
+  return entry.validado_humanamente === true || entry.validation_status === 'approved';
+};
+
 export default function AdminGauchoValidation() {
+  const queryClient = useQueryClient();
   const [posFilter, setPosFilter] = useState<string>('all');
   const [validationFilter, setValidationFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -43,35 +50,25 @@ export default function AdminGauchoValidation() {
 
   const allEntries = dialectalEntries;
 
-  // Reset de paginação ao mudar filtros
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [posFilter, validationFilter, searchTerm]);
-
-  // Filtros
+  // ✅ FASE 2: Filtros com lógica unificada
   const filteredEntries = allEntries.filter((entry: any) => {
     if (posFilter !== 'all' && entry.classe_gramatical !== posFilter) return false;
     
-    const isValidated = entry.validado_humanamente || entry.validation_status === 'approved';
-    if (validationFilter === 'validated' && !isValidated) return false;
-    if (validationFilter === 'pending' && isValidated) return false;
+    if (validationFilter === 'validated' && !isEntryValidated(entry)) return false;
+    if (validationFilter === 'pending' && isEntryValidated(entry)) return false;
     
     return true;
   });
 
-  // Stats
-  const validatedCount = allEntries.filter((e: any) => 
-    e.validation_status && e.validation_status !== 'pending'
-  ).length;
-  const pendingCount = allEntries.filter((e: any) => 
-    !e.validation_status || e.validation_status === 'pending'
-  ).length;
+  // ✅ FASE 2: Estatísticas com lógica unificada
+  const validatedCount = allEntries.filter(isEntryValidated).length;
+  const pendingCount = allEntries.filter(e => !isEntryValidated(e)).length;
   const validationRate = allEntries.length > 0 
     ? ((validatedCount / allEntries.length) * 100).toFixed(2) 
     : '0.00';
 
   const pendingHighConfidenceCount = allEntries.filter((e: any) => 
-    (!e.validation_status || e.validation_status === 'pending') &&
+    !isEntryValidated(e) &&
     (e.confianca_extracao || 0) >= 0.9
   ).length;
 
@@ -82,6 +79,24 @@ export default function AdminGauchoValidation() {
     currentPage * ITEMS_PER_PAGE
   );
 
+  // Reset de paginação ao mudar filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [posFilter, validationFilter, searchTerm]);
+
+  // ✅ FASE 5: Debug logs para validação
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('📊 [Validação Debug]', {
+        totalCarregado: allEntries.length,
+        validados: allEntries.filter(isEntryValidated).length,
+        pendentes: allEntries.filter(e => !isEntryValidated(e)).length,
+        filtrados: filteredEntries.length,
+        paginados: paginatedEntries.length,
+        filtroAtual: { posFilter, validationFilter, searchTerm }
+      });
+    }
+  }, [allEntries, filteredEntries, paginatedEntries, posFilter, validationFilter, searchTerm]);
 
   // Handlers
   const handleValidate = (entry: any) => {
@@ -130,7 +145,10 @@ export default function AdminGauchoValidation() {
       
       toast.success('Verbete aprovado com sucesso');
       setSelectedEntryId(null);
-      refetch();
+      
+      // ✅ FASE 4: Invalidação agressiva antes de refetch
+      await queryClient.invalidateQueries({ queryKey: ['dialectal-lexicon'] });
+      await refetch();
     } catch (error: any) {
       toast.error(`Erro ao aprovar: ${error.message}`);
     }
@@ -150,7 +168,10 @@ export default function AdminGauchoValidation() {
       
       toast.success('Verbete rejeitado');
       setSelectedEntryId(null);
-      refetch();
+      
+      // ✅ FASE 4: Invalidação agressiva antes de refetch
+      await queryClient.invalidateQueries({ queryKey: ['dialectal-lexicon'] });
+      await refetch();
     } catch (error: any) {
       toast.error(`Erro ao rejeitar: ${error.message}`);
     }
@@ -416,23 +437,20 @@ export default function AdminGauchoValidation() {
             </CardHeader>
             <CardContent>
               {filteredEntries.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <AlertCircle className="h-16 w-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg">Nenhum verbete encontrado com os filtros selecionados.</p>
+                <div className="text-center py-12">
+                  <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">Nenhum verbete encontrado com os filtros atuais</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {paginatedEntries.map((entry: any) => (
-                    <div
-                      key={entry.id}
-                      onClick={() => setSelectedEntryId(entry.id)}
-                    >
+                    <div key={entry.id} onClick={() => setSelectedEntryId(entry.id)}>
                       <VerbeteCard
-                        entry={entry as LexiconEntry}
-                        onApprove={handleApprove}
-                        onReject={handleReject}
-                        onEdit={handleEdit}
+                        entry={entry}
                         isSelected={selectedEntryId === entry.id}
+                        onEdit={() => handleEdit(entry)}
+                        onApprove={() => handleApprove(entry.id)}
+                        onReject={() => handleReject(entry.id)}
                       />
                     </div>
                   ))}
@@ -456,9 +474,9 @@ export default function AdminGauchoValidation() {
       {/* Modal de Validação de Anotações */}
       {selectedEntry && (
         <ValidationInterface
-          entry={selectedEntry}
           open={validationOpen}
           onOpenChange={setValidationOpen}
+          entry={selectedEntry}
           onSuccess={handleValidationSuccess}
         />
       )}
@@ -466,17 +484,17 @@ export default function AdminGauchoValidation() {
       {/* Modal de Edição de Verbete */}
       {editingEntry && (
         <EditVerbeteDialog
-          entry={editingEntry}
           open={editDialogOpen}
           onOpenChange={setEditDialogOpen}
+          entry={editingEntry}
           onSuccess={handleEditSuccess}
         />
       )}
 
-      {/* Modal de Atalhos de Teclado */}
-      <KeyboardShortcutsHelper 
-        open={showShortcuts} 
-        onOpenChange={setShowShortcuts} 
+      {/* Modal de Atalhos */}
+      <KeyboardShortcutsHelper
+        open={showShortcuts}
+        onOpenChange={setShowShortcuts}
       />
 
       <MVPFooter />
