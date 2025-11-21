@@ -29,20 +29,24 @@ const DICTIONARY_CONFIG: Record<string, {
   displayName: string; 
   table: 'dialectal' | 'gutenberg' | 'synonyms'; 
   tipoDicionario?: string;
+  edgeFunctionType: 'dialectal' | 'gutenberg' | 'rochaPombo' | 'unesp';
 }> = {
   'gaucho_unificado': { 
     displayName: 'Gaúcho Unificado',
     table: 'dialectal',
-    tipoDicionario: 'gaucho_unificado'
+    tipoDicionario: 'gaucho_unificado',
+    edgeFunctionType: 'dialectal'
   },
   'rocha_pombo': { 
     displayName: 'Rocha Pombo (ABL)',
     table: 'synonyms',
-    tipoDicionario: 'rocha_pombo'
+    tipoDicionario: 'rocha_pombo',
+    edgeFunctionType: 'rochaPombo'
   },
   'gutenberg': { 
     displayName: 'Gutenberg',
-    table: 'gutenberg'
+    table: 'gutenberg',
+    edgeFunctionType: 'gutenberg'
   },
 };
 
@@ -518,7 +522,7 @@ export default function AdminDictionaryValidation() {
                 
                 <BatchValidationDialog 
                   batchSize={pendingHighConfidenceCount} 
-                  dictionaryType={config.table}
+                  dictionaryType={config.edgeFunctionType}
                   onSuccess={handleValidationSuccess}
                   trigger={
                     <Button size="lg" className="w-full gap-2">

@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
         validationCriteria = {
           validado_humanamente: false,
           confianca_extracao: { gte: 0.90 },
-          fonte: 'houaiss'
+          fonte: 'rocha_pombo'
         };
         break;
       
@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
       .limit(batchSize);
 
     if (dictionaryType === 'rochaPombo') {
-      query = query.eq('fonte', 'houaiss').eq('validado_humanamente', false);
+      query = query.eq('fonte', 'rocha_pombo').eq('validado_humanamente', false);
     } else if (dictionaryType === 'dialectal') {
       query = query.eq('validado_humanamente', false);
     } else {
