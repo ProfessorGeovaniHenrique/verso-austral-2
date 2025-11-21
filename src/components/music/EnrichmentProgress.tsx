@@ -15,7 +15,6 @@ interface EnrichmentProgressProps {
   apis: {
     youtube: boolean;
     gemini: boolean;
-    perplexity: boolean;
   };
 }
 
@@ -35,11 +34,10 @@ export function EnrichmentProgress({
     return 'text-destructive';
   };
 
-  const getApiIcon = (api: 'youtube' | 'gemini' | 'perplexity') => {
+  const getApiIcon = (api: 'youtube' | 'gemini') => {
     const icons = {
       youtube: Youtube,
       gemini: Sparkles,
-      perplexity: Search,
     };
     const Icon = icons[api];
     const isActive = apis[api];
@@ -115,10 +113,6 @@ export function EnrichmentProgress({
               <div className="flex items-center gap-2">
                 {getApiIcon('gemini')}
                 <span className="text-sm">Gemini</span>
-              </div>
-              <div className="flex items-center gap-2">
-                {getApiIcon('perplexity')}
-                <span className="text-sm">Perplexity</span>
               </div>
             </div>
           </div>

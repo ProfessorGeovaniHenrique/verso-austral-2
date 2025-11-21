@@ -330,59 +330,7 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
       }
     }
 
-    // 3. Perplexity API - Validate and complement
-    const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
-    if (perplexityApiKey && confidenceScore < 70) {
-      try {
-        console.log(`[enrich-music-data] Querying Perplexity for validation`);
-        const perplexityResponse = await fetch(
-          'https://api.perplexity.ai/chat/completions',
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${perplexityApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'llama-3.1-sonar-small-128k-online',
-              messages: [
-                {
-                  role: 'user',
-                  content: `Who composed "${song.title}" by ${artistName}? What year was it released? Answer concisely.`,
-                },
-              ],
-              max_tokens: 150,
-            }),
-          }
-        );
-
-        if (perplexityResponse.ok) {
-          const perplexityData = await perplexityResponse.json();
-          const answer = perplexityData.choices?.[0]?.message?.content || '';
-          
-          // Simple parsing for composer and year
-          if (!enrichedData.composer && answer.toLowerCase().includes('composed by')) {
-            const composerMatch = answer.match(/composed by ([A-Za-zÀ-ú\s]+)/i);
-            if (composerMatch) {
-              enrichedData.composer = composerMatch[1].trim();
-              confidenceScore += 10;
-            }
-          }
-          
-          if (!enrichedData.releaseYear) {
-            const yearMatch = answer.match(/\b(19|20)\d{2}\b/);
-            if (yearMatch) {
-              enrichedData.releaseYear = yearMatch[0];
-              confidenceScore += 10;
-            }
-          }
-          
-          sources.push('perplexity');
-        }
-      } catch (error) {
-        console.error('[enrich-music-data] Perplexity API error:', error);
-      }
-    }
+    // Perplexity removido - usando apenas Gemini para todas as validações
 
     // Cap confidence score at 100
     confidenceScore = Math.min(confidenceScore, 100);

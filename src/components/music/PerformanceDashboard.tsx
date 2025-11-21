@@ -9,7 +9,6 @@ interface PerformanceDashboardProps {
   apiUsageStats: {
     youtube: number;
     gemini: number;
-    perplexity: number;
   };
   processingHistory: Array<{
     timestamp: string;
@@ -24,7 +23,7 @@ export function PerformanceDashboard({
   apiUsageStats,
   processingHistory,
 }: PerformanceDashboardProps) {
-  const totalAPICalls = apiUsageStats.youtube + apiUsageStats.gemini + apiUsageStats.perplexity;
+  const totalAPICalls = apiUsageStats.youtube + apiUsageStats.gemini;
 
   const formatTime = (seconds: number) => {
     if (seconds < 60) return `${Math.round(seconds)}s`;
@@ -80,7 +79,6 @@ export function PerformanceDashboard({
               const labels: Record<string, string> = {
                 youtube: 'YouTube Data API',
                 gemini: 'Google Gemini',
-                perplexity: 'Perplexity AI',
               };
               
               return (
