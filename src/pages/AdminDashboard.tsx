@@ -38,7 +38,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Copy, Check, Calendar, Users, Key, CheckCircle, Sparkles, Database as DatabaseIcon, FileText, BarChart3, Settings, UserCog } from "lucide-react";
+import { Plus, Copy, Check, Calendar, Users, Key, CheckCircle, Database as DatabaseIcon, FileText, BarChart3, Settings, UserCog } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -188,37 +188,6 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Card 
-                className="hover:shadow-lg transition-all cursor-pointer hover:border-purple-500/50" 
-                onClick={() => navigate('/admin/metadata-enrichment')}
-              >
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Sparkles className="h-5 w-5 text-purple-500" />
-                    Enriquecimento de Metadados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Sistema semi-automatizado para enriquecer corpus com dados de compositores
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <DatabaseIcon className="h-3 w-3" />
-                      <span>MusicBrainz API + Lovable AI</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Check className="h-3 w-3" />
-                      <span>Validação humana integrada</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <FileText className="h-3 w-3" />
-                      <span>Exportação e aplicação automatizada</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card 
                 className="hover:shadow-lg transition-all cursor-pointer hover:border-blue-500/50" 
                 onClick={() => navigate('/admin/users')}

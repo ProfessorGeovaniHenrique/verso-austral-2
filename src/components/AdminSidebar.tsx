@@ -1,5 +1,5 @@
 import { 
-  Key, Users, BarChart3, Database, Sparkles,
+  Key, Users, BarChart3, Database,
   BookOpen, Telescope, History, CircuitBoard, Activity, Upload
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
@@ -26,7 +26,6 @@ const adminItems: NavItem[] = [
   { title: "Gerenciar Usuários", url: "/admin/users", icon: Users },
   { title: "Métricas do Sistema", url: "/admin/metrics", icon: BarChart3 },
   { title: "Configuração de Léxico", url: "/admin/lexicon-setup", icon: Database },
-  { title: "Enriquecimento de Metadados", url: "/admin/metadata-enrichment", icon: Sparkles },
 ];
 
 const devItems: NavItem[] = [

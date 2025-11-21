@@ -31,7 +31,6 @@ import AdminUsers from "./pages/AdminUsers";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
-import AdminMetadataEnrichment from "./pages/AdminMetadataEnrichment";
 import DeveloperHistory from "./pages/DeveloperHistory";
 import AdminMetricsRealtime from "./pages/AdminMetricsRealtime";
 import NotFound from "./pages/NotFound";
@@ -166,14 +165,6 @@ const RouterContent = () => {
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminEdgeFunctions />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin/metadata-enrichment" 
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminMetadataEnrichment />
               </ProtectedRoute>
             } 
           />

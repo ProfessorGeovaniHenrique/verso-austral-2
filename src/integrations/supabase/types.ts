@@ -641,36 +641,6 @@ export type Database = {
         }
         Relationships: []
       }
-      corpus_metadata_versions: {
-        Row: {
-          applied_by: string | null
-          content_snapshot: string
-          corpus_type: string
-          created_at: string | null
-          id: string
-          metadata_count: number
-          version_number: number
-        }
-        Insert: {
-          applied_by?: string | null
-          content_snapshot: string
-          corpus_type: string
-          created_at?: string | null
-          id?: string
-          metadata_count: number
-          version_number: number
-        }
-        Update: {
-          applied_by?: string | null
-          content_snapshot?: string
-          corpus_type?: string
-          created_at?: string | null
-          id?: string
-          metadata_count?: number
-          version_number?: number
-        }
-        Relationships: []
-      }
       dev_history_overrides: {
         Row: {
           active: boolean | null
@@ -1107,126 +1077,6 @@ export type Database = {
         }
         Relationships: []
       }
-      enrichment_jobs: {
-        Row: {
-          auto_validated: number | null
-          backup_url: string | null
-          completed_at: string | null
-          corpus_type: string
-          created_at: string | null
-          errors: string[] | null
-          id: string
-          metadata: Json | null
-          needs_review: number | null
-          processed_songs: number | null
-          review_csv_url: string | null
-          started_at: string | null
-          status: string
-          total_songs: number | null
-          updated_at: string | null
-          updated_corpus_url: string | null
-          user_id: string | null
-        }
-        Insert: {
-          auto_validated?: number | null
-          backup_url?: string | null
-          completed_at?: string | null
-          corpus_type: string
-          created_at?: string | null
-          errors?: string[] | null
-          id?: string
-          metadata?: Json | null
-          needs_review?: number | null
-          processed_songs?: number | null
-          review_csv_url?: string | null
-          started_at?: string | null
-          status?: string
-          total_songs?: number | null
-          updated_at?: string | null
-          updated_corpus_url?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          auto_validated?: number | null
-          backup_url?: string | null
-          completed_at?: string | null
-          corpus_type?: string
-          created_at?: string | null
-          errors?: string[] | null
-          id?: string
-          metadata?: Json | null
-          needs_review?: number | null
-          processed_songs?: number | null
-          review_csv_url?: string | null
-          started_at?: string | null
-          status?: string
-          total_songs?: number | null
-          updated_at?: string | null
-          updated_corpus_url?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-      enrichment_sessions: {
-        Row: {
-          completed_at: string | null
-          compressed_data: string
-          corpus_type: string
-          created_at: string
-          id: string
-          last_saved_at: string
-          metadata: Json | null
-          processed_songs: number
-          progress_percentage: number | null
-          rejected_songs: number
-          schema_version: number
-          session_name: string | null
-          started_at: string
-          total_songs: number
-          updated_at: string
-          user_id: string
-          validated_songs: number
-        }
-        Insert: {
-          completed_at?: string | null
-          compressed_data: string
-          corpus_type: string
-          created_at?: string
-          id?: string
-          last_saved_at?: string
-          metadata?: Json | null
-          processed_songs?: number
-          progress_percentage?: number | null
-          rejected_songs?: number
-          schema_version?: number
-          session_name?: string | null
-          started_at?: string
-          total_songs?: number
-          updated_at?: string
-          user_id: string
-          validated_songs?: number
-        }
-        Update: {
-          completed_at?: string | null
-          compressed_data?: string
-          corpus_type?: string
-          created_at?: string
-          id?: string
-          last_saved_at?: string
-          metadata?: Json | null
-          processed_songs?: number
-          progress_percentage?: number | null
-          rejected_songs?: number
-          schema_version?: number
-          session_name?: string | null
-          started_at?: string
-          total_songs?: number
-          updated_at?: string
-          user_id?: string
-          validated_songs?: number
-        }
-        Relationships: []
-      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null
@@ -1553,44 +1403,6 @@ export type Database = {
           status?: string
         }
         Relationships: []
-      }
-      metadata_application_history: {
-        Row: {
-          application_source: string
-          applied_by: string | null
-          backup_version_id: string | null
-          corpus_type: string
-          created_at: string | null
-          id: string
-          songs_updated: number
-        }
-        Insert: {
-          application_source: string
-          applied_by?: string | null
-          backup_version_id?: string | null
-          corpus_type: string
-          created_at?: string | null
-          id?: string
-          songs_updated: number
-        }
-        Update: {
-          application_source?: string
-          applied_by?: string | null
-          backup_version_id?: string | null
-          corpus_type?: string
-          created_at?: string | null
-          id?: string
-          songs_updated?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "metadata_application_history_backup_version_id_fkey"
-            columns: ["backup_version_id"]
-            isOneToOne: false
-            referencedRelation: "corpus_metadata_versions"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       metric_alerts: {
         Row: {
