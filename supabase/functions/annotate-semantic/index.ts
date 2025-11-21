@@ -379,6 +379,17 @@ function validateRequest(data: any): AnnotationRequest {
 }
 
 serve(async (req) => {
+  // Health check endpoint - verifica query parameter
+  const url = new URL(req.url);
+  if (req.method === 'GET' && url.searchParams.get('health') === 'true') {
+    const { createHealthCheck } = await import('../_shared/health-check.ts');
+    const health = await createHealthCheck('annotate-semantic', '1.0.0');
+    return new Response(JSON.stringify(health), {
+      status: health.status === 'healthy' ? 200 : 503,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

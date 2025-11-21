@@ -37,8 +37,9 @@ interface AIRefinedSuggestion {
 }
 
 serve(withInstrumentation('refine-tagset-suggestions', async (req) => {
-  // Health check endpoint
-  if (req.method === 'GET' && new URL(req.url).pathname.endsWith('/health')) {
+  // Health check endpoint - verifica query parameter
+  const url = new URL(req.url);
+  if (req.method === 'GET' && url.searchParams.get('health') === 'true') {
     const health = await createHealthCheck('refine-tagset-suggestions', '1.0.0');
     return new Response(JSON.stringify(health), {
       status: health.status === 'healthy' ? 200 : 503,
