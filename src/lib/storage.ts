@@ -8,7 +8,7 @@ export interface UploadResult {
 export async function uploadFile(
   file: File,
   path: string,
-  bucket: string = 'corpus'
+  bucket: string = 'music_corpus'
 ): Promise<UploadResult> {
   const { data, error } = await supabase.storage
     .from(bucket)
@@ -23,7 +23,7 @@ export async function uploadFile(
   return { path: data.path, publicUrl };
 }
 
-export function getPublicUrl(path: string, bucket: string = 'corpus'): string {
+export function getPublicUrl(path: string, bucket: string = 'music_corpus'): string {
   const { data } = supabase.storage
     .from(bucket)
     .getPublicUrl(path);
@@ -31,7 +31,7 @@ export function getPublicUrl(path: string, bucket: string = 'corpus'): string {
   return data.publicUrl;
 }
 
-export async function deleteFile(path: string, bucket: string = 'corpus'): Promise<void> {
+export async function deleteFile(path: string, bucket: string = 'music_corpus'): Promise<void> {
   const { error } = await supabase.storage
     .from(bucket)
     .remove([path]);
@@ -39,7 +39,7 @@ export async function deleteFile(path: string, bucket: string = 'corpus'): Promi
   if (error) throw error;
 }
 
-export async function listFiles(path: string = '', bucket: string = 'corpus') {
+export async function listFiles(path: string = '', bucket: string = 'music_corpus') {
   const { data, error } = await supabase.storage
     .from(bucket)
     .list(path);
