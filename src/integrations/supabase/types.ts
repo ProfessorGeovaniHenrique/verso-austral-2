@@ -2066,6 +2066,7 @@ export type Database = {
         Args: { _feature_name: string; _user_id: string }
         Returns: undefined
       }
+      truncate_gutenberg_table: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "evaluator" | "user"

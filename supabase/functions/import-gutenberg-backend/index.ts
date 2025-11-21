@@ -45,11 +45,37 @@ async function processChunk(
 
     console.log(`🔄 Inserindo ${chunk.length} verbetes...`);
     
-    const { error } = await supabaseClient
+    // Inserir chunk no banco com validação
+    const { data: insertedData, error, count } = await supabaseClient
       .from('gutenberg_lexicon')
-      .insert(chunk);
-    
-    if (error) throw error;
+      .insert(chunk)
+      .select('id', { count: 'exact' });
+
+    if (error) {
+      console.error(`❌ ERRO DE INSERÇÃO NO CHUNK ${startIndex}:`, error);
+      throw error;
+    }
+
+    const insertedCount = count || insertedData?.length || 0;
+    if (insertedCount !== chunk.length) {
+      const warning = `⚠️ AVISO: Esperava inserir ${chunk.length} verbetes, mas apenas ${insertedCount} foram inseridos`;
+      console.warn(warning);
+      
+      await supabaseClient.from('system_logs').insert({
+        level: 'warn',
+        category: 'dictionary_import',
+        message: warning,
+        metadata: { 
+          jobId, 
+          startIndex, 
+          expected: chunk.length, 
+          actual: insertedCount,
+          difference: chunk.length - insertedCount
+        }
+      });
+    }
+
+    console.log(`✅ ${insertedCount} verbetes inseridos com sucesso no chunk ${startIndex}-${endIndex}`);
 
     // Atualizar progresso
     const progressPercentage = Math.round((endIndex / verbetes.length) * 100);
@@ -81,16 +107,51 @@ async function processChunk(
         throw invokeError;
       }
     } else {
-      // Concluir e limpar
+      // Verificação final da importação
       console.log('✅ Todos os chunks processados! Finalizando...');
       
+      const { count: finalCount } = await supabaseClient
+        .from('gutenberg_lexicon')
+        .select('*', { count: 'exact', head: true });
+
+      console.log(`🎯 VERIFICAÇÃO FINAL:`);
+      console.log(`   Verbetes esperados: ${verbetes.length}`);
+      console.log(`   Verbetes no banco: ${finalCount}`);
+      console.log(`   Taxa de sucesso: ${((finalCount! / verbetes.length) * 100).toFixed(2)}%`);
+
+      if (finalCount !== verbetes.length) {
+        const warning = `⚠️ DISCREPÂNCIA DETECTADA! Esperava ${verbetes.length}, mas banco tem ${finalCount}`;
+        console.warn(warning);
+        
+        await supabaseClient.from('system_logs').insert({
+          level: 'warn',
+          category: 'dictionary_import_verification',
+          message: warning,
+          metadata: {
+            jobId,
+            expected: verbetes.length,
+            actual: finalCount,
+            missing: verbetes.length - (finalCount || 0)
+          }
+        });
+      }
+
+      // Finalizar job com contagem real do banco
       await supabaseClient
         .from('dictionary_import_jobs')
         .update({
-          status: 'concluido',
+          status: finalCount === verbetes.length ? 'concluido' : 'concluido_com_avisos',
+          verbetes_inseridos: finalCount || 0,
           tempo_fim: new Date().toISOString(),
           progresso: 100,
           atualizado_em: new Date().toISOString(),
+          metadata: {
+            verification: {
+              expected: verbetes.length,
+              actual: finalCount,
+              success_rate: ((finalCount || 0) / verbetes.length) * 100
+            }
+          }
         })
         .eq('id', jobId);
 
@@ -108,15 +169,39 @@ async function processChunk(
       console.log(`✅ IMPORTAÇÃO COMPLETA! Total de verbetes processados: ${verbetes.length}`);
     }
   } catch (error: any) {
-    console.error('❌ Erro ao processar chunk:', error);
+    console.error('❌ ERRO CRÍTICO ao processar chunk:', error);
+    console.error('Stack trace:', error.stack);
+    console.error('Detalhes:', JSON.stringify(error, null, 2));
+    
+    // Logar no banco também
+    await supabaseClient.from('system_logs').insert({
+      level: 'error',
+      category: 'dictionary_import_fatal',
+      message: `Falha crítica no chunk ${startIndex}`,
+      metadata: {
+        jobId,
+        startIndex,
+        endIndex: Math.min(startIndex + CHUNK_SIZE, verbetes.length),
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      }
+    });
     
     await supabaseClient
       .from('dictionary_import_jobs')
       .update({
         status: 'erro',
-        erro_mensagem: `Erro no chunk ${startIndex}: ${error.message}`,
+        erro_mensagem: `Erro no chunk ${startIndex}-${Math.min(startIndex + CHUNK_SIZE, verbetes.length)}: ${error.message}`,
         tempo_fim: new Date().toISOString(),
         atualizado_em: new Date().toISOString(),
+        metadata: {
+          error_details: {
+            message: error.message,
+            stack: error.stack,
+            chunk_range: [startIndex, Math.min(startIndex + CHUNK_SIZE, verbetes.length)]
+          }
+        }
       })
       .eq('id', jobId);
 
@@ -234,17 +319,33 @@ Deno.serve(async (req) => {
     console.log(`📊 Total de linhas no CSV: ${rows.length}`);
 
     // 🧹 TRUNCATE: Limpar tabela antes de importar
-    console.log('🧹 Limpando tabela gutenberg_lexicon...');
-    const { error: truncateError } = await supabase
+    console.log('🧹 Fazendo TRUNCATE completo de gutenberg_lexicon...');
+
+    // Contar registros ANTES
+    const { count: countBefore } = await supabase
       .from('gutenberg_lexicon')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000');
+      .select('*', { count: 'exact', head: true });
+
+    console.log(`📊 Registros ANTES da limpeza: ${countBefore || 0}`);
+
+    // Usar função SQL para TRUNCATE (mais eficiente)
+    const { error: truncateError } = await supabase.rpc('truncate_gutenberg_table');
 
     if (truncateError) {
-      console.error('⚠️ Erro ao limpar tabela:', truncateError);
-      throw new Error(`Erro ao limpar tabela: ${truncateError.message}`);
+      console.error('❌ Erro no TRUNCATE:', truncateError);
+      throw truncateError;
     }
-    console.log('✅ Tabela limpa com sucesso');
+
+    // Verificar se realmente limpou
+    const { count: countAfter } = await supabase
+      .from('gutenberg_lexicon')
+      .select('*', { count: 'exact', head: true });
+
+    if (countAfter !== 0) {
+      throw new Error(`TRUNCATE falhou! Ainda existem ${countAfter} registros`);
+    }
+
+    console.log('✅ Tabela completamente limpa e pronta para importação');
 
     // Converter para formato do banco
     const verbetesValidos: VerbeteGutenberg[] = rows
