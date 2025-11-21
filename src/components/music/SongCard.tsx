@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube, Play, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -193,10 +194,10 @@ export function SongCard({
 
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isCompact ? 'mb-2' : ''}`}>
-      <CardContent className={`flex flex-row ${isCompact ? 'p-3 gap-3' : 'p-0'}`}>
+      <CardContent className={`flex flex-row ${isCompact ? 'p-4 gap-4' : 'p-0'}`}>
         {/* Thumbnail (Esquerda) */}
         <div 
-          className={`${isCompact ? 'w-16 h-16' : 'w-24 h-24 md:w-32 md:h-32'} flex-shrink-0 bg-muted flex items-center justify-center relative overflow-hidden group ${!isCompact && videoId ? 'cursor-pointer' : ''}`}
+          className={`${isCompact ? 'w-24 h-24' : 'w-24 h-24 md:w-32 md:h-32'} flex-shrink-0 bg-muted flex items-center justify-center relative overflow-hidden rounded-lg group ${!isCompact && videoId ? 'cursor-pointer' : ''}`}
           onClick={() => !isCompact && videoId && setShowVideoPlayer(!showVideoPlayer)}
         >
           {thumbnailUrl ? (
@@ -334,15 +335,26 @@ export function SongCard({
           
           {/* Metadados */}
           {isCompact ? (
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {song.composer && (
-                <span className="truncate">Compositor: {song.composer}</span>
-              )}
-              {releaseYear && releaseYear !== '0000' && (
-                <span>Ano: {releaseYear}</span>
-              )}
-              {confidence > 0 && (
-                <span>Conf: {(confidence * 100).toFixed(0)}%</span>
+            <div className="space-y-1">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                {song.composer && (
+                  <span className="truncate">Compositor: {song.composer}</span>
+                )}
+                {releaseYear && releaseYear !== '0000' && (
+                  <div className="flex items-center gap-1">
+                    <span>Ano: {releaseYear}</span>
+                    {song.status === 'enriched' && (
+                      <Badge variant="success" className="text-[10px] h-4 px-1">✓</Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              {(song.enrichment_source || confidence > 0) && (
+                <p className="text-[11px] text-muted-foreground">
+                  {song.enrichment_source && <span>Fonte: {song.enrichment_source}</span>}
+                  {song.enrichment_source && confidence > 0 && <span> | </span>}
+                  {confidence > 0 && <span>Confiança: {(confidence * 100).toFixed(0)}%</span>}
+                </p>
               )}
             </div>
           ) : (
@@ -394,29 +406,31 @@ export function SongCard({
 
           {/* Letra Colapsável */}
           {song.lyrics && (
-            <Collapsible open={isLyricsOpen} onOpenChange={setIsLyricsOpen}>
+            <Collapsible open={isLyricsOpen} onOpenChange={setIsLyricsOpen} className="mt-2">
               <CollapsibleTrigger asChild>
                 <Button 
-                  variant="ghost" 
+                  variant="outline" 
                   size="sm" 
-                  className="w-full justify-between hover:bg-muted/50"
+                  className="w-full justify-between text-xs h-8 bg-muted/20 hover:bg-muted/40 border-muted"
                 >
-                  <span className="text-xs font-medium">
-                    {isLyricsOpen ? 'Ocultar' : 'Ver'} Letra
+                  <span className="font-medium">
+                    {isLyricsOpen ? 'Ocultar Letra' : 'Ver Letra'}
                   </span>
                   {isLyricsOpen ? (
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-3 h-3" />
                   ) : (
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-3 h-3" />
                   )}
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="pt-2">
-                <div className="bg-muted/30 rounded-lg p-3 max-h-60 overflow-y-auto">
-                  <pre className="text-xs whitespace-pre-wrap font-sans leading-relaxed text-foreground">
-                    {song.lyrics}
-                  </pre>
-                </div>
+              <CollapsibleContent className="mt-2">
+                <ScrollArea className="h-48 w-full rounded-md border border-muted bg-muted/20">
+                  <div className="p-4">
+                    <pre className="text-xs whitespace-pre-wrap font-sans leading-relaxed text-foreground">
+                      {song.lyrics}
+                    </pre>
+                  </div>
+                </ScrollArea>
               </CollapsibleContent>
             </Collapsible>
           )}
