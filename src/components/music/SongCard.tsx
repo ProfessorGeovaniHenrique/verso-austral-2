@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube } from 'lucide-react';
+import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube, Play, X } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -37,7 +38,28 @@ interface SongCardProps {
   isEnriching?: boolean;
 }
 
+// Função auxiliar para extrair Video ID da URL do YouTube
+const extractYoutubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  
+  // Suporta formatos: youtube.com/watch?v=ID, youtu.be/ID, youtube.com/embed/ID
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([^&]+)/,
+    /(?:youtu\.be\/)([^?]+)/,
+    /(?:youtube\.com\/embed\/)([^?]+)/
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match && match[1]) return match[1];
+  }
+  
+  return null;
+};
+
 export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkReviewed, onDelete, isEnriching }: SongCardProps) {
+  const [showVideoPlayer, setShowVideoPlayer] = useState(false);
+  const videoId = song.youtubeUrl ? extractYoutubeVideoId(song.youtubeUrl) : null;
   const getStatusBadge = (status?: string) => {
     if (!status) return null;
     
@@ -207,25 +229,44 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
                 {song.corpusName}
               </Badge>
             )}
-            {song.youtubeUrl && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-6 px-2 text-xs border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
-                      onClick={() => window.open(song.youtubeUrl!, '_blank', 'noopener,noreferrer')}
-                    >
-                      <Youtube className="w-3 h-3 mr-1" />
-                      YouTube
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Assistir vídeo no YouTube</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+            {song.youtubeUrl && videoId && (
+              <div className="flex gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`h-6 px-2 text-xs border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600 ${showVideoPlayer ? 'bg-red-50' : ''}`}
+                        onClick={() => setShowVideoPlayer(!showVideoPlayer)}
+                      >
+                        {showVideoPlayer ? <X className="w-3 h-3 mr-1" /> : <Play className="w-3 h-3 mr-1" />}
+                        {showVideoPlayer ? 'Fechar' : 'Play'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{showVideoPlayer ? 'Fechar player' : 'Assistir no card'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-6 px-2 text-xs border-red-500 text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => window.open(song.youtubeUrl!, '_blank', 'noopener,noreferrer')}
+                      >
+                        <Youtube className="w-3 h-3" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Abrir no YouTube</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             )}
             {song.album && (
               <span className="line-clamp-1" title={song.album}>📀 {song.album}</span>
@@ -237,6 +278,23 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
               </Badge>
             )}
           </div>
+
+          {/* YouTube Player Embed */}
+          {showVideoPlayer && videoId && (
+            <div className="w-full aspect-video mt-4 rounded-lg overflow-hidden bg-black animate-fade-in">
+              <iframe
+                width="100%"
+                height="100%"
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=0&rel=0`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+                className="w-full h-full"
+              />
+            </div>
+          )}
         </div>
       </CardContent>
 
