@@ -47,6 +47,7 @@ function MusicEnrichmentContent() {
           artista: song.artista!,
           compositor: song.compositor,
           ano: song.ano,
+          letra: song.letra,  // ✅ FASE 0: Incluir letra no fluxo de importação
           album: undefined,
           genero: undefined
         })),

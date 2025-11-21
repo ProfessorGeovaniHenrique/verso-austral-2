@@ -1,49 +1,117 @@
-export type MusicStatus =
-  | 'uploaded'
-  | 'processed'
-  | 'ready_for_enrichment'
-  | 'enriching'
-  | 'enriched'
-  | 'validating'
-  | 'validated'
-  | 'rejected';
+/**
+ * Tipos unificados para o sistema de música
+ * FASE 0: Substituição de todas as interfaces duplicadas
+ */
 
-export interface ProcessedMusicData {
-  nome_musica: string;
-  autor: string;
-  letra: string;
-}
-
-export interface EnrichedMusicData {
+// ===== DADOS PARSEADOS DE PLANILHAS =====
+export interface ParsedMusicData {
+  titulo: string;
+  artista: string;
   compositor?: string;
-  ano_lancamento?: number;
+  ano?: string;
+  letra?: string;
   album?: string;
   genero?: string;
-  gravadora?: string;
-  pais_origem?: string;
-  enriched_by_web?: boolean;
+  fonte: string;
 }
 
-export interface MusicData {
+// ===== SCHEMA DO BANCO (SUPABASE) =====
+export interface SongDB {
   id: string;
-  status: MusicStatus;
-  source_file: string;
-  original_data: {
-    [key: string]: any;
-  };
-  processed_data?: ProcessedMusicData;
-  enriched_data?: EnrichedMusicData;
+  title: string;
+  normalized_title: string | null;
+  artist_id: string;
+  composer: string | null;
+  release_year: string | null;
+  lyrics: string | null;
+  status: 'pending' | 'enriched' | 'error';
+  confidence_score: number | null;
+  enrichment_source: string | null;
+  youtube_url: string | null;
+  corpus_id: string | null;
+  upload_id: string | null;
+  raw_data: any | null;
   created_at: string;
-  processed_at?: string;
-  enriched_at?: string;
-  validated_at?: string;
-  validation_notes?: string;
+  updated_at: string;
 }
 
-export interface CleaningStats {
-  total_rows: number;
-  duplicates_removed: number;
-  links_removed: number;
-  noise_cleaned: number;
-  final_count: number;
+export interface ArtistDB {
+  id: string;
+  name: string;
+  normalized_name: string;
+  genre: string | null;
+  biography: string | null;
+  biography_source: string | null;
+  biography_updated_at: string | null;
+  corpus_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CorpusDB {
+  id: string;
+  name: string;
+  normalized_name: string;
+  description: string | null;
+  color: string;
+  icon: string;
+  is_system: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// ===== TIPOS COM RELAÇÕES (JOINS) =====
+export interface SongWithRelations extends SongDB {
+  artists: {
+    id: string;
+    name: string;
+    genre: string | null;
+    normalized_name: string;
+  } | null;
+  corpora: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
+}
+
+export interface ArtistWithRelations extends ArtistDB {
+  corpora: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
+}
+
+// ===== ESTATÍSTICAS =====
+export interface CatalogStats {
+  totalSongs: number;
+  totalArtists: number;
+  pendingSongs: number;
+  enrichedSongs: number;
+  errorSongs: number;
+  avgConfidence: number;
+}
+
+// ===== RESULTADOS DE OPERAÇÕES =====
+export interface EnrichmentResult {
+  success: boolean;
+  songId: string;
+  data?: {
+    composer?: string;
+    release_year?: string;
+    youtube_url?: string;
+    confidence_score?: number;
+    enrichment_source?: string;
+  };
+  error?: string;
+}
+
+export interface ImportResult {
+  artistsCreated: number;
+  songsCreated: number;
+  duplicatesSkipped: number;
+  artistIds: Record<string, string>;
+  songIds: string[];
 }

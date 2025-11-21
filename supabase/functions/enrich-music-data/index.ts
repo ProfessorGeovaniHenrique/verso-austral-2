@@ -29,6 +29,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // ✅ FASE 0: Guardar songId antes do try para evitar bug no catch
+  let songId: string | null = null;
+
   try {
     console.log(`[enrich-music-data] 🔧 Initializing Supabase client...`);
     const supabase = createClient(
@@ -38,7 +41,8 @@ serve(async (req) => {
     console.log(`[enrich-music-data] ✅ Supabase client initialized`);
 
     console.log(`[enrich-music-data] 📦 Parsing request body...`);
-    const { songId } = await req.json();
+    const body = await req.json();
+    songId = body.songId;
     console.log(`[enrich-music-data] 📝 Received songId: ${songId}`);
     
     if (!songId) {
@@ -391,8 +395,9 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
   } catch (error) {
     console.error('[enrich-music-data] Error:', error);
     
+    // ✅ FASE 0: Usar songId salvo ao invés de tentar parsear body novamente
     const result: EnrichmentResult = {
-      songId: (await req.json()).songId,
+      songId: songId || 'unknown',
       success: false,
       confidenceScore: 0,
       sources: [],
