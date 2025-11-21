@@ -76,6 +76,7 @@ interface ProcessRequest {
   volumeNum: string;
   tipoDicionario: string; // ✅ NOVO: Identificador do tipo de dicionário
   offsetInicial?: number; // ✅ NOVO: Suporte a retomada
+  jobId?: string; // ✅ NOVO: ID do job existente (opcional)
 }
 
 function validateRequest(data: any): ProcessRequest {
@@ -83,7 +84,7 @@ function validateRequest(data: any): ProcessRequest {
     throw new Error('Payload inválido');
   }
   
-  const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0 } = data;
+  const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0, jobId } = data;
   
   if (!fileContent || typeof fileContent !== 'string') {
     throw new Error('fileContent deve ser uma string válida');
@@ -102,7 +103,7 @@ function validateRequest(data: any): ProcessRequest {
     throw new Error('tipoDicionario deve ser uma string válida');
   }
   
-  return { fileContent, volumeNum, tipoDicionario, offsetInicial };
+  return { fileContent, volumeNum, tipoDicionario, offsetInicial, jobId };
 }
 
 function normalizeWord(word: string): string {
@@ -577,7 +578,7 @@ serve(withInstrumentation('process-dialectal-dictionary', async (req) => {
 
   try {
     const rawBody = await req.json();
-    const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0 } = validateRequest(rawBody);
+    const { fileContent, volumeNum, tipoDicionario, offsetInicial = 0, jobId } = validateRequest(rawBody);
 
     // ✅ FASE 3 - BLOCO 2: Validação pré-importação
     const validation = validateDialectalFile(fileContent, volumeNum);
