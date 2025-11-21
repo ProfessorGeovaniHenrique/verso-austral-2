@@ -295,6 +295,103 @@ export default function AdminDictionaryImport() {
           </div>
         </Card>
 
+        {/* 🧪 Card de Teste - Gaúcho Refatorado */}
+        <Card className="mb-6 border-2 border-green-500/30 bg-green-50 dark:bg-green-950/20">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🐴</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-green-600 dark:text-green-400">
+                    🧪 Dicionário Gaúcho V2 (Teste)
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Versão refatorada com correção de jobId - Em teste
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="border-green-500 text-green-600">
+                TESTING
+              </Badge>
+            </div>
+
+            {(() => {
+              const testJob = activeJobs.find(j => j.tipo_dicionario === 'gaucho_unificado_v2');
+              const isImportingTest = importingDict === 'gaucho_refatorado';
+              
+              return (
+                <div className="space-y-3">
+                  {testJob && (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">Progresso</span>
+                        {getStatusBadge(testJob.status)}
+                      </div>
+                      <Progress value={testJob.progresso || 0} className="h-3" />
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>{testJob.verbetes_processados?.toLocaleString('pt-BR') || 0} processados</span>
+                        <span>{testJob.progresso?.toFixed(1) || 0}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="flex gap-2">
+                    {!testJob ? (
+                      <Button
+                        size="default"
+                        onClick={async () => {
+                          setImportingDict('gaucho_refatorado');
+                          try {
+                            const { data, error } = await supabase.functions.invoke(
+                              'import-dialectal-backend',
+                              {
+                                body: { 
+                                  tipoDicionario: 'gaucho_unificado_v2' 
+                                }
+                              }
+                            );
+                            
+                            if (error) throw error;
+                            
+                            notifications.success(
+                              'Teste iniciado',
+                              'Dicionário Gaúcho V2 em processamento'
+                            );
+                            await refetch();
+                          } catch (error: any) {
+                            notifications.error('Erro no teste', error.message);
+                          } finally {
+                            setImportingDict(null);
+                          }
+                        }}
+                        disabled={isImportingTest}
+                        className="flex-1 bg-green-600 hover:bg-green-700"
+                      >
+                        {isImportingTest ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <PlayCircle className="h-4 w-4 mr-2" />
+                        )}
+                        🧪 Testar Importação V2
+                      </Button>
+                    ) : (
+                      <CancelJobDialog
+                        jobId={testJob.id}
+                        jobType="Gaúcho V2 (Teste)"
+                        onCancelled={() => refetch()}
+                      />
+                    )}
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground mt-2">
+                    ℹ️ Este card usa a lógica corrigida com jobId. Se funcionar, substituirá o card antigo.
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+        </Card>
+
         {/* Quick Status Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {DICTIONARY_LIST.map((dict) => {

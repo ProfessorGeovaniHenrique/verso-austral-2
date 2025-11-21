@@ -39,13 +39,12 @@ Deno.serve(async (req) => {
       console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
     }
 
-    const { offset = 0 } = requestBody;
+    const { offset = 0, tipoDicionario = 'gaucho_unificado' } = requestBody;
 
     // Arquivo unificado - gaucho.txt contém todos os verbetes
     const GAUCHO_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/gaucho.txt';
-    const tipoDicionario = 'gaucho_unificado';
 
-    console.log('📥 Carregando dicionário Gaúcho Unificado do GitHub...');
+    console.log(`📥 Carregando dicionário ${tipoDicionario} do GitHub...`);
 
     // Buscar arquivo do GitHub
     const fileResponse = await fetch(GAUCHO_URL);
@@ -109,7 +108,7 @@ Deno.serve(async (req) => {
         jobId: job.id,
         fileContent,
         volumeNum: 'I',
-        tipoDicionario: 'gaucho_unificado', // ✅ Identificador único do dicionário
+        tipoDicionario, // ✅ Usar o tipo passado no body
         offset: job.offset_inicial || 0
       }
     });
@@ -133,7 +132,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         jobId: job.id,
-        tipoDicionario: 'gaucho_unificado',
+        tipoDicionario, // ✅ Retornar o tipo usado
         processados: result.processados || 0,
         inseridos: result.inseridos || 0,
         total: result.total || 0,

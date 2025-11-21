@@ -65,6 +65,18 @@ export const DICTIONARY_CONFIG: Record<string, DictionaryConfig> = {
     estimatedEntries: 45000,
     validationRoute: '/admin/dictionary-validation/gutenberg',
   },
+  gaucho_refatorado: {
+    id: 'gaucho_unificado_v2',
+    name: 'Gaúcho V2 ✨',
+    fullName: 'Dicionário Gaúcho Unificado (Refatorado)',
+    description: 'Versão corrigida com jobId fix',
+    table: 'dialectal_lexicon',
+    importEndpoint: 'import-dialectal-backend',
+    color: 'hsl(142 76% 36%)',
+    icon: '🐴',
+    estimatedEntries: 1757,
+    validationRoute: '/admin/dictionary-validation/gaucho_unificado',
+  },
 };
 
 export const DICTIONARY_LIST = Object.values(DICTIONARY_CONFIG);
@@ -78,6 +90,7 @@ export const DB_TYPE_TO_CONFIG_KEY: Record<string, string> = {
   'navarro_nordeste_2014': 'navarro',
   'pombo_abl': 'pombo',
   'gutenberg': 'gutenberg',
+  'gaucho_unificado_v2': 'gaucho_refatorado',
   // 🔧 Mapeamentos de compatibilidade (Legacy/Dados antigos)
   'dialectal_I': 'gaucho',
   'dialectal_II': 'gaucho',
