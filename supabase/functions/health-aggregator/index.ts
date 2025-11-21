@@ -35,7 +35,6 @@ const EDGE_FUNCTIONS = [
   "apply-corpus-metadata",
   "calculate-priority-score",
   "cancel-dictionary-job",
-  "enrich-corpus-metadata",
   "process-demo-corpus",
   "process-dialectal-dictionary",
   "process-gutenberg-dictionary",
@@ -51,18 +50,20 @@ const EDGE_FUNCTIONS = [
 
 async function checkFunctionHealth(
   functionName: string,
-  supabaseUrl: string
+  supabaseUrl: string,
+  serviceRoleKey: string
 ): Promise<FunctionHealth> {
   const start = Date.now();
   
   try {
-    // Call the health endpoint of each function
+    // Call the health endpoint of each function with authentication
     const response = await fetch(
       `${supabaseUrl}/functions/v1/${functionName}?health=true`,
       {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${serviceRoleKey}`,
         },
       }
     );
@@ -122,10 +123,11 @@ async function handler(req: Request): Promise<Response> {
   });
   
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   
   // Check all functions in parallel
   const results = await Promise.all(
-    EDGE_FUNCTIONS.map(fn => checkFunctionHealth(fn, supabaseUrl))
+    EDGE_FUNCTIONS.map(fn => checkFunctionHealth(fn, supabaseUrl, serviceRoleKey))
   );
   
   // Calculate summary
