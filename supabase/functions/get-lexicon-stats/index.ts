@@ -62,10 +62,10 @@ serve(async (req) => {
       supabase.rpc('get_gutenberg_stats', {}, { count: 'exact' }),
       
       // Rocha Pombo (ABL) total
-      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'houaiss'),
+      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'rocha_pombo'),
       
       // Rocha Pombo (ABL) validados
-      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'houaiss').eq('validado_humanamente', true),
+      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'rocha_pombo').eq('validado_humanamente', true),
       
       // UNESP count
       supabase.from('lexical_definitions').select('*', { count: 'exact', head: true }),
