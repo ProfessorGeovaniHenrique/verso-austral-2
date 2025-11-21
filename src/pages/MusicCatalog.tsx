@@ -25,8 +25,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle, Download, Filter, RefreshCw, Trash2, Loader2 } from 'lucide-react';
+import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle, Download, Filter, RefreshCw, Trash2, Loader2, Folder } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 export default function MusicCatalog() {
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -41,6 +48,8 @@ export default function MusicCatalog() {
     pendingSongs: 0
   });
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedCorpusFilter, setSelectedCorpusFilter] = useState<string>('all');
+  const [corpora, setCorpora] = useState<any[]>([]);
   const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
@@ -53,24 +62,56 @@ export default function MusicCatalog() {
 
   useEffect(() => {
     loadData();
-  }, [statusFilter]);
+    loadCorpora();
+  }, [statusFilter, selectedCorpusFilter]);
+
+  const loadCorpora = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('corpora')
+        .select('id, name, color')
+        .order('name');
+
+      if (error) throw error;
+      setCorpora(data || []);
+    } catch (error) {
+      console.error('Erro ao carregar corpora:', error);
+    }
+  };
 
   const loadData = async () => {
     try {
       setLoading(true);
 
       // Carregar todas as músicas para estatísticas completas
-      const { data: allSongsData, error: allSongsError } = await supabase
+      let query = supabase
         .from('songs')
         .select(`
           *,
           artists (
             id,
             name,
-            genre
+            genre,
+            corpus_id
+          ),
+          corpora (
+            id,
+            name,
+            color
           )
         `)
         .order('created_at', { ascending: false });
+
+      // Filtrar por corpus se selecionado
+      if (selectedCorpusFilter !== 'all') {
+        if (selectedCorpusFilter === 'null') {
+          query = query.is('corpus_id', null);
+        } else {
+          query = query.eq('corpus_id', selectedCorpusFilter);
+        }
+      }
+
+      const { data: allSongsData, error: allSongsError } = await query;
 
       if (allSongsError) throw allSongsError;
 
@@ -86,7 +127,14 @@ export default function MusicCatalog() {
       // Carregar artistas únicos
       const { data: artistsData, error: artistsError } = await supabase
         .from('artists')
-        .select('*')
+        .select(`
+          *,
+          corpora (
+            id,
+            name,
+            color
+          )
+        `)
         .order('name');
 
       if (artistsError) throw artistsError;
@@ -631,6 +679,34 @@ export default function MusicCatalog() {
               </Button>
             </div>
           </div>
+
+          <div className="flex items-center gap-2">
+            <Folder className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Filtrar por corpus:</span>
+            <Select
+              value={selectedCorpusFilter}
+              onValueChange={setSelectedCorpusFilter}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por corpus" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os Corpus</SelectItem>
+                {corpora.map((corpus) => (
+                  <SelectItem key={corpus.id} value={corpus.id}>
+                    <div className="flex items-center gap-2">
+                      <div 
+                        className="w-3 h-3 rounded-full" 
+                        style={{ backgroundColor: corpus.color }}
+                      />
+                      <span>{corpus.name}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+                <SelectItem value="null">Sem classificação</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         </div>
 
@@ -713,9 +789,11 @@ export default function MusicCatalog() {
                     year: song.release_year,
                     genre: song.artists?.genre,
                     confidence: song.confidence_score || 0,
-                    status: song.status || 'pending'
+                    status: song.status || 'pending',
+                    corpusName: song.corpora?.name,
+                    corpusColor: song.corpora?.color
                   }}
-                  onEdit={handleEditSong}
+                  onEdit={(s) => handleEditSong(s.id)}
                   onEnrich={handleEnrichSongUI}
                   onReEnrich={handleReEnrichSong}
                   onMarkReviewed={handleMarkReviewed}
@@ -754,6 +832,8 @@ export default function MusicCatalog() {
                   id={artist.id}
                   name={artist.name}
                   genre={artist.genre}
+                  corpusName={artist.corpora?.name}
+                  corpusColor={artist.corpora?.color}
                   totalSongs={artistSongs.length}
                   pendingSongs={pendingSongs}
                   enrichedPercentage={enrichedPercentage}

@@ -31,7 +31,7 @@ function MusicEnrichmentContent() {
     toast.info('Operação cancelada');
   }, [resetProcessing]);
 
-  const handleImport = useCallback(async () => {
+  const handleImport = useCallback(async (corpusId: string | null) => {
     try {
       // Filtrar apenas músicas com título e artista
       const validSongs = parsedData.filter(song => song.titulo && song.artista);
@@ -49,11 +49,13 @@ function MusicEnrichmentContent() {
           ano: song.ano,
           album: undefined,
           genero: undefined
-        }))
+        })),
+        undefined,
+        corpusId
       );
       
       toast.success(
-        `${result.songsCreated} músicas importadas! ${result.artistsCreated} artistas criados.`
+        `${result.songsCreated} músicas importadas ${corpusId ? 'no corpus selecionado' : 'no catálogo geral'}! ${result.artistsCreated} artistas criados.`
       );
       navigate('/music-catalog');
     } catch (error) {

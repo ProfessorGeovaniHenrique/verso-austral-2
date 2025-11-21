@@ -34,7 +34,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { songs, uploadId } = await req.json();
+    const { songs, uploadId, corpusId } = await req.json();
     
     if (!songs || !Array.isArray(songs) || songs.length === 0) {
       return new Response(
@@ -44,6 +44,22 @@ serve(async (req) => {
     }
 
     console.log(`[extract-music-titles] Processing ${songs.length} songs`);
+
+    // Validar corpus_id se fornecido
+    if (corpusId) {
+      const { data: corpus, error: corpusError } = await supabase
+        .from('corpora')
+        .select('id')
+        .eq('id', corpusId)
+        .single();
+
+      if (corpusError || !corpus) {
+        return new Response(
+          JSON.stringify({ error: 'Corpus inválido' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Função para normalizar texto (minúsculas, sem acentos)
     const normalizeText = (text: string): string => {
@@ -88,6 +104,7 @@ serve(async (req) => {
           .insert({
             name: original,
             normalized_name: normalized,
+            corpus_id: corpusId || null,
           })
           .select('id')
           .single();
@@ -143,6 +160,7 @@ serve(async (req) => {
           release_year: song.ano || null,
           status: 'pending',
           upload_id: uploadId || null,
+          corpus_id: corpusId || null,
           raw_data: {
             album: song.album,
             genero: song.genero,

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2 } from 'lucide-react';
+import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   DropdownMenu,
@@ -21,6 +21,8 @@ export interface Song {
   confidence: number;
   thumbnail?: string;
   status?: string;
+  corpusName?: string | null;
+  corpusColor?: string | null;
 }
 
 interface SongCardProps {
@@ -194,6 +196,16 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
           </p>
           
           <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+            {song.corpusName && (
+              <Badge 
+                variant="outline" 
+                className="border-2 text-xs"
+                style={{ borderColor: song.corpusColor || '#3B82F6' }}
+              >
+                <Folder className="w-3 h-3 mr-1" />
+                {song.corpusName}
+              </Badge>
+            )}
             {song.album && (
               <span className="line-clamp-1" title={song.album}>📀 {song.album}</span>
             )}

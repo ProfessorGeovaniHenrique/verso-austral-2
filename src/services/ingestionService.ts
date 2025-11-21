@@ -44,10 +44,11 @@ export const ingestionService = {
    */
   async extractTitles(
     songs: ParsedMusic[],
-    uploadId?: string
+    uploadId?: string,
+    corpusId?: string | null
   ): Promise<ExtractionResult> {
     const { data, error } = await supabase.functions.invoke('extract-music-titles', {
-      body: { songs, uploadId },
+      body: { songs, uploadId, corpusId },
     });
 
     if (error) {

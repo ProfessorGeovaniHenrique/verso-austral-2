@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Music, Sparkles, Loader2, Eye, Trash2, MoreVertical } from 'lucide-react';
+import { Music, Sparkles, Loader2, Eye, Trash2, MoreVertical, Folder } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -43,6 +43,8 @@ interface ArtistCardProps {
   totalSongs: number;
   pendingSongs: number;
   enrichedPercentage: number;
+  corpusName?: string | null;
+  corpusColor?: string | null;
   onViewDetails: () => void;
   onEnrich: () => Promise<void>;
   onDelete: () => Promise<void>;
@@ -55,6 +57,8 @@ export function ArtistCard({
   totalSongs,
   pendingSongs,
   enrichedPercentage,
+  corpusName,
+  corpusColor,
   onViewDetails,
   onEnrich,
   onDelete,
@@ -91,6 +95,16 @@ export function ArtistCard({
               {name}
             </CardTitle>
             <div className="flex items-center gap-2">
+              {corpusName && (
+                <Badge 
+                  variant="outline" 
+                  className="border-2 shrink-0"
+                  style={{ borderColor: corpusColor || '#3B82F6' }}
+                >
+                  <Folder className="w-3 h-3 mr-1" />
+                  {corpusName}
+                </Badge>
+              )}
               {genre && (
                 <Badge variant="outline" className="shrink-0">
                   {genre}
