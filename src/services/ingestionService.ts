@@ -168,7 +168,7 @@ export const ingestionService = {
    */
   async getSongsByStatus(status: string): Promise<any[]> {
     const { data, error } = await supabase
-      .from('music_songs')
+      .from('music_songs' as any)
       .select(`
         id,
         title,
@@ -206,7 +206,7 @@ export const ingestionService = {
     avgConfidence: number;
   }> {
     const { data, error } = await supabase
-      .from('music_songs')
+      .from('music_songs' as any)
       .select('status, confidence_score');
 
     if (error) {
@@ -216,13 +216,13 @@ export const ingestionService = {
 
     const stats = {
       total: data?.length || 0,
-      pending: data?.filter((s) => s.status === 'pending').length || 0,
-      processed: data?.filter((s) => s.status === 'processed').length || 0,
-      enriched: data?.filter((s) => s.status === 'enriched').length || 0,
+      pending: (data as any[])?.filter((s) => s.status === 'pending').length || 0,
+      processed: (data as any[])?.filter((s) => s.status === 'processed').length || 0,
+      enriched: (data as any[])?.filter((s) => s.status === 'enriched').length || 0,
       avgConfidence: 0,
     };
 
-    const enrichedSongs = data?.filter((s) => s.confidence_score !== null) || [];
+    const enrichedSongs = (data as any[])?.filter((s) => s.confidence_score !== null) || [];
     if (enrichedSongs.length > 0) {
       const totalConfidence = enrichedSongs.reduce(
         (sum, s) => sum + (s.confidence_score || 0),

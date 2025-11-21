@@ -36,7 +36,7 @@ export default function MusicCatalog() {
 
       // Carregar músicas com artistas
       const { data: songsData, error: songsError } = await supabase
-        .from('music_songs')
+        .from('music_songs' as any)
         .select(`
           *,
           music_artists (
@@ -53,7 +53,7 @@ export default function MusicCatalog() {
 
       // Carregar artistas únicos
       const { data: artistsData, error: artistsError } = await supabase
-        .from('music_artists')
+        .from('music_artists' as any)
         .select('*')
         .order('name');
 
@@ -66,7 +66,7 @@ export default function MusicCatalog() {
       const totalSongs = songsData?.length || 0;
       const totalArtists = artistsData?.length || 0;
       const avgConfidence = songsData?.length 
-        ? songsData.reduce((acc, s) => acc + (s.confidence_score || 0), 0) / songsData.length
+        ? (songsData as any[]).reduce((acc, s) => acc + (s.confidence_score || 0), 0) / songsData.length
         : 0;
 
       setStats({ totalSongs, totalArtists, avgConfidence });
