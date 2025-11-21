@@ -22,26 +22,34 @@ interface EnrichmentResult {
 }
 
 serve(async (req) => {
+  console.log(`[enrich-music-data] 🚀 REQUEST RECEIVED - Method: ${req.method}`);
+  
   if (req.method === 'OPTIONS') {
+    console.log(`[enrich-music-data] ✅ CORS preflight handled`);
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log(`[enrich-music-data] 🔧 Initializing Supabase client...`);
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+    console.log(`[enrich-music-data] ✅ Supabase client initialized`);
 
+    console.log(`[enrich-music-data] 📦 Parsing request body...`);
     const { songId } = await req.json();
+    console.log(`[enrich-music-data] 📝 Received songId: ${songId}`);
     
     if (!songId) {
+      console.error(`[enrich-music-data] ❌ Missing songId in request`);
       return new Response(
         JSON.stringify({ error: 'songId is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[enrich-music-data] Enriching song ${songId}`);
+    console.log(`[enrich-music-data] 🎵 Starting enrichment for song ${songId}`);
 
     // Fetch song data
     const { data: song, error: fetchError } = await supabase

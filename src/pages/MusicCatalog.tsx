@@ -289,7 +289,12 @@ export default function MusicCatalog() {
   };
 
   const handleEnrichSong = async (songId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
+    console.log(`[DEBUG] 🎵 handleEnrichSong chamado para songId: ${songId}`);
+    
     try {
+      console.log(`[DEBUG] 🌐 Invocando edge function 'enrich-music-data'...`);
+      console.log(`[DEBUG] 📡 URL Base: ${import.meta.env.VITE_SUPABASE_URL}`);
+      
       // Timeout de 30s
       const enrichPromise = supabase.functions.invoke('enrich-music-data', {
         body: { songId }
@@ -299,22 +304,32 @@ export default function MusicCatalog() {
         setTimeout(() => reject(new Error('Timeout: operação demorou mais de 30s')), 30000)
       );
       
+      console.log(`[DEBUG] ⏳ Aguardando resposta (timeout: 30s)...`);
       const { data, error } = await Promise.race([enrichPromise, timeoutPromise]) as any;
       
-      if (error) throw error;
+      console.log(`[DEBUG] 📦 Resposta recebida:`, { data, error });
+      
+      if (error) {
+        console.error(`[DEBUG] ⚠️ Erro na resposta:`, error);
+        throw error;
+      }
       
       if (data?.success) {
+        console.log(`[DEBUG] ✨ Enriquecimento bem-sucedido!`, data);
         return {
           success: true,
           message: `${data.enrichedData?.composer || 'Compositor'} - ${data.confidenceScore}%`
         };
       } else {
+        console.error(`[DEBUG] ❌ Enriquecimento falhou:`, data);
         throw new Error(data?.error || 'Erro desconhecido ao enriquecer');
       }
     } catch (error: any) {
-      console.error('Erro ao enriquecer música:', error);
+      console.error('[DEBUG] 💥 Exceção capturada em handleEnrichSong:', error);
+      console.error('[DEBUG] 📋 Stack trace:', error.stack);
       
       // Reverter status em caso de erro
+      console.log(`[DEBUG] 🔄 Revertendo status para 'pending'...`);
       await supabase
         .from('songs')
         .update({ status: 'pending' })
@@ -328,27 +343,43 @@ export default function MusicCatalog() {
   };
 
   const handleEnrichSongUI = async (songId: string) => {
-    if (enrichingIds.has(songId)) return;
+    if (enrichingIds.has(songId)) {
+      console.log(`[DEBUG] 🔒 Enriquecimento já em andamento para songId: ${songId}`);
+      return;
+    }
     
+    console.log(`[DEBUG] 🚀 Iniciando enriquecimento para songId: ${songId}`);
     setEnrichingIds(prev => new Set(prev).add(songId));
     
     try {
+      console.log(`[DEBUG] 📞 Chamando handleEnrichSong...`);
       const result = await handleEnrichSong(songId);
+      console.log(`[DEBUG] 📊 Resultado do enriquecimento:`, result);
       
       if (result.success) {
+        console.log(`[DEBUG] ✅ Sucesso! Atualizando UI...`);
         toast({
           title: "✨ Música enriquecida!",
           description: result.message
         });
         await loadData();
       } else {
+        console.error(`[DEBUG] ❌ Erro no enriquecimento:`, result.error);
         toast({
           title: "Erro ao enriquecer",
           description: result.error,
           variant: "destructive"
         });
       }
+    } catch (error) {
+      console.error(`[DEBUG] 💥 Exceção capturada:`, error);
+      toast({
+        title: "Erro inesperado",
+        description: error instanceof Error ? error.message : "Erro desconhecido",
+        variant: "destructive"
+      });
     } finally {
+      console.log(`[DEBUG] 🔓 Liberando lock para songId: ${songId}`);
       setEnrichingIds(prev => {
         const next = new Set(prev);
         next.delete(songId);
