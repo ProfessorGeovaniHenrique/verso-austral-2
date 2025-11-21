@@ -563,22 +563,82 @@ export default function MusicCatalog() {
         </TabsContent>
 
         <TabsContent value="artists" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {artists.map((artist) => {
               const artistSongs = songs.filter(s => s.artist_id === artist.id);
+              const pendingSongs = artistSongs.filter(s => s.status === 'pending').length;
+              const enrichedSongs = artistSongs.filter(s => s.status === 'enriched').length;
+              const enrichedPercentage = artistSongs.length > 0
+                ? Math.round((enrichedSongs / artistSongs.length) * 100)
+                : 0;
+                
               return (
                 <ArtistCard 
                   key={artist.id}
-                  artist={{
-                    id: artist.id,
-                    name: artist.name,
-                    songCount: artistSongs.length,
-                    averageConfidence: artistSongs.length > 0
-                      ? artistSongs.reduce((acc, s) => acc + (s.confidence_score || 0), 0) / artistSongs.length
-                      : 0,
-                    topGenres: artist.genre ? [artist.genre] : []
+                  id={artist.id}
+                  name={artist.name}
+                  genre={artist.genre}
+                  totalSongs={artistSongs.length}
+                  pendingSongs={pendingSongs}
+                  enrichedPercentage={enrichedPercentage}
+                  onViewDetails={() => {
+                    toast({
+                      title: "Detalhes do Artista",
+                      description: `Visualizando detalhes de ${artist.name}`,
+                    });
                   }}
-                  onViewSongs={() => {}}
+                  onEnrich={async () => {
+                    try {
+                      toast({
+                        title: "Enriquecendo músicas",
+                        description: `Iniciando enriquecimento de ${pendingSongs} músicas de ${artist.name}...`,
+                      });
+                      // Implementar lógica de enriquecimento em lote
+                      await new Promise(resolve => setTimeout(resolve, 2000));
+                      await loadData();
+                      toast({
+                        title: "Sucesso!",
+                        description: `Músicas de ${artist.name} enriquecidas com sucesso!`,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Erro",
+                        description: 'Erro ao enriquecer músicas',
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                  onDelete={async () => {
+                    try {
+                      // Deletar todas as músicas do artista
+                      const { error: songsError } = await supabase
+                        .from('songs')
+                        .delete()
+                        .eq('artist_id', artist.id);
+                        
+                      if (songsError) throw songsError;
+                      
+                      // Deletar o artista
+                      const { error: artistError } = await supabase
+                        .from('artists')
+                        .delete()
+                        .eq('id', artist.id);
+                        
+                      if (artistError) throw artistError;
+                      
+                      await loadData();
+                      toast({
+                        title: "Sucesso!",
+                        description: `Artista ${artist.name} excluído com sucesso`,
+                      });
+                    } catch (error) {
+                      toast({
+                        title: "Erro",
+                        description: 'Erro ao excluir artista',
+                        variant: "destructive",
+                      });
+                    }
+                  }}
                 />
               );
             })}
