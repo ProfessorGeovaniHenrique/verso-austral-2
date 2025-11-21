@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     console.log('🚀 Iniciando importação do Dicionário Rocha Pombo (ABL)...');
 
     // Buscar arquivo do repositório GitHub
-    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/pombodefinitivo.txt';
+    const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/DicionariodeSinonimosdaABL.txt';
     
     console.log(`📥 Buscando arquivo de: ${GITHUB_RAW_URL}`);
     

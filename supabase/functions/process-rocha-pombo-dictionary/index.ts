@@ -11,70 +11,50 @@ interface RochaPomboEntry {
   contexto?: string;
 }
 
-function parseRochaPomboLine(line: string): RochaPomboEntry | null {
-  const trimmed = line.trim();
+function parseRochaPomboEntry(text: string): RochaPomboEntry | null {
+  const trimmed = text.trim();
   
-  // Ignorar linhas vazias ou muito curtas
-  if (!trimmed || trimmed.length < 5) return null;
-  
-  // Ignorar separadores e cabeçalhos
-  if (trimmed.match(/^[=\-_]{3,}$/)) return null;
-  if (trimmed.match(/^(DICIONÁRIO|SINÔNIMOS|VOLUME|PÁGINA|Figura|Tabela)/i)) return null;
-  
-  // Ignorar linhas que começam com minúscula ou caracteres especiais (definições/explicações)
-  if (trimmed.match(/^[a-z\(\)\[\]\{\}\d\.\,\;\:\-]/)) return null;
-  
-  // Formato esperado: "PALAVRA PRINCIPAL, sinônimo1, sinônimo2, ..."
-  // Deve começar com letra maiúscula
+  // Validar que começa com maiúscula (verbetes começam com caixa alta)
   if (!trimmed.match(/^[A-ZÁÀÂÃÉÊÍÓÔÕÚÇ]/)) return null;
   
-  // Encontrar primeira vírgula que separa palavra principal dos sinônimos
-  const firstCommaIndex = trimmed.indexOf(',');
+  // Encontrar o separador ". –" (ponto + espaço + travessão)
+  // Tudo antes disso é: PALAVRA, sinônimos
+  // Tudo depois é: explicação (ignorar)
+  const separatorMatch = trimmed.match(/\.\s+[–—-]\s+/);
+  
+  let entryPart: string;
+  if (separatorMatch) {
+    // Extrair apenas a parte antes da explicação
+    entryPart = trimmed.substring(0, separatorMatch.index);
+  } else {
+    // Se não tem separador, usar tudo (mas pode não ser verbete válido)
+    entryPart = trimmed;
+  }
+  
+  // Encontrar primeira vírgula (separa palavra principal dos sinônimos)
+  const firstCommaIndex = entryPart.indexOf(',');
   if (firstCommaIndex === -1) return null;
   
   // Extrair palavra principal
-  let mainWord = trimmed.substring(0, firstCommaIndex).trim();
-  
-  // Limpar caracteres especiais da palavra principal
-  mainWord = mainWord
-    .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, '') // Remover sobrescritos
-    .replace(/[\(\)\[\]\{\}]/g, '') // Remover parênteses/colchetes
-    .replace(/\s+/g, ' ') // Normalizar espaços
-    .trim();
-  
+  const mainWord = entryPart.substring(0, firstCommaIndex).trim();
   if (!mainWord || mainWord.length < 2) return null;
   
-  // Extrair parte dos sinônimos
-  const synonymsPart = trimmed.substring(firstCommaIndex + 1).trim();
+  // Extrair sinônimos (tudo depois da primeira vírgula)
+  const synonymsPart = entryPart.substring(firstCommaIndex + 1).trim();
   if (!synonymsPart) return null;
   
-  // Dividir sinônimos por vírgula ou ponto e vírgula
+  // Dividir sinônimos por vírgula e ponto e vírgula
   const synonyms = synonymsPart
     .split(/[,;]/)
-    .map(s => {
-      // Limpar cada sinônimo
-      return s
-        .replace(/[¹²³⁴⁵⁶⁷⁸⁹⁰]+/g, '')
-        .replace(/[\(\)\[\]\{\}]/g, '')
-        .replace(/\s+/g, ' ')
-        .replace(/\.$/, '') // Remover ponto final
-        .trim();
-    })
-    .filter(s => {
-      // Filtrar sinônimos válidos
-      if (s.length < 2) return false;
-      if (s === mainWord) return false;
-      if (s.match(/^[\d\.\,\;\:\-\s]+$/)) return false; // Apenas números/pontuação
-      return true;
-    });
+    .map(s => s.trim())
+    .filter(s => s.length >= 2 && s !== mainWord);
   
-  // Validar que temos pelo menos um sinônimo válido
   if (synonyms.length === 0) return null;
   
   return {
     palavra: mainWord,
-    sinonimos: synonyms.slice(0, 20), // Limitar a 20 sinônimos por entrada
-    contexto: undefined,
+    sinonimos: synonyms.slice(0, 20), // Limitar a 20
+    contexto: undefined
   };
 }
 
@@ -92,31 +72,28 @@ Deno.serve(async (req) => {
 
     console.log(`📖 Processando Dicionário Rocha Pombo - Job: ${jobId}`);
 
-    // 🔥 DEBUG: LOG DO CONTEÚDO BRUTO (primeiras 200 chars)
-    console.log("🔍 PRIMEIRAS 200 CHARS DO ARQUIVO:");
-    console.log(fileContent.substring(0, 200));
-    console.log("---");
+    // Dividir por linhas em branco (cada bloco é um verbete completo)
+    const verbetes = fileContent
+      .split(/\n\s*\n/) // Dividir por linha em branco
+      .map((v: string) => v.trim())
+      .filter((v: string) => v.length > 0);
 
-    // Pular metadados (primeiras ~200 linhas)
-    const allLines = fileContent.split('\n');
-    const lines = allLines.slice(200);
-    
-    console.log(`📝 Total de linhas: ${allLines.length} (processando ${lines.length} após metadados)`);
+    console.log(`📝 Total de verbetes detectados: ${verbetes.length}`);
 
     const entries: RochaPomboEntry[] = [];
-    let skippedLines = 0;
+    let skippedEntries = 0;
 
-    for (const line of lines) {
-      const entry = parseRochaPomboLine(line);
+    for (const verbete of verbetes) {
+      const entry = parseRochaPomboEntry(verbete);
       if (entry) {
         entries.push(entry);
       } else {
-        skippedLines++;
+        skippedEntries++;
       }
     }
 
     console.log(`✅ Entradas válidas: ${entries.length}`);
-    console.log(`⚠️ Linhas ignoradas: ${skippedLines}`);
+    console.log(`⚠️ Verbetes ignorados: ${skippedEntries}`);
 
     // Atualizar job com total de verbetes
     await supabase
@@ -127,9 +104,10 @@ Deno.serve(async (req) => {
         metadata: {
           fonte: 'Academia Brasileira de Letras',
           edicao: '2ª edição (2011)',
-          totalLinhas: allLines.length,
-          linhasProcessadas: lines.length,
-          linhasIgnoradas: skippedLines
+          tipo: 'Dicionário de Sinônimos',
+          totalVerbetes: verbetes.length,
+          verbetesValidos: entries.length,
+          verbetesIgnorados: skippedEntries
         }
       })
       .eq('id', jobId);
@@ -210,7 +188,7 @@ Deno.serve(async (req) => {
           total: entries.length,
           inserted: insertedCount,
           errors: errorCount,
-          skipped: skippedLines,
+          skipped: skippedEntries,
           successRate: ((insertedCount / entries.length) * 100).toFixed(1)
         }
       }),
