@@ -49,11 +49,11 @@ const Header = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 border-b-2 border-primary bg-background shadow-sm header-animated">
       <div className="px-6 py-4 flex items-center justify-between gap-4">
-        <div className="hidden md:flex h-14 w-auto logo-animated">
+        <div className="hidden md:flex h-full w-auto logo-animated">
           <img 
             src={logoUfrgs} 
             alt="UFRGS - Universidade Federal do Rio Grande do Sul" 
-            className="h-full w-auto object-contain"
+            className="h-full w-auto object-contain py-2"
           />
         </div>
         <div className="h-24 w-auto logo-animated mx-auto">
