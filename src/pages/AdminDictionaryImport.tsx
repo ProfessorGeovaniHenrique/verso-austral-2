@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
 import { useDictionaryImportJobs } from '@/hooks/useDictionaryImportJobs';
 import { ClearDictionariesCard } from '@/components/advanced/lexicon-status/ClearDictionariesCard';
+import { BatchValidationDialog } from '@/components/advanced/lexicon-status/BatchValidationDialog';
 import { useLexiconStats } from '@/hooks/useLexiconStats';
 import { DICTIONARY_CONFIG, DICTIONARY_LIST, getDictionaryConfig } from '@/config/dictionaries';
 import { 
@@ -337,49 +338,63 @@ export default function AdminDictionaryImport() {
                   
                   <div className="flex gap-2">
                     {!testJob ? (
-                      <Button
-                        size="default"
-                        onClick={async () => {
-                          setImportingDict('gaucho_refatorado');
-                          try {
-                            const { data, error } = await supabase.functions.invoke(
-                              'import-dialectal-backend',
-                              {
-                                body: { 
-                                  tipoDicionario: 'gaucho_unificado_v2' 
+                      <>
+                        <Button
+                          size="default"
+                          onClick={async () => {
+                            setImportingDict('gaucho_refatorado');
+                            try {
+                              const { data, error } = await supabase.functions.invoke(
+                                'import-dialectal-backend',
+                                {
+                                  body: { 
+                                    tipoDicionario: 'gaucho_unificado_v2' 
+                                  }
                                 }
-                              }
-                            );
-                            
-                            if (error) throw error;
-                            
-                            notifications.success(
-                              'Teste iniciado',
-                              'Dicionário Gaúcho V2 em processamento'
-                            );
-                            await refetch();
-                          } catch (error: any) {
-                            notifications.error('Erro no teste', error.message);
-                          } finally {
-                            setImportingDict(null);
-                          }
-                        }}
-                        disabled={isImportingTest}
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                      >
-                        {isImportingTest ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <PlayCircle className="h-4 w-4 mr-2" />
-                        )}
-                        🧪 Testar Importação V2
-                      </Button>
+                              );
+                              
+                              if (error) throw error;
+                              
+                              notifications.success(
+                                'Teste iniciado',
+                                'Dicionário Gaúcho V2 em processamento'
+                              );
+                              await refetch();
+                            } catch (error: any) {
+                              notifications.error('Erro no teste', error.message);
+                            } finally {
+                              setImportingDict(null);
+                            }
+                          }}
+                          disabled={isImportingTest}
+                          className="flex-1 bg-green-600 hover:bg-green-700"
+                        >
+                          {isImportingTest ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <PlayCircle className="h-4 w-4 mr-2" />
+                          )}
+                          🧪 Testar Importação V2
+                        </Button>
+                        <BatchValidationDialog
+                          batchSize={1000}
+                          dictionaryType="gaucho"
+                          onSuccess={() => refetch()}
+                        />
+                      </>
                     ) : (
-                      <CancelJobDialog
-                        jobId={testJob.id}
-                        jobType="Gaúcho V2 (Teste)"
-                        onCancelled={() => refetch()}
-                      />
+                      <>
+                        <CancelJobDialog
+                          jobId={testJob.id}
+                          jobType="Gaúcho V2 (Teste)"
+                          onCancelled={() => refetch()}
+                        />
+                        <BatchValidationDialog
+                          batchSize={1000}
+                          dictionaryType="gaucho"
+                          onSuccess={() => refetch()}
+                        />
+                      </>
                     )}
                   </div>
                   
