@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, AlertCircle, Zap, Keyboard } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, AlertCircle, Zap, Keyboard, RefreshCw, Database } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { useDialectalLexicon } from '@/hooks/useDialectalLexicon';
 import { useBackendLexicon, type LexiconEntry } from '@/hooks/useBackendLexicon';
 import { ValidationInterface } from '@/components/advanced/ValidationInterface';
@@ -54,6 +54,8 @@ export default function AdminDictionaryValidation() {
   const [validationOpen, setValidationOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
+  const [dbDiagnostics, setDbDiagnostics] = useState<any>(null);
+  const [isCheckingDb, setIsCheckingDb] = useState(false);
   const { data: lexiconStats, refetch: refetchStats } = useLexiconStats();
 
   const ITEMS_PER_PAGE = 24;
@@ -89,6 +91,63 @@ export default function AdminDictionaryValidation() {
   const isLoading = config.table === 'dialectal' ? dialectalLoading : gutenbergLoading;
   const allEntries = config.table === 'dialectal' ? dialectalEntries : gutenbergEntries;
   const refetch = config.table === 'dialectal' ? dialectalRefetch : gutenbergRefetch;
+
+  // 🔍 DIAGNÓSTICO: Verificar estado do banco
+  const checkDatabaseState = async () => {
+    setIsCheckingDb(true);
+    try {
+      const { data, error, count } = await supabase
+        .from('gutenberg_lexicon')
+        .select('id, verbete, classe_gramatical, definicoes', { count: 'exact' })
+        .limit(5);
+
+      if (error) throw error;
+
+      const diagnostics = {
+        totalRecords: count || 0,
+        sampleData: data || [],
+        hasClasseGramatical: data?.[0]?.classe_gramatical !== undefined,
+        hasDefinicoes: data?.[0]?.definicoes !== undefined,
+        timestamp: new Date().toISOString()
+      };
+
+      console.log('🔍 DIAGNÓSTICO DO BANCO (Gutenberg):', diagnostics);
+      setDbDiagnostics(diagnostics);
+
+      toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
+    } catch (error: any) {
+      console.error('❌ Erro ao verificar banco:', error);
+      toast.error(`Erro no Diagnóstico: ${error.message}`);
+    } finally {
+      setIsCheckingDb(false);
+    }
+  };
+
+  // 🔄 FORÇAR ATUALIZAÇÃO: Limpar cache e recarregar
+  const handleForceRefresh = async () => {
+    console.log('🔄 Forçando atualização completa...');
+    
+    // Limpar cache local do navegador
+    if ('caches' in window) {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+    }
+
+    // Recarregar dados
+    await refetch();
+
+    toast.success('🔄 Cache limpo e dados recarregados');
+  };
+
+  // ⚠️ ALERTA: Verificar dados incompletos
+  useEffect(() => {
+    if (config.table === 'gutenberg' && allEntries.length > 0) {
+      const firstEntry = allEntries[0];
+      if (!firstEntry.classe_gramatical && !firstEntry.definicoes) {
+        console.warn('⚠️ DADOS INCOMPLETOS DETECTADOS:', firstEntry);
+      }
+    }
+  }, [allEntries, config.table]);
 
   // Filtrar por volume se aplicável
   const volumeEntries = config.volumeFilter 
@@ -315,6 +374,69 @@ export default function AdminDictionaryValidation() {
               refetch();
             }}
           />
+
+          {/* 🔍 Painel de Diagnóstico (apenas para Gutenberg) */}
+          {config.table === 'gutenberg' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>🔍 Diagnóstico e Debugging</CardTitle>
+                <CardDescription>
+                  Ferramentas para diagnosticar problemas com dados do Gutenberg
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={checkDatabaseState}
+                    disabled={isCheckingDb}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Database className="h-4 w-4 mr-2" />
+                    {isCheckingDb ? 'Verificando...' : 'Verificar Banco'}
+                  </Button>
+                  <Button
+                    onClick={handleForceRefresh}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Forçar Atualização
+                  </Button>
+                </div>
+
+                {/* ⚠️ Alerta de Dados Incompletos */}
+                {allEntries.length > 0 && !allEntries[0].classe_gramatical && !allEntries[0].definicoes && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>⚠️ Dados Incompletos Detectados</AlertTitle>
+                    <AlertDescription>
+                      Os verbetes estão sem classe_gramatical e definições. Clique em "Verificar Banco" 
+                      para diagnóstico ou "Forçar Atualização" para limpar o cache.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {/* 📊 Diagnóstico do Banco (se disponível) */}
+                {dbDiagnostics && (
+                  <Alert>
+                    <Database className="h-4 w-4" />
+                    <AlertTitle>📊 Resultado do Diagnóstico</AlertTitle>
+                    <AlertDescription>
+                      <div className="text-sm space-y-1 mt-2">
+                        <div>📊 Total de registros: <strong>{dbDiagnostics.totalRecords}</strong></div>
+                        <div>📝 Tem classe_gramatical: <strong>{dbDiagnostics.hasClasseGramatical ? '✅ Sim' : '❌ Não'}</strong></div>
+                        <div>📚 Tem definições: <strong>{dbDiagnostics.hasDefinicoes ? '✅ Sim' : '❌ Não'}</strong></div>
+                        <div className="text-xs text-muted-foreground mt-2">
+                          Última verificação: {new Date(dbDiagnostics.timestamp).toLocaleString('pt-BR')}
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Filtros */}
           <Card>

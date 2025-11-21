@@ -85,10 +85,19 @@ export function useBackendLexicon(filters?: Filters) {
         throw error;
       }
 
+      // 🔍 DEBUG: Logging temporário para diagnóstico
+      if (tableName === 'gutenberg_lexicon' && data && data.length > 0) {
+        console.log('🔍 DADOS BRUTOS DO SUPABASE (Gutenberg):', data);
+        console.log('📊 AMOSTRA (primeira entrada):', data[0]);
+        console.log('🔑 Campos disponíveis:', Object.keys(data[0]));
+        console.log('📝 classe_gramatical:', data[0].classe_gramatical);
+        console.log('📚 definicoes:', data[0].definicoes);
+      }
+
       // Mapear dados para formato unificado
       if (tableName === 'gutenberg_lexicon') {
         const rawData = data as any[];
-        return (rawData || []).map((entry) => ({
+        const mapped = (rawData || []).map((entry) => ({
           id: entry.id,
           palavra: entry.verbete,
           lema: entry.verbete_normalizado,
@@ -106,6 +115,14 @@ export function useBackendLexicon(filters?: Filters) {
           classe_gramatical: entry.classe_gramatical,
           verbete: entry.verbete,
         })) as LexiconEntry[];
+
+        // 🗺️ DEBUG: Logging dos dados mapeados
+        if (mapped.length > 0) {
+          console.log('🗺️ DADOS MAPEADOS (Gutenberg):', mapped);
+          console.log('📊 AMOSTRA MAPEADA (primeira entrada):', mapped[0]);
+        }
+
+        return mapped;
       }
 
       // Para semantic_lexicon e dialectal_lexicon
@@ -117,9 +134,9 @@ export function useBackendLexicon(filters?: Filters) {
         volume_fonte: entry.volume_fonte,
       })) as LexiconEntry[];
     },
-    // ✅ CACHE TTL: Dados de léxico mudam raramente
-    staleTime: 24 * 60 * 60 * 1000, // 24 horas
-    gcTime: 48 * 60 * 60 * 1000, // 48 horas
+    // 🔧 CACHE TTL: Reduzido temporariamente para desenvolvimento
+    staleTime: 5 * 60 * 1000, // 5 minutos (era 24h)
+    gcTime: 10 * 60 * 1000, // 10 minutos (era 48h)
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
