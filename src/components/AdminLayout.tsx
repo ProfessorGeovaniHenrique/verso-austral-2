@@ -66,7 +66,7 @@ export default function AdminLayout() {
               </div>
             </div>
             
-            <main className="flex-1 container mx-auto px-6 pt-12 pb-8">
+            <main className="flex-1 container mx-auto px-6 pt-[132px] pb-8">
               <Outlet />
             </main>
           </div>
