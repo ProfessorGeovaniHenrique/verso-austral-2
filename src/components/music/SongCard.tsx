@@ -15,20 +15,27 @@ import {
 export interface Song {
   id: string;
   title: string;
-  artist: string;
+  artist?: string;
+  composer?: string | null;
   album?: string;
   year?: string;
-  genre?: string;
-  confidence: number;
+  release_year?: string | null;
+  genre?: string | null;
+  confidence?: number;
+  confidence_score?: number | null;
   thumbnail?: string;
-  status?: string;
+  status?: string | null;
   corpusName?: string | null;
   corpusColor?: string | null;
   youtubeUrl?: string | null;
+  youtube_url?: string | null;
+  lyrics?: string | null;
+  enrichment_source?: string | null;
 }
 
 interface SongCardProps {
   song: Song;
+  variant?: 'full' | 'compact';
   onView?: (song: Song) => void;
   onEdit?: (song: Song) => void;
   onEnrich?: (songId: string) => void;
@@ -57,15 +64,33 @@ const extractYoutubeVideoId = (url: string): string | null => {
   return null;
 };
 
-export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkReviewed, onDelete, isEnriching }: SongCardProps) {
+export function SongCard({ 
+  song, 
+  variant = 'full',
+  onView, 
+  onEdit, 
+  onEnrich, 
+  onReEnrich, 
+  onMarkReviewed, 
+  onDelete, 
+  isEnriching 
+}: SongCardProps) {
   const [showVideoPlayer, setShowVideoPlayer] = useState(false);
   const [thumbnailError, setThumbnailError] = useState(false);
-  const videoId = song.youtubeUrl ? extractYoutubeVideoId(song.youtubeUrl) : null;
+  
+  // Compatibilidade: suporta ambos youtubeUrl e youtube_url
+  const youtubeLink = song.youtubeUrl || song.youtube_url;
+  const videoId = youtubeLink ? extractYoutubeVideoId(youtubeLink) : null;
   
   // Lógica de thumbnail: prioriza YouTube, depois thumbnail do banco, depois fallback
   const thumbnailUrl = videoId && !thumbnailError
     ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`
     : song.thumbnail || null;
+  
+  // Compatibilidade de campos
+  const confidence = song.confidence || (song.confidence_score ? song.confidence_score / 100 : 0);
+  const releaseYear = song.year || song.release_year;
+  const isCompact = variant === 'compact';
   const getStatusBadge = (status?: string) => {
     if (!status) return null;
     
@@ -146,12 +171,12 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
   };
 
   return (
-    <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-      <CardContent className="flex flex-row p-0">
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isCompact ? 'mb-2' : ''}`}>
+      <CardContent className={`flex flex-row ${isCompact ? 'p-3 gap-3' : 'p-0'}`}>
         {/* Thumbnail (Esquerda) */}
         <div 
-          className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 bg-muted flex items-center justify-center relative overflow-hidden group cursor-pointer"
-          onClick={() => videoId && setShowVideoPlayer(!showVideoPlayer)}
+          className={`${isCompact ? 'w-16 h-16' : 'w-24 h-24 md:w-32 md:h-32'} flex-shrink-0 bg-muted flex items-center justify-center relative overflow-hidden group ${!isCompact && videoId ? 'cursor-pointer' : ''}`}
+          onClick={() => !isCompact && videoId && setShowVideoPlayer(!showVideoPlayer)}
         >
           {thumbnailUrl ? (
             <img
@@ -165,8 +190,8 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
             <Music className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground" />
           )}
           
-          {/* Hover Overlay com Play Icon */}
-          {videoId && (
+          {/* Hover Overlay com Play Icon - Apenas no modo full */}
+          {!isCompact && videoId && (
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               <Play className="w-8 h-8 text-white drop-shadow-lg" />
             </div>
@@ -175,21 +200,21 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
           {/* Badges posicionados no canto superior direito da thumbnail */}
           <div className="absolute top-1 right-1 flex flex-col gap-1">
             {getStatusBadge(song.status)}
-            {song.confidence > 0 && getConfidenceBadge(song.confidence)}
+            {confidence > 0 && getConfidenceBadge(confidence)}
           </div>
         </div>
 
         {/* Conteúdo (Direita) */}
-        <div className="flex-1 p-4 space-y-2 min-w-0">
+        <div className={`flex-1 space-y-2 min-w-0 ${isCompact ? '' : 'p-4'}`}>
           {/* Header: Título + Ações */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-lg line-clamp-2 flex-1" title={song.title}>
+            <h3 className={`font-semibold line-clamp-2 flex-1 ${isCompact ? 'text-sm' : 'text-lg'}`} title={song.title}>
               {song.title}
             </h3>
             
             {/* Botões de Ação + Dropdown */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {videoId && (
+              {!isCompact && videoId && (
                 <>
                   <TooltipProvider>
                     <Tooltip>
@@ -215,7 +240,7 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
                           variant="ghost"
                           size="sm"
                           className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => window.open(song.youtubeUrl!, '_blank', 'noopener,noreferrer')}
+                          onClick={() => window.open(youtubeLink!, '_blank', 'noopener,noreferrer')}
                         >
                           <Youtube className="w-4 h-4" />
                         </Button>
@@ -228,7 +253,7 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
                 </>
               )}
               
-              {song.status === 'enriched' && (
+              {!isCompact && song.status === 'enriched' && (
                 <Badge variant="success" className="text-xs">
                   Enriquecido
                 </Badge>
@@ -281,28 +306,46 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
             </div>
           </div>
           
-          {/* Metadados em Grid */}
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <div>
-              <span className="text-muted-foreground">Compositor</span>
-              <p className="text-foreground font-medium">Não identificado</p>
+          {/* Metadados */}
+          {isCompact ? (
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              {song.composer && (
+                <span className="truncate">Compositor: {song.composer}</span>
+              )}
+              {releaseYear && releaseYear !== '0000' && (
+                <span>Ano: {releaseYear}</span>
+              )}
+              {confidence > 0 && (
+                <span>Conf: {(confidence * 100).toFixed(0)}%</span>
+              )}
             </div>
-            <div>
-              <span className="text-muted-foreground">Ano de Lançamento</span>
-              <p className="text-foreground font-medium flex items-center gap-1">
-                {song.year || '—'}
-                {song.year && <Edit className="w-3 h-3 text-muted-foreground cursor-pointer hover:text-foreground" />}
-              </p>
-            </div>
-          </div>
-          
-          {/* Fonte e Confiança */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground">
-            <span>Fonte: AI</span>
-            {song.confidence > 0 && (
-              <span className="text-success">Confiança: {(song.confidence * 100).toFixed(0)}%</span>
-            )}
-          </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Compositor</span>
+                  <p className="text-foreground font-medium">{song.composer || 'Não identificado'}</p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Ano de Lançamento</span>
+                  <p className="text-foreground font-medium flex items-center gap-1">
+                    {releaseYear || '—'}
+                    {releaseYear && <Edit className="w-3 h-3 text-muted-foreground cursor-pointer hover:text-foreground" />}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Fonte e Confiança */}
+              {(song.enrichment_source || confidence > 0) && (
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  {song.enrichment_source && <span>Fonte: {song.enrichment_source}</span>}
+                  {confidence > 0 && (
+                    <span className="text-success">Confiança: {(confidence * 100).toFixed(0)}%</span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
           
           {/* Badges Adicionais */}
           <div className="flex flex-wrap gap-2">
@@ -323,8 +366,8 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
             )}
           </div>
 
-          {/* YouTube Player Embed */}
-          {showVideoPlayer && videoId && (
+          {/* YouTube Player Embed - Apenas no modo full */}
+          {!isCompact && showVideoPlayer && videoId && (
             <div className="w-full aspect-video rounded-lg overflow-hidden bg-black animate-fade-in">
               <iframe
                 width="100%"
@@ -340,8 +383,8 @@ export function SongCard({ song, onView, onEdit, onEnrich, onReEnrich, onMarkRev
             </div>
           )}
           
-          {/* Botão Ver Letra */}
-          {onView && (
+          {/* Botão Ver Letra - Apenas no modo full */}
+          {!isCompact && onView && (
             <Button 
               variant="ghost" 
               className="w-full justify-between text-sm"

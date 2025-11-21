@@ -11,39 +11,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card, CardContent } from '@/components/ui/card';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-import {
-  Music,
   BookOpen,
   ExternalLink,
   Loader2,
   List,
   Calendar,
   Sparkles,
-  MoreVertical,
-  Edit,
   RefreshCw,
-  CheckCircle2,
-  Trash2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-
-interface Song {
-  id: string;
-  title: string;
-  composer: string | null;
-  release_year: string | null;
-  genre: string | null;
-  status: string | null;
-  confidence_score: number | null;
-}
+import { SongCard, Song } from './SongCard';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface Artist {
   id: string;
@@ -285,11 +264,11 @@ export function ArtistDetailsSheet({
             <TabsContent value="list" className="space-y-2 mt-4">
               <ScrollArea className="h-[400px] pr-4">
                 {songs.map((song) => (
-                  <SongItem
+                  <SongCard
                     key={song.id}
                     song={song}
+                    variant="compact"
                     isEnriching={recentlyEnrichedIds.has(song.id)}
-                    onEnrich={() => handleEnrichSong(song.id)}
                     onEdit={onEditSong}
                     onReEnrich={onReEnrichSong}
                     onMarkReviewed={onMarkReviewed}
@@ -318,11 +297,11 @@ export function ArtistDetailsSheet({
                     {/* Músicas do ano */}
                     <div className="space-y-2 pl-4 border-l-2 border-muted">
                       {yearSongs.map((song) => (
-                        <SongItem
+                        <SongCard
                           key={song.id}
                           song={song}
+                          variant="compact"
                           isEnriching={recentlyEnrichedIds.has(song.id)}
-                          onEnrich={() => handleEnrichSong(song.id)}
                           onEdit={onEditSong}
                           onReEnrich={onReEnrichSong}
                           onMarkReviewed={onMarkReviewed}
@@ -347,11 +326,11 @@ export function ArtistDetailsSheet({
 
                     <div className="space-y-2 pl-4 border-l-2 border-muted">
                       {songsByYear.unknown.map((song) => (
-                        <SongItem
+                        <SongCard
                           key={song.id}
                           song={song}
+                          variant="compact"
                           isEnriching={recentlyEnrichedIds.has(song.id)}
-                          onEnrich={() => handleEnrichSong(song.id)}
                           onEdit={onEditSong}
                           onReEnrich={onReEnrichSong}
                           onMarkReviewed={onMarkReviewed}
@@ -367,112 +346,5 @@ export function ArtistDetailsSheet({
         </div>
       </SheetContent>
     </Sheet>
-  );
-}
-
-interface SongItemProps {
-  song: Song;
-  isEnriching: boolean;
-  onEnrich: () => void;
-  onEdit?: (song: Song) => void;
-  onReEnrich?: (songId: string) => void;
-  onMarkReviewed?: (songId: string) => void;
-  onDelete?: (songId: string) => void;
-}
-
-function SongItem({ song, isEnriching, onEnrich, onEdit, onReEnrich, onMarkReviewed, onDelete }: SongItemProps) {
-  const getStatusBadge = (status: string | null) => {
-    switch (status) {
-      case 'enriched':
-        return <Badge variant="default" className="text-xs">Enriquecida</Badge>;
-      case 'pending':
-        return <Badge variant="secondary" className="text-xs">Pendente</Badge>;
-      case 'processing':
-        return <Badge variant="outline" className="text-xs">Processando</Badge>;
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <Card className="mb-2 hover:shadow-md transition-shadow">
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Music className="h-4 w-4 text-muted-foreground shrink-0" />
-              <h4 className="font-medium text-sm truncate">{song.title}</h4>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              {song.composer && (
-                <span className="truncate">Compositor: {song.composer}</span>
-              )}
-              {song.genre && (
-                <Badge variant="outline" className="text-xs">{song.genre}</Badge>
-              )}
-              {song.confidence_score !== null && (
-                <span>Conf: {song.confidence_score}%</span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {getStatusBadge(song.status)}
-            
-            {/* Dropdown Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 w-7 p-0"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(song)}>
-                    <Edit className="w-4 h-4 mr-2" />
-                    Editar
-                  </DropdownMenuItem>
-                )}
-                {song.status === 'pending' && (
-                  <DropdownMenuItem onClick={onEnrich} disabled={isEnriching}>
-                    <Sparkles className={`w-4 h-4 mr-2 ${isEnriching ? 'animate-spin' : ''}`} />
-                    Enriquecer
-                  </DropdownMenuItem>
-                )}
-                {onReEnrich && song.status !== 'pending' && (
-                  <DropdownMenuItem onClick={() => onReEnrich(song.id)} disabled={isEnriching}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${isEnriching ? 'animate-spin' : ''}`} />
-                    Re-enriquecer
-                  </DropdownMenuItem>
-                )}
-                {onMarkReviewed && song.status !== 'approved' && (
-                  <DropdownMenuItem onClick={() => onMarkReviewed(song.id)}>
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Marcar Revisado
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem 
-                      onClick={() => onDelete(song.id)}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Deletar
-                    </DropdownMenuItem>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
