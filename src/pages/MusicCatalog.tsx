@@ -417,19 +417,21 @@ export default function MusicCatalog() {
         <Alert className="border-primary/50 bg-primary/5">
           <AlertCircle className="h-4 w-4 text-primary" />
           <AlertTitle>Músicas Aguardando Enriquecimento</AlertTitle>
-          <AlertDescription className="flex items-center justify-between">
-            <span>
-              {stats.pendingSongs} música{stats.pendingSongs > 1 ? 's' : ''} precisa
-              {stats.pendingSongs > 1 ? 'm' : ''} ser enriquecida{stats.pendingSongs > 1 ? 's' : ''} com metadados externos.
-            </span>
-            <Button 
-              size="sm" 
-              onClick={handleBatchEnrich}
-              className="ml-4"
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Enriquecer Todas ({stats.pendingSongs})
-            </Button>
+          <AlertDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <span>
+                {stats.pendingSongs} música{stats.pendingSongs > 1 ? 's' : ''} precisa
+                {stats.pendingSongs > 1 ? 'm' : ''} ser enriquecida{stats.pendingSongs > 1 ? 's' : ''} com metadados externos.
+              </span>
+              <Button 
+                size="sm" 
+                onClick={handleBatchEnrich}
+                className="w-full sm:w-auto"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Enriquecer Todas ({stats.pendingSongs})
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}
