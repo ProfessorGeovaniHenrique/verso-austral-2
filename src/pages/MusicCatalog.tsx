@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle } from 'lucide-react';
+import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle, Download, Filter, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export default function MusicCatalog() {
@@ -344,8 +344,77 @@ export default function MusicCatalog() {
   });
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex justify-between items-start">
+    <div className="space-y-0">
+      {/* GitHub-style Toolbar */}
+      <div className="border-b bg-muted/30 backdrop-blur-sm">
+        <div className="container mx-auto px-6 py-3">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left actions */}
+            <div className="flex items-center gap-2 flex-1">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Buscar músicas, artistas, compositores..."
+                  className="pl-9 h-9 bg-background/50"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              
+              <Button variant="ghost" size="sm" className="h-9 gap-2">
+                <Filter className="h-4 w-4" />
+                <span className="hidden sm:inline">Filtros</span>
+              </Button>
+            </div>
+
+            {/* Right actions */}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-9 gap-2"
+                onClick={loadData}
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline">Atualizar</span>
+              </Button>
+              
+              <div className="flex items-center gap-1 border rounded-md p-0.5 bg-background/50">
+                <Button
+                  variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setViewMode('table')}
+                >
+                  <LayoutList className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 w-7 p-0"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <AdvancedExportMenu 
+                onExport={(format, options) => {
+                  toast({
+                    title: "Exportação iniciada",
+                    description: `Preparando arquivo ${format.toUpperCase()} para download.`,
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="container mx-auto py-8 space-y-6">
+        <div className="flex justify-between items-start">
         <div className="space-y-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Catálogo de Músicas</h1>
@@ -390,27 +459,7 @@ export default function MusicCatalog() {
             </div>
           </div>
         </div>
-        
-        <div className="flex gap-2">
-          <div className="flex items-center border rounded-lg">
-            <Button
-              variant={viewMode === 'table' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('table')}
-            >
-              <LayoutList className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('grid')}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-          </div>
-          <AdvancedExportMenu onExport={() => {}} />
         </div>
-      </div>
 
       {/* Batch Enrichment Alert */}
       {stats.pendingSongs > 0 && (
@@ -578,6 +627,7 @@ export default function MusicCatalog() {
         onEnrich={handleEnrichSong}
         onComplete={handleBatchComplete}
       />
+      </div>
     </div>
   );
 }
