@@ -100,7 +100,14 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
           if (page >= 20) break;
         }
 
-        return allData as unknown as DialectalEntry[];
+        return allData.map((entry: any) => ({
+          ...entry,
+          definicoes: Array.isArray(entry.definicoes)
+            ? entry.definicoes.map((def: any) => 
+                typeof def === 'string' ? { texto: def } : def
+              )
+            : []
+        })) as unknown as DialectalEntry[];
       }, {
         maxRetries: 5,
         baseDelay: 500,
