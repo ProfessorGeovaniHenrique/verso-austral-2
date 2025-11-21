@@ -75,7 +75,7 @@ export function useDialectalLexicon(filters?: DialectalFilters) {
           query = query.ilike('verbete_normalizado', `%${filters.searchTerm.toLowerCase()}%`);
         }
 
-        const { data, error } = await query.limit(100);
+        const { data, error } = await query;
 
         if (error) throw error;
 

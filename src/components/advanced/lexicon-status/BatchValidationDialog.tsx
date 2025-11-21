@@ -116,7 +116,7 @@ export function BatchValidationDialog({ batchSize, dictionaryType, onSuccess, tr
             </div>
 
             <div className="text-sm space-y-2 text-foreground">
-              <p><strong>Critérios de validação:</strong></p>
+              <div><strong>Critérios de validação:</strong></div>
               <ul className="list-disc list-inside space-y-1 ml-2 text-muted-foreground">
                 <li>Confiança de extração ≥ 90%</li>
                 <li>Campos obrigatórios preenchidos</li>
@@ -125,10 +125,10 @@ export function BatchValidationDialog({ batchSize, dictionaryType, onSuccess, tr
               </ul>
             </div>
 
-            <p className="text-sm text-muted-foreground">
+            <div className="text-sm text-muted-foreground">
               Apenas entradas que atendem aos critérios serão validadas.
               As demais serão mantidas para revisão manual.
-            </p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
         

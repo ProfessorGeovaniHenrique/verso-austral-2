@@ -155,7 +155,7 @@ export default function AdminGauchoValidation() {
     onApprove: selectedEntryId ? () => handleApprove(selectedEntryId) : undefined,
     onReject: selectedEntryId ? () => handleReject(selectedEntryId) : undefined,
     onEdit: selectedEntryId 
-      ? () => handleValidate(paginatedEntries.find((e) => e.id === selectedEntryId))
+      ? () => handleEdit(paginatedEntries.find((e) => e.id === selectedEntryId))
       : undefined,
     onNext: () => {
       if (selectedIndex < paginatedEntries.length - 1) {
