@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import { CheckCircle2, FileSpreadsheet, Music2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { CorpusSelector } from './CorpusSelector';
 
 interface MusicAnalysisResultProps {
   fileName: string;
   totalSongs: number;
   previewData: Array<{ musica?: string; artista?: string; [key: string]: any }>;
   onCancel: () => void;
-  onImport: () => void;
+  onImport: (corpusId: string | null) => void;
 }
 
 export function MusicAnalysisResult({
@@ -19,6 +21,7 @@ export function MusicAnalysisResult({
   onCancel,
   onImport
 }: MusicAnalysisResultProps) {
+  const [selectedCorpusId, setSelectedCorpusId] = useState<string | null>(null);
   const uniqueArtists = new Set(previewData.map(row => row.artista).filter(Boolean)).size;
   const diversity = totalSongs > 0 ? Math.round((uniqueArtists / totalSongs) * 100) : 0;
   const columns = Object.keys(previewData[0] || {});
@@ -68,6 +71,12 @@ export function MusicAnalysisResult({
             </div>
           </div>
 
+          {/* Corpus Selector */}
+          <CorpusSelector
+            selectedCorpusId={selectedCorpusId}
+            onCorpusChange={setSelectedCorpusId}
+          />
+
           {/* Preview Table */}
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground">
@@ -104,7 +113,7 @@ export function MusicAnalysisResult({
           <Button variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button onClick={onImport} size="lg">
+          <Button onClick={() => onImport(selectedCorpusId)} size="lg">
             Importar para Catálogo ({totalSongs} músicas)
           </Button>
         </CardFooter>

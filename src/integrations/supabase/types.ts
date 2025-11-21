@@ -538,6 +538,7 @@ export type Database = {
           biography: string | null
           biography_source: string | null
           biography_updated_at: string | null
+          corpus_id: string | null
           created_at: string | null
           genre: string | null
           id: string
@@ -549,6 +550,7 @@ export type Database = {
           biography?: string | null
           biography_source?: string | null
           biography_updated_at?: string | null
+          corpus_id?: string | null
           created_at?: string | null
           genre?: string | null
           id?: string
@@ -560,6 +562,7 @@ export type Database = {
           biography?: string | null
           biography_source?: string | null
           biography_updated_at?: string | null
+          corpus_id?: string | null
           created_at?: string | null
           genre?: string | null
           id?: string
@@ -567,7 +570,15 @@ export type Database = {
           normalized_name?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       code_scan_history: {
         Row: {
@@ -673,6 +684,45 @@ export type Database = {
           phase_number?: number
           scientific_basis?: Json | null
           status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      corpora: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          icon: string | null
+          id: string
+          is_system: boolean | null
+          name: string
+          normalized_name: string
+          updated_at: string | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name: string
+          normalized_name: string
+          updated_at?: string | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_system?: boolean | null
+          name?: string
+          normalized_name?: string
           updated_at?: string | null
         }
         Relationships: []
@@ -1823,6 +1873,7 @@ export type Database = {
           artist_id: string
           composer: string | null
           confidence_score: number | null
+          corpus_id: string | null
           created_at: string | null
           enrichment_source: string | null
           id: string
@@ -1839,6 +1890,7 @@ export type Database = {
           artist_id: string
           composer?: string | null
           confidence_score?: number | null
+          corpus_id?: string | null
           created_at?: string | null
           enrichment_source?: string | null
           id?: string
@@ -1855,6 +1907,7 @@ export type Database = {
           artist_id?: string
           composer?: string | null
           confidence_score?: number | null
+          corpus_id?: string | null
           created_at?: string | null
           enrichment_source?: string | null
           id?: string
@@ -1873,6 +1926,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "songs_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
             referencedColumns: ["id"]
           },
           {
