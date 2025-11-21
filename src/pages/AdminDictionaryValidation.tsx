@@ -355,43 +355,74 @@ export default function AdminDictionaryValidation() {
         </div>
 
         <div className="space-y-6">
-          {/* Estatísticas com Progresso */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Progresso de Validação</CardTitle>
-              <CardDescription>
-                Acompanhe o andamento da validação do dicionário {config.displayName}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Progresso Global</span>
-                  <span className="font-medium">{validationRate}%</span>
+          {/* Painel de Validação em Tempo Real */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card de Validados */}
+            <Card className="relative overflow-hidden border-2 border-green-500/20 bg-gradient-to-br from-green-500/10 via-background to-background">
+              <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent" />
+              <CardContent className="relative pt-6 pb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-green-500/20 ring-2 ring-green-500/30">
+                      <CheckCircle2 className="h-6 w-6 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Validados</p>
+                      <p className="text-xs text-muted-foreground/70">Status: Aprovados</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-green-500/10 text-green-700 border-green-500/30">
+                    {validationRate}%
+                  </Badge>
                 </div>
-                <Progress value={parseFloat(validationRate)} className="h-3" />
-                <div className="flex justify-between text-xs text-muted-foreground">
-                  <span>{validatedCount} validados</span>
-                  <span>{pendingCount} pendentes</span>
+                
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-bold tracking-tight text-green-600">
+                      {validatedCount.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-lg text-muted-foreground">
+                      / {volumeEntries.length.toLocaleString('pt-BR')}
+                    </span>
+                  </div>
+                  <Progress value={parseFloat(validationRate)} className="h-2 bg-green-500/20" />
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              <div className="grid grid-cols-3 gap-4 pt-2">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">{volumeEntries.length}</div>
-                  <div className="text-xs text-muted-foreground">Total</div>
+            {/* Card de Pendentes */}
+            <Card className="relative overflow-hidden border-2 border-yellow-500/20 bg-gradient-to-br from-yellow-500/10 via-background to-background">
+              <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent" />
+              <CardContent className="relative pt-6 pb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-xl bg-yellow-500/20 ring-2 ring-yellow-500/30">
+                      <Clock className="h-6 w-6 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Pendentes</p>
+                      <p className="text-xs text-muted-foreground/70">Aguardando revisão</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-700 border-yellow-500/30">
+                    {(100 - parseFloat(validationRate)).toFixed(2)}%
+                  </Badge>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{validatedCount}</div>
-                  <div className="text-xs text-muted-foreground">Validados</div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-5xl font-bold tracking-tight text-yellow-600">
+                      {pendingCount.toLocaleString('pt-BR')}
+                    </span>
+                    <span className="text-lg text-muted-foreground">
+                      restantes
+                    </span>
+                  </div>
+                  <Progress value={100 - parseFloat(validationRate)} className="h-2 bg-yellow-500/20" />
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-yellow-600">{pendingCount}</div>
-                  <div className="text-xs text-muted-foreground">Pendentes</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Validação em Lote Destacada */}
           {tipo && !['rocha_pombo'].includes(tipo) && pendingHighConfidenceCount > 0 && (
