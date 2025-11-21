@@ -1,4 +1,4 @@
-// 🔥 DEPLOY TIMESTAMP: 2025-01-20T15:30:00Z - Correções críticas de split e parser
+// 🔥 DEPLOY TIMESTAMP: 2025-01-20T17:00:00Z - v5.0: Parsing Inteligente com Gemini Flash
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { withRetry } from '../_shared/retry.ts';
 
@@ -47,69 +47,134 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-function parseGutenbergEntry(entryText: string): VerbeteGutenberg | null {
-  try {
-    const lines = entryText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-    if (lines.length === 0) return null;
+// ============= PARSING INTELIGENTE COM GEMINI FLASH =============
 
-    const firstLine = lines[0];
-    
-    // ✅ VALIDAR: Deve conter o padrão *palavra*,
-    const asteriskMatch = firstLine.match(/^\*([A-ZÁÀÃÂÉÊÍÓÔÕÚÇÑa-záàãâéêíóôõúçñ\s-]+)\*,?\s*(.+)?/);
-    if (!asteriskMatch) {
-      console.error(`🔴 DEBUG - Linha sem padrão *palavra*,: "${firstLine}"`);
+async function parseWithGemini(entryText: string): Promise<VerbeteGutenberg | null> {
+  try {
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('❌ LOVABLE_API_KEY não configurada');
       return null;
     }
 
-    // ✅ EXTRAIR: Remover asteriscos e vírgula
-    const verbete = asteriskMatch[1].trim();
-    const classe_gramatical = asteriskMatch[2]?.trim();
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        temperature: 0,
+        messages: [
+          {
+            role: 'system',
+            content: 'Você é um linguista especializado em dicionários antigos. Sua tarefa é extrair informações estruturadas de verbetes brutos do Dicionário Gutenberg. O formato é instável, então use seu julgamento para identificar o verbete principal, a classe gramatical (se houver) e todas as linhas que compõem a definição.'
+          },
+          {
+            role: 'user',
+            content: `Analise o seguinte verbete cru e retorne APENAS um objeto JSON no formato abaixo. Se não for um verbete válido, retorne null.
 
-    // Extrair definições - PARSER MELHORADO
-    const definicoes: Array<{ tipo?: string; texto: string }> = [];
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      
-      // ✅ Pular linhas que são apenas classe gramatical
-      if (line.match(/^_[a-z\s\.]+_?$/i)) {
-        console.log(`   [SKIP] Classe gramatical: "${line}"`);
-        continue;
+Formato JSON desejado:
+{
+  "verbete": "string (sem asteriscos ou vírgulas)",
+  "classe_gramatical": "string ou null",
+  "definicoes": ["string", "string", ...]
+}
+
+Verbete Cru:
+"""
+${entryText}
+"""
+
+Retorne APENAS o JSON, sem texto adicional.`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        console.warn('⚠️ Rate limit atingido (429)');
+        throw new Error('RATE_LIMIT');
       }
-      
-      // ✅ Pular linhas muito curtas ou vazias
-      if (line.length < 3) continue;
-      
-      // ✅ Capturar qualquer linha com texto real (mesmo começando com _, (, [, etc)
-      if (line.match(/[a-zA-ZáàãâéêíóôõúçÁÀÃÂÉÊÍÓÔÕÚÇ]/)) {
-        definicoes.push({ texto: line });
-        console.log(`   [CAPTURA] Definição: "${line.substring(0, 60)}..."`);
-      }
+      console.error(`❌ Gemini API error: ${response.status}`);
+      return null;
     }
 
-    // 🔍 DEBUG - DETECTAR DEFINIÇÕES VAZIAS
-    if (definicoes.length === 0) {
-      console.error(`\n🔴 DEBUG - DEFINIÇÃO VAZIA!`);
-      console.error(`   Verbete: "${verbete}"`);
-      console.error(`   Primeira linha: "${firstLine}"`);
-      console.error(`   Total de linhas: ${lines.length}`);
-      if (lines.length > 1) {
-        console.error(`   Segunda linha: "${lines[1]}"`);
-      }
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    
+    if (!content) return null;
+
+    // Extrair JSON do conteúdo
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn('⚠️ Resposta sem JSON válido');
+      return null;
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    
+    if (!parsed.verbete || typeof parsed.verbete !== 'string') {
+      return null;
     }
 
     const verbeteData: VerbeteGutenberg = {
-      verbete,
-      verbete_normalizado: normalizeText(verbete),
-      classe_gramatical: classe_gramatical || undefined,
-      definicoes: definicoes.length > 0 ? definicoes : undefined,
-      confianca_extracao: 0.95, // Confiança aumentada para elegibilidade de validação
+      verbete: parsed.verbete.trim(),
+      verbete_normalizado: normalizeText(parsed.verbete),
+      classe_gramatical: parsed.classe_gramatical || undefined,
+      definicoes: parsed.definicoes?.map((d: string) => ({ texto: d })) || undefined,
+      confianca_extracao: 0.98,
     };
 
     return verbeteData;
-  } catch (error) {
-    console.error('Erro ao parsear verbete:', error);
+    
+  } catch (error: any) {
+    if (error.message === 'RATE_LIMIT') {
+      throw error;
+    }
+    console.error('❌ Erro ao parsear com Gemini:', error.message);
     return null;
   }
+}
+
+async function parseWithGeminiRetry(entryText: string, maxRetries = 3): Promise<VerbeteGutenberg | null> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await parseWithGemini(entryText);
+    } catch (error: any) {
+      if (error.message === 'RATE_LIMIT') {
+        if (attempt < maxRetries) {
+          console.warn(`⚠️ Rate limit - aguardando 2s (tentativa ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+      }
+      throw error;
+    }
+  }
+  return null;
+}
+
+async function processBatchWithConcurrency<T, R>(
+  items: T[],
+  processFn: (item: T) => Promise<R>,
+  concurrencyLimit: number = 15
+): Promise<R[]> {
+  const results: R[] = [];
+  
+  for (let i = 0; i < items.length; i += concurrencyLimit) {
+    const batch = items.slice(i, i + concurrencyLimit);
+    const batchResults = await Promise.all(
+      batch.map(item => processFn(item))
+    );
+    results.push(...batchResults);
+    
+    console.log(`   ✅ Processados ${Math.min(i + concurrencyLimit, items.length)}/${items.length} verbetes com IA`);
+  }
+  
+  return results;
 }
 
 async function checkCancellation(jobId: string, supabaseClient: any): Promise<void> {
@@ -152,30 +217,37 @@ async function processChunk(
     const endIndex = Math.min(startIndex + CHUNK_SIZE, verbetes.length);
     const chunk = verbetes.slice(startIndex, endIndex);
 
-    let definicoesVazias = 0; // ✅ NOVO CONTADOR
+    let definicoesVazias = 0;
 
-    const parsedBatch = chunk
-      .map(v => {
-        const parsed = parseGutenbergEntry(v);
-        
-        // ✅ VERIFICAR SE DEFINIÇÃO ESTÁ VAZIA
+    console.log(`🤖 Processando ${chunk.length} verbetes com IA (Gemini Flash)`);
+    console.log(`   Concorrência: 15 chamadas paralelas`);
+    console.log(`   Tempo estimado: ~${Math.ceil(chunk.length / 15)}s`);
+
+    const parsedBatch = await processBatchWithConcurrency(
+      chunk,
+      async (v) => {
+        const parsed = await parseWithGeminiRetry(v);
         if (parsed && (!parsed.definicoes || parsed.definicoes.length === 0)) {
           definicoesVazias++;
         }
-        
         return parsed;
-      })
-      .filter((v): v is VerbeteGutenberg => v !== null);
+      },
+      15
+    );
 
-    console.log(`✅ Parsed ${parsedBatch.length} verbetes válidos de ${chunk.length} tentativas`);
-    console.log(`⚠️ Definições vazias detectadas: ${definicoesVazias}`);
+    const validParsed = parsedBatch.filter((v): v is VerbeteGutenberg => v !== null);
 
-    if (parsedBatch.length > 0) {
+    console.log(`✅ IA processou ${parsedBatch.length} verbetes`);
+    console.log(`   Válidos: ${validParsed.length}`);
+    console.log(`   Rejeitados: ${parsedBatch.length - validParsed.length}`);
+    console.log(`   Definições vazias: ${definicoesVazias}`);
+
+    if (validParsed.length > 0) {
       await withRetry(
         async () => {
           const { error } = await supabaseClient
             .from('gutenberg_lexicon')
-            .insert(parsedBatch);
+            .insert(validParsed);
           if (error) throw error;
         },
         MAX_RETRIES,
@@ -189,13 +261,13 @@ async function processChunk(
       .from('dictionary_import_jobs')
       .update({
         verbetes_processados: endIndex,
-        verbetes_inseridos: startIndex + parsedBatch.length,
+        verbetes_inseridos: startIndex + validParsed.length,
         progresso: progressPercentage,
         atualizado_em: new Date().toISOString(),
       })
       .eq('id', jobId);
 
-    console.log(`📊 Progresso: ${endIndex}/${verbetes.length} (${progressPercentage}%) - ${parsedBatch.length} inseridos`);
+    console.log(`📊 Progresso: ${endIndex}/${verbetes.length} (${progressPercentage}%) - ${validParsed.length} inseridos`);
 
     // Se ainda há verbetes, invocar próximo chunk
     if (endIndex < verbetes.length) {
@@ -278,7 +350,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 VERSÃO 4.0 - Split e Parser CORRIGIDOS + Logs Detalhados');
+    console.log('🚀 VERSÃO 5.0 - Parsing Inteligente com Gemini Flash');
     console.log(`📊 Request ID: ${requestId}`);
     
     const supabase = createClient(
