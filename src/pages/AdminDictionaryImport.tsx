@@ -296,6 +296,82 @@ export default function AdminDictionaryImport() {
           </div>
         </Card>
 
+        {/* 📚 Card Rocha Pombo (ABL) */}
+        <Card className="mb-6 border-2 border-blue-500/30 bg-gradient-to-br from-blue-50 to-background dark:from-blue-950/20 dark:to-background">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">📖</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                    Rocha Pombo (ABL)
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Dicionário de Sinônimos e Antônimos da Língua Portuguesa
+                  </p>
+                </div>
+              </div>
+              <Badge variant="outline" className="border-blue-500 text-blue-600 font-mono">
+                {lexiconStats?.rochaPombo?.total > 0 
+                  ? ((lexiconStats.rochaPombo.validados / lexiconStats.rochaPombo.total) * 100).toFixed(1)
+                  : 0}%
+              </Badge>
+            </div>
+
+            <div className="space-y-3">
+              {/* Estatísticas */}
+              <div className="grid grid-cols-3 gap-4 p-4 rounded-lg border bg-card">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Total</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {lexiconStats?.rochaPombo?.total?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">✅ Validados</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {lexiconStats?.rochaPombo?.validados?.toLocaleString('pt-BR') || 0}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">⏳ Pendentes</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {((lexiconStats?.rochaPombo?.total || 0) - (lexiconStats?.rochaPombo?.validados || 0)).toLocaleString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              {/* Barra de Progresso */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Progresso de Validação</span>
+                  <span className="font-semibold">
+                    {lexiconStats?.rochaPombo?.total > 0 
+                      ? ((lexiconStats.rochaPombo.validados / lexiconStats.rochaPombo.total) * 100).toFixed(1)
+                      : 0}%
+                  </span>
+                </div>
+                <Progress 
+                  value={lexiconStats?.rochaPombo?.total > 0 
+                    ? (lexiconStats.rochaPombo.validados / lexiconStats.rochaPombo.total) * 100
+                    : 0} 
+                  className="h-3"
+                />
+              </div>
+
+              {/* Botão de Validação */}
+              <Button
+                onClick={() => navigate('/admin/dictionary-validation/rocha_pombo')}
+                className="w-full bg-blue-600 hover:bg-blue-700"
+                size="lg"
+              >
+                <Database className="h-4 w-4 mr-2" />
+                🔍 Validar Entradas
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         {/* 🧪 Card de Teste - Gaúcho Refatorado */}
         <Card className="mb-6 border-2 border-green-500/30 bg-green-50 dark:bg-green-950/20">
           <div className="p-6">

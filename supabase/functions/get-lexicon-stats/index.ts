@@ -26,6 +26,7 @@ interface LexiconStats {
   };
   rochaPombo: {
     total: number;
+    validados: number;
   };
   unesp: {
     total: number;
@@ -50,7 +51,7 @@ serve(async (req) => {
     console.log('🔍 Fetching lexicon stats (optimized SQL aggregations)...');
 
     // ✅ FASE 1 & 2: Queries SQL otimizadas com COUNT direto (sem limite de 1000 linhas)
-    const [gauchoResult, navarroResult, gutenbergResult, rochaPomboResult, unespResult, lastImportResult] = await Promise.all([
+    const [gauchoResult, navarroResult, gutenbergResult, rochaPomboResult, rochaPomboValidadosResult, unespResult, lastImportResult] = await Promise.all([
       // Gaúcho Unificado V2 - Query SQL otimizada
       supabase.rpc('get_dialectal_stats_by_type', { dict_type: 'gaucho_unificado_v2' }).single(),
       
@@ -60,8 +61,11 @@ serve(async (req) => {
       // Gutenberg
       supabase.rpc('get_gutenberg_stats', {}, { count: 'exact' }),
       
-      // Rocha Pombo (ABL) count
-      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'rocha_pombo'),
+      // Rocha Pombo (ABL) total
+      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'houaiss'),
+      
+      // Rocha Pombo (ABL) validados
+      supabase.from('lexical_synonyms').select('*', { count: 'exact', head: true }).eq('fonte', 'houaiss').eq('validado_humanamente', true),
       
       // UNESP count
       supabase.from('lexical_definitions').select('*', { count: 'exact', head: true }),
@@ -110,6 +114,7 @@ serve(async (req) => {
       },
       rochaPombo: {
         total: rochaPomboResult.count || 0,
+        validados: rochaPomboValidadosResult.count || 0,
       },
       unesp: {
         total: unespResult.count || 0,

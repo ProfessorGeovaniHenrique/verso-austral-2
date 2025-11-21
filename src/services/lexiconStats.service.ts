@@ -20,6 +20,7 @@ export interface LexiconStats {
   };
   rochaPombo: {
     total: number;
+    validados: number;
   };
   unesp: {
     total: number;
