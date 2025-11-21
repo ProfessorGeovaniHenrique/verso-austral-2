@@ -1,91 +1,218 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
+import { Music, Sparkles, Loader2, Eye, Trash2, MoreVertical } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { User, Music, TrendingUp, ArrowRight } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export interface Artist {
   id: string;
   name: string;
-  songCount: number;
-  averageConfidence: number;
-  topGenres: string[];
+  genre: string | null;
+  totalSongs: number;
+  pendingSongs: number;
+  enrichedPercentage: number;
 }
 
 interface ArtistCardProps {
-  artist: Artist;
-  onViewSongs?: (artist: Artist) => void;
+  id: string;
+  name: string;
+  genre: string | null;
+  totalSongs: number;
+  pendingSongs: number;
+  enrichedPercentage: number;
+  onViewDetails: () => void;
+  onEnrich: () => Promise<void>;
+  onDelete: () => Promise<void>;
 }
 
-export function ArtistCard({ artist, onViewSongs }: ArtistCardProps) {
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 80) return 'text-green-500';
-    if (confidence >= 50) return 'text-yellow-500';
-    return 'text-destructive';
+export function ArtistCard({
+  id,
+  name,
+  genre,
+  totalSongs,
+  pendingSongs,
+  enrichedPercentage,
+  onViewDetails,
+  onEnrich,
+  onDelete,
+}: ArtistCardProps) {
+  const [isEnriching, setIsEnriching] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false);
+
+  const handleEnrich = async () => {
+    setIsEnriching(true);
+    try {
+      await onEnrich();
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete();
+      setShowDeleteAlert(false);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="pt-6">
-        <div className="space-y-4">
-          {/* Artist Info */}
-          <div className="flex items-start gap-4">
-            <div className="p-3 bg-primary/10 rounded-full">
-              <User className="h-8 w-8 text-primary" />
+    <>
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardHeader>
+          <div className="flex justify-between items-start">
+            <CardTitle className="text-lg truncate" title={name}>
+              {name}
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {genre && (
+                <Badge variant="outline" className="shrink-0">
+                  {genre}
+                </Badge>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => setShowDeleteAlert(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Excluir artista
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-lg truncate" title={artist.name}>
-                {artist.name}
-              </h3>
-              
-              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1">
-                  <Music className="h-4 w-4" />
-                  <span>{artist.songCount} música(s)</span>
-                </div>
-                
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="h-4 w-4" />
-                  <span className={getConfidenceColor(artist.averageConfidence)}>
-                    {Math.round(artist.averageConfidence)}% conf.
-                  </span>
-                </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          {/* Grid de Estatísticas */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* Card 1 - Total */}
+            <div className="bg-muted/50 p-3 rounded-lg">
+              <div className="flex items-center gap-1 mb-1">
+                <Music className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Total</span>
               </div>
+              <div className="text-2xl font-bold">{totalSongs}</div>
+            </div>
+
+            {/* Card 2 - Pendentes */}
+            <div className="bg-yellow-500/10 border border-yellow-500/20 p-3 rounded-lg">
+              <div className="flex items-center gap-1 mb-1">
+                <Sparkles className="h-4 w-4 text-yellow-600" />
+                <span className="text-xs text-muted-foreground">Pendentes</span>
+              </div>
+              <div className="text-2xl font-bold text-yellow-600">{pendingSongs}</div>
             </div>
           </div>
 
-          {/* Top Genres */}
-          {artist.topGenres.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">Gêneros principais:</p>
-              <div className="flex flex-wrap gap-2">
-                {artist.topGenres.slice(0, 3).map((genre, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">
-                    {genre}
-                  </Badge>
-                ))}
-                {artist.topGenres.length > 3 && (
-                  <Badge variant="outline" className="text-xs">
-                    +{artist.topGenres.length - 3}
-                  </Badge>
-                )}
-              </div>
+          {/* Barra de Progresso */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Progresso de Enriquecimento</span>
+              <span className="font-medium">{enrichedPercentage}%</span>
             </div>
-          )}
+            <Progress value={enrichedPercentage} className="h-2" />
+          </div>
+        </CardContent>
 
-          {/* Action Button */}
-          {onViewSongs && (
+        <CardFooter className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={onViewDetails}
+          >
+            <Eye className="h-4 w-4 mr-2" />
+            Ver Detalhes
+          </Button>
+
+          {pendingSongs > 0 && (
             <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => onViewSongs(artist)}
+              variant="default"
+              size="sm"
+              className="flex-1"
+              onClick={handleEnrich}
+              disabled={isEnriching}
             >
-              Ver Todas as Músicas
-              <ArrowRight className="h-4 w-4 ml-2" />
+              {isEnriching ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Enriquecer ({pendingSongs})
+                </>
+              )}
             </Button>
           )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardFooter>
+      </Card>
+
+      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Isso irá excluir permanentemente o artista "{name}" e todas as suas {totalSongs} músicas do catálogo. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Excluindo...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Excluir permanentemente
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
