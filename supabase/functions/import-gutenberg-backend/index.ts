@@ -1,4 +1,4 @@
-// 🔥 DEPLOY TIMESTAMP: 2025-01-20T17:00:00Z - v5.0: Parsing Inteligente com Gemini Flash
+// 🔥 DEPLOY TIMESTAMP: 2025-01-20T18:30:00Z - v5.1: Rate Limiting Fixed (5 parallel + 1s delay)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { withRetry } from '../_shared/retry.ts';
 
@@ -145,9 +145,10 @@ async function parseWithGeminiRetry(entryText: string, maxRetries = 3): Promise<
       return await parseWithGemini(entryText);
     } catch (error: any) {
       if (error.message === 'RATE_LIMIT') {
+        const delay = attempt * 5000; // 5s, 10s, 15s
         if (attempt < maxRetries) {
-          console.warn(`⚠️ Rate limit - aguardando 2s (tentativa ${attempt}/${maxRetries})`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          console.warn(`⚠️ Rate limit - aguardando ${delay/1000}s (tentativa ${attempt}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
       }
@@ -160,7 +161,7 @@ async function parseWithGeminiRetry(entryText: string, maxRetries = 3): Promise<
 async function processBatchWithConcurrency<T, R>(
   items: T[],
   processFn: (item: T) => Promise<R>,
-  concurrencyLimit: number = 15
+  concurrencyLimit: number = 5
 ): Promise<R[]> {
   const results: R[] = [];
   
@@ -172,6 +173,11 @@ async function processBatchWithConcurrency<T, R>(
     results.push(...batchResults);
     
     console.log(`   ✅ Processados ${Math.min(i + concurrencyLimit, items.length)}/${items.length} verbetes com IA`);
+    
+    // Pausa de 1s entre batches para evitar rate limiting
+    if (i + concurrencyLimit < items.length) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
   }
   
   return results;
@@ -219,9 +225,9 @@ async function processChunk(
 
     let definicoesVazias = 0;
 
-    console.log(`🤖 Processando ${chunk.length} verbetes com IA (Gemini Flash)`);
-    console.log(`   Concorrência: 15 chamadas paralelas`);
-    console.log(`   Tempo estimado: ~${Math.ceil(chunk.length / 15)}s`);
+    console.log(`🤖 Processando ${chunk.length} verbetes com IA (Gemini Flash v5.1)`);
+    console.log(`   Concorrência: 5 chamadas paralelas + 1s delay entre batches`);
+    console.log(`   Tempo estimado: ~${Math.ceil(chunk.length / 5 * 2)}s`);
 
     const parsedBatch = await processBatchWithConcurrency(
       chunk,
@@ -232,7 +238,7 @@ async function processChunk(
         }
         return parsed;
       },
-      15
+      5 // Concorrência controlada para evitar rate limits
     );
 
     const validParsed = parsedBatch.filter((v): v is VerbeteGutenberg => v !== null);
@@ -350,7 +356,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('🚀 VERSÃO 5.0 - Parsing Inteligente com Gemini Flash');
+    console.log('🚀 VERSÃO 5.1 - Rate Limiting Fixed (5 parallel + 1s delay)');
     console.log(`📊 Request ID: ${requestId}`);
     
     const supabase = createClient(
