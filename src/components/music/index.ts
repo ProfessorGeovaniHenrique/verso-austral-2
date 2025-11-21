@@ -30,6 +30,7 @@ export { SongCard } from './SongCard';
 export type { Song } from './SongCard';
 export { ArtistCard } from './ArtistCard';
 export type { Artist } from './ArtistCard';
+export { ArtistDetailsSheet } from './ArtistDetailsSheet';
 export { StatsCard } from './StatsCard';
 
 export { AdvancedExportMenu } from './AdvancedExportMenu';

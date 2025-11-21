@@ -535,6 +535,9 @@ export type Database = {
       }
       artists: {
         Row: {
+          biography: string | null
+          biography_source: string | null
+          biography_updated_at: string | null
           created_at: string | null
           genre: string | null
           id: string
@@ -543,6 +546,9 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          biography?: string | null
+          biography_source?: string | null
+          biography_updated_at?: string | null
           created_at?: string | null
           genre?: string | null
           id?: string
@@ -551,6 +557,9 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          biography?: string | null
+          biography_source?: string | null
+          biography_updated_at?: string | null
           created_at?: string | null
           genre?: string | null
           id?: string

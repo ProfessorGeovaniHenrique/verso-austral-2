@@ -7,6 +7,7 @@ import {
   StatsCard,
   AdvancedExportMenu 
 } from '@/components/music';
+import { ArtistDetailsSheet } from '@/components/music/ArtistDetailsSheet';
 import { EnrichmentBatchModal } from '@/components/music/EnrichmentBatchModal';
 import { EnrichmentMetricsDashboard } from '@/components/music/EnrichmentMetricsDashboard';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ export default function MusicCatalog() {
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
   const [showMetricsDashboard, setShowMetricsDashboard] = useState(false);
   const [metricsData, setMetricsData] = useState<any>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -582,10 +585,8 @@ export default function MusicCatalog() {
                   pendingSongs={pendingSongs}
                   enrichedPercentage={enrichedPercentage}
                   onViewDetails={() => {
-                    toast({
-                      title: "Detalhes do Artista",
-                      description: `Visualizando detalhes de ${artist.name}`,
-                    });
+                    setSelectedArtistId(artist.id);
+                    setIsSheetOpen(true);
                   }}
                   onEnrich={async () => {
                     try {
@@ -686,6 +687,16 @@ export default function MusicCatalog() {
         }))}
         onEnrich={handleEnrichSong}
         onComplete={handleBatchComplete}
+      />
+
+      {/* Artist Details Sheet */}
+      <ArtistDetailsSheet
+        open={isSheetOpen}
+        onOpenChange={setIsSheetOpen}
+        artistId={selectedArtistId}
+        artist={selectedArtistId ? artists.find(a => a.id === selectedArtistId) : null}
+        songs={selectedArtistId ? songs.filter(s => s.artist_id === selectedArtistId) : []}
+        onEnrichSong={handleEnrichSong}
       />
       </div>
     </div>
