@@ -69,7 +69,6 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
 
     const parsedData: ParsedMusic[] = [];
     let lastArtista = '';
-    let lastCompositor = '';
 
     for (let i = 1; i < jsonData.length; i++) {
       const row = jsonData[i] as any[];
@@ -87,7 +86,7 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
 
       const compositor = row[columnMap.compositor]
         ? String(row[columnMap.compositor]).trim()
-        : lastCompositor || artista;
+        : '';
 
       const ano = row[columnMap.ano] 
         ? String(row[columnMap.ano]).trim() 
@@ -98,7 +97,6 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         : '';
 
       if (artista) lastArtista = artista;
-      if (compositor) lastCompositor = compositor;
 
       parsedData.push({
         id: `${i}-${Date.now()}`,
