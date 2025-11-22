@@ -65,108 +65,7 @@ export class RateLimiter {
   }
 }
 
-async function searchYouTubeWithLovableAI(
-  titulo: string,
-  artista: string,
-  apiKey: string
-): Promise<YouTubeSearchResult | null> {
-  console.log(`[Lovable AI] Searching for YouTube link: "${titulo}" by "${artista}"`);
-
-  try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a YouTube search assistant. Search for the official YouTube video and return ONLY valid JSON. No explanations.'
-          },
-          {
-            role: 'user',
-            content: `Busque no YouTube o vídeo oficial da música "${titulo}" do artista "${artista}".
-
-IMPORTANTE:
-- Retorne APENAS JSON válido
-- Use o formato exato abaixo
-- Se não encontrar, retorne videoId como null
-
-Formato de resposta:
-{
-  "videoId": "ID_do_video_youtube",
-  "videoTitle": "Título do vídeo",
-  "channelTitle": "Nome do canal",
-  "publishDate": "YYYY-MM-DD",
-  "description": "Descrição do vídeo"
-}
-
-Se não encontrar: {"videoId": null}`
-          }
-        ],
-        temperature: 0.2,
-        max_tokens: 500
-      }),
-    });
-
-    if (!response.ok) {
-      const errorBody = await response.text();
-      console.error(`[Lovable AI] API error: ${response.status}`);
-      console.error(`[Lovable AI] Error details: ${errorBody}`);
-      return null;
-    }
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      console.warn('[Lovable AI] No content returned');
-      return null;
-    }
-
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.warn('[Lovable AI] Could not extract JSON from response');
-      return null;
-    }
-
-    const parsed = JSON.parse(jsonMatch[0]);
-
-    // Validar estrutura
-    if (!parsed || typeof parsed !== 'object') {
-      console.warn('[Lovable AI] Invalid JSON structure');
-      return null;
-    }
-
-    if (!parsed.videoId) {
-      console.log(`[Lovable AI] No video found for: "${titulo}" by ${artista}`);
-      return null;
-    }
-
-    // Validar campos obrigatórios
-    if (!parsed.videoTitle || !parsed.channelTitle) {
-      console.warn('[Lovable AI] Missing required fields in response');
-    }
-
-    console.log(`[Lovable AI] Found: "${parsed.videoTitle || 'Unknown'}" (${parsed.channelTitle || 'Unknown'})`);
-
-    return {
-      videoId: parsed.videoId,
-      videoTitle: parsed.videoTitle || `${titulo} - ${artista}`,
-      channelTitle: parsed.channelTitle || artista,
-      publishDate: parsed.publishDate || new Date().toISOString(),
-      description: parsed.description || ''
-    };
-
-  } catch (error) {
-    console.error('[Lovable AI] Search error:', error);
-    return null;
-  }
-}
+// Lovable AI fallback removed due to hallucination issues
 
 export async function searchYouTube(
   titulo: string,
@@ -204,33 +103,7 @@ export async function searchYouTube(
     if (response.status === 403) {
       const errorData = await response.json().catch(() => ({}));
       if (errorData?.error?.errors?.[0]?.reason === 'quotaExceeded') {
-        console.error('[YouTube] Daily quota exceeded - Trying Lovable AI fallback...');
-        
-        // 🔄 FALLBACK: Try Lovable AI
-        const lovableKey = Deno.env.get('LOVABLE_API_KEY');
-        if (lovableKey) {
-          const lovableResult = await searchYouTubeWithLovableAI(titulo, artista, lovableKey);
-          
-          if (lovableResult) {
-            // Cache the Lovable AI result
-            const { error: cacheSaveError } = await supabase.from('youtube_cache').insert({
-              search_query: searchQuery,
-              video_id: lovableResult.videoId,
-              video_title: lovableResult.videoTitle,
-              channel_title: lovableResult.channelTitle,
-              publish_date: lovableResult.publishDate,
-              description: lovableResult.description || '',
-              hits_count: 0
-            });
-
-            if (cacheSaveError && !cacheSaveError.message.includes('duplicate')) {
-              console.error('[YouTube] Cache save error:', cacheSaveError.message);
-            }
-
-            return lovableResult;
-          }
-        }
-        
+        console.error('[YouTube] Daily quota exceeded - No fallback available');
         return null;
       }
     }
