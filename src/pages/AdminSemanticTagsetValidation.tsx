@@ -7,12 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine, Edit, Sparkles } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { EditTagsetDialog } from '@/components/admin/EditTagsetDialog';
+import { CurationResultDialog } from '@/components/admin/CurationResultDialog';
+import { useTagsetCuration, CurationSuggestion } from '@/hooks/useTagsetCuration';
+import { useTagsets } from '@/hooks/useTagsets';
 
 interface SemanticTagset {
   id: string;
@@ -32,6 +36,8 @@ interface SemanticTagset {
 
 export default function AdminSemanticTagsetValidation() {
   const queryClient = useQueryClient();
+  const { updateTagset } = useTagsets();
+  const { curateTagset, isLoading: isCurating, rateLimitRemaining } = useTagsetCuration();
   
   const [tagsets, setTagsets] = useState<SemanticTagset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,6 +46,12 @@ export default function AdminSemanticTagsetValidation() {
   const [nivelFilter, setNivelFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedTagset, setSelectedTagset] = useState<SemanticTagset | null>(null);
+  
+  // Estados para dialogs
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isCurationDialogOpen, setIsCurationDialogOpen] = useState(false);
+  const [currentCuration, setCurrentCuration] = useState<CurationSuggestion | null>(null);
+  const [editingTagset, setEditingTagset] = useState<SemanticTagset | null>(null);
 
   const ITEMS_PER_PAGE = 24;
 
@@ -96,7 +108,6 @@ export default function AdminSemanticTagsetValidation() {
 
   const handleReject = async (tagsetId: string) => {
     try {
-      // Primeiro pegar o valor atual
       const { data: current } = await supabase
         .from('semantic_tagset')
         .select('validacoes_humanas')
@@ -120,6 +131,46 @@ export default function AdminSemanticTagsetValidation() {
       toast.error('Erro ao rejeitar domínio semântico');
     }
   };
+
+  const handleEditClick = (tagset: SemanticTagset) => {
+    setEditingTagset(tagset);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleCurateClick = async (tagset: SemanticTagset) => {
+    const suggestion = await curateTagset(tagset, tagsets);
+    if (suggestion) {
+      setEditingTagset(tagset);
+      setCurrentCuration(suggestion);
+      setIsCurationDialogOpen(true);
+    }
+  };
+
+  const handleLevelChange = async (tagsetId: string, newLevel: number) => {
+    try {
+      const tagset = tagsets.find(t => t.id === tagsetId);
+      if (!tagset) return;
+
+      const updates: any = { nivel_profundidade: newLevel };
+      
+      // Se mudou para nível 1, remover pai
+      if (newLevel === 1) {
+        updates.categoria_pai = null;
+      }
+      
+      await updateTagset(tagsetId, updates);
+      toast.success('Nível alterado com sucesso!');
+      fetchTagsets();
+    } catch (error) {
+      console.error('Erro ao alterar nível:', error);
+      toast.error('Erro ao alterar nível do domínio');
+    }
+  };
+
+  // Pais disponíveis para o dialog de edição
+  const availableParents = tagsets
+    .filter(t => t.nivel_profundidade && t.nivel_profundidade < 4)
+    .map(t => ({ codigo: t.codigo, nome: t.nome }));
 
   // Filtros
   const filteredTagsets = tagsets.filter((tagset) => {
@@ -336,7 +387,49 @@ export default function AdminSemanticTagsetValidation() {
                           </div>
                         )}
 
+                        {/* Seletor de Nível */}
+                        <div className="mt-3">
+                          <Select
+                            value={tagset.nivel_profundidade?.toString() || '1'}
+                            onValueChange={(value) => handleLevelChange(tagset.id, parseInt(value))}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Nível 1</SelectItem>
+                              <SelectItem value="2">Nível 2</SelectItem>
+                              <SelectItem value="3">Nível 3</SelectItem>
+                              <SelectItem value="4">Nível 4</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
                         <div className="flex gap-2 mt-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEditClick(tagset)}
+                          >
+                            <Edit className="h-3 w-3 mr-1" />
+                            Editar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleCurateClick(tagset)}
+                            disabled={isCurating}
+                          >
+                            {isCurating ? (
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                            ) : (
+                              <Sparkles className="h-3 w-3 mr-1" />
+                            )}
+                            IA
+                          </Button>
+                        </div>
+
+                        <div className="flex gap-2 mt-2">
                           {tagset.status !== 'approved' && (
                             <Button
                               size="sm"
@@ -351,7 +444,7 @@ export default function AdminSemanticTagsetValidation() {
                           {tagset.status !== 'rejected' && (
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="destructive"
                               className="flex-1"
                               onClick={() => handleReject(tagset.id)}
                             >
@@ -397,6 +490,30 @@ export default function AdminSemanticTagsetValidation() {
       </div>
       
       <MVPFooter />
+
+      {/* Dialogs */}
+      <EditTagsetDialog
+        isOpen={isEditDialogOpen}
+        onClose={() => {
+          setIsEditDialogOpen(false);
+          setEditingTagset(null);
+          fetchTagsets();
+        }}
+        tagset={editingTagset}
+        availableParents={availableParents}
+      />
+
+      <CurationResultDialog
+        isOpen={isCurationDialogOpen}
+        onClose={() => {
+          setIsCurationDialogOpen(false);
+          setCurrentCuration(null);
+          setEditingTagset(null);
+          fetchTagsets();
+        }}
+        tagset={editingTagset}
+        suggestion={currentCuration}
+      />
     </div>
   );
 }
