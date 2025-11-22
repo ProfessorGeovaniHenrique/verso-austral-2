@@ -195,32 +195,35 @@ export function SongCard({
   return (
     <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isCompact ? 'mb-2' : ''}`}>
       <CardContent className={`flex flex-row ${isCompact ? 'p-4 gap-4' : 'p-0'}`}>
-        {/* Thumbnail (Esquerda) */}
-        <div 
-          className={`${isCompact ? 'w-24 h-24' : 'w-24 h-24 md:w-32 md:h-32'} flex-shrink-0 bg-muted flex items-center justify-center relative overflow-hidden rounded-lg group ${!isCompact && videoId ? 'cursor-pointer' : ''}`}
-          onClick={() => !isCompact && videoId && setShowVideoPlayer(!showVideoPlayer)}
-        >
-          {thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={song.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-              onError={() => setThumbnailError(true)}
-            />
-          ) : (
-            <Music className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground" />
-          )}
+        {/* Thumbnail + Badges Container */}
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          {/* Thumbnail */}
+          <div 
+            className={`${isCompact ? 'w-32 h-32' : 'w-32 h-32 md:w-48 md:h-48'} bg-muted flex items-center justify-center relative overflow-hidden rounded-lg group ${!isCompact && videoId ? 'cursor-pointer' : ''}`}
+            onClick={() => !isCompact && videoId && setShowVideoPlayer(!showVideoPlayer)}
+          >
+            {thumbnailUrl ? (
+              <img
+                src={thumbnailUrl}
+                alt={song.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+                onError={() => setThumbnailError(true)}
+              />
+            ) : (
+              <Music className="h-12 w-12 md:h-16 md:w-16 text-muted-foreground" />
+            )}
+            
+            {/* Hover Overlay com Play Icon - Apenas no modo full */}
+            {!isCompact && videoId && (
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <Play className="w-8 h-8 text-white drop-shadow-lg" />
+              </div>
+            )}
+          </div>
           
-          {/* Hover Overlay com Play Icon - Apenas no modo full */}
-          {!isCompact && videoId && (
-            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <Play className="w-8 h-8 text-white drop-shadow-lg" />
-            </div>
-          )}
-          
-          {/* Badges posicionados no canto superior direito da thumbnail */}
-          <div className="absolute top-1 right-1 flex flex-col gap-1">
+          {/* Badges abaixo da thumbnail */}
+          <div className="flex flex-wrap gap-1 max-w-[8rem] md:max-w-[12rem]">
             {getStatusBadge(song.status)}
             {confidence > 0 && getConfidenceBadge(confidence)}
             {song.status === 'enriched' && (
