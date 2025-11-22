@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
-import { searchYouTube, searchWithAI } from "./helpers.ts";
+import { searchYouTube, searchWithAI, RateLimiter } from "./helpers.ts";
+
+// Global rate limiter instances
+const geminiLimiter = new RateLimiter(3, 500); // 3 concurrent, 500ms between requests
+const youtubeLimiter = new RateLimiter(2, 1000); // 2 concurrent, 1s between requests
+const webSearchLimiter = new RateLimiter(2, 800); // 2 concurrent, 800ms between requests
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -96,12 +101,15 @@ serve(async (req) => {
     const sources: string[] = [];
     let confidenceScore = 0;
 
-    // 1. YouTube API - Search for video with description
+    // 1. YouTube API - Search for video with description (with rate limiting)
     let youtubeContext: YouTubeSearchResult | null = null;
     const youtubeApiKey = Deno.env.get('YOUTUBE_API_KEY');
     if (youtubeApiKey) {
       try {
-        youtubeContext = await searchYouTube(song.title, artistName, youtubeApiKey, supabase);
+        console.log(`[Rate Limiter] YouTube queue: ${youtubeLimiter.getQueueSize()}, running: ${youtubeLimiter.getRunningCount()}`);
+        youtubeContext = await youtubeLimiter.schedule(() => 
+          searchYouTube(song.title, artistName, youtubeApiKey, supabase)
+        );
         if (youtubeContext) {
           enrichedData.youtubeVideoId = youtubeContext.videoId;
           sources.push('youtube');
@@ -207,24 +215,27 @@ Saída Obrigatória (JSON):
 }
 Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
 
-          const geminiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                contents: [
-                  {
-                    parts: [{ text: systemPrompt }]
+          console.log(`[Rate Limiter] Gemini queue: ${geminiLimiter.getQueueSize()}, running: ${geminiLimiter.getRunningCount()}`);
+          const geminiResponse = await geminiLimiter.schedule(() =>
+            fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [{ text: systemPrompt }]
+                    }
+                  ],
+                  generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 200,
+                    responseMimeType: "application/json"
                   }
-                ],
-                generationConfig: {
-                  temperature: 0.1,
-                  maxOutputTokens: 200,
-                  responseMimeType: "application/json"
-                }
-              }),
-            }
+                }),
+              }
+            )
           );
 
           if (!geminiResponse.ok) {
@@ -332,14 +343,17 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
       }
     }
 
-    // 3. Web Search AI Fallback - for missing composer or year
+    // 3. Web Search AI Fallback - for missing composer or year (with rate limiting)
     const needsWebSearch = !enrichedData.composer || !enrichedData.releaseYear;
     if (needsWebSearch) {
       console.log(`[enrich-music-data] Web Search AI Fallback triggered for missing data`);
       try {
         const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
         if (LOVABLE_API_KEY) {
-          const webData = await searchWithAI(song.title, artistName, LOVABLE_API_KEY);
+          console.log(`[Rate Limiter] Web Search queue: ${webSearchLimiter.getQueueSize()}, running: ${webSearchLimiter.getRunningCount()}`);
+          const webData = await webSearchLimiter.schedule(() =>
+            searchWithAI(song.title, artistName, LOVABLE_API_KEY)
+          );
           
           if (!enrichedData.composer && webData.compositor !== 'Não Identificado') {
             enrichedData.composer = webData.compositor;

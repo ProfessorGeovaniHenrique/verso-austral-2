@@ -8,6 +8,63 @@ interface YouTubeSearchResult {
   videoId: string;
 }
 
+// Rate Limiter para controlar chamadas de API
+export class RateLimiter {
+  private queue: Array<() => Promise<any>> = [];
+  private running = 0;
+  private maxConcurrent: number;
+  private minDelay: number;
+  private lastRequestTime = 0;
+
+  constructor(maxConcurrent: number, minDelayMs: number) {
+    this.maxConcurrent = maxConcurrent;
+    this.minDelay = minDelayMs;
+  }
+
+  async schedule<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const now = Date.now();
+          const timeSinceLastRequest = now - this.lastRequestTime;
+          
+          if (timeSinceLastRequest < this.minDelay) {
+            await new Promise(r => setTimeout(r, this.minDelay - timeSinceLastRequest));
+          }
+
+          this.lastRequestTime = Date.now();
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.running--;
+          this.processQueue();
+        }
+      });
+      this.processQueue();
+    });
+  }
+
+  private processQueue() {
+    while (this.running < this.maxConcurrent && this.queue.length > 0) {
+      const task = this.queue.shift();
+      if (task) {
+        this.running++;
+        task();
+      }
+    }
+  }
+
+  getQueueSize(): number {
+    return this.queue.length;
+  }
+
+  getRunningCount(): number {
+    return this.running;
+  }
+}
+
 export async function searchYouTube(
   titulo: string,
   artista: string,
