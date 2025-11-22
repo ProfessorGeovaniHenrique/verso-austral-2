@@ -241,7 +241,7 @@ export function SongCard({
             
             {/* Botões de Ação + Dropdown */}
             <div className="flex items-center gap-1 flex-shrink-0">
-              {!isCompact && videoId && (
+              {videoId && (
                 <>
                   <TooltipProvider>
                     <Tooltip>
@@ -435,8 +435,8 @@ export function SongCard({
             </Collapsible>
           )}
 
-          {/* YouTube Player Embed - Apenas no modo full */}
-          {!isCompact && showVideoPlayer && videoId && (
+          {/* YouTube Player Embed */}
+          {showVideoPlayer && videoId && (
             <div className="w-full aspect-video rounded-lg overflow-hidden bg-black animate-fade-in">
               <iframe
                 width="100%"
