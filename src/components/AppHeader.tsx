@@ -23,7 +23,9 @@ import {
   History,
   Telescope,
   Moon,
-  Sun
+  Sun,
+  Music,
+  Library
 } from "lucide-react";
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
 import logoUfrgs from "@/assets/logo-ufrgs-oficial.png";
@@ -168,6 +170,24 @@ const AppHeader = () => {
                             <Database className="mr-2 h-4 w-4" />
                             <span>Configuração de Léxico</span>
                             {isActiveRoute("/admin/lexicon-setup") && <span className="ml-auto text-xs">●</span>}
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem 
+                            onClick={() => navigate("/music-enrichment")}
+                            className={isActiveRoute("/music-enrichment") ? "bg-accent text-accent-foreground" : ""}
+                          >
+                            <Music className="mr-2 h-4 w-4" />
+                            <span>Enriquecimento Musical</span>
+                            {isActiveRoute("/music-enrichment") && <span className="ml-auto text-xs">●</span>}
+                          </DropdownMenuItem>
+                          
+                          <DropdownMenuItem 
+                            onClick={() => navigate("/music-catalog")}
+                            className={isActiveRoute("/music-catalog") ? "bg-accent text-accent-foreground" : ""}
+                          >
+                            <Library className="mr-2 h-4 w-4" />
+                            <span>Catálogo de Músicas</span>
+                            {isActiveRoute("/music-catalog") && <span className="ml-auto text-xs">●</span>}
                           </DropdownMenuItem>
                           
                           <DropdownMenuSeparator />

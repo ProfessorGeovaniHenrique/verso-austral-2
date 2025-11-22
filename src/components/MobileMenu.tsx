@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Menu, Moon, Sun, Home, Wrench, Sparkles, Shield, Users, BarChart3, Database, BookOpen, CircuitBoard, History, LogOut } from 'lucide-react';
+import { Menu, Moon, Sun, Home, Wrench, Sparkles, Shield, Users, BarChart3, Database, BookOpen, CircuitBoard, History, LogOut, Music, Library } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -143,6 +143,24 @@ export function MobileMenu() {
               >
                 <Database className="h-4 w-4" />
                 <span>Setup Léxicos</span>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                onClick={() => handleNavigate('/music-enrichment')}
+                className="justify-start gap-2"
+              >
+                <Music className="h-4 w-4" />
+                <span>Enriquecimento Musical</span>
+              </Button>
+              
+              <Button 
+                variant="ghost" 
+                onClick={() => handleNavigate('/music-catalog')}
+                className="justify-start gap-2"
+              >
+                <Library className="h-4 w-4" />
+                <span>Catálogo de Músicas</span>
               </Button>
               
               <Separator />

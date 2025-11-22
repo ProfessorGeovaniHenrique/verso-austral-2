@@ -4,7 +4,7 @@ import { useAuthContext } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { User, LogOut, Users, Key, BarChart3, Database, BookOpen, CircuitBoard, History, Telescope, Moon, Sun } from "lucide-react";
+import { User, LogOut, Users, Key, BarChart3, Database, BookOpen, CircuitBoard, History, Telescope, Moon, Sun, Music, Library } from "lucide-react";
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
 import logoUfrgs from "@/assets/logo-ufrgs-oficial.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
@@ -102,6 +102,18 @@ const Header = () => {
                     <Database className="mr-2 h-4 w-4" />
                     <span>Configuração de Léxico</span>
                     {isActiveRoute("/admin/lexicon-setup") && <span className="ml-auto text-xs">●</span>}
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/music-enrichment")} className={isActiveRoute("/music-enrichment") ? "bg-accent text-accent-foreground" : ""}>
+                    <Music className="mr-2 h-4 w-4" />
+                    <span>Enriquecimento Musical</span>
+                    {isActiveRoute("/music-enrichment") && <span className="ml-auto text-xs">●</span>}
+                  </DropdownMenuItem>
+                  
+                  <DropdownMenuItem onClick={() => navigate("/music-catalog")} className={isActiveRoute("/music-catalog") ? "bg-accent text-accent-foreground" : ""}>
+                    <Library className="mr-2 h-4 w-4" />
+                    <span>Catálogo de Músicas</span>
+                    {isActiveRoute("/music-catalog") && <span className="ml-auto text-xs">●</span>}
                   </DropdownMenuItem>
                   
                   <DropdownMenuSeparator />
