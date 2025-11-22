@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Loader2 } from 'lucide-react';
+import { ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { EditTagsetDialog } from '@/components/admin/EditTagsetDialog';
 
 interface SemanticTagset {
   id: string;
@@ -51,9 +52,10 @@ const buildHierarchy = (tagsets: SemanticTagset[]): HierarchyNode[] => {
 interface HierarchyLevelProps {
   nodes: HierarchyNode[];
   level: number;
+  onEdit: (tagset: SemanticTagset) => void;
 }
 
-function HierarchyLevel({ nodes, level }: HierarchyLevelProps) {
+function HierarchyLevel({ nodes, level, onEdit }: HierarchyLevelProps) {
   const paddingClass = level === 2 ? 'pl-8' : level === 3 ? 'pl-12' : 'pl-16';
   
   return (
@@ -62,23 +64,36 @@ function HierarchyLevel({ nodes, level }: HierarchyLevelProps) {
         <div key={node.tagset.codigo}>
           {node.children.length > 0 ? (
             <Collapsible>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full justify-start gap-2 h-auto py-2"
+              <div className="flex items-center gap-2">
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="flex-1 justify-start gap-2 h-auto py-2"
+                  >
+                    <ChevronDown className="h-3 w-3 shrink-0" />
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {node.tagset.codigo}
+                    </Badge>
+                    <span className="font-medium text-left flex-1">{node.tagset.nome}</span>
+                    <Badge variant="secondary" className="text-xs shrink-0">
+                      {node.children.length}
+                    </Badge>
+                  </Button>
+                </CollapsibleTrigger>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(node.tagset);
+                  }}
+                  className="h-8 w-8 shrink-0"
                 >
-                  <ChevronDown className="h-3 w-3 shrink-0" />
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {node.tagset.codigo}
-                  </Badge>
-                  <span className="font-medium text-left flex-1">{node.tagset.nome}</span>
-                  <Badge variant="secondary" className="text-xs shrink-0">
-                    {node.children.length}
-                  </Badge>
+                  <Pencil className="h-3 w-3" />
                 </Button>
-              </CollapsibleTrigger>
+              </div>
               <CollapsibleContent>
-                <HierarchyLevel nodes={node.children} level={level + 1} />
+                <HierarchyLevel nodes={node.children} level={level + 1} onEdit={onEdit} />
               </CollapsibleContent>
             </Collapsible>
           ) : (
@@ -86,7 +101,15 @@ function HierarchyLevel({ nodes, level }: HierarchyLevelProps) {
               <Badge variant="outline" className="text-xs">
                 {node.tagset.codigo}
               </Badge>
-              <span className="text-sm">{node.tagset.nome}</span>
+              <span className="text-sm flex-1">{node.tagset.nome}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onEdit(node.tagset)}
+                className="h-7 w-7 shrink-0"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
             </div>
           )}
         </div>
@@ -99,6 +122,8 @@ export function SemanticHierarchyView() {
   const [tagsets, setTagsets] = useState<SemanticTagset[]>([]);
   const [hierarchy, setHierarchy] = useState<HierarchyNode[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [editingTagset, setEditingTagset] = useState<SemanticTagset | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchActiveTagsets();
@@ -126,10 +151,28 @@ export function SemanticHierarchyView() {
     }
   };
 
+  const handleEditClick = (tagset: SemanticTagset) => {
+    setEditingTagset(tagset);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleCloseEditDialog = () => {
+    setEditingTagset(null);
+    setIsEditDialogOpen(false);
+    fetchActiveTagsets(); // Recarregar hierarquia após edição
+  };
+
   const nivel1Count = tagsets.filter(t => t.nivel_profundidade === 1).length;
   const nivel2Count = tagsets.filter(t => t.nivel_profundidade === 2).length;
   const nivel3Count = tagsets.filter(t => t.nivel_profundidade === 3).length;
   const nivel4Count = tagsets.filter(t => t.nivel_profundidade === 4).length;
+
+  const availableParents = tagsets
+    .filter(t => t.nivel_profundidade !== null && t.nivel_profundidade < 4)
+    .map(t => ({
+      codigo: t.codigo,
+      nome: t.nome
+    }));
 
   if (isLoading) {
     return (
@@ -183,11 +226,11 @@ export function SemanticHierarchyView() {
                     variant="outline" 
                     className="w-full justify-between h-auto py-4 px-6 hover:bg-muted/50"
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 flex-1">
                       <Badge variant="default" className="text-sm">
                         {node.tagset.codigo}
                       </Badge>
-                      <div className="text-left">
+                      <div className="text-left flex-1">
                         <div className="text-lg font-semibold">
                           {node.tagset.nome}
                         </div>
@@ -197,6 +240,17 @@ export function SemanticHierarchyView() {
                           </div>
                         )}
                       </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditClick(node.tagset);
+                        }}
+                        className="shrink-0"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                     </div>
                     <div className="flex items-center gap-2">
                       {node.children.length > 0 && (
@@ -211,7 +265,7 @@ export function SemanticHierarchyView() {
                 
                 {node.children.length > 0 && (
                   <CollapsibleContent className="px-6 pb-4 pt-2">
-                    <HierarchyLevel nodes={node.children} level={2} />
+                    <HierarchyLevel nodes={node.children} level={2} onEdit={handleEditClick} />
                   </CollapsibleContent>
                 )}
               </Collapsible>
@@ -219,6 +273,21 @@ export function SemanticHierarchyView() {
           ))
         )}
       </div>
+
+      <EditTagsetDialog
+        isOpen={isEditDialogOpen}
+        onClose={handleCloseEditDialog}
+        tagset={editingTagset ? {
+          id: editingTagset.id,
+          codigo: editingTagset.codigo,
+          nome: editingTagset.nome,
+          descricao: editingTagset.descricao,
+          exemplos: (editingTagset as any).exemplos || null,
+          nivel_profundidade: editingTagset.nivel_profundidade,
+          categoria_pai: editingTagset.categoria_pai,
+        } : null}
+        availableParents={availableParents}
+      />
     </div>
   );
 }
