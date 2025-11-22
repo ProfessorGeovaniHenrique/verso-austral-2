@@ -59,3 +59,6 @@ verify_jwt = true
 
 [functions.generate-artist-bio]
 verify_jwt = false
+
+[functions.semantic-chat-assistant]
+verify_jwt = true

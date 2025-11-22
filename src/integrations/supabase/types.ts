@@ -1660,6 +1660,39 @@ export type Database = {
           },
         ]
       }
+      semantic_consultant_conversations: {
+        Row: {
+          context_snapshot: Json | null
+          created_at: string
+          id: string
+          message_content: string
+          message_role: string
+          session_id: string
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          message_content: string
+          message_role: string
+          session_id?: string
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          context_snapshot?: Json | null
+          created_at?: string
+          id?: string
+          message_content?: string
+          message_role?: string
+          session_id?: string
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       semantic_lexicon: {
         Row: {
           atualizado_em: string | null

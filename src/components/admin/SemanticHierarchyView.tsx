@@ -7,6 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronDown, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { EditTagsetDialog } from '@/components/admin/EditTagsetDialog';
+import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantChat';
 
 interface SemanticTagset {
   id: string;
@@ -288,6 +289,9 @@ export function SemanticHierarchyView() {
         } : null}
         availableParents={availableParents}
       />
+      
+      {/* ✨ Consultor Semântico IA - Floating Chat */}
+      <SemanticConsultantChat totalDomains={tagsets.filter(t => t.status === 'ativo').length} />
     </div>
   );
 }

@@ -19,6 +19,7 @@ import { SemanticHierarchyView } from '@/components/admin/SemanticHierarchyView'
 import { useTagsetCuration, CurationSuggestion } from '@/hooks/useTagsetCuration';
 import { useTagsets } from '@/hooks/useTagsets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantChat';
 
 interface SemanticTagset {
   id: string;
@@ -572,6 +573,9 @@ export default function AdminSemanticTagsetValidation() {
         tagset={editingTagset}
         suggestion={currentCuration}
       />
+      
+      {/* ✨ Consultor Semântico IA - Floating Chat */}
+      <SemanticConsultantChat totalDomains={approvedCount} />
     </div>
   );
 }
