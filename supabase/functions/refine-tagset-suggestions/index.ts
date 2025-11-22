@@ -57,7 +57,11 @@ serve(withInstrumentation('refine-tagset-suggestions', async (req) => {
       tagsetsAtivos: Tagset[];
     };
 
-    console.log(`[AI Analysis] Analyzing tagset: ${tagsetPendente.codigo} - ${tagsetPendente.nome}`);
+    console.log('[CURADORIA] ========================================');
+    console.log('[CURADORIA] Iniciando análise de curadoria...');
+    console.log('[CURADORIA] Tagset pendente:', JSON.stringify(tagsetPendente, null, 2));
+    console.log('[CURADORIA] Contexto:', tagsetsAtivos.length, 'tagsets ativos disponíveis');
+    console.log('[CURADORIA] ========================================');
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -120,7 +124,8 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
   ]
 }`;
 
-    console.log(`[AI Analysis] Calling Lovable AI with Gemini...`);
+    console.log('[CURADORIA] Chamando Lovable AI com Gemini 2.5 Flash...');
+    console.log('[CURADORIA] Prompt construído com', tagsetsAtivos.length, 'tagsets no contexto');
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -160,13 +165,19 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
     }
 
     const aiResponse = await response.json();
+    console.log('[CURADORIA] Resposta da API recebida. Tokens usados:', 
+      aiResponse.usage?.total_tokens || 'N/A');
+    
     const content = aiResponse.choices?.[0]?.message?.content;
 
     if (!content) {
+      console.error('[CURADORIA] ❌ Resposta vazia da IA!');
       throw new Error("No content in AI response");
     }
 
-    console.log(`[AI Analysis] Raw AI response: ${content}`);
+    console.log('[CURADORIA] Resposta raw da IA:');
+    console.log(content);
+    console.log('[CURADORIA] ========================================');
 
     // Extrair JSON da resposta (pode vir com markdown)
     let jsonContent = content.trim();
@@ -178,9 +189,18 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
 
     const refinedSuggestion: AIRefinedSuggestion = JSON.parse(jsonContent);
 
-    console.log(`[AI Analysis] Successfully parsed suggestion for ${tagsetPendente.codigo}`);
-    console.log(`[AI Analysis] Recommended parent: ${refinedSuggestion.tagsetPaiRecomendado?.codigo || 'null (nível 1)'}`);
-    console.log(`[AI Analysis] Confidence: ${refinedSuggestion.tagsetPaiRecomendado?.confianca}%`);
+    console.log('[CURADORIA] ✅ JSON parseado com sucesso!');
+    console.log('[CURADORIA] Resposta estruturada:', JSON.stringify(refinedSuggestion, null, 2));
+    console.log('[CURADORIA] ========================================');
+    console.log('[CURADORIA] RESULTADO DA ANÁLISE:');
+    console.log('[CURADORIA] - Tagset analisado:', tagsetPendente.codigo);
+    console.log('[CURADORIA] - Pai recomendado:', refinedSuggestion.tagsetPaiRecomendado?.codigo || 'null (nível 1)');
+    console.log('[CURADORIA] - Nome do pai:', refinedSuggestion.tagsetPaiRecomendado?.nome || 'N/A');
+    console.log('[CURADORIA] - Nível sugerido:', refinedSuggestion.nivelSugerido);
+    console.log('[CURADORIA] - Confiança:', refinedSuggestion.tagsetPaiRecomendado?.confianca + '%');
+    console.log('[CURADORIA] - Melhorias sugeridas:', refinedSuggestion.melhorias);
+    console.log('[CURADORIA] - Alternativas:', refinedSuggestion.alternativas?.length || 0);
+    console.log('[CURADORIA] ========================================');
 
     return new Response(
       JSON.stringify(refinedSuggestion),

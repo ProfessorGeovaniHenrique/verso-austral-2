@@ -94,20 +94,28 @@ export function useTagsetCuration() {
       setLastCallTime(Date.now());
       setRateLimitRemaining(prev => prev - 1);
       
+      console.log('[useTagsetCuration] Resposta recebida:', data);
+      
       toast.success('Curadoria concluída!');
       
-      // Estruturar resposta da IA
+      // Alinhar interface com resposta real da edge function
       const suggestion: CurationSuggestion = {
-        nome_sugerido: data.nome_sugerido,
-        descricao_sugerida: data.descricao_sugerida,
-        exemplos_adicionais: data.exemplos_adicionais || [],
-        nivel_recomendado: data.nivel_recomendado,
-        pai_recomendado: data.pai_recomendado,
+        nome_sugerido: undefined, // IA não sugere alteração de nome
+        descricao_sugerida: data.melhorias?.descricaoSugerida,
+        exemplos_adicionais: data.melhorias?.exemplosAdicionais || [],
+        nivel_recomendado: data.nivelSugerido,
+        pai_recomendado: data.tagsetPaiRecomendado?.codigo ? {
+          codigo: data.tagsetPaiRecomendado.codigo,
+          nome: data.tagsetPaiRecomendado.nome,
+          confianca: data.tagsetPaiRecomendado.confianca / 100, // Converter de 0-100 para 0-1
+        } : undefined,
         justificativa: data.justificativa || 'Sem justificativa fornecida',
-        alertas: data.alertas || [],
-        confianca_geral: data.confianca_geral || 0.5,
+        alertas: data.melhorias?.alertas || [],
+        confianca_geral: data.tagsetPaiRecomendado?.confianca / 100 || 0.5,
       };
 
+      console.log('[useTagsetCuration] Sugestão estruturada:', suggestion);
+      
       return suggestion;
     } catch (err) {
       console.error('Erro inesperado na curadoria:', err);

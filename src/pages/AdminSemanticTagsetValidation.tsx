@@ -98,7 +98,18 @@ export default function AdminSemanticTagsetValidation() {
 
       if (error) throw error;
       
-      toast.success('Domínio semântico aprovado!');
+      // Recalcular hierarquia após aprovação
+      console.log('[Approve] Recalculando hierarquia...');
+      const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
+      
+      if (hierarchyError) {
+        console.error('[Approve] Erro ao recalcular hierarquia:', hierarchyError);
+        toast.warning('Domínio aprovado, mas hierarquia não foi recalculada');
+      } else {
+        console.log('[Approve] Hierarquia recalculada com sucesso');
+      }
+      
+      toast.success('Domínio semântico aprovado e hierarquia atualizada!');
       fetchTagsets();
     } catch (error) {
       console.error('Erro ao aprovar:', error);
@@ -123,6 +134,14 @@ export default function AdminSemanticTagsetValidation() {
         .eq('id', tagsetId);
 
       if (error) throw error;
+      
+      // Recalcular hierarquia após rejeição (para limpar possíveis inconsistências)
+      console.log('[Reject] Recalculando hierarquia...');
+      const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
+      
+      if (hierarchyError) {
+        console.error('[Reject] Erro ao recalcular hierarquia:', hierarchyError);
+      }
       
       toast.success('Domínio semântico rejeitado');
       fetchTagsets();
