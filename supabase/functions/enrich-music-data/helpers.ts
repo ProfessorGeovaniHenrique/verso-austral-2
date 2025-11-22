@@ -65,6 +65,92 @@ export class RateLimiter {
   }
 }
 
+async function searchYouTubeWithPerplexity(
+  titulo: string,
+  artista: string,
+  apiKey: string
+): Promise<YouTubeSearchResult | null> {
+  const searchQuery = `site:youtube.com "${titulo}" "${artista}" official audio`;
+  
+  console.log(`[Perplexity] Searching for YouTube link: "${searchQuery}"`);
+
+  try {
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a YouTube search assistant. Return ONLY a valid JSON object with the YouTube video data. No additional text.'
+          },
+          {
+            role: 'user',
+            content: `Find the official YouTube video for the song "${titulo}" by "${artista}". 
+Return JSON with this exact structure:
+{
+  "videoId": "the_video_id",
+  "videoTitle": "title",
+  "channelTitle": "channel name",
+  "publishDate": "YYYY-MM-DD",
+  "description": "brief description"
+}
+
+If not found, return: {"videoId": null}`
+          }
+        ],
+        temperature: 0.2,
+        max_tokens: 500
+      }),
+    });
+
+    if (!response.ok) {
+      console.error(`[Perplexity] API error: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      console.warn('[Perplexity] No content returned');
+      return null;
+    }
+
+    // Extract JSON from response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn('[Perplexity] Could not extract JSON');
+      return null;
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+
+    if (!parsed.videoId) {
+      console.log(`[Perplexity] No video found for: "${searchQuery}"`);
+      return null;
+    }
+
+    console.log(`[Perplexity] Found: "${parsed.videoTitle}" (${parsed.channelTitle})`);
+
+    return {
+      videoId: parsed.videoId,
+      videoTitle: parsed.videoTitle || `${titulo} - ${artista}`,
+      channelTitle: parsed.channelTitle || artista,
+      publishDate: parsed.publishDate || new Date().toISOString(),
+      description: parsed.description || ''
+    };
+
+  } catch (error) {
+    console.error('[Perplexity] Search error:', error);
+    return null;
+  }
+}
+
 export async function searchYouTube(
   titulo: string,
   artista: string,
@@ -101,7 +187,33 @@ export async function searchYouTube(
     if (response.status === 403) {
       const errorData = await response.json().catch(() => ({}));
       if (errorData?.error?.errors?.[0]?.reason === 'quotaExceeded') {
-        console.error('[YouTube] Daily quota exceeded');
+        console.error('[YouTube] Daily quota exceeded - Trying Perplexity fallback...');
+        
+        // 🔄 FALLBACK: Try Perplexity
+        const perplexityKey = Deno.env.get('PERPLEXITY_API_KEY');
+        if (perplexityKey) {
+          const perplexityResult = await searchYouTubeWithPerplexity(titulo, artista, perplexityKey);
+          
+          if (perplexityResult) {
+            // Cache the Perplexity result
+            await supabase.from('youtube_cache').insert({
+              search_query: searchQuery,
+              video_id: perplexityResult.videoId,
+              video_title: perplexityResult.videoTitle,
+              channel_title: perplexityResult.channelTitle,
+              publish_date: perplexityResult.publishDate,
+              description: perplexityResult.description || '',
+              hits_count: 0
+            }).catch((err: any) => {
+              if (!err?.message?.includes('duplicate')) {
+                console.error('[YouTube] Cache save error:', err);
+              }
+            });
+
+            return perplexityResult;
+          }
+        }
+        
         return null;
       }
     }
