@@ -356,16 +356,16 @@ export function SongCard({
                     <p className="text-xs font-medium leading-tight line-clamp-2">{song.composer}</p>
                   </div>
                 )}
-                {(song.album || releaseYear) && (
+                {song.album && (
                   <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50">
                     <div className="flex items-center gap-1 mb-1">
-                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Álbum: Ano</span>
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Álbum:</span>
                       {song.status === 'enriched' && (
                         <Sparkles className="w-3 h-3 text-green-500" />
                       )}
                     </div>
                     <p className="text-xs font-medium leading-tight line-clamp-2">
-                      {song.album || 'N/A'}: {releaseYear || 'N/A'}
+                      {song.album}
                     </p>
                   </div>
                 )}
