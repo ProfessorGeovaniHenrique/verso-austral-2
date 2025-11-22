@@ -235,9 +235,14 @@ export function SongCard({
         <div className={`flex-1 space-y-2 min-w-0 ${isCompact ? '' : 'p-4'}`}>
           {/* Header: Título + Ações */}
           <div className="flex items-start justify-between gap-2">
-            <h3 className={`font-semibold line-clamp-2 flex-1 ${isCompact ? 'text-sm' : 'text-lg'}`} title={song.title}>
-              {song.title}
-            </h3>
+            <div className="flex-1 min-w-0">
+              <h3 className={`font-semibold line-clamp-2 ${isCompact ? 'text-sm' : 'text-lg'}`} title={song.title}>
+                {song.title}
+              </h3>
+              <p className={`text-muted-foreground ${isCompact ? 'text-xs' : 'text-sm'} mt-1`}>
+                Nome do artista: {song.artist || song.artists?.name || 'Desconhecido'}
+              </p>
+            </div>
             
             {/* Botões de Ação + Dropdown */}
             <div className="flex items-center gap-1 flex-shrink-0">
