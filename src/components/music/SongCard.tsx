@@ -335,17 +335,28 @@ export function SongCard({
           
           {/* Metadados */}
           {isCompact ? (
-            <div className="space-y-1">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
                 {song.composer && (
-                  <span className="truncate">Compositor: {song.composer}</span>
+                  <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50">
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Compositor</span>
+                      {song.status === 'enriched' && (
+                        <Sparkles className="w-3 h-3 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-xs font-medium leading-tight line-clamp-2">{song.composer}</p>
+                  </div>
                 )}
                 {releaseYear && releaseYear !== '0000' && (
-                  <div className="flex items-center gap-1">
-                    <span>Ano: {releaseYear}</span>
-                    {song.status === 'enriched' && (
-                      <Badge variant="success" className="text-[10px] h-4 px-1">✓</Badge>
-                    )}
+                  <div className="bg-muted/30 rounded-lg p-2.5 border border-border/50">
+                    <div className="flex items-center gap-1 mb-1">
+                      <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Ano de Lançamento</span>
+                      {song.status === 'enriched' && (
+                        <Sparkles className="w-3 h-3 text-green-500" />
+                      )}
+                    </div>
+                    <p className="text-xs font-medium">{releaseYear}</p>
                   </div>
                 )}
               </div>
