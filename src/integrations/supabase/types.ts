@@ -1860,6 +1860,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "fk_semantic_tagset_categoria_pai"
+            columns: ["categoria_pai"]
+            isOneToOne: false
+            referencedRelation: "semantic_tagset"
+            referencedColumns: ["codigo"]
+          },
+          {
             foreignKeyName: "semantic_tagset_tagset_pai_fkey"
             columns: ["tagset_pai"]
             isOneToOne: false

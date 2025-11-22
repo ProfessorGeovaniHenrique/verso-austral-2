@@ -70,6 +70,29 @@ export function EditTagsetDialog({
   const { updateTagset } = useTagsets();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
+  // ✅ VALIDAÇÃO: Filtrar pais para prevenir ciclos hierárquicos
+  const getAvailableParents = (currentTagset: TagsetData | null): Array<{ codigo: string; nome: string }> => {
+    if (!currentTagset) return availableParents;
+
+    const descendants = new Set<string>();
+    
+    const collectDescendants = (codigo: string) => {
+      descendants.add(codigo);
+      availableParents
+        .filter(t => availableParents.some(p => p.codigo === codigo))
+        .forEach(child => collectDescendants(child.codigo));
+    };
+    
+    collectDescendants(currentTagset.codigo);
+    
+    return availableParents.filter(t => 
+      t.codigo !== currentTagset.codigo && 
+      !descendants.has(t.codigo)
+    );
+  };
+
+  const filteredParents = getAvailableParents(tagset);
+
   const form = useForm<EditTagsetForm>({
     resolver: zodResolver(editTagsetSchema),
     defaultValues: {
@@ -278,7 +301,7 @@ export function EditTagsetDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {availableParents.map((parent) => (
+                        {filteredParents.map((parent) => (
                           <SelectItem key={parent.codigo} value={parent.codigo}>
                             {parent.codigo} - {parent.nome}
                           </SelectItem>

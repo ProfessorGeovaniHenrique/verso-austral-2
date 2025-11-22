@@ -90,7 +90,7 @@ export default function AdminSemanticTagsetValidation() {
       const { error } = await supabase
         .from('semantic_tagset')
         .update({
-          status: 'approved',
+          status: 'ativo', // ✅ CORRIGIDO: usar 'ativo' ao invés de 'approved'
           aprovado_em: new Date().toISOString(),
           validacoes_humanas: (current?.validacoes_humanas || 0) + 1
         })
@@ -117,7 +117,7 @@ export default function AdminSemanticTagsetValidation() {
       const { error } = await supabase
         .from('semantic_tagset')
         .update({
-          status: 'rejected',
+          status: 'rejeitado', // ✅ CORRIGIDO: usar 'rejeitado' ao invés de 'rejected'
           validacoes_humanas: (current?.validacoes_humanas || 0) + 1
         })
         .eq('id', tagsetId);
@@ -151,11 +151,20 @@ export default function AdminSemanticTagsetValidation() {
       const tagset = tagsets.find(t => t.id === tagsetId);
       if (!tagset) return;
 
+      // ✅ VALIDAÇÃO: Níveis 2-4 precisam ter pai definido
+      if (newLevel > 1 && !tagset.categoria_pai) {
+        toast.error('Tagsets de nível 2-4 precisam ter um pai definido. Edite o tagset para selecionar um pai.');
+        return;
+      }
+
       const updates: any = { nivel_profundidade: newLevel };
       
       // Se mudou para nível 1, remover pai
       if (newLevel === 1) {
         updates.categoria_pai = null;
+        if (tagset.categoria_pai) {
+          toast.info('Removendo pai para tagset de nível 1...');
+        }
       }
       
       await updateTagset(tagsetId, updates);
@@ -172,9 +181,17 @@ export default function AdminSemanticTagsetValidation() {
     .filter(t => t.nivel_profundidade && t.nivel_profundidade < 4)
     .map(t => ({ codigo: t.codigo, nome: t.nome }));
 
+  // ✅ MAPEAMENTO CORRETO: Frontend → Backend
+  const STATUS_MAP = {
+    'all': null,
+    'approved': 'ativo',
+    'pending': 'proposto',
+    'rejected': 'rejeitado'
+  } as const;
+
   // Filtros
   const filteredTagsets = tagsets.filter((tagset) => {
-    if (statusFilter !== 'all' && tagset.status !== statusFilter) return false;
+    if (statusFilter !== 'all' && tagset.status !== STATUS_MAP[statusFilter as keyof typeof STATUS_MAP]) return false;
     if (nivelFilter !== 'all' && tagset.nivel_profundidade?.toString() !== nivelFilter) return false;
     if (searchTerm && !tagset.nome.toLowerCase().includes(searchTerm.toLowerCase()) 
         && !tagset.codigo.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -190,9 +207,9 @@ export default function AdminSemanticTagsetValidation() {
     currentPage * ITEMS_PER_PAGE
   );
 
-  // Estatísticas
-  const approvedCount = tagsets.filter(t => t.status === 'approved').length;
-  const pendingCount = tagsets.filter(t => t.status === 'pending' || !t.status).length;
+  // Estatísticas (usando status corretos do backend)
+  const approvedCount = tagsets.filter(t => t.status === 'ativo').length;
+  const pendingCount = tagsets.filter(t => t.status === 'proposto' || !t.status).length;
   const validationRate = tagsets.length > 0 ? ((approvedCount / tagsets.length) * 100).toFixed(2) : '0';
 
   return (
@@ -344,12 +361,12 @@ export default function AdminSemanticTagsetValidation() {
                             <CardTitle className="text-base">{tagset.nome}</CardTitle>
                           </div>
                           <Badge variant={
-                            tagset.status === 'approved' ? 'default' :
-                            tagset.status === 'rejected' ? 'destructive' :
+                            tagset.status === 'ativo' ? 'default' :
+                            tagset.status === 'rejeitado' ? 'destructive' :
                             'secondary'
                           }>
-                            {tagset.status === 'approved' ? 'Aprovado' :
-                             tagset.status === 'rejected' ? 'Rejeitado' :
+                            {tagset.status === 'ativo' ? 'Aprovado' :
+                             tagset.status === 'rejeitado' ? 'Rejeitado' :
                              'Pendente'}
                           </Badge>
                         </div>
@@ -430,7 +447,7 @@ export default function AdminSemanticTagsetValidation() {
                         </div>
 
                         <div className="flex gap-2 mt-2">
-                          {tagset.status !== 'approved' && (
+                          {tagset.status !== 'ativo' && (
                             <Button
                               size="sm"
                               variant="default"
@@ -441,7 +458,7 @@ export default function AdminSemanticTagsetValidation() {
                               Aprovar
                             </Button>
                           )}
-                          {tagset.status !== 'rejected' && (
+                          {tagset.status !== 'rejeitado' && (
                             <Button
                               size="sm"
                               variant="destructive"
