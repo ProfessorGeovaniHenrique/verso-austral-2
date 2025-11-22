@@ -67,7 +67,7 @@ export function EditTagsetDialog({
   tagset,
   availableParents,
 }: EditTagsetDialogProps) {
-  const { updateTagset } = useTagsets();
+  const { updateTagset, tagsets } = useTagsets();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // ✅ VALIDAÇÃO: Filtrar pais para prevenir ciclos hierárquicos
@@ -75,12 +75,17 @@ export function EditTagsetDialog({
     if (!currentTagset) return availableParents;
 
     const descendants = new Set<string>();
+    const visited = new Set<string>(); // Proteção contra ciclos
     
     const collectDescendants = (codigo: string) => {
+      // Evitar recursão infinita
+      if (visited.has(codigo)) return;
+      visited.add(codigo);
       descendants.add(codigo);
-      availableParents
-        .filter(t => availableParents.some(p => p.codigo === codigo))
-        .forEach(child => collectDescendants(child.codigo));
+      
+      // Buscar filhos usando os tagsets completos
+      const children = tagsets?.filter(t => t.categoria_pai === codigo) || [];
+      children.forEach(child => collectDescendants(child.codigo));
     };
     
     collectDescendants(currentTagset.codigo);
