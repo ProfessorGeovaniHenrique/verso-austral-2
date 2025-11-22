@@ -15,8 +15,10 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { EditTagsetDialog } from '@/components/admin/EditTagsetDialog';
 import { CurationResultDialog } from '@/components/admin/CurationResultDialog';
+import { SemanticHierarchyView } from '@/components/admin/SemanticHierarchyView';
 import { useTagsetCuration, CurationSuggestion } from '@/hooks/useTagsetCuration';
 import { useTagsets } from '@/hooks/useTagsets';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface SemanticTagset {
   id: string;
@@ -294,25 +296,39 @@ export default function AdminSemanticTagsetValidation() {
           </Card>
         </div>
 
-        {/* Filtros e Busca */}
-        <Card className="mt-6">
-          <CardHeader>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <Filter className="h-5 w-5" />
-                  Domínios Semânticos
-                </CardTitle>
-                <CardDescription>
-                  Validação e aprovação de tagsets semânticos
-                </CardDescription>
-              </div>
-              <Button onClick={fetchTagsets} variant="outline" size="sm">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
-              </Button>
-            </div>
-          </CardHeader>
+        {/* Tabs para alternar entre Validação e Hierarquia */}
+        <Tabs defaultValue="validation" className="mt-6">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="validation" className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              Validação
+            </TabsTrigger>
+            <TabsTrigger value="hierarchy" className="flex items-center gap-2">
+              <TreePine className="h-4 w-4" />
+              Hierarquia
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="validation" className="mt-6 space-y-0">
+            {/* Filtros e Busca */}
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Filter className="h-5 w-5" />
+                      Domínios Semânticos
+                    </CardTitle>
+                    <CardDescription>
+                      Validação e aprovação de tagsets semânticos
+                    </CardDescription>
+                  </div>
+                  <Button onClick={fetchTagsets} variant="outline" size="sm">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Atualizar
+                  </Button>
+                </div>
+              </CardHeader>
           <CardContent>
             <div className="flex flex-col sm:flex-row gap-4 mb-6">
               <div className="flex-1 relative">
@@ -523,6 +539,12 @@ export default function AdminSemanticTagsetValidation() {
             )}
           </CardContent>
         </Card>
+          </TabsContent>
+
+          <TabsContent value="hierarchy" className="mt-6">
+            <SemanticHierarchyView />
+          </TabsContent>
+        </Tabs>
       </div>
       
       <MVPFooter />
