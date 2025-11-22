@@ -103,25 +103,7 @@ export function SongCard({
   // Compatibilidade: suporta ambos youtubeUrl e youtube_url
   const youtubeLink = song.youtubeUrl || song.youtube_url;
   const videoId = youtubeLink ? extractYoutubeVideoId(youtubeLink) : null;
-  
-  // Debug logs
-  if (song.status === 'enriched' && !youtubeLink) {
-    console.log('[SongCard] Música enriquecida sem YouTube URL:', {
-      id: song.id,
-      title: song.title,
-      youtubeUrl: song.youtubeUrl,
-      youtube_url: song.youtube_url
-    });
-  }
-  
-  if (youtubeLink && !videoId) {
-    console.log('[SongCard] URL do YouTube presente mas videoId não extraído:', {
-      title: song.title,
-      youtubeLink,
-      videoId
-    });
-  }
-  
+   
   // Lógica de thumbnail: prioriza YouTube, depois thumbnail do banco, depois fallback
   const thumbnailUrl = videoId && !thumbnailError
     ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`

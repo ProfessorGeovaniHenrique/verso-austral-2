@@ -265,10 +265,16 @@ export async function handleLegacyMode(body: any) {
   );
 }
 
+// Helper function to extract YouTube video ID from URL
+function extractVideoId(youtubeUrl: string): string | undefined {
+  const match = youtubeUrl.match(/[?&]v=([^&]+)/);
+  return match ? match[1] : undefined;
+}
+
 // Core enrichment function for a single song
 async function enrichSingleSong(songId: string, supabase: any): Promise<EnrichmentResult> {
   try {
-    // Fetch song data
+    // Fetch song data (including current enrichment status)
     const { data: song, error: fetchError } = await supabase
       .from('songs')
       .select(`
@@ -277,6 +283,9 @@ async function enrichSingleSong(songId: string, supabase: any): Promise<Enrichme
         normalized_title,
         composer,
         release_year,
+        youtube_url,
+        confidence_score,
+        status,
         artists (
           name
         )
@@ -293,6 +302,17 @@ async function enrichSingleSong(songId: string, supabase: any): Promise<Enrichme
         error: 'Song not found'
       };
     }
+
+    // Store current data for intelligent merge
+    const currentData = {
+      composer: song.composer,
+      release_year: song.release_year,
+      youtube_url: song.youtube_url,
+      confidence_score: song.confidence_score || 0,
+      status: song.status
+    };
+
+    console.log(`[enrichSingleSong] Current data for ${songId}:`, currentData);
 
     const artistName = (song.artists as any)?.name || 'Unknown Artist';
     const enrichedData: any = {};
@@ -368,19 +388,67 @@ async function enrichSingleSong(songId: string, supabase: any): Promise<Enrichme
 
     confidenceScore = Math.min(confidenceScore, 100);
 
-    // Update song in database
+    // ✅ INTELLIGENT MERGE LOGIC: Only update if new data is better
+    const hasNewData = 
+      enrichedData.composer || 
+      enrichedData.releaseYear || 
+      enrichedData.youtubeVideoId;
+
+    const isBetterConfidence = confidenceScore > currentData.confidence_score;
+    const hasNewYouTube = enrichedData.youtubeVideoId && !currentData.youtube_url;
+    const hasNewComposer = enrichedData.composer && !currentData.composer;
+    const hasNewYear = enrichedData.releaseYear && !currentData.release_year;
+
+    const shouldUpdate = hasNewData && (
+      isBetterConfidence ||
+      hasNewYouTube ||
+      hasNewComposer ||
+      hasNewYear ||
+      currentData.confidence_score === 0
+    );
+
+    if (!shouldUpdate) {
+      console.log(`[enrichSingleSong] Skipping update for ${songId} - current data is better or equal`);
+      console.log(`  Current confidence: ${currentData.confidence_score}%, New: ${confidenceScore}%`);
+      
+      return {
+        songId,
+        success: true,
+        enrichedData: {
+          composer: currentData.composer || undefined,
+          releaseYear: currentData.release_year || undefined,
+          youtubeVideoId: currentData.youtube_url ? extractVideoId(currentData.youtube_url) : undefined
+        },
+        confidenceScore: currentData.confidence_score,
+        sources: ['cached']
+      };
+    }
+
+    // ✅ MERGE DATA: Combine best of both enrichments
     const updateData: any = {
       status: 'enriched',
-      confidence_score: confidenceScore,
+      confidence_score: Math.max(confidenceScore, currentData.confidence_score),
       enrichment_source: sources.join(','),
       updated_at: new Date().toISOString(),
     };
 
-    if (enrichedData.composer) updateData.composer = enrichedData.composer;
-    if (enrichedData.releaseYear) updateData.release_year = enrichedData.releaseYear;
+    // Intelligent field merge: use new data if available, otherwise preserve existing
+    updateData.composer = enrichedData.composer || currentData.composer || null;
+    updateData.release_year = enrichedData.releaseYear || currentData.release_year || null;
+    
     if (enrichedData.youtubeVideoId) {
       updateData.youtube_url = `https://www.youtube.com/watch?v=${enrichedData.youtubeVideoId}`;
+    } else if (currentData.youtube_url) {
+      // Preserve existing YouTube URL
+      updateData.youtube_url = currentData.youtube_url;
     }
+
+    console.log(`[enrichSingleSong] Updating ${songId} with merged data:`, {
+      composer: updateData.composer,
+      release_year: updateData.release_year,
+      youtube_url: updateData.youtube_url,
+      confidence: updateData.confidence_score
+    });
 
     const { error: updateError } = await supabase
       .from('songs')
