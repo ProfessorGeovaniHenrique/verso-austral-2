@@ -84,103 +84,119 @@ serve(async (req) => {
 
     console.log(`[extract-music-titles] Found ${uniqueArtists.size} unique artists`);
 
-    const artistIds: Record<string, string> = {};
-    let artistsCreated = 0;
+    // ✅ OTIMIZAÇÃO: Batch upsert para artistas
+    const artistsToInsert = Array.from(uniqueArtists.entries()).map(([normalized, original]) => ({
+      name: original,
+      normalized_name: normalized,
+      corpus_id: corpusId || null,
+    }));
 
-    // Insert or get artists
-    for (const [normalized, original] of uniqueArtists.entries()) {
-      // Check if artist exists
-      const { data: existing } = await supabase
-        .from('artists')
-        .select('id')
-        .eq('normalized_name', normalized)
-        .maybeSingle();
+    const { data: upsertedArtists, error: artistError } = await supabase
+      .from('artists')
+      .upsert(artistsToInsert, { 
+        onConflict: 'normalized_name',
+        ignoreDuplicates: false 
+      })
+      .select('id, name, normalized_name');
 
-      if (existing) {
-        artistIds[original] = existing.id;
-      } else {
-        // Create new artist
-        const { data: newArtist, error } = await supabase
-          .from('artists')
-          .insert({
-            name: original,
-            normalized_name: normalized,
-            corpus_id: corpusId || null,
-          })
-          .select('id')
-          .single();
-
-        if (error) {
-          console.error(`[extract-music-titles] Error creating artist ${original}:`, error);
-          throw error;
-        }
-
-        artistIds[original] = newArtist.id;
-        artistsCreated++;
-      }
+    if (artistError) {
+      console.error('[extract-music-titles] CRITICAL: Failed to upsert artists:', artistError);
+      throw new Error(`Falha ao criar artistas: ${artistError.message}`);
     }
 
-    console.log(`[extract-music-titles] Created ${artistsCreated} new artists`);
+    // Mapear artistas criados/existentes para IDs
+    const artistIds: Record<string, string> = {};
+    upsertedArtists?.forEach(artist => {
+      artistIds[artist.name] = artist.id;
+    });
 
-    // Process songs
+    const artistsCreated = artistsToInsert.length - uniqueArtists.size;
+    console.log(`[extract-music-titles] Upserted ${upsertedArtists?.length || 0} artists (batch operation)`);
+
+    // ✅ VALIDAÇÃO: Verificar integridade dos artist_ids
+    const missingArtists = songs.filter(song => song.artista && !artistIds[song.artista]);
+    if (missingArtists.length > 0) {
+      console.error(`[extract-music-titles] CRITICAL: ${missingArtists.length} músicas com artistas faltantes`);
+      throw new Error(`Falha ao mapear ${missingArtists.length} artistas necessários`);
+    }
+
+    // ✅ OTIMIZAÇÃO: Processar músicas em batches
+    const BATCH_SIZE = 500;
     const songIds: string[] = [];
     let songsCreated = 0;
     let duplicatesSkipped = 0;
+    const totalBatches = Math.ceil(songs.length / BATCH_SIZE);
 
-    for (const song of songs) {
-      if (!song.titulo || !song.artista) {
-        console.warn('[extract-music-titles] Skipping song without title or artist');
-        continue;
-      }
+    for (let i = 0; i < songs.length; i += BATCH_SIZE) {
+      const batch = songs.slice(i, i + BATCH_SIZE);
+      const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
+      
+      console.log(`[extract-music-titles] Processing batch ${batchNumber}/${totalBatches} (${batch.length} songs)`);
 
-      const artistId = artistIds[song.artista];
-      const normalizedTitle = normalizeText(song.titulo);
-
-      // Check for duplicates
-      const { data: existing } = await supabase
-        .from('songs')
-        .select('id')
-        .eq('artist_id', artistId)
-        .eq('normalized_title', normalizedTitle)
-        .maybeSingle();
-
-      if (existing) {
-        songIds.push(existing.id);
-        duplicatesSkipped++;
-        continue;
-      }
-
-      // Create new song
-      const { data: newSong, error } = await supabase
-        .from('songs')
-        .insert({
+      // Preparar músicas do batch
+      const batchSongs = batch
+        .filter(song => song.titulo && song.artista)
+        .map(song => ({
           title: song.titulo,
-          normalized_title: normalizedTitle,
-          artist_id: artistId,
+          normalized_title: normalizeText(song.titulo),
+          artist_id: artistIds[song.artista],
           composer: song.compositor || null,
           release_year: song.ano || null,
-          lyrics: song.letra || null,  // ✅ FASE 0: Salvar letra no banco
-          status: 'pending',
+          lyrics: song.letra || null,
+          status: 'pending' as const,
           upload_id: uploadId || null,
           corpus_id: corpusId || null,
           raw_data: {
             album: song.album,
             genero: song.genero,
           },
-        })
-        .select('id')
-        .single();
+        }));
 
-      if (error) {
-        console.error(`[extract-music-titles] Error creating song ${song.titulo}:`, error);
-        throw error;
+      if (batchSongs.length === 0) continue;
+
+      // Verificar duplicatas em lote
+      const normalizedTitles = batchSongs.map(s => s.normalized_title);
+      const artistIdsInBatch = [...new Set(batchSongs.map(s => s.artist_id))];
+
+      const { data: existing } = await supabase
+        .from('songs')
+        .select('normalized_title, artist_id')
+        .in('normalized_title', normalizedTitles)
+        .in('artist_id', artistIdsInBatch);
+
+      // Criar Set de duplicatas para lookup rápido
+      const existingSet = new Set(
+        (existing || []).map(e => `${e.artist_id}_${e.normalized_title}`)
+      );
+
+      // Filtrar apenas músicas novas
+      const newSongs = batchSongs.filter(s => 
+        !existingSet.has(`${s.artist_id}_${s.normalized_title}`)
+      );
+
+      const skippedInBatch = batchSongs.length - newSongs.length;
+      duplicatesSkipped += skippedInBatch;
+
+      // Inserir novas músicas em lote
+      if (newSongs.length > 0) {
+        const { data: inserted, error: insertError } = await supabase
+          .from('songs')
+          .insert(newSongs)
+          .select('id');
+
+        if (insertError) {
+          console.error(`[extract-music-titles] Error in batch ${batchNumber}:`, insertError);
+          throw insertError;
+        }
+
+        songsCreated += inserted.length;
+        songIds.push(...inserted.map(s => s.id));
       }
 
-      songIds.push(newSong.id);
-      songsCreated++;
+      console.log(`[extract-music-titles] Batch ${batchNumber}: ${newSongs.length} new, ${skippedInBatch} duplicates`);
     }
 
-    console.log(`[extract-music-titles] Created ${songsCreated} new songs, skipped ${duplicatesSkipped} duplicates`);
+    console.log(`[extract-music-titles] Total: ${songsCreated} created, ${duplicatesSkipped} duplicates`);
 
     // Update upload status if provided
     if (uploadId) {

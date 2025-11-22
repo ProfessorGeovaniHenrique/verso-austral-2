@@ -2,6 +2,7 @@ project_id = "kywmhuubbsvclkorxrse"
 
 [functions.extract-music-titles]
 verify_jwt = false
+timeout = 300
 
 [functions.process-music-data]
 verify_jwt = false
