@@ -88,18 +88,23 @@ async function searchYouTubeWithLovableAI(
           },
           {
             role: 'user',
-            content: `Find the official YouTube video for: "${titulo}" by ${artista}
+            content: `Busque no YouTube o vídeo oficial da música "${titulo}" do artista "${artista}".
 
-Return this exact JSON format:
+IMPORTANTE:
+- Retorne APENAS JSON válido
+- Use o formato exato abaixo
+- Se não encontrar, retorne videoId como null
+
+Formato de resposta:
 {
-  "videoId": "video_id_here",
-  "videoTitle": "title",
-  "channelTitle": "channel",
+  "videoId": "ID_do_video_youtube",
+  "videoTitle": "Título do vídeo",
+  "channelTitle": "Nome do canal",
   "publishDate": "YYYY-MM-DD",
-  "description": "description"
+  "description": "Descrição do vídeo"
 }
 
-If not found: {"videoId": null}`
+Se não encontrar: {"videoId": null}`
           }
         ],
         temperature: 0.2,
@@ -131,12 +136,23 @@ If not found: {"videoId": null}`
 
     const parsed = JSON.parse(jsonMatch[0]);
 
+    // Validar estrutura
+    if (!parsed || typeof parsed !== 'object') {
+      console.warn('[Lovable AI] Invalid JSON structure');
+      return null;
+    }
+
     if (!parsed.videoId) {
       console.log(`[Lovable AI] No video found for: "${titulo}" by ${artista}`);
       return null;
     }
 
-    console.log(`[Lovable AI] Found: "${parsed.videoTitle}" (${parsed.channelTitle})`);
+    // Validar campos obrigatórios
+    if (!parsed.videoTitle || !parsed.channelTitle) {
+      console.warn('[Lovable AI] Missing required fields in response');
+    }
+
+    console.log(`[Lovable AI] Found: "${parsed.videoTitle || 'Unknown'}" (${parsed.channelTitle || 'Unknown'})`);
 
     return {
       videoId: parsed.videoId,
@@ -197,7 +213,7 @@ export async function searchYouTube(
           
           if (lovableResult) {
             // Cache the Lovable AI result
-            await supabase.from('youtube_cache').insert({
+            const { error: cacheSaveError } = await supabase.from('youtube_cache').insert({
               search_query: searchQuery,
               video_id: lovableResult.videoId,
               video_title: lovableResult.videoTitle,
@@ -205,11 +221,11 @@ export async function searchYouTube(
               publish_date: lovableResult.publishDate,
               description: lovableResult.description || '',
               hits_count: 0
-            }).catch((err: any) => {
-              if (!err?.message?.includes('duplicate')) {
-                console.error('[YouTube] Cache save error:', err);
-              }
             });
+
+            if (cacheSaveError && !cacheSaveError.message.includes('duplicate')) {
+              console.error('[YouTube] Cache save error:', cacheSaveError.message);
+            }
 
             return lovableResult;
           }
@@ -244,7 +260,7 @@ export async function searchYouTube(
     console.log(`[YouTube] Found: "${result.videoTitle}" (${result.channelTitle})`);
 
     // Cache the result
-    await supabase.from('youtube_cache').insert({
+    const { error: cacheSaveError } = await supabase.from('youtube_cache').insert({
       search_query: searchQuery,
       video_id: result.videoId,
       video_title: result.videoTitle,
@@ -252,11 +268,11 @@ export async function searchYouTube(
       publish_date: result.publishDate,
       description: result.description || '',
       hits_count: 0
-    }).catch((err: any) => {
-      if (!err?.message?.includes('duplicate')) {
-        console.error('[YouTube] Cache save error:', err);
-      }
     });
+
+    if (cacheSaveError && !cacheSaveError.message.includes('duplicate')) {
+      console.error('[YouTube] Cache save error:', cacheSaveError.message);
+    }
 
     return result;
 
