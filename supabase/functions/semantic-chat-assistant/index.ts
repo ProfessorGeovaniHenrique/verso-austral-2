@@ -32,11 +32,11 @@ serve(async (req) => {
       });
     }
 
-    // ✅ Carregar contexto completo dos domínios semânticos ATIVOS
+    // ✅ Carregar contexto completo dos domínios semânticos
     const { data: tagsets, error: tagsetsError } = await supabase
       .from('semantic_tagset')
       .select('codigo, nome, descricao, exemplos, nivel_profundidade, categoria_pai, status')
-      .eq('status', 'ativo')
+      .in('status', ['ativo', 'proposto', 'rejeitado'])
       .order('codigo');
 
     if (tagsetsError) {
@@ -48,13 +48,20 @@ serve(async (req) => {
     }
 
     // Construir hierarquia para o contexto
-    const nivel1 = tagsets.filter(t => t.nivel_profundidade === 1);
-    const nivel2 = tagsets.filter(t => t.nivel_profundidade === 2);
-    const nivel3 = tagsets.filter(t => t.nivel_profundidade === 3);
-    const nivel4 = tagsets.filter(t => t.nivel_profundidade === 4);
+    const activeTagsets = tagsets.filter(t => t.status === 'ativo');
+    const propostosTagsets = tagsets.filter(t => t.status === 'proposto');
+    const rejeitadosTagsets = tagsets.filter(t => t.status === 'rejeitado');
+    
+    const nivel1 = activeTagsets.filter(t => t.nivel_profundidade === 1);
+    const nivel2 = activeTagsets.filter(t => t.nivel_profundidade === 2);
+    const nivel3 = activeTagsets.filter(t => t.nivel_profundidade === 3);
+    const nivel4 = activeTagsets.filter(t => t.nivel_profundidade === 4);
 
     const contextSnapshot = {
       total: tagsets.length,
+      ativos: activeTagsets.length,
+      propostos: propostosTagsets.length,
+      rejeitados: rejeitadosTagsets.length,
       porNivel: {
         nivel1: nivel1.length,
         nivel2: nivel2.length,
@@ -68,7 +75,9 @@ serve(async (req) => {
     const systemPrompt = `Você é Blau Nunes, um Assistente Especializado em Taxonomia Semântica para Análise de Corpus Linguístico, com o jeito gaúcho de falar.
 
 **CONTEXTO DA TAXONOMIA ATUAL:**
-- Total de domínios ativos: ${tagsets.length}
+- Total de domínios ativos: ${activeTagsets.length}
+- Domínios Pendentes: ${propostosTagsets.length}
+- Domínios Rejeitados: ${rejeitadosTagsets.length}
 - Nível 1 (Categorias Raiz): ${nivel1.length}
 - Nível 2 (Subcategorias): ${nivel2.length}
 - Nível 3 (Especializações): ${nivel3.length}

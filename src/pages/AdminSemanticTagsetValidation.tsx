@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine, Edit, Sparkles } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine, Edit, Sparkles, XCircle } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,8 @@ import { useTagsetCuration, CurationSuggestion } from '@/hooks/useTagsetCuration
 import { useTagsets } from '@/hooks/useTagsets';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantChat';
-import { ValidatedTagsetsList } from '@/components/admin/ValidatedTagsetsList';
+import { ValidatedTagsetsHierarchy } from '@/components/admin/ValidatedTagsetsHierarchy';
+import { RejectedTagsetsList } from '@/components/admin/RejectedTagsetsList';
 
 interface SemanticTagset {
   id: string;
@@ -35,6 +36,7 @@ interface SemanticTagset {
   aprovado_em: string | null;
   aprovado_por: string | null;
   hierarquia_completa: string | null;
+  criado_em: string | null;
   created_at?: string;
 }
 
@@ -184,6 +186,44 @@ export default function AdminSemanticTagsetValidation() {
     }
   };
 
+  const handleRestoreRejected = async (tagset: SemanticTagset) => {
+    try {
+      const { error } = await supabase
+        .from('semantic_tagset')
+        .update({ 
+          status: 'proposto'
+        })
+        .eq('id', tagset.id);
+
+      if (error) throw error;
+
+      toast.success(`Domínio restaurado: "${tagset.nome}" voltou para validação`);
+      
+      await supabase.rpc('calculate_tagset_hierarchy');
+      fetchTagsets();
+    } catch (error) {
+      console.error('Erro ao restaurar:', error);
+      toast.error('Erro ao restaurar domínio');
+    }
+  };
+
+  const handleDeleteRejected = async (tagset: SemanticTagset) => {
+    try {
+      const { error } = await supabase
+        .from('semantic_tagset')
+        .delete()
+        .eq('id', tagset.id);
+
+      if (error) throw error;
+
+      toast.success(`Domínio excluído: "${tagset.nome}"`);
+      fetchTagsets();
+    } catch (error) {
+      console.error('Erro ao excluir:', error);
+      toast.error('Erro ao excluir domínio');
+    }
+  };
+
   const handleEditClick = (tagset: SemanticTagset) => {
     setEditingTagset(tagset);
     setIsEditDialogOpen(true);
@@ -262,6 +302,7 @@ export default function AdminSemanticTagsetValidation() {
   // Estatísticas (usando status corretos do backend)
   const approvedCount = tagsets.filter(t => t.status === 'ativo').length;
   const pendingCount = tagsets.filter(t => t.status === 'proposto' || !t.status).length;
+  const rejectedCount = tagsets.filter(t => t.status === 'rejeitado').length;
   const validationRate = tagsets.length > 0 ? ((approvedCount / tagsets.length) * 100).toFixed(2) : '0';
 
   return (
@@ -272,7 +313,7 @@ export default function AdminSemanticTagsetValidation() {
         <AdminBreadcrumb currentPage="Validação de Domínios Semânticos" />
         
         {/* Header com Estatísticas */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -311,6 +352,23 @@ export default function AdminSemanticTagsetValidation() {
 
           <Card>
             <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2 text-destructive">
+                <XCircle className="h-4 w-4" />
+                Rejeitados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-destructive">
+                {rejectedCount.toLocaleString('pt-BR')}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Domínios rejeitados
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <TreePine className="h-4 w-4 text-blue-500" />
                 Total de Domínios
@@ -327,9 +385,9 @@ export default function AdminSemanticTagsetValidation() {
           </Card>
         </div>
 
-        {/* Tabs para alternar entre Validação, Validados e Hierarquia */}
+        {/* Tabs para alternar entre Validação, Validados, Rejeitados e Hierarquia */}
         <Tabs defaultValue="validation" className="mt-6">
-          <TabsList className="grid w-full max-w-3xl grid-cols-3">
+          <TabsList className="grid w-full max-w-4xl grid-cols-4">
             <TabsTrigger value="validation" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Validação
@@ -337,6 +395,10 @@ export default function AdminSemanticTagsetValidation() {
             <TabsTrigger value="validated" className="flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4" />
               Validados
+            </TabsTrigger>
+            <TabsTrigger value="rejected" className="flex items-center gap-2">
+              <XCircle className="h-4 w-4" />
+              Rejeitados
             </TabsTrigger>
             <TabsTrigger value="hierarchy" className="flex items-center gap-2">
               <TreePine className="h-4 w-4" />
@@ -577,10 +639,19 @@ export default function AdminSemanticTagsetValidation() {
           </TabsContent>
 
           <TabsContent value="validated" className="mt-6">
-            <ValidatedTagsetsList 
+            <ValidatedTagsetsHierarchy
               tagsets={tagsets}
               onEdit={handleEditClick}
               onRevert={handleRevertValidation}
+              onRefresh={fetchTagsets}
+            />
+          </TabsContent>
+
+          <TabsContent value="rejected" className="mt-6">
+            <RejectedTagsetsList
+              tagsets={tagsets}
+              onRestore={handleRestoreRejected}
+              onDelete={handleDeleteRejected}
               onRefresh={fetchTagsets}
             />
           </TabsContent>
