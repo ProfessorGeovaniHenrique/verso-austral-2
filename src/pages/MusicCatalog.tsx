@@ -109,7 +109,9 @@ export default function MusicCatalog() {
     try {
       setLoading(true);
 
-      // Carregar TODAS as músicas SEM filtros para estatísticas dos artistas
+      // ✅ FASE 2: Carregar TODAS as músicas SEM filtros para estatísticas dos artistas
+      // Garantir que artist_id não seja null
+      console.group('🔍 FASE 1: DEBUG - Carregando songsForStats');
       const { data: songsForStats, error: statsError } = await supabase
         .from('songs')
         .select(`
@@ -121,9 +123,23 @@ export default function MusicCatalog() {
           updated_at,
           enrichment_source
         `)
+        .not('artist_id', 'is', null)  // ⬅️ FASE 2: CRÍTICO - Filtrar registros sem artista
         .order('created_at', { ascending: false });
 
-      if (statsError) throw statsError;
+      if (statsError) {
+        console.error('❌ Erro ao carregar songsForStats:', statsError);
+        throw statsError;
+      }
+
+      // ✅ FASE 1: Validação de dados carregados
+      if (!songsForStats || songsForStats.length === 0) {
+        console.warn('⚠️ allSongsForStats está vazio!');
+      } else {
+        console.log('✅ Total carregado:', songsForStats.length);
+        console.log('📊 Primeiras 5 músicas:', songsForStats.slice(0, 5));
+        console.log('🎵 artist_id da primeira música:', songsForStats[0]?.artist_id);
+      }
+      console.groupEnd();
 
       // Carregar músicas para exibição (com filtros aplicados)
       let query = supabase
@@ -159,6 +175,27 @@ export default function MusicCatalog() {
 
       const allSongs = allSongsData || [];
       const statsData = songsForStats || [];
+      
+      // ✅ FASE 5: Verificar consistência de dados
+      console.group('📊 FASE 5: Verificação de Consistência');
+      console.log('Total músicas com relações (allSongs):', allSongs.length);
+      console.log('Total músicas para stats (statsData):', statsData.length);
+      
+      const discrepancia = Math.abs(allSongs.length - statsData.length);
+      if (discrepancia > 100) {
+        console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
+          allSongs: allSongs.length,
+          statsData: statsData.length,
+          diferenca: discrepancia
+        });
+        
+        toast({
+          title: "⚠️ Inconsistência de Dados Detectada",
+          description: `${discrepancia} música(s) com dados incompletos. Alguns cards de artista podem estar incorretos.`,
+          variant: "destructive"
+        });
+      }
+      console.groupEnd();
       
       // Salvar músicas filtradas para exibição
       setAllSongs(allSongs);
@@ -999,8 +1036,22 @@ export default function MusicCatalog() {
         <TabsContent value="artists" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {artists.map((artist) => {
-              // Usar allSongsForStats para estatísticas corretas (sem filtros)
-              const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+              // ✅ FASE 4: Usar allSongsForStats primeiro, com FALLBACK para allSongs
+              let artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+              
+              // ⚠️ FASE 4: FALLBACK - Se não encontrou músicas em allSongsForStats
+              if (artistSongs.length === 0 && allSongsForStats.length > 0) {
+                console.warn(`⚠️ FALLBACK ATIVADO para ${artist.name}: usando allSongs`);
+                artistSongs = allSongs.filter(s => s.artist_id === artist.id);
+              }
+              
+              // ✅ FASE 1: Debug de cada artista
+              console.log(`🎤 ${artist.name}:`, {
+                artist_id: artist.id,
+                totalSongs: artistSongs.length,
+                primeiros_ids: artistSongs.slice(0, 3).map(s => s.id)
+              });
+              
               const pendingSongs = artistSongs.filter(s => s.status === 'pending').length;
               const enrichedSongs = artistSongs.filter(s => s.status === 'enriched').length;
               const enrichedPercentage = artistSongs.length > 0
