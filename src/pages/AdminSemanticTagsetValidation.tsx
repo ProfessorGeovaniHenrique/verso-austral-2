@@ -281,20 +281,58 @@ export default function AdminSemanticTagsetValidation() {
     'rejected': 'rejeitado'
   } as const;
 
-  // Filtros
+  // Filtros com DEBUG
   const filteredTagsets = tagsets.filter((tagset) => {
-    if (statusFilter !== 'all' && tagset.status !== STATUS_MAP[statusFilter as keyof typeof STATUS_MAP]) return false;
-    // ✅ FASE 1: Trata null/undefined explicitamente para funcionar com "Sem Nível"
-    if (nivelFilter !== 'all') {
-      const tagsetLevel = tagset.nivel_profundidade?.toString() ?? 'null';
-      if (tagsetLevel !== nivelFilter) return false;
-    }
-    if (searchTerm && !tagset.nome.toLowerCase().includes(searchTerm.toLowerCase()) 
-        && !tagset.codigo.toLowerCase().includes(searchTerm.toLowerCase())) {
+    // 🔍 DEBUG: Info do tagset atual
+    const debugInfo = {
+      codigo: tagset.codigo,
+      nome: tagset.nome.substring(0, 30),
+      status: tagset.status,
+      nivel_profundidade: tagset.nivel_profundidade,
+      tipo_nivel: typeof tagset.nivel_profundidade,
+      filtros: { statusFilter, nivelFilter, searchTerm }
+    };
+    
+    // Filtro de Status
+    if (statusFilter !== 'all' && tagset.status !== STATUS_MAP[statusFilter as keyof typeof STATUS_MAP]) {
+      console.log('❌ Filtrado por STATUS:', debugInfo, {
+        esperado: STATUS_MAP[statusFilter as keyof typeof STATUS_MAP],
+        recebido: tagset.status
+      });
       return false;
     }
+    
+    // Filtro de Nível
+    if (nivelFilter !== 'all') {
+      const tagsetLevel = tagset.nivel_profundidade?.toString() ?? 'null';
+      if (tagsetLevel !== nivelFilter) {
+        console.log('❌ Filtrado por NÍVEL:', debugInfo, {
+          esperado: nivelFilter,
+          recebido_original: tagset.nivel_profundidade,
+          recebido_convertido: tagsetLevel
+        });
+        return false;
+      }
+    }
+    
+    // Filtro de Busca
+    if (searchTerm && !tagset.nome.toLowerCase().includes(searchTerm.toLowerCase()) 
+        && !tagset.codigo.toLowerCase().includes(searchTerm.toLowerCase())) {
+      console.log('❌ Filtrado por BUSCA:', debugInfo);
+      return false;
+    }
+    
+    console.log('✅ PASSOU nos filtros:', debugInfo);
     return true;
   });
+
+  // 🔍 DEBUG: Estatísticas de filtragem
+  console.group('📊 Resultado da Filtragem');
+  console.log('Total de tagsets:', tagsets.length);
+  console.log('Após filtros:', filteredTagsets.length);
+  console.log('Filtros ativos:', { statusFilter, nivelFilter, searchTerm });
+  console.log('STATUS_MAP:', STATUS_MAP);
+  console.groupEnd();
 
   // Paginação
   const totalPages = Math.ceil(filteredTagsets.length / ITEMS_PER_PAGE);
