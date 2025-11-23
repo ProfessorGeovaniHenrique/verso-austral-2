@@ -212,8 +212,9 @@ export default function MusicCatalog() {
       setSongsWithoutYouTube(statsData.filter(s => !s.youtube_url));
 
       // Calcular métricas para o dashboard
-      const successRate = allSongs.length > 0 
-        ? (enrichedCount / allSongs.length) * 100 
+      // ✅ FASE 2: Usar statsData.length (todas as músicas sem filtro) para cálculo correto
+      const successRate = statsData.length > 0 
+        ? (enrichedCount / statsData.length) * 100 
         : 0;
 
       // Histórico dos últimos 30 dias (usando todas as músicas)
@@ -285,6 +286,8 @@ export default function MusicCatalog() {
       }));
 
       // Enriquecimentos recentes
+      // ✅ FASE 2: Usa allSongs (com filtros de corpus aplicados) para ter title e artists.name
+      // Nota: Respeitará filtros de corpus para evitar query adicional pesada
       const recentEnrichments = allSongs
         .filter(s => s.status === 'enriched' || s.status === 'error')
         .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
@@ -828,6 +831,37 @@ export default function MusicCatalog() {
         </div>
         </div>
 
+      {/* FASE 4: Alert de Filtros Ativos */}
+      {(statusFilter !== 'all' || selectedCorpusFilter !== 'all') && (
+        <Alert className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
+          <Filter className="h-4 w-4 text-blue-500" />
+          <AlertTitle>Filtros Ativos</AlertTitle>
+          <AlertDescription>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <span className="text-sm">
+                As visualizações estão filtradas.
+                {statusFilter !== 'all' && <strong> Status: {statusFilter}</strong>}
+                {selectedCorpusFilter !== 'all' && (
+                  <strong> Corpus: {selectedCorpusFilter === 'null' ? 'Sem classificação' : corpora.find(c => c.id === selectedCorpusFilter)?.name}</strong>
+                )}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setSelectedCorpusFilter('all');
+                }}
+                className="w-full sm:w-auto"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Limpar Filtros
+              </Button>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Batch Enrichment Alert */}
       {stats.pendingSongs > 0 && (
         <Alert className="border-primary/50 bg-primary/5">
@@ -1059,7 +1093,7 @@ export default function MusicCatalog() {
             <StatsCard 
               title="Total de Músicas"
               value={stats.totalSongs}
-              subtitle="músicas enriquecidas"
+              subtitle="no catálogo"
             />
             <StatsCard 
               title="Total de Artistas"
@@ -1106,12 +1140,14 @@ export default function MusicCatalog() {
       />
 
       {/* Artist Details Sheet */}
+      {/* Artist Details Sheet */}
+      {/* ✅ FASE 1 (CRÍTICA): Usar allSongs para sempre mostrar TODAS as músicas do artista */}
       <ArtistDetailsSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         artistId={selectedArtistId}
         artist={selectedArtistId ? artists.find(a => a.id === selectedArtistId) : null}
-        songs={selectedArtistId ? songs.filter(s => s.artist_id === selectedArtistId) : []}
+        songs={selectedArtistId ? allSongs.filter(s => s.artist_id === selectedArtistId) : []}
         onEnrichSong={handleEnrichSong}
         onEditSong={handleEditSong}
         onReEnrichSong={handleReEnrichSong}
