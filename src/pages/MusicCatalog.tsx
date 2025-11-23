@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   EnrichedDataTable,
@@ -109,40 +109,10 @@ export default function MusicCatalog() {
     try {
       setLoading(true);
 
-      // ✅ FASE 2: Carregar TODAS as músicas SEM filtros para estatísticas dos artistas
-      // Garantir que artist_id não seja null
-      console.group('🔍 FASE 1: DEBUG - Carregando songsForStats');
-      const { data: songsForStats, error: statsError } = await supabase
-        .from('songs')
-        .select(`
-          id,
-          artist_id,
-          status,
-          confidence_score,
-          youtube_url,
-          updated_at,
-          enrichment_source
-        `)
-        .not('artist_id', 'is', null)  // ⬅️ FASE 2: CRÍTICO - Filtrar registros sem artista
-        .order('created_at', { ascending: false });
+      console.log('🔄 [MusicCatalog] Carregando dados...');
 
-      if (statsError) {
-        console.error('❌ Erro ao carregar songsForStats:', statsError);
-        throw statsError;
-      }
-
-      // ✅ FASE 1: Validação de dados carregados
-      if (!songsForStats || songsForStats.length === 0) {
-        console.warn('⚠️ allSongsForStats está vazio!');
-      } else {
-        console.log('✅ Total carregado:', songsForStats.length);
-        console.log('📊 Primeiras 5 músicas:', songsForStats.slice(0, 5));
-        console.log('🎵 artist_id da primeira música:', songsForStats[0]?.artist_id);
-      }
-      console.groupEnd();
-
-      // Carregar músicas para exibição (com filtros aplicados)
-      let query = supabase
+      // ✅ FASE 3: Query UNIFICADA - Carregar TODAS as músicas com relações completas
+      const { data: allSongsData, error: allSongsError } = await supabase
         .from('songs')
         .select(`
           *,
@@ -150,6 +120,7 @@ export default function MusicCatalog() {
             id,
             name,
             genre,
+            normalized_name,
             corpus_id
           ),
           corpora (
@@ -158,59 +129,30 @@ export default function MusicCatalog() {
             color
           )
         `)
+        .not('artist_id', 'is', null)
         .order('created_at', { ascending: false });
-
-      // Filtrar por corpus se selecionado
-      if (selectedCorpusFilter !== 'all') {
-        if (selectedCorpusFilter === 'null') {
-          query = query.is('corpus_id', null);
-        } else {
-          query = query.eq('corpus_id', selectedCorpusFilter);
-        }
-      }
-
-      const { data: allSongsData, error: allSongsError } = await query;
 
       if (allSongsError) throw allSongsError;
 
-      const allSongs = allSongsData || [];
-      const statsData = songsForStats || [];
-      
-      // ✅ FASE 5: Verificar consistência de dados
-      console.group('📊 FASE 5: Verificação de Consistência');
-      console.log('Total músicas com relações (allSongs):', allSongs.length);
-      console.log('Total músicas para stats (statsData):', statsData.length);
-      
-      const discrepancia = Math.abs(allSongs.length - statsData.length);
-      if (discrepancia > 100) {
-        console.warn('⚠️ INCONSISTÊNCIA DETECTADA:', {
-          allSongs: allSongs.length,
-          statsData: statsData.length,
-          diferenca: discrepancia
-        });
-        
-        toast({
-          title: "⚠️ Inconsistência de Dados Detectada",
-          description: `${discrepancia} música(s) com dados incompletos. Alguns cards de artista podem estar incorretos.`,
-          variant: "destructive"
-        });
+      const allSongsComplete = allSongsData || [];
+      console.log(`✅ [MusicCatalog] ${allSongsComplete.length} músicas carregadas`);
+
+      // Aplicar filtro de corpus se necessário (apenas para exibição)
+      let filteredByCorpus = allSongsComplete;
+      if (selectedCorpusFilter !== 'all') {
+        if (selectedCorpusFilter === 'null') {
+          filteredByCorpus = allSongsComplete.filter(s => !s.corpus_id);
+        } else {
+          filteredByCorpus = allSongsComplete.filter(s => s.corpus_id === selectedCorpusFilter);
+        }
+        console.log(`🔍 [MusicCatalog] ${filteredByCorpus.length} músicas após filtro de corpus`);
       }
-      console.groupEnd();
-      
-      // Salvar músicas filtradas para exibição
-      setAllSongs(allSongs);
-      
-      // Salvar TODAS as músicas para estatísticas (sem filtros)
-      setAllSongsForStats(statsData);
 
-      // Filtrar músicas baseado no filtro de status
-      const displayedSongs = statusFilter === 'all' 
-        ? allSongs 
-        : allSongs.filter(s => s.status === statusFilter);
+      // ✅ FASE 3: Usar o MESMO array para display e estatísticas
+      setAllSongs(filteredByCorpus);
+      setAllSongsForStats(allSongsComplete); // Sempre todas as músicas para stats
 
-      setSongs(displayedSongs);
-
-      // Carregar artistas únicos
+      // Carregar artistas
       const { data: artistsData, error: artistsError } = await supabase
         .from('artists')
         .select(`
@@ -225,36 +167,42 @@ export default function MusicCatalog() {
 
       if (artistsError) throw artistsError;
       setArtists(artistsData || []);
+      console.log(`✅ [MusicCatalog] ${artistsData?.length || 0} artistas carregados`);
 
-      // Calcular estatísticas usando TODAS as músicas (sem filtros)
-      const enrichedCount = statsData.filter(s => s.status === 'enriched').length;
-      const pendingCount = statsData.filter(s => s.status === 'pending').length;
-      const errorCount = statsData.filter(s => s.status === 'error').length;
-      const withoutYouTubeCount = statsData.filter(s => !s.youtube_url).length;
+      // Filtrar músicas baseado no filtro de status
+      const displayedSongs = statusFilter === 'all' 
+        ? filteredByCorpus 
+        : filteredByCorpus.filter(s => s.status === statusFilter);
+
+      setSongs(displayedSongs);
+
+      // ✅ FASE 3: Calcular estatísticas usando allSongsComplete
+      const enrichedCount = allSongsComplete.filter(s => s.status === 'enriched').length;
+      const pendingCount = allSongsComplete.filter(s => s.status === 'pending').length;
+      const errorCount = allSongsComplete.filter(s => s.status === 'error').length;
+      const withoutYouTubeCount = allSongsComplete.filter(s => !s.youtube_url).length;
 
       const avgConfidence = enrichedCount > 0
-        ? statsData
+        ? allSongsComplete
             .filter(s => s.status === 'enriched')
             .reduce((acc, s) => acc + (s.confidence_score || 0), 0) / enrichedCount
         : 0;
 
       setStats({ 
-        totalSongs: statsData.length, 
+        totalSongs: allSongsComplete.length, 
         totalArtists: artistsData?.length || 0, 
         avgConfidence, 
         pendingSongs: pendingCount 
       });
 
-      // Armazenar músicas sem YouTube para o modal (todas, sem filtro)
-      setSongsWithoutYouTube(statsData.filter(s => !s.youtube_url));
+      setSongsWithoutYouTube(allSongsComplete.filter(s => !s.youtube_url));
 
       // Calcular métricas para o dashboard
-      // ✅ FASE 2: Usar statsData.length (todas as músicas sem filtro) para cálculo correto
-      const successRate = statsData.length > 0 
-        ? (enrichedCount / statsData.length) * 100 
+      const successRate = allSongsComplete.length > 0 
+        ? (enrichedCount / allSongsComplete.length) * 100 
         : 0;
 
-      // Histórico dos últimos 30 dias (usando todas as músicas)
+      // Histórico dos últimos 30 dias
       const last30Days = Array.from({ length: 30 }, (_, i) => {
         const date = new Date();
         date.setDate(date.getDate() - (29 - i));
@@ -266,14 +214,14 @@ export default function MusicCatalog() {
         const dayEnd = new Date(date);
         dayEnd.setDate(dayEnd.getDate() + 1);
 
-        const enrichedOnDay = statsData.filter(s => 
+        const enrichedOnDay = allSongsComplete.filter(s => 
           s.updated_at && 
           new Date(s.updated_at) >= dayStart && 
           new Date(s.updated_at) < dayEnd &&
           s.status === 'enriched'
         ).length;
 
-        const errorsOnDay = statsData.filter(s => 
+        const errorsOnDay = allSongsComplete.filter(s => 
           s.updated_at && 
           new Date(s.updated_at) >= dayStart && 
           new Date(s.updated_at) < dayEnd &&
@@ -287,8 +235,7 @@ export default function MusicCatalog() {
         };
       });
 
-      // Distribuição por fonte (usando todas as músicas)
-      const enrichedSongs = statsData.filter(s => s.status === 'enriched');
+      const enrichedSongs = allSongsComplete.filter(s => s.status === 'enriched');
       const sourceMap = new Map<string, { count: number; totalConfidence: number }>();
       
       enrichedSongs.forEach(song => {
@@ -306,7 +253,6 @@ export default function MusicCatalog() {
         avgConfidence: data.count > 0 ? (data.totalConfidence / data.count) : 0
       }));
 
-      // Distribuição de confiança
       const confidenceRanges = [
         { range: '0-20%', min: 0, max: 20 },
         { range: '21-40%', min: 21, max: 40 },
@@ -322,10 +268,7 @@ export default function MusicCatalog() {
         ).length
       }));
 
-      // Enriquecimentos recentes
-      // ✅ FASE 2: Usa allSongs (com filtros de corpus aplicados) para ter title e artists.name
-      // Nota: Respeitará filtros de corpus para evitar query adicional pesada
-      const recentEnrichments = allSongs
+      const recentEnrichments = filteredByCorpus
         .filter(s => s.status === 'enriched' || s.status === 'error')
         .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
         .slice(0, 10)
@@ -340,7 +283,7 @@ export default function MusicCatalog() {
         }));
 
       setMetricsData({
-        totalSongs: allSongs.length,
+        totalSongs: filteredByCorpus.length,
         enriched: enrichedCount,
         pending: pendingCount,
         errors: errorCount,
@@ -683,6 +626,32 @@ export default function MusicCatalog() {
       song.composer?.toLowerCase().includes(query)
     );
   });
+
+  // ✅ FASE 5: Memoizar estatísticas de artistas para evitar recálculos
+  const artistsWithStats = useMemo(() => {
+    console.log('🔄 [useMemo] Recalculando estatísticas de artistas...');
+    
+    return artists
+      .map(artist => {
+        const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+        const pendingSongs = artistSongs.filter(s => s.status === 'pending');
+        const enrichedSongs = artistSongs.filter(s => s.status === 'enriched');
+        
+        return {
+          ...artist,
+          totalSongs: artistSongs.length,
+          pendingSongs: pendingSongs.length,
+          enrichedSongs: enrichedSongs.length,
+          enrichedPercentage: artistSongs.length > 0
+            ? Math.round((enrichedSongs.length / artistSongs.length) * 100)
+            : 0
+        };
+      })
+      .filter(a => a.totalSongs > 0)
+      .sort((a, b) => b.totalSongs - a.totalSongs);
+  }, [artists, allSongsForStats]);
+
+  console.log(`📊 [MusicCatalog] ${artistsWithStats.length} artistas com músicas`);
 
   return (
     <div className="space-y-0">
@@ -1034,109 +1003,118 @@ export default function MusicCatalog() {
         </TabsContent>
 
         <TabsContent value="artists" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {artists.map((artist) => {
-              // ✅ FASE 4: Usar allSongsForStats primeiro, com FALLBACK para allSongs
-              let artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+              <p className="text-muted-foreground">Carregando artistas...</p>
+            </div>
+          ) : (
+            <>
+              {/* ✅ FASE 6: Header com estatísticas */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">
+                    {artistsWithStats.length} {artistsWithStats.length === 1 ? 'Artista' : 'Artistas'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {stats.totalSongs} músicas no total
+                  </p>
+                </div>
+              </div>
               
-              // ⚠️ FASE 4: FALLBACK - Se não encontrou músicas em allSongsForStats
-              if (artistSongs.length === 0 && allSongsForStats.length > 0) {
-                console.warn(`⚠️ FALLBACK ATIVADO para ${artist.name}: usando allSongs`);
-                artistSongs = allSongs.filter(s => s.artist_id === artist.id);
-              }
-              
-              // ✅ FASE 1: Debug de cada artista
-              console.log(`🎤 ${artist.name}:`, {
-                artist_id: artist.id,
-                totalSongs: artistSongs.length,
-                primeiros_ids: artistSongs.slice(0, 3).map(s => s.id)
-              });
-              
-              const pendingSongs = artistSongs.filter(s => s.status === 'pending').length;
-              const enrichedSongs = artistSongs.filter(s => s.status === 'enriched').length;
-              const enrichedPercentage = artistSongs.length > 0
-                ? Math.round((enrichedSongs / artistSongs.length) * 100)
-                : 0;
-                
-              return (
-                <ArtistCard 
-                  key={artist.id}
-                  id={artist.id}
-                  name={artist.name}
-                  genre={artist.genre}
-                  corpusName={artist.corpora?.name}
-                  corpusColor={artist.corpora?.color}
-                  totalSongs={artistSongs.length}
-                  pendingSongs={pendingSongs}
-                  enrichedPercentage={enrichedPercentage}
-                  onViewDetails={() => {
-                    setSelectedArtistId(artist.id);
-                    setIsSheetOpen(true);
-                  }}
-                  onEnrich={async () => {
-                    try {
-                      const pendingSongIds = artistSongs
-                        .filter(s => s.status === 'pending')
-                        .map(s => s.id);
-                      
-                      if (pendingSongIds.length === 0) {
-                        toast({
-                          title: "Nenhuma música pendente",
-                          description: `Todas as músicas de ${artist.name} já estão enriquecidas.`,
-                        });
-                        return;
-                      }
+              {/* ✅ FASE 6: Grid de Cards usando dados memoizados */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {artistsWithStats.map((artist) => {
+                  const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+                  
+                  return (
+                    <ArtistCard 
+                      key={artist.id}
+                      id={artist.id}
+                      name={artist.name}
+                      genre={artist.genre}
+                      corpusName={artist.corpora?.name}
+                      corpusColor={artist.corpora?.color}
+                      totalSongs={artist.totalSongs}
+                      pendingSongs={artist.pendingSongs}
+                      enrichedPercentage={artist.enrichedPercentage}
+                      onViewDetails={() => {
+                        setSelectedArtistId(artist.id);
+                        setIsSheetOpen(true);
+                      }}
+                      onEnrich={async () => {
+                        try {
+                          const pendingSongIds = artistSongs
+                            .filter(s => s.status === 'pending')
+                            .map(s => s.id);
+                          
+                          if (pendingSongIds.length === 0) {
+                            toast({
+                              title: "Nenhuma música pendente",
+                              description: `Todas as músicas de ${artist.name} já estão enriquecidas.`,
+                            });
+                            return;
+                          }
 
-                      toast({
-                        title: "Enriquecendo músicas",
-                        description: `Iniciando enriquecimento de ${pendingSongIds.length} músicas de ${artist.name}...`,
-                      });
-                      
-                      await enrichBatch(pendingSongIds);
-                      await loadData();
-                    } catch (error) {
-                      toast({
-                        title: "Erro",
-                        description: 'Erro ao enriquecer músicas',
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                  onDelete={async () => {
-                    try {
-                      // Deletar todas as músicas do artista
-                      const { error: songsError } = await supabase
-                        .from('songs')
-                        .delete()
-                        .eq('artist_id', artist.id);
-                        
-                      if (songsError) throw songsError;
-                      
-                      // Deletar o artista
-                      const { error: artistError } = await supabase
-                        .from('artists')
-                        .delete()
-                        .eq('id', artist.id);
-                        
-                      if (artistError) throw artistError;
-                      
-                      await loadData();
-                      toast({
-                        title: "Sucesso!",
-                        description: `Artista ${artist.name} excluído com sucesso`,
-                      });
-                    } catch (error) {
-                      toast({
-                        title: "Erro",
-                        description: 'Erro ao excluir artista',
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                />
-              );
-            })}
-          </div>
+                          toast({
+                            title: "Enriquecendo músicas",
+                            description: `Iniciando enriquecimento de ${pendingSongIds.length} músicas de ${artist.name}...`,
+                          });
+                          
+                          await enrichBatch(pendingSongIds);
+                          await loadData();
+                        } catch (error) {
+                          toast({
+                            title: "Erro",
+                            description: 'Erro ao enriquecer músicas',
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      onDelete={async () => {
+                        try {
+                          const { error: songsError } = await supabase
+                            .from('songs')
+                            .delete()
+                            .eq('artist_id', artist.id);
+                            
+                          if (songsError) throw songsError;
+                          
+                          const { error: artistError } = await supabase
+                            .from('artists')
+                            .delete()
+                            .eq('id', artist.id);
+                            
+                          if (artistError) throw artistError;
+                          
+                          await loadData();
+                          toast({
+                            title: "Sucesso!",
+                            description: `Artista ${artist.name} excluído com sucesso`,
+                          });
+                        } catch (error) {
+                          toast({
+                            title: "Erro",
+                            description: 'Erro ao excluir artista',
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              
+              {/* ✅ FASE 6: Estado vazio */}
+              {artistsWithStats.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">
+                    Nenhum artista encontrado com músicas no catálogo.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="stats" className="space-y-4">

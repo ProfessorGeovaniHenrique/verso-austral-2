@@ -34,8 +34,7 @@ export function useCatalogData() {
             color
           )
         `)
-        .order('created_at', { ascending: false })
-        .limit(200);
+        .order('created_at', { ascending: false });
       
       if (fetchError) throw fetchError;
       
