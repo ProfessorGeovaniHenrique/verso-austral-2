@@ -15,7 +15,7 @@ export function useCatalogData() {
   const [error, setError] = useState<string | null>(null);
 
   const loadSongs = async () => {
-    console.log('[useCatalogData] Loading songs...');
+    console.log('[useCatalogData] ⚠️ ATENÇÃO: Carregando apenas 1000 músicas mais recentes (limite Supabase)');
     
     try {
       const { data, error: fetchError } = await supabase

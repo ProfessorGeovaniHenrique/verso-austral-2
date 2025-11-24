@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCatalogData } from '@/hooks/useCatalogData';
-import { 
+import { useArtistSongs } from '@/hooks/useArtistSongs';
+import {
   EnrichedDataTable,
   SongCard,
   ArtistCard,
@@ -60,15 +61,6 @@ export default function MusicCatalog() {
   const { enrichBatch } = useEnrichment();
   const { enrichYouTubeUI } = useYouTubeEnrichment();
   
-  // ✅ Hook refatorado com Materialized View
-  const { 
-    songs: catalogSongs,  // ✅ Músicas do hook
-    artists: artistsWithStats, 
-    stats: catalogStats, 
-    loading: catalogLoading, 
-    reload 
-  } = useCatalogData();
-  
   // States de UI
   const [view, setView] = useState<'songs' | 'artists' | 'stats' | 'metrics'>('songs');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
@@ -76,8 +68,21 @@ export default function MusicCatalog() {
   const [selectedLetter, setSelectedLetter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedCorpusFilter, setSelectedCorpusFilter] = useState<string>('all');
+  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   
-  // States de dados locais (apenas músicas - artistas vêm do hook)
+  // ✅ Hook carrega artistas e stats (sempre)
+  const { 
+    songs: catalogSongs,
+    artists: artistsWithStats, 
+    stats: catalogStats, 
+    loading: catalogLoading, 
+    reload 
+  } = useCatalogData();
+  
+  // ✅ Hook carrega músicas do artista selecionado (sob demanda)
+  const { songs: artistSongs, loading: artistSongsLoading } = useArtistSongs(selectedArtistId);
+  
+  // States de dados locais (sincronizados com hook)
   const [songs, setSongs] = useState<Song[]>([]);
   const [allSongs, setAllSongs] = useState<Song[]>([]);
   const [songsWithoutYouTube, setSongsWithoutYouTube] = useState<Song[]>([]);
@@ -91,18 +96,17 @@ export default function MusicCatalog() {
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
   const [metricsData, setMetricsData] = useState<any>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
   const [isClearingCatalog, setIsClearingCatalog] = useState(false);
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
   const { toast } = useToast();
 
-  // 🔍 FASE 5: Função helper para converter SongWithRelations → Song com type safety
+  // 🔍 Função helper para converter SongWithRelations → Song com type safety
   const convertToSongCard = (songWithRelations: any): Song => {
     return {
       id: songWithRelations.id,
       title: songWithRelations.title,
       normalized_title: songWithRelations.normalized_title,
-      artist_id: songWithRelations.artist_id, // ✅ Garantir artist_id presente
+      artist_id: songWithRelations.artist_id,
       composer: songWithRelations.composer,
       release_year: songWithRelations.release_year,
       lyrics: songWithRelations.lyrics,
@@ -120,57 +124,28 @@ export default function MusicCatalog() {
     };
   };
 
-  // 🔍 FASE 1: Sincronizar e aplicar filtros localmente COM LOGS DETALHADOS
+  // Sincronizar dados do hook com estados locais
   useEffect(() => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('🔄 [FASE 1] SINCRONIZAÇÃO INICIADA');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`📊 Total de músicas do hook: ${catalogSongs.length}`);
-    console.log(`🎛️ Filtro de corpus: ${selectedCorpusFilter}`);
-    console.log(`🎛️ Filtro de status: ${statusFilter}`);
-    
-    // Sample de 3 músicas para verificar estrutura
-    if (catalogSongs.length > 0) {
-      console.log('📝 Sample de 3 músicas do catalogSongs:');
-      catalogSongs.slice(0, 3).forEach((song: any, idx: number) => {
-        console.log(`  [${idx + 1}] ID: ${song.id}, Title: ${song.title}, artist_id: ${song.artist_id || '❌ UNDEFINED'}`);
-      });
-    }
-    
-    // 🔍 Converter com type safety
-    let filtered = catalogSongs.map(convertToSongCard);
-    console.log(`✅ Conversão type-safe completa: ${filtered.length} músicas`);
+    const converted = catalogSongs.map(convertToSongCard);
     
     // Filtrar por corpus
+    let filtered = converted;
     if (selectedCorpusFilter !== 'all') {
-      const beforeCorpusFilter = filtered.length;
       if (selectedCorpusFilter === 'null') {
         filtered = filtered.filter(s => !s.corpus_id);
       } else {
         filtered = filtered.filter(s => s.corpus_id === selectedCorpusFilter);
       }
-      console.log(`📂 Após filtro de corpus: ${filtered.length} (removeu ${beforeCorpusFilter - filtered.length})`);
     }
     
-    // Filtrar por status
-    const beforeStatusFilter = filtered.length;
+    // Aplicar filtro de status
     const displayedSongs = statusFilter === 'all' 
       ? filtered 
       : filtered.filter(s => s.status === statusFilter);
-    console.log(`📊 Após filtro de status: ${displayedSongs.length} (removeu ${beforeStatusFilter - displayedSongs.length})`);
     
-    // Converter allSongs com type safety
-    const allSongsConverted = catalogSongs.map(convertToSongCard);
-    
-    setAllSongs(allSongsConverted);
+    setAllSongs(converted);
     setSongs(displayedSongs);
     setSongsWithoutYouTube(filtered.filter(s => !s.youtube_url));
-    
-    console.log(`✅ Estados atualizados:`);
-    console.log(`   - allSongs: ${allSongsConverted.length}`);
-    console.log(`   - songs (displayed): ${displayedSongs.length}`);
-    console.log(`   - songsWithoutYouTube: ${filtered.filter(s => !s.youtube_url).length}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }, [catalogSongs, statusFilter, selectedCorpusFilter]);
 
   useEffect(() => {
@@ -1201,49 +1176,37 @@ export default function MusicCatalog() {
         onComplete={handleBatchComplete}
       />
 
-      {/* Artist Details Sheet */}
-      {/* 🔍 FASE 4: Filtro com IIFE e logs detalhados */}
+      {/* Artist Details Sheet - LAZY LOADING */}
       <ArtistDetailsSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         artistId={selectedArtistId}
         artist={selectedArtistId ? artistsWithStats.find(a => a.id === selectedArtistId) : null}
-        songs={(() => {
-          if (!selectedArtistId) {
-            console.log('[FASE 4] selectedArtistId é null, retornando array vazio');
-            return [];
-          }
-          
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log('🔍 [FASE 4] FILTRANDO MÚSICAS PARA O SHEET');
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-          console.log(`👤 selectedArtistId: ${selectedArtistId}`);
-          console.log(`📊 Total allSongs disponível: ${allSongs.length}`);
-          
-          const filtered = allSongs.filter((s, index) => {
-            const match = s.artist_id === selectedArtistId;
-            if (index < 5) { // Log primeiros 5 para debug
-              console.log(`  [${index}] song.artist_id: ${s.artist_id}, match: ${match ? '✅' : '❌'}`);
-            }
-            return match;
-          });
-          
-          console.log(`✅ Total de músicas filtradas: ${filtered.length}`);
-          if (filtered.length > 0) {
-            console.log('📝 Sample das músicas que serão passadas para o sheet:');
-            filtered.slice(0, 3).forEach((song, idx) => {
-              console.log(`  [${idx + 1}] ${song.title} (ID: ${song.id})`);
-            });
-          } else {
-            console.error('❌ ERRO: Nenhuma música filtrada! Verificando dados:');
-            console.log(`   - allSongs tem artist_id? ${allSongs.length > 0 ? allSongs[0].artist_id !== undefined : 'N/A'}`);
-            console.log(`   - Tipo de selectedArtistId: ${typeof selectedArtistId}`);
-            console.log(`   - Tipo de allSongs[0].artist_id: ${allSongs.length > 0 ? typeof allSongs[0].artist_id : 'N/A'}`);
-          }
-          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
-          
-          return filtered;
-        })()}
+        songs={artistSongs.map(song => ({
+          id: song.id,
+          title: song.title,
+          normalized_title: song.normalized_title || null,
+          artist_id: song.artist_id,
+          composer: song.composer,
+          release_year: song.release_year,
+          lyrics: song.lyrics,
+          status: song.status || 'pending',
+          confidence_score: song.confidence_score,
+          enrichment_source: song.enrichment_source,
+          youtube_url: song.youtube_url,
+          corpus_id: song.corpus_id,
+          upload_id: song.upload_id,
+          raw_data: song.raw_data || {},
+          created_at: song.created_at || '',
+          updated_at: song.updated_at || '',
+          artists: song.artists ? {
+            id: song.artists.id,
+            name: song.artists.name,
+            genre: song.artists.genre,
+            corpus_id: null
+          } : null,
+          corpora: song.corpora
+        }))}
         onEnrichSong={handleEnrichSong}
         onEditSong={handleEditSong}
         onReEnrichSong={handleReEnrichSong}
