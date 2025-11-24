@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CorpusProvider } from "@/contexts/CorpusContext";
 import { useCorpusPreload } from "@/hooks/useCorpusPreload";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -386,17 +387,19 @@ const AppContent = () => {
 };
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider>
-      <AuthProvider>
-        <CorpusProvider>
-          <TooltipProvider>
-            <AppContent />
-          </TooltipProvider>
-        </CorpusProvider>
-      </AuthProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <AuthProvider>
+          <CorpusProvider>
+            <TooltipProvider>
+              <AppContent />
+            </TooltipProvider>
+          </CorpusProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

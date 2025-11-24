@@ -21,7 +21,7 @@ const DATA_SOURCES = {
  * Extrai dados de um arquivo TypeScript exportado
  * Exemplo: export const constructionLog: ConstructionPhase[] = [...]
  */
-function parseTypeScriptExport(content: string, exportName: string): any {
+function parseTypeScriptExport(content: string, exportName: string, log?: any): any {
   try {
     const withoutComments = content
       .replace(/\/\*[\s\S]*?\*\//g, '') // Block comments
@@ -53,7 +53,11 @@ function parseTypeScriptExport(content: string, exportName: string): any {
 
     return JSON.parse(jsonString);
   } catch (error) {
-    console.error(`Parse error for ${exportName}:`, error);
+    if (log) {
+      log.error(`Parse error for ${exportName}`, error as Error);
+    } else {
+      console.error(`Parse error for ${exportName}:`, error);
+    }
     throw error;
   }
 }
@@ -72,7 +76,7 @@ async function syncConstructionLog(supabase: any, log: any): Promise<SyncResult>
 
       if (response.ok) {
         const tsContent = await response.text();
-        constructionLog = parseTypeScriptExport(tsContent, 'constructionLog');
+        constructionLog = parseTypeScriptExport(tsContent, 'constructionLog', log);
         log.info('Data loaded from GitHub');
       } else {
         throw new Error(`GitHub fetch failed: ${response.status}`);

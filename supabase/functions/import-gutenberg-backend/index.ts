@@ -282,7 +282,10 @@ Deno.serve(async (req) => {
     }
 
     // ===== FLUXO DE INÍCIO (Upload de CSV) =====
-    console.log('\n🆕 Iniciando nova importação do Dicionário Gutenberg via CSV...');
+    log.info('Starting Gutenberg import from CSV', {
+      contentType,
+      fileName: 'pending',
+    });
     
     if (!contentType.includes('multipart/form-data')) {
       throw new Error('Content-Type deve ser multipart/form-data com arquivo CSV');
@@ -296,7 +299,7 @@ Deno.serve(async (req) => {
       throw new Error('Nenhum arquivo CSV foi enviado');
     }
 
-    console.log(`📥 Arquivo recebido: ${file.name} (${file.size} bytes)`);
+    log.info('CSV file received', { fileName: file.name, fileSize: file.size });
 
     // Ler conteúdo do CSV
     const csvText = await file.text();
