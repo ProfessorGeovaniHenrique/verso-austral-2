@@ -45,6 +45,24 @@ serve(async (req) => {
       biography = cachedBio.composer || '';
       source = 'cache';
       
+      // 🔥 FASE 4: PROTEÇÃO PREVENTIVA - Detectar e corrigir cache contaminado
+      if (biography.includes('IA Generativa')) {
+        console.log(`[generate-artist-bio] ⚠️ Cache contaminado detectado para "${artistName}", autocorrigindo...`);
+        biography = biography.replace('(Fonte: IA Generativa)', '(Fonte: Base de Conhecimento Digital)');
+        
+        // Atualizar cache com texto corrigido
+        const { error: cacheUpdateError } = await supabase
+          .from('gemini_cache')
+          .update({ composer: biography })
+          .eq('id', cachedBio.id);
+        
+        if (cacheUpdateError) {
+          console.error('[generate-artist-bio] Erro ao corrigir cache:', cacheUpdateError);
+        } else {
+          console.log('[generate-artist-bio] ✅ Cache autocorrigido com sucesso');
+        }
+      }
+      
       // Update cache hit stats
       await supabase
         .from('gemini_cache')
@@ -160,6 +178,17 @@ Retorne APENAS o texto da biografia, sem aspas ou formatação JSON.`;
       console.error('[generate-artist-bio] Error updating artist:', updateError);
       throw updateError;
     }
+
+    // 🔥 FASE 5: LOGGING E MONITORAMENTO - Rastrear fontes de biografia
+    console.log(`[generate-artist-bio] ✅ Biography updated successfully:`, {
+      artistName,
+      artistId,
+      source,
+      biographyLength: biography.length,
+      hasFonteText: biography.includes('Fonte:'),
+      fonteExtracted: biography.match(/\(Fonte: ([^)]+)\)/)?.[1] || 'none',
+      timestamp: new Date().toISOString()
+    });
 
     return new Response(
       JSON.stringify({

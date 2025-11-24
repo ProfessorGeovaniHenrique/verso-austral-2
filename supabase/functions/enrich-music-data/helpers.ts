@@ -195,7 +195,7 @@ Retorne APENAS um JSON válido com esta estrutura exata:
 {
   "compositor": "Nome do Compositor",
   "ano": "YYYY",
-  "fonte": "IA Generativa"
+  "fonte": "Base de Conhecimento Digital"
 }`;
 
   try {
