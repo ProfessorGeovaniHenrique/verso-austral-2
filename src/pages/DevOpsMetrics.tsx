@@ -1,4 +1,7 @@
 import { useState } from "react";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('DevOpsMetrics');
 import { WorkflowStatusCard } from "@/components/devops/WorkflowStatusCard";
 import { TestHistoryChart } from "@/components/devops/TestHistoryChart";
 import { CoverageChart } from "@/components/devops/CoverageChart";
@@ -44,11 +47,11 @@ export default function DevOpsMetrics() {
   );
 
   const handleDismissAlert = (alertId: string) => {
-    console.log('Dismiss alert:', alertId);
+    log.info('Dismiss alert', { alertId });
   };
 
   const handleMarkAsRead = (alertId: string) => {
-    console.log('Mark as read:', alertId);
+    log.info('Mark alert as read', { alertId });
   };
 
   if (error) {

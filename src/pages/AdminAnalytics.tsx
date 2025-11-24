@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminAnalytics');
 import { getBannerConversionTrend, getFeatureUsageTrend } from '@/services/analyticsService';
 import { exportAnalyticsToPDF } from '@/utils/exportAnalyticsPDF';
 import { toast } from 'sonner';
@@ -94,7 +97,7 @@ export default function AdminAnalytics() {
         featureTrend,
       });
     } catch (error) {
-      console.error('Erro ao buscar métricas:', error);
+      log.error('Erro ao buscar métricas de analytics', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }
@@ -119,7 +122,7 @@ export default function AdminAnalytics() {
       });
       toast.success('Relatório PDF exportado com sucesso!');
     } catch (error) {
-      console.error('Error exporting PDF:', error);
+      log.error('Error exporting PDF', error instanceof Error ? error : new Error(String(error)));
       toast.error('Erro ao exportar relatório PDF');
     } finally {
       setIsExporting(false);

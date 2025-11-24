@@ -1260,7 +1260,7 @@ export default function MusicCatalog() {
 
                           const songIds = songsWithoutYT?.map(s => s.id) || [];
                           
-                          console.log(`[ArtistCard.onEnrichYouTube] ${songIds.length} músicas sem YouTube para ${artist.name}`);
+                          log.info(`Músicas sem YouTube para enriquecer`, { count: songIds.length, artistName: artist.name, artistId: artist.id });
                           
                           if (songIds.length === 0) {
                             toast({
@@ -1277,7 +1277,7 @@ export default function MusicCatalog() {
                           
                           // 🔥 CORREÇÃO CRÍTICA: Capturar resultados do batch
                           const results = await enrichYouTubeBatch(songIds, undefined, (progress) => {
-                            console.log(`[YouTube Batch] Progresso: ${progress.current}/${progress.total}`);
+                            log.debug(`YouTube Batch progress`, { current: progress.current, total: progress.total, percentage: Math.round((progress.current / progress.total) * 100) });
                           });
                           
                           // ✅ results é um objeto com contadores, não array

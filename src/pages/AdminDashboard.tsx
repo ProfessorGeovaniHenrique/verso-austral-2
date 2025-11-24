@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminDashboard');
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,7 +96,7 @@ export default function AdminDashboard() {
       setInvites(invitesWithUsers);
     } catch (error: any) {
       toast.error("Erro ao carregar convites");
-      console.error(error);
+      log.error('Erro ao carregar convites', error);
     } finally {
       setLoading(false);
     }
@@ -128,7 +131,7 @@ export default function AdminDashboard() {
       fetchInvites();
     } catch (error: any) {
       toast.error(error.message || "Erro ao criar convite");
-      console.error(error);
+      log.error('Erro ao criar convite', error, { roleForInvite, expiresAt, notes });
     } finally {
       setCreatingInvite(false);
     }

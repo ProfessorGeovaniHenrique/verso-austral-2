@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminMetrics');
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Key, UserCheck, Clock, TrendingUp, Calendar } from "lucide-react";
@@ -99,7 +102,7 @@ export default function AdminMetrics() {
       });
       setLoginData(last7Days);
     } catch (error) {
-      console.error("Erro ao carregar métricas:", error);
+      log.error('Erro ao carregar métricas', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }

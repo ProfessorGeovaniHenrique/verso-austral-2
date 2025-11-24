@@ -216,7 +216,7 @@ export default function AdminDictionaryValidation() {
     if (config.table === 'gutenberg' && allEntries.length > 0) {
       const firstEntry = allEntries[0];
       if (!firstEntry.classe_gramatical && !firstEntry.definicoes) {
-        console.warn('⚠️ DADOS INCOMPLETOS DETECTADOS:', firstEntry);
+        log.warn('Dados incompletos detectados no primeiro entry', { verbete: firstEntry.verbete, id: firstEntry.id });
       }
     }
   }, [allEntries, config.table]);
@@ -246,7 +246,7 @@ export default function AdminDictionaryValidation() {
   React.useEffect(() => {
     if (allEntries.length > 0 && config.table === 'gutenberg') {
       const sample = allEntries.slice(0, 5);
-      console.log('📊 AMOSTRA GUTENBERG:', {
+      log.debug('Amostra Gutenberg', {
         total: allEntries.length,
         validatedCount,
         pendingCount,

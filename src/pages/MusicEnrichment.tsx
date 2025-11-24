@@ -1,4 +1,7 @@
 import { useCallback, useState } from 'react';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('MusicEnrichment');
 import { ProcessingProvider, useProcessing } from '@/contexts/ProcessingContext';
 import { BatchProcessingProvider } from '@/contexts/BatchProcessingContext';
 import { ResultsProvider } from '@/contexts/ResultsContext';
@@ -91,7 +94,7 @@ function MusicEnrichmentContent() {
       
       setShowImportProgress(false);
       toast.error('Erro ao importar dados');
-      console.error('Import error:', error);
+      log.error('Import error', error instanceof Error ? error : new Error(String(error)), { validSongsCount: parsedData.filter(s => s.titulo && s.artista).length });
     }
   }, [parsedData, navigate]);
 

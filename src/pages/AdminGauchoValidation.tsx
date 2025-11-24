@@ -1,4 +1,7 @@
 import { useState, useEffect } from 'react';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminGauchoValidation');
 import { useQueryClient } from '@tanstack/react-query';
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
@@ -87,7 +90,7 @@ export default function AdminGauchoValidation() {
   // ✅ FASE 5: Debug logs para validação
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log('📊 [Validação Debug]', {
+      log.debug('Validação Debug', {
         totalCarregado: allEntries.length,
         validados: allEntries.filter(isEntryValidated).length,
         pendentes: allEntries.filter(e => !isEntryValidated(e)).length,

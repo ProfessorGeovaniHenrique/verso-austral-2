@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminAccessRequests');
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -39,7 +42,7 @@ export default function AdminAccessRequests() {
       if (error) throw error;
       setRequests(data || []);
     } catch (error) {
-      console.error('Erro ao buscar solicitações:', error);
+      log.error('Erro ao buscar solicitações', error instanceof Error ? error : new Error(String(error)));
       toast.error('Erro ao carregar solicitações');
     } finally {
       setLoading(false);
@@ -88,7 +91,7 @@ export default function AdminAccessRequests() {
       toast.success('Convite enviado com sucesso!');
       fetchRequests();
     } catch (error: any) {
-      console.error('Erro ao aprovar:', error);
+      log.error('Erro ao aprovar solicitação', error, { requestId: request.id, email: request.email });
       toast.error('Erro ao enviar convite: ' + error.message);
     } finally {
       setProcessing(null);
@@ -108,7 +111,7 @@ export default function AdminAccessRequests() {
       toast.success('Solicitação rejeitada');
       fetchRequests();
     } catch (error) {
-      console.error('Erro ao rejeitar:', error);
+      log.error('Erro ao rejeitar solicitação', error instanceof Error ? error : new Error(String(error)), { requestId });
       toast.error('Erro ao rejeitar solicitação');
     } finally {
       setProcessing(null);

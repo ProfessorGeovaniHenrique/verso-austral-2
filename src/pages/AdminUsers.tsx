@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminUsers');
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -95,7 +98,7 @@ export default function AdminUsers() {
       setUsers(data || []);
     } catch (error: any) {
       toast.error("Erro ao carregar usuários");
-      console.error(error);
+      log.error('Erro ao carregar usuários', error);
     } finally {
       setLoading(false);
     }
@@ -148,7 +151,7 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar role");
-      console.error(error);
+      log.error('Erro ao atualizar role', error, { userId: editingUser?.id, newRole: selectedRole });
     } finally {
       setSaving(false);
     }
@@ -187,7 +190,7 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao remover role");
-      console.error(error);
+      log.error('Erro ao remover role', error, { userId: deletingUser?.id });
     } finally {
       setDeleting(false);
     }
