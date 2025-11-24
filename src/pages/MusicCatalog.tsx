@@ -60,7 +60,7 @@ interface LocalArtist {
 
 export default function MusicCatalog() {
   const { enrichBatch } = useEnrichment();
-  const { enrichYouTubeUI } = useYouTubeEnrichment();
+  const { enrichYouTubeUI, enrichYouTubeBatch } = useYouTubeEnrichment();
   
   // States de UI
   const [view, setView] = useState<'songs' | 'artists' | 'stats' | 'metrics'>('songs');
@@ -116,6 +116,15 @@ export default function MusicCatalog() {
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClearingCatalog, setIsClearingCatalog] = useState(false);
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
+  const [artistStatsOverrides, setArtistStatsOverrides] = useState<Map<string, {
+    pendingSongs: number;
+    enrichedPercentage: number;
+  }>>(new Map());
+  const [artistBioOverrides, setArtistBioOverrides] = useState<Map<string, {
+    biography: string;
+    biography_source: string;
+    biography_updated_at: string;
+  }>>(new Map());
   const { toast } = useToast();
 
   // 🔍 Função helper para converter SongWithRelations → Song com type safety
@@ -493,28 +502,47 @@ export default function MusicCatalog() {
   // Handler para quando a biografia for enriquecida
   const handleBioEnriched = async (artistId: string) => {
     try {
-      // Recarrega apenas o artista específico
+      console.log('[handleBioEnriched] Recarregando biografia do artista:', artistId);
+      
+      // Query completa do artista com biografia atualizada
       const { data: artistData, error } = await supabase
         .from('artists')
-        .select(`
-          *,
-          corpora (
-            id,
-            name,
-            color
-          )
-        `)
+        .select('biography, biography_source, biography_updated_at')
         .eq('id', artistId)
         .single();
       
       if (error) throw error;
       
-      if (artistData) {
-        // Trigger reload do hook para atualizar stats
-        reload();
+      if (artistData && artistData.biography) {
+        // ✅ Atualizar o override de biografia localmente
+        setArtistBioOverrides(prev => {
+          const newMap = new Map(prev);
+          newMap.set(artistId, {
+            biography: artistData.biography,
+            biography_source: artistData.biography_source || 'unknown',
+            biography_updated_at: artistData.biography_updated_at || new Date().toISOString()
+          });
+          return newMap;
+        });
+        
+        console.log('[handleBioEnriched] ✅ Biografia atualizada localmente:', {
+          artistId,
+          biographyLength: artistData.biography.length,
+          source: artistData.biography_source
+        });
+        
+        toast({
+          title: "Biografia atualizada",
+          description: "A biografia do artista foi carregada com sucesso."
+        });
       }
     } catch (error) {
-      console.error('Erro ao recarregar artista:', error);
+      console.error('[handleBioEnriched] Erro ao recarregar artista:', error);
+      toast({
+        title: "Erro ao atualizar biografia",
+        description: "Tente fechar e reabrir o painel do artista.",
+        variant: "destructive"
+      });
     }
   };
 
@@ -1122,6 +1150,11 @@ export default function MusicCatalog() {
                 {paginatedArtists.map((artist) => {
                   const artistSongs = allSongs.filter(s => s.artist_id === artist.id);
                   
+                  // ✅ Aplicar override de stats se existir
+                  const statsOverride = artistStatsOverrides.get(artist.id);
+                  const displayPendingSongs = statsOverride?.pendingSongs ?? (artist as any).pendingSongs ?? 0;
+                  const displayEnrichedPercentage = statsOverride?.enrichedPercentage ?? (artist as any).enrichedPercentage ?? 0;
+                  
                   return (
                     <ArtistCard 
                       key={artist.id}
@@ -1131,8 +1164,8 @@ export default function MusicCatalog() {
                       corpusName={artist.corpora?.name}
                       corpusColor={artist.corpora?.color}
                       totalSongs={(artist as any).totalSongs || 0}
-                      pendingSongs={(artist as any).pendingSongs || 0}
-                      enrichedPercentage={(artist as any).enrichedPercentage || 0}
+                      pendingSongs={displayPendingSongs}
+                      enrichedPercentage={displayEnrichedPercentage}
                       onViewDetails={() => {
                         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
                         console.log('🔍 [FASE 2] ABRINDO SHEET DO ARTISTA');
@@ -1204,12 +1237,85 @@ export default function MusicCatalog() {
                           });
                           
                           await enrichBatch(pendingSongIds);
-                          await reload();
+                          
+                          // ✅ Atualizar stats do artista localmente (sem reload completo)
+                          const { data: updatedStats } = await supabase
+                            .from('songs')
+                            .select('status')
+                            .eq('artist_id', artist.id);
+                          
+                          if (updatedStats) {
+                            const total = updatedStats.length;
+                            const enriched = updatedStats.filter(s => s.status === 'enriched').length;
+                            const pending = updatedStats.filter(s => s.status === 'pending').length;
+                            const newPercentage = total > 0 ? Math.round((enriched / total) * 100) : 0;
+                            
+                            // Atualizar o artista no estado local
+                            setArtistStatsOverrides(prev => {
+                              const newMap = new Map(prev);
+                              newMap.set(artist.id, {
+                                pendingSongs: pending,
+                                enrichedPercentage: newPercentage
+                              });
+                              return newMap;
+                            });
+                            
+                            console.log(`[ArtistCard.onEnrich] ✅ Stats atualizadas: ${enriched}/${total} (${newPercentage}%)`);
+                          }
                         } catch (error) {
                           console.error(`[ArtistCard.onEnrich] Erro ao enriquecer ${artist.name}:`, error);
                           toast({
                             title: "Erro ao buscar músicas",
                             description: error instanceof Error ? error.message : 'Erro ao enriquecer músicas',
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                      onEnrichYouTube={async () => {
+                        try {
+                          toast({
+                            title: "Buscando links do YouTube...",
+                            description: `Consultando músicas de ${artist.name}...`,
+                          });
+
+                          // Busca músicas sem YouTube link
+                          const { data: songsWithoutYT, error } = await supabase
+                            .from('songs')
+                            .select('id, title')
+                            .eq('artist_id', artist.id)
+                            .is('youtube_url', null)
+                            .order('created_at', { ascending: false });
+
+                          if (error) throw error;
+
+                          const songIds = songsWithoutYT?.map(s => s.id) || [];
+                          
+                          console.log(`[ArtistCard.onEnrichYouTube] ${songIds.length} músicas sem YouTube para ${artist.name}`);
+                          
+                          if (songIds.length === 0) {
+                            toast({
+                              title: "Nenhuma música sem YouTube",
+                              description: `Todas as músicas de ${artist.name} já possuem link.`,
+                            });
+                            return;
+                          }
+
+                          toast({
+                            title: "Buscando no YouTube",
+                            description: `Processando ${songIds.length} músicas...`,
+                          });
+                          
+                          await enrichYouTubeBatch(songIds);
+                          
+                          toast({
+                            title: "Enriquecimento YouTube concluído",
+                            description: `Processadas ${songIds.length} músicas de ${artist.name}.`,
+                          });
+                        } catch (error) {
+                          console.error(`[ArtistCard.onEnrichYouTube] Erro:`, error);
+                          toast({
+                            title: "Erro ao buscar YouTube",
+                            description: error instanceof Error ? error.message : 'Erro ao buscar links',
                             variant: "destructive",
                           });
                         }
@@ -1346,7 +1452,10 @@ export default function MusicCatalog() {
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         artistId={selectedArtistId}
-        artist={selectedArtistId ? artistsWithStats.find(a => a.id === selectedArtistId) : null}
+        artist={selectedArtistId ? {
+          ...artistsWithStats.find(a => a.id === selectedArtistId),
+          ...artistBioOverrides.get(selectedArtistId)
+        } : null}
         songs={artistSongs.map(song => ({
           id: song.id,
           title: song.title,

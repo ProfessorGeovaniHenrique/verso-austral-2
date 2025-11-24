@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Music, Sparkles, Loader2, Eye, Trash2, MoreVertical, Folder } from 'lucide-react';
+import { Music, Sparkles, Loader2, Eye, Trash2, MoreVertical, Folder, Youtube } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -47,6 +47,7 @@ interface ArtistCardProps {
   corpusColor?: string | null;
   onViewDetails: () => void;
   onEnrich: () => Promise<void>;
+  onEnrichYouTube?: () => Promise<void>;
   onDelete: () => Promise<void>;
 }
 
@@ -61,9 +62,11 @@ export function ArtistCard({
   corpusColor,
   onViewDetails,
   onEnrich,
+  onEnrichYouTube,
   onDelete,
 }: ArtistCardProps) {
   const [isEnriching, setIsEnriching] = useState(false);
+  const [isEnrichingYT, setIsEnrichingYT] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteAlert, setShowDeleteAlert] = useState(false);
 
@@ -73,6 +76,16 @@ export function ArtistCard({
       await onEnrich();
     } finally {
       setIsEnriching(false);
+    }
+  };
+
+  const handleEnrichYouTube = async () => {
+    if (!onEnrichYouTube) return;
+    setIsEnrichingYT(true);
+    try {
+      await onEnrichYouTube();
+    } finally {
+      setIsEnrichingYT(false);
     }
   };
 
@@ -162,34 +175,58 @@ export function ArtistCard({
           </div>
         </CardContent>
 
-        <CardFooter className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            onClick={onViewDetails}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Ver Detalhes
-          </Button>
-
-          {pendingSongs > 0 && (
+        <CardFooter className="flex flex-col gap-2">
+          <div className="flex gap-2 w-full">
             <Button
-              variant="default"
+              variant="outline"
               size="sm"
               className="flex-1"
-              onClick={handleEnrich}
-              disabled={isEnriching}
+              onClick={onViewDetails}
             >
-              {isEnriching ? (
+              <Eye className="h-4 w-4 mr-2" />
+              Ver Detalhes
+            </Button>
+
+            {pendingSongs > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                className="flex-1"
+                onClick={handleEnrich}
+                disabled={isEnriching}
+              >
+                {isEnriching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Enriquecer ({pendingSongs})
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          
+          {onEnrichYouTube && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleEnrichYouTube}
+              disabled={isEnrichingYT}
+            >
+              {isEnrichingYT ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processando...
+                  Buscando YouTube...
                 </>
               ) : (
                 <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Enriquecer ({pendingSongs})
+                  <Youtube className="h-4 w-4 mr-2" />
+                  Enriquecer YouTube
                 </>
               )}
             </Button>
