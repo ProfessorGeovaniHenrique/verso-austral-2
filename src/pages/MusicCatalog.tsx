@@ -61,7 +61,13 @@ export default function MusicCatalog() {
   const { enrichYouTubeUI } = useYouTubeEnrichment();
   
   // ✅ Hook refatorado com Materialized View
-  const { artists: artistsWithStats, stats: catalogStats, loading: catalogLoading, reload } = useCatalogData();
+  const { 
+    songs: catalogSongs,  // ✅ Músicas do hook
+    artists: artistsWithStats, 
+    stats: catalogStats, 
+    loading: catalogLoading, 
+    reload 
+  } = useCatalogData();
   
   // States de UI
   const [view, setView] = useState<'songs' | 'artists' | 'stats' | 'metrics'>('songs');
@@ -89,6 +95,15 @@ export default function MusicCatalog() {
   const [isClearingCatalog, setIsClearingCatalog] = useState(false);
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
   const { toast } = useToast();
+
+  // ✅ Sincronizar allSongs com catalogSongs do hook
+  useEffect(() => {
+    if (catalogSongs.length > 0) {
+      console.log(`🔄 [Sync] Atualizando allSongs com ${catalogSongs.length} músicas do hook`);
+      setAllSongs(catalogSongs as unknown as Song[]);
+      setSongs(catalogSongs as unknown as Song[]);
+    }
+  }, [catalogSongs]);
 
   useEffect(() => {
     loadSongs();
