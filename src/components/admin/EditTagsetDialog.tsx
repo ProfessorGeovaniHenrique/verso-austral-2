@@ -40,7 +40,13 @@ const editTagsetSchema = z.object({
   exemplos: z.array(z.object({ value: z.string().min(1) })).optional(),
   nivel_profundidade: z.number().min(1).max(4),
   categoria_pai: z.string().optional(),
-});
+}).refine(
+  (data) => data.nivel_profundidade === 1 || (data.categoria_pai && data.categoria_pai.trim() !== ''),
+  {
+    message: "Domínios de nível 2-4 devem ter uma categoria pai",
+    path: ["categoria_pai"],
+  }
+);
 
 type EditTagsetForm = z.infer<typeof editTagsetSchema>;
 
