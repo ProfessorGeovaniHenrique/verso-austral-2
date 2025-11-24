@@ -413,9 +413,6 @@ async function enrichSingleSong(
     }
 
     confidenceScore = Math.min(confidenceScore, 100);
-    }
-
-    confidenceScore = Math.min(confidenceScore, 100);
 
     // ✅ INTELLIGENT MERGE LOGIC: Only update if new data is better
     const hasNewData = 

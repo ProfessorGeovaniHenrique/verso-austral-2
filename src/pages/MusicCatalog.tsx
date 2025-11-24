@@ -510,6 +510,13 @@ export default function MusicCatalog() {
     try {
       console.log('[handleBioEnriched] Recarregando biografia do artista:', artistId);
       
+      // 🔄 FORÇAR LIMPEZA do cache local ANTES de buscar novos dados
+      setArtistBioOverrides(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(artistId);
+        return newMap;
+      });
+      
       // Query completa do artista com biografia atualizada
       const { data: artistData, error } = await supabase
         .from('artists')
@@ -520,7 +527,7 @@ export default function MusicCatalog() {
       if (error) throw error;
       
       if (artistData && artistData.biography) {
-        // ✅ Atualizar o override de biografia localmente
+        // ✅ Atualizar o override de biografia localmente com dados FRESCOS
         setArtistBioOverrides(prev => {
           const newMap = new Map(prev);
           newMap.set(artistId, {
@@ -534,7 +541,8 @@ export default function MusicCatalog() {
         console.log('[handleBioEnriched] ✅ Biografia atualizada localmente:', {
           artistId,
           biographyLength: artistData.biography.length,
-          source: artistData.biography_source
+          source: artistData.biography_source,
+          preview: artistData.biography.substring(0, 100)
         });
         
         toast({
@@ -1278,11 +1286,38 @@ export default function MusicCatalog() {
                             description: `Processando ${songIds.length} músicas...`,
                           });
                           
-                          await enrichYouTubeBatch(songIds);
+                          // 🔥 CORREÇÃO CRÍTICA: Capturar resultados do batch
+                          const results = await enrichYouTubeBatch(songIds, undefined, (progress) => {
+                            console.log(`[YouTube Batch] Progresso: ${progress.current}/${progress.total}`);
+                          });
+                          
+                          // ✅ results é um objeto com contadores, não array
+                          const successCount = results?.success || 0;
+                          const notFoundCount = results?.notFound || 0;
+                          const errorCount = results?.error || 0;
+                          
+                          // Verificar se TODOS falharam (indica problema de quota)
+                          if (successCount === 0 && notFoundCount === 0 && errorCount === songIds.length) {
+                            toast({
+                              title: "⚠️ Limite de API do YouTube atingido",
+                              description: "A quota diária foi excedida. Tente novamente amanhã.",
+                              variant: "destructive",
+                            });
+                            return;
+                          }
+                          
+                          if (successCount === 0 && notFoundCount > 0) {
+                            toast({
+                              title: "⚠️ Links não encontrados",
+                              description: `Nenhum link encontrado no YouTube para as ${notFoundCount} músicas consultadas.`,
+                              variant: "destructive",
+                            });
+                            return;
+                          }
                           
                           toast({
-                            title: "Enriquecimento YouTube concluído",
-                            description: `Processadas ${songIds.length} músicas de ${artist.name}.`,
+                            title: "✅ Enriquecimento YouTube concluído",
+                            description: `${successCount} links encontrados, ${notFoundCount} não encontradas, ${errorCount} erros.`,
                           });
                         } catch (error) {
                           console.error(`[ArtistCard.onEnrichYouTube] Erro:`, error);
