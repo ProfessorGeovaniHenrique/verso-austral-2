@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminDictionaryValidation');
+
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
@@ -150,7 +154,12 @@ export default function AdminDictionaryValidation() {
           timestamp: new Date().toISOString()
         };
 
-        console.log('🔍 DIAGNÓSTICO DO BANCO (Rocha Pombo):', diagnostics);
+        log.info('Diagnóstico do banco completo', { 
+          source: 'Rocha Pombo', 
+          totalRecords: count || 0,
+          hasPOS: diagnostics.hasPOS,
+          hasSinonimos: diagnostics.hasSinonimos
+        });
         setDbDiagnostics(diagnostics);
         toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
       } else {
@@ -169,12 +178,17 @@ export default function AdminDictionaryValidation() {
           timestamp: new Date().toISOString()
         };
 
-        console.log('🔍 DIAGNÓSTICO DO BANCO (Gutenberg):', diagnostics);
+        log.info('Diagnóstico do banco completo', { 
+          source: 'Gutenberg', 
+          totalRecords: count || 0,
+          hasClasseGramatical: diagnostics.hasClasseGramatical,
+          hasDefinicoes: diagnostics.hasDefinicoes
+        });
         setDbDiagnostics(diagnostics);
         toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
       }
     } catch (error: any) {
-      console.error('❌ Erro ao verificar banco:', error);
+      log.error('Erro ao verificar banco de dados', error);
       toast.error(`Erro no Diagnóstico: ${error.message}`);
     } finally {
       setIsCheckingDb(false);
@@ -183,7 +197,7 @@ export default function AdminDictionaryValidation() {
 
   // 🔄 FORÇAR ATUALIZAÇÃO: Limpar cache e recarregar
   const handleForceRefresh = async () => {
-    console.log('🔄 Forçando atualização completa...');
+    log.info('Forçando atualização completa do cache e dados');
     
     // Limpar cache local do navegador
     if ('caches' in window) {

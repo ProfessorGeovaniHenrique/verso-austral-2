@@ -1192,40 +1192,15 @@ export default function MusicCatalog() {
                       pendingSongs={displayPendingSongs}
                       enrichedPercentage={displayEnrichedPercentage}
                       onViewDetails={() => {
-                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                        console.log('🔍 [FASE 2] ABRINDO SHEET DO ARTISTA');
-                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-                        console.log(`👤 Artista selecionado: ${artist.name} (ID: ${artist.id})`);
-                        console.log(`📊 Total de músicas em allSongs: ${allSongs.length}`);
-                        
-                        // Verificar quantas músicas pertencem a este artista
-                        const artistSongsDebug = allSongs.filter(s => {
-                          const match = s.artist_id === artist.id;
-                          return match;
+                        log.debug('Abrindo sheet do artista', { 
+                          artistId: artist.id, 
+                          artistName: artist.name, 
+                          totalSongsInAllSongs: allSongs.length,
+                          artistSongsCount: allSongs.filter(s => s.artist_id === artist.id).length
                         });
-                        
-                        console.log(`🔍 Músicas encontradas para este artista: ${artistSongsDebug.length}`);
-                        
-                        if (artistSongsDebug.length > 0) {
-                          console.log('📝 Sample de músicas do artista:');
-                          artistSongsDebug.slice(0, 3).forEach((song, idx) => {
-                            console.log(`  [${idx + 1}] ID: ${song.id}, Title: ${song.title}, artist_id: ${song.artist_id}`);
-                          });
-                        } else {
-                          console.warn('⚠️ NENHUMA MÚSICA ENCONTRADA! Verificando allSongs:');
-                          console.log(`   - allSongs.length: ${allSongs.length}`);
-                          console.log(`   - artist.id: ${artist.id}`);
-                          if (allSongs.length > 0) {
-                            console.log('   - Sample de artist_id em allSongs:');
-                            allSongs.slice(0, 5).forEach((s, i) => {
-                              console.log(`     [${i}] artist_id: ${s.artist_id}`);
-                            });
-                          }
-                        }
                         
                         setSelectedArtistId(artist.id);
                         setIsSheetOpen(true);
-                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
                       }}
                 onEnrich={async () => {
                   try {
@@ -1255,7 +1230,10 @@ export default function MusicCatalog() {
                     setIsEnrichmentModalOpen(true);
                     
                   } catch (error) {
-                    console.error(`[ArtistCard.onEnrich] Erro:`, error);
+                    log.error('Erro ao buscar músicas pendentes do artista', error as Error, { 
+                      artistId: artist.id,
+                      artistName: artist.name 
+                    });
                     toast({
                       title: "Erro ao buscar músicas",
                       description: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -1331,7 +1309,10 @@ export default function MusicCatalog() {
                             description: `${successCount} links encontrados, ${notFoundCount} não encontradas, ${errorCount} erros.`,
                           });
                         } catch (error) {
-                          console.error(`[ArtistCard.onEnrichYouTube] Erro:`, error);
+                          log.error('Erro ao enriquecer YouTube do artista', error as Error, { 
+                            artistId: artist.id,
+                            artistName: artist.name 
+                          });
                           toast({
                             title: "Erro ao buscar YouTube",
                             description: error instanceof Error ? error.message : 'Erro ao buscar links',
