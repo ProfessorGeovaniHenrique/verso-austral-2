@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Bug } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { captureException } from "@/lib/sentry";
+import { toast } from "@/hooks/use-toast";
 
 /**
  * Component for testing Sentry integration in development
@@ -10,7 +12,35 @@ export const SentrySmokeTest = () => {
   if (import.meta.env.PROD) return null;
 
   const testFrontendError = () => {
-    throw new Error('🧪 Sentry Frontend Smoke Test - This is a deliberate error');
+    try {
+      // Create deliberate error
+      const testError = new Error('🧪 Sentry Frontend Smoke Test - This is a deliberate error');
+      
+      // Manually capture and send to Sentry
+      captureException(testError, {
+        level: 'error',
+        tags: {
+          test_type: 'smoke_test',
+          trigger: 'manual_button_click',
+          category: 'frontend_test'
+        },
+        extra: {
+          timestamp: new Date().toISOString(),
+          userAgent: navigator.userAgent,
+          url: window.location.href
+        }
+      });
+      
+      toast({
+        title: "Error Sent to Sentry",
+        description: "Check your Sentry dashboard for the test error",
+        variant: "default",
+      });
+      
+      console.log('✅ Test error captured and sent to Sentry');
+    } catch (err) {
+      console.error('Failed to send test error:', err);
+    }
   };
 
   const testBackendError = async () => {

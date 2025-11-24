@@ -9,9 +9,11 @@ After implementing Sentry integration, use the built-in smoke test buttons (visi
 2. Look for the **red testing panel** in the bottom-left corner
 3. Click **"Force Frontend Error"** button
 4. You should see:
-   - ✅ Error Boundary catches the error
-   - ✅ Fallback UI is displayed
+   - ✅ Toast notification: "Error Sent to Sentry"
+   - ✅ Console log: "✅ Test error captured and sent to Sentry"
    - ✅ Error appears in Sentry dashboard within 30 seconds
+
+**Note:** Event handler errors (like `onClick`) are **not caught by React Error Boundaries**. They must be manually captured using `captureException()` to send to Sentry.
 
 ### **2. Backend Error Test**
 1. Click **"Force Backend Error"** button in the test panel
@@ -52,14 +54,17 @@ curl -X POST https://kywmhuubbsvclkorxrse.supabase.co/functions/v1/test-sentry-e
 Look for error with:
 - **Title:** "🧪 Sentry Frontend Smoke Test - This is a deliberate error"
 - **Tags:**
+  - `test_type`: `smoke_test`
+  - `trigger`: `manual_button_click`
+  - `category`: `frontend_test`
   - `feature`: (detected from URL, e.g., `music-catalog`)
-  - `user_role`: (e.g., `admin`)
-  - `category`: `ui`
+  - `user_role`: (e.g., `admin` or `anonymous`)
   - `browser`: (e.g., `Chrome`)
 - **Context:**
-  - Stack trace showing React component hierarchy
+  - Stack trace pointing to `SentrySmokeTest.tsx`
   - URL where error occurred
   - User agent
+  - Timestamp
 
 ### **Step 3: Verify Backend Error**
 Look for error with:
