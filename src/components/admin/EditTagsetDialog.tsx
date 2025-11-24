@@ -40,7 +40,13 @@ const editTagsetSchema = z.object({
   exemplos: z.array(z.object({ value: z.string().min(1) })).optional(),
   nivel_profundidade: z.number().min(1).max(4),
   categoria_pai: z.string().optional(),
-});
+}).refine(
+  (data) => data.nivel_profundidade === 1 || (data.categoria_pai && data.categoria_pai.trim() !== ''),
+  {
+    message: "Domínios de nível 2-4 devem ter uma categoria pai selecionada",
+    path: ["categoria_pai"],
+  }
+);
 
 type EditTagsetForm = z.infer<typeof editTagsetSchema>;
 
@@ -140,14 +146,8 @@ export function EditTagsetDialog({
 
     setIsSubmitting(true);
     try {
-      // Validações de negócio
-      if (data.nivel_profundidade > 1 && !data.categoria_pai) {
-        toast.error('Tagsets de nível 2-4 devem ter um pai');
-        return;
-      }
-
+      // Limpar categoria_pai se nível 1
       if (data.nivel_profundidade === 1 && data.categoria_pai) {
-        toast.warning('Tagsets de nível 1 não podem ter pai. Removendo pai...');
         data.categoria_pai = undefined;
       }
 
