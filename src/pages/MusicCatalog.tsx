@@ -129,8 +129,7 @@ export default function MusicCatalog() {
             color
           )
         `)
-        .not('artist_id', 'is', null)
-        .limit(35000)
+        .limit(50000)
         .order('created_at', { ascending: false });
 
       if (allSongsError) throw allSongsError;
@@ -177,6 +176,13 @@ export default function MusicCatalog() {
       setAllSongs(filteredByCorpus);
       setAllSongsForStats(allSongsComplete); // Sempre todas as músicas para stats
 
+      // ✅ FASE 4: Validação de Integridade
+      const uniqueArtistIdsInSongs = new Set(allSongsComplete.map(s => s.artist_id));
+      console.log('🔍 [Validação de Integridade]:', {
+        totalMusicas: allSongsComplete.length,
+        artistIdsUnicosNasMusicas: uniqueArtistIdsInSongs.size
+      });
+
       // Carregar artistas
       const { data: artistsData, error: artistsError } = await supabase
         .from('artists')
@@ -189,11 +195,19 @@ export default function MusicCatalog() {
           )
         `)
         .limit(1000)
-        .order('name');
+        .order('name', { ascending: true });
 
       if (artistsError) throw artistsError;
       setArtists(artistsData || []);
       console.log(`✅ [MusicCatalog] ${artistsData?.length || 0} artistas carregados`);
+
+      // ✅ FASE 4: Validação adicional - Artistas sem músicas
+      const artistsWithoutSongs = artistsData?.filter(a => !uniqueArtistIdsInSongs.has(a.id)) || [];
+      console.log('🔍 [Validação]:', {
+        artistasCarregados: artistsData?.length || 0,
+        artistasSemMusicas: artistsWithoutSongs.length,
+        primeiros10SemMusicas: artistsWithoutSongs.slice(0, 10).map(a => a.name)
+      });
 
       // Filtrar músicas baseado no filtro de status
       const displayedSongs = statusFilter === 'all' 
@@ -653,11 +667,13 @@ export default function MusicCatalog() {
     );
   });
 
-  // ✅ FASE 5: Memoizar estatísticas de artistas para evitar recálculos
+  // ✅ FASE 1 & 5: Memoizar estatísticas de artistas com logs detalhados
   const artistsWithStats = useMemo(() => {
     console.log('🔄 [useMemo] Recalculando estatísticas de artistas...');
+    console.log(`📊 [useMemo] Total artistas recebidos: ${artists.length}`);
+    console.log(`📊 [useMemo] Total músicas para stats: ${allSongsForStats.length}`);
     
-    return artists
+    const result = artists
       .map(artist => {
         const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
         const pendingSongs = artistSongs.filter(s => s.status === 'pending');
@@ -675,6 +691,15 @@ export default function MusicCatalog() {
       })
       .filter(a => a.totalSongs > 0)
       .sort((a, b) => b.totalSongs - a.totalSongs);
+
+    console.log(`📊 [useMemo] Artistas com músicas: ${result.length}`);
+    console.log(`📊 [useMemo] Primeiros 5 artistas:`, result.slice(0, 5).map(a => ({
+      name: a.name,
+      totalSongs: a.totalSongs,
+      pendingSongs: a.pendingSongs
+    })));
+    
+    return result;
   }, [artists, allSongsForStats]);
 
   console.log(`📊 [MusicCatalog] ${artistsWithStats.length} artistas com músicas`);
