@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, RefreshCw, List, TreePine, ChevronRight, ChevronDown, Edit, Undo2 } from "lucide-react";
+import { Download, RefreshCw, List, TreePine, ChevronRight, ChevronDown, Edit, Undo2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -34,6 +34,7 @@ interface ValidatedTagsetsHierarchyProps {
   onEdit: (tagset: SemanticTagset) => void;
   onRevert: (tagset: SemanticTagset) => void;
   onRefresh: () => void;
+  onCreateNew: () => void;
 }
 
 type ViewMode = "list" | "tree";
@@ -46,7 +47,8 @@ export function ValidatedTagsetsHierarchy({
   tagsets, 
   onEdit, 
   onRevert, 
-  onRefresh 
+  onRefresh,
+  onCreateNew
 }: ValidatedTagsetsHierarchyProps) {
   const { toast } = useToast();
   const [viewMode, setViewMode] = useState<ViewMode>("tree");
@@ -243,6 +245,10 @@ export function ValidatedTagsetsHierarchy({
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            <Button onClick={onCreateNew} variant="default" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Criar Novo DS
+            </Button>
             <Button onClick={exportToCSV} variant="outline" size="sm">
               <Download className="h-4 w-4 mr-2" />
               Exportar CSV

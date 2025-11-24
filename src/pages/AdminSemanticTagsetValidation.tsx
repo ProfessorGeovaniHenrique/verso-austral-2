@@ -22,6 +22,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantChat';
 import { ValidatedTagsetsHierarchy } from '@/components/admin/ValidatedTagsetsHierarchy';
 import { RejectedTagsetsList } from '@/components/admin/RejectedTagsetsList';
+import { TagsetCreator } from '@/components/advanced/TagsetCreator';
+import { Tagset } from '@/hooks/useTagsets';
 
 interface SemanticTagset {
   id: string;
@@ -58,6 +60,7 @@ export default function AdminSemanticTagsetValidation() {
   const [isCurationDialogOpen, setIsCurationDialogOpen] = useState(false);
   const [currentCuration, setCurrentCuration] = useState<CurationSuggestion | null>(null);
   const [editingTagset, setEditingTagset] = useState<SemanticTagset | null>(null);
+  const [isCreatorOpen, setIsCreatorOpen] = useState(false);
 
   const ITEMS_PER_PAGE = 24;
 
@@ -265,6 +268,44 @@ export default function AdminSemanticTagsetValidation() {
     } catch (error) {
       console.error('Erro ao alterar nível:', error);
       toast.error('Erro ao alterar nível do domínio');
+    }
+  };
+
+  const handleCreateTagset = async (tagsetData: Partial<Tagset>) => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      
+      const { error } = await supabase
+        .from('semantic_tagset')
+        .insert({
+          codigo: tagsetData.codigo!,
+          nome: tagsetData.nome!,
+          descricao: tagsetData.descricao || null,
+          nivel_profundidade: tagsetData.nivel_profundidade || 1,
+          categoria_pai: tagsetData.categoria_pai || null,
+          exemplos: tagsetData.exemplos || null,
+          status: 'ativo',
+          aprovado_em: new Date().toISOString(),
+          aprovado_por: userData.user?.id || null
+        });
+
+      if (error) throw error;
+
+      // Recalcular hierarquia após criação
+      const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
+      
+      if (hierarchyError) {
+        console.error('[Create] Erro ao recalcular hierarquia:', hierarchyError);
+        toast.warning('Domínio criado, mas hierarquia não foi recalculada');
+      }
+
+      toast.success('Domínio semântico criado com sucesso!');
+      fetchTagsets();
+      setIsCreatorOpen(false);
+    } catch (error) {
+      console.error('Erro ao criar tagset:', error);
+      toast.error('Erro ao criar domínio semântico');
+      throw error;
     }
   };
 
@@ -719,6 +760,7 @@ export default function AdminSemanticTagsetValidation() {
               onEdit={handleEditClick}
               onRevert={handleRevertValidation}
               onRefresh={fetchTagsets}
+              onCreateNew={() => setIsCreatorOpen(true)}
             />
           </TabsContent>
 
@@ -762,6 +804,36 @@ export default function AdminSemanticTagsetValidation() {
         tagset={editingTagset}
         suggestion={currentCuration}
       />
+
+      {isCreatorOpen && (
+        <TagsetCreator
+          allTagsets={tagsets.map(t => ({
+            id: t.id,
+            codigo: t.codigo,
+            nome: t.nome,
+            descricao: t.descricao,
+            nivel_profundidade: t.nivel_profundidade || 1,
+            categoria_pai: t.categoria_pai,
+            exemplos: t.exemplos,
+            status: t.status,
+            validacoes_humanas: t.validacoes_humanas || 0,
+            criado_em: t.criado_em || '',
+            aprovado_em: t.aprovado_em,
+            aprovado_por: t.aprovado_por,
+            hierarquia_completa: t.hierarquia_completa,
+            criado_por: null,
+            tagset_pai: t.categoria_pai,
+            codigo_nivel_1: null,
+            codigo_nivel_2: null,
+            codigo_nivel_3: null,
+            codigo_nivel_4: null,
+            tagsets_filhos: []
+          }))}
+          onSave={handleCreateTagset}
+          onClose={() => setIsCreatorOpen(false)}
+          defaultLevel={1}
+        />
+      )}
       
       {/* ✨ Consultor Semântico IA - Floating Chat */}
       <SemanticConsultantChat totalDomains={approvedCount} />
