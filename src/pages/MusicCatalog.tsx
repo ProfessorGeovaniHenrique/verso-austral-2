@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useCatalogData } from '@/hooks/useCatalogData';
 import { 
   EnrichedDataTable,
   SongCard,
@@ -58,28 +59,30 @@ interface LocalArtist {
 export default function MusicCatalog() {
   const { enrichBatch } = useEnrichment();
   const { enrichYouTubeUI } = useYouTubeEnrichment();
+  
+  // ✅ Hook refatorado com Materialized View
+  const { artists: artistsWithStats, stats: catalogStats, loading: catalogLoading, reload } = useCatalogData();
+  
+  // States de UI
+  const [view, setView] = useState<'songs' | 'artists' | 'stats' | 'metrics'>('songs');
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
   const [searchQuery, setSearchQuery] = useState('');
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [allSongs, setAllSongs] = useState<Song[]>([]); // Músicas filtradas por corpus
-  const [allSongsForStats, setAllSongsForStats] = useState<any[]>([]); // TODAS as músicas sem filtro (para estatísticas)
-  const [artists, setArtists] = useState<LocalArtist[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalSongs: 0,
-    totalArtists: 0,
-    avgConfidence: 0,
-    pendingSongs: 0
-  });
+  const [selectedLetter, setSelectedLetter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedCorpusFilter, setSelectedCorpusFilter] = useState<string>('all');
+  
+  // States de dados locais (apenas músicas - artistas vêm do hook)
+  const [songs, setSongs] = useState<Song[]>([]);
+  const [allSongs, setAllSongs] = useState<Song[]>([]);
+  const [songsWithoutYouTube, setSongsWithoutYouTube] = useState<Song[]>([]);
   const [corpora, setCorpora] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // States de modais e UI
   const [enrichingIds, setEnrichingIds] = useState<Set<string>>(new Set());
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
-  const [songsWithoutYouTube, setSongsWithoutYouTube] = useState<any[]>([]);
-  const [showMetricsDashboard, setShowMetricsDashboard] = useState(false);
   const [metricsData, setMetricsData] = useState<any>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [selectedArtistId, setSelectedArtistId] = useState<string | null>(null);
@@ -87,9 +90,12 @@ export default function MusicCatalog() {
   const { toast } = useToast();
 
   useEffect(() => {
-    loadData();
-    loadCorpora();
+    loadSongs();
   }, [statusFilter, selectedCorpusFilter]);
+
+  useEffect(() => {
+    loadCorpora();
+  }, []);
 
   const loadCorpora = async () => {
     try {
@@ -105,13 +111,11 @@ export default function MusicCatalog() {
     }
   };
 
-  const loadData = async () => {
+  const loadSongs = async () => {
     try {
       setLoading(true);
+      console.log('🔄 [MusicCatalog] Carregando músicas...');
 
-      console.log('🔄 [MusicCatalog] Carregando dados...');
-
-      // ✅ FASE 3: Query UNIFICADA - Carregar TODAS as músicas com relações completas
       const { data: allSongsData, error: allSongsError } = await supabase
         .from('songs')
         .select(`
@@ -135,33 +139,9 @@ export default function MusicCatalog() {
       if (allSongsError) throw allSongsError;
 
       const allSongsComplete = allSongsData || [];
-      
-      // Performance warning for large datasets
-      if (allSongsComplete.length >= 30000) {
-        toast({
-          title: "⚠️ Grande Volume de Dados",
-          description: `Carregando ${allSongsComplete.length.toLocaleString()} músicas. Isso pode levar alguns segundos...`,
-          duration: 5000
-        });
-      }
+      console.log(`✅ [MusicCatalog] ${allSongsComplete.length} músicas carregadas`);
 
-      // Detailed logging
-      console.log('🔍 [MusicCatalog] Detalhes do carregamento:', {
-        totalSongs: allSongsComplete.length,
-        limitAtingido: allSongsComplete.length >= 1000,
-        avisoPerformance: allSongsComplete.length >= 30000,
-        primeiras5Musicas: allSongsComplete.slice(0, 5).map(s => ({
-          title: s.title,
-          artist: s.artists?.name,
-          status: s.status
-        }))
-      });
-
-      if (allSongsComplete.length === 1000) {
-        console.warn('⚠️ ATENÇÃO: Query retornou exatamente 1000 registros. Possível limitação do Supabase!');
-      }
-
-      // Aplicar filtro de corpus se necessário (apenas para exibição)
+      // Aplicar filtros
       let filteredByCorpus = allSongsComplete;
       if (selectedCorpusFilter !== 'all') {
         if (selectedCorpusFilter === 'null') {
@@ -169,75 +149,27 @@ export default function MusicCatalog() {
         } else {
           filteredByCorpus = allSongsComplete.filter(s => s.corpus_id === selectedCorpusFilter);
         }
-        console.log(`🔍 [MusicCatalog] ${filteredByCorpus.length} músicas após filtro de corpus`);
       }
 
-      // ✅ FASE 3: Usar o MESMO array para display e estatísticas
-      setAllSongs(filteredByCorpus);
-      setAllSongsForStats(allSongsComplete); // Sempre todas as músicas para stats
-
-      // ✅ FASE 4: Validação de Integridade
-      const uniqueArtistIdsInSongs = new Set(allSongsComplete.map(s => s.artist_id));
-      console.log('🔍 [Validação de Integridade]:', {
-        totalMusicas: allSongsComplete.length,
-        artistIdsUnicosNasMusicas: uniqueArtistIdsInSongs.size
-      });
-
-      // Carregar artistas
-      const { data: artistsData, error: artistsError } = await supabase
-        .from('artists')
-        .select(`
-          *,
-          corpora (
-            id,
-            name,
-            color
-          )
-        `)
-        .limit(1000)
-        .order('name', { ascending: true });
-
-      if (artistsError) throw artistsError;
-      setArtists(artistsData || []);
-      console.log(`✅ [MusicCatalog] ${artistsData?.length || 0} artistas carregados`);
-
-      // ✅ FASE 4: Validação adicional - Artistas sem músicas
-      const artistsWithoutSongs = artistsData?.filter(a => !uniqueArtistIdsInSongs.has(a.id)) || [];
-      console.log('🔍 [Validação]:', {
-        artistasCarregados: artistsData?.length || 0,
-        artistasSemMusicas: artistsWithoutSongs.length,
-        primeiros10SemMusicas: artistsWithoutSongs.slice(0, 10).map(a => a.name)
-      });
-
-      // Filtrar músicas baseado no filtro de status
       const displayedSongs = statusFilter === 'all' 
         ? filteredByCorpus 
         : filteredByCorpus.filter(s => s.status === statusFilter);
 
+      setAllSongs(allSongsComplete);
       setSongs(displayedSongs);
+      setSongsWithoutYouTube(allSongsComplete.filter(s => !s.youtube_url));
 
-      // ✅ FASE 3: Calcular estatísticas usando allSongsComplete
+      // Calcular métricas para o dashboard
       const enrichedCount = allSongsComplete.filter(s => s.status === 'enriched').length;
       const pendingCount = allSongsComplete.filter(s => s.status === 'pending').length;
       const errorCount = allSongsComplete.filter(s => s.status === 'error').length;
-      const withoutYouTubeCount = allSongsComplete.filter(s => !s.youtube_url).length;
-
+      
       const avgConfidence = enrichedCount > 0
         ? allSongsComplete
             .filter(s => s.status === 'enriched')
             .reduce((acc, s) => acc + (s.confidence_score || 0), 0) / enrichedCount
         : 0;
-
-      setStats({ 
-        totalSongs: allSongsComplete.length, 
-        totalArtists: artistsData?.length || 0, 
-        avgConfidence, 
-        pendingSongs: pendingCount 
-      });
-
-      setSongsWithoutYouTube(allSongsComplete.filter(s => !s.youtube_url));
-
-      // Calcular métricas para o dashboard
+        
       const successRate = allSongsComplete.length > 0 
         ? (enrichedCount / allSongsComplete.length) * 100 
         : 0;
@@ -421,7 +353,8 @@ export default function MusicCatalog() {
           title: "✨ Música enriquecida!",
           description: result.message
         });
-        await loadData();
+        await loadSongs();
+        reload();
       } else {
         console.error(`[DEBUG] ❌ Erro no enriquecimento:`, result.error);
         toast({
@@ -465,7 +398,8 @@ export default function MusicCatalog() {
   };
 
   const handleBatchComplete = async () => {
-    await loadData();
+    await loadSongs();
+    reload();
     toast({
       title: "🎉 Enriquecimento concluído!",
       description: "Todas as músicas foram processadas."
@@ -536,7 +470,8 @@ export default function MusicCatalog() {
           title: "✨ Re-enriquecimento concluído!",
           description: result.message
         });
-        await loadData();
+        await loadSongs();
+        reload();
       } else {
         toast({
           title: "Erro",
@@ -567,7 +502,8 @@ export default function MusicCatalog() {
         title: "✓ Aprovado",
         description: "Música marcada como revisada e aprovada."
       });
-      await loadData();
+      await loadSongs();
+      reload();
     } catch (error) {
       console.error('Erro ao marcar como revisado:', error);
       toast({
@@ -592,7 +528,8 @@ export default function MusicCatalog() {
         title: "🗑️ Música deletada",
         description: "A música foi removida do catálogo."
       });
-      await loadData();
+      await loadSongs();
+      reload();
     } catch (error) {
       console.error('Erro ao deletar música:', error);
       toast({
@@ -623,8 +560,8 @@ export default function MusicCatalog() {
       if (error) throw error;
       
       if (artistData) {
-        // Atualiza o artista na lista
-        setArtists(prev => prev.map(a => a.id === artistId ? artistData : a));
+        // Trigger reload do hook para atualizar stats
+        reload();
       }
     } catch (error) {
       console.error('Erro ao recarregar artista:', error);
@@ -643,7 +580,8 @@ export default function MusicCatalog() {
           title: "🧹 Catálogo limpo!",
           description: `${data.deleted.songs} músicas, ${data.deleted.artists} artistas e ${data.deleted.uploads} uploads foram removidos.`
         });
-        await loadData();
+        await loadSongs();
+        reload();
       }
     } catch (error: any) {
       console.error('Erro ao limpar catálogo:', error);
@@ -667,42 +605,27 @@ export default function MusicCatalog() {
     );
   });
 
-  // ✅ FASE 1 & 5: Memoizar estatísticas de artistas com logs detalhados
-  const artistsWithStats = useMemo(() => {
-    console.log('🔄 [useMemo] Recalculando estatísticas de artistas...');
-    console.log(`📊 [useMemo] Total artistas recebidos: ${artists.length}`);
-    console.log(`📊 [useMemo] Total músicas para stats: ${allSongsForStats.length}`);
+  // ✅ Filtrar artistas por letra
+  const filteredArtists = useMemo(() => {
+    let filtered = artistsWithStats;
     
-    const result = artists
-      .map(artist => {
-        const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
-        const pendingSongs = artistSongs.filter(s => s.status === 'pending');
-        const enrichedSongs = artistSongs.filter(s => s.status === 'enriched');
-        
-        return {
-          ...artist,
-          totalSongs: artistSongs.length,
-          pendingSongs: pendingSongs.length,
-          enrichedSongs: enrichedSongs.length,
-          enrichedPercentage: artistSongs.length > 0
-            ? Math.round((enrichedSongs.length / artistSongs.length) * 100)
-            : 0
-        };
-      })
-      .filter(a => a.totalSongs > 0)
-      .sort((a, b) => b.totalSongs - a.totalSongs);
-
-    console.log(`📊 [useMemo] Artistas com músicas: ${result.length}`);
-    console.log(`📊 [useMemo] Primeiros 5 artistas:`, result.slice(0, 5).map(a => ({
-      name: a.name,
-      totalSongs: a.totalSongs,
-      pendingSongs: a.pendingSongs
-    })));
+    // Filtrar por letra
+    if (selectedLetter !== 'all') {
+      filtered = filtered.filter(artist => 
+        artist.name.charAt(0).toUpperCase() === selectedLetter
+      );
+    }
     
-    return result;
-  }, [artists, allSongsForStats]);
-
-  console.log(`📊 [MusicCatalog] ${artistsWithStats.length} artistas com músicas`);
+    // Filtrar por busca
+    if (searchQuery) {
+      filtered = filtered.filter(artist =>
+        artist.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    console.log(`📊 [filteredArtists] ${filtered.length} artistas após filtros (letra: ${selectedLetter})`);
+    return filtered;
+  }, [artistsWithStats, selectedLetter, searchQuery]);
 
   return (
     <div className="space-y-0">
@@ -735,7 +658,7 @@ export default function MusicCatalog() {
                 variant="ghost"
                 size="sm"
                 className="h-9 gap-2"
-                onClick={loadData}
+                onClick={() => { loadSongs(); reload(); }}
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="hidden sm:inline">Atualizar</span>
@@ -789,8 +712,8 @@ export default function MusicCatalog() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Isso irá excluir permanentemente <strong>todas as {stats.totalSongs} músicas</strong>, 
-                      <strong> todos os {stats.totalArtists} artistas</strong> e seus uploads do catálogo. 
+                      Isso irá excluir permanentemente <strong>todas as {catalogStats?.totalSongs || 0} músicas</strong>, 
+                      <strong> todos os {catalogStats?.totalArtists || 0} artistas</strong> e seus uploads do catálogo.
                       Esta ação não pode ser desfeita.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -818,9 +741,9 @@ export default function MusicCatalog() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Catálogo de Músicas</h1>
             <p className="text-muted-foreground">
-              {stats.totalSongs} músicas | {stats.totalArtists} artistas | 
-              Confiança média: {stats.avgConfidence.toFixed(1)}/100
-              {stats.pendingSongs > 0 && ` | ${stats.pendingSongs} aguardando enriquecimento`}
+              {catalogStats?.totalSongs || 0} músicas | {catalogStats?.totalArtists || 0} artistas | 
+              Confiança média: {(catalogStats?.avgConfidence || 0).toFixed(1)}/100
+              {(catalogStats?.pendingSongs || 0) > 0 && ` | ${catalogStats?.pendingSongs} aguardando enriquecimento`}
             </p>
           </div>
 
@@ -920,15 +843,15 @@ export default function MusicCatalog() {
       )}
 
       {/* Batch Enrichment Alert */}
-      {stats.pendingSongs > 0 && (
+      {(catalogStats?.pendingSongs || 0) > 0 && (
         <Alert className="border-primary/50 bg-primary/5">
           <AlertCircle className="h-4 w-4 text-primary" />
           <AlertTitle>Músicas Aguardando Enriquecimento de Metadados</AlertTitle>
           <AlertDescription>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <span>
-                {stats.pendingSongs} música{stats.pendingSongs > 1 ? 's' : ''} precisa
-                {stats.pendingSongs > 1 ? 'm' : ''} ser enriquecida{stats.pendingSongs > 1 ? 's' : ''} com compositor e ano.
+                {catalogStats?.pendingSongs || 0} música{(catalogStats?.pendingSongs || 0) > 1 ? 's' : ''} precisa
+                {(catalogStats?.pendingSongs || 0) > 1 ? 'm' : ''} ser enriquecida{(catalogStats?.pendingSongs || 0) > 1 ? 's' : ''} com compositor e ano.
               </span>
               <Button 
                 size="sm" 
@@ -936,7 +859,7 @@ export default function MusicCatalog() {
                 className="w-full sm:w-auto"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
-                Enriquecer Metadados ({stats.pendingSongs})
+                Enriquecer Metadados ({catalogStats?.pendingSongs || 0})
               </Button>
             </div>
           </AlertDescription>
@@ -982,10 +905,12 @@ export default function MusicCatalog() {
         </div>
       </div>
 
-      <Tabs defaultValue="songs" className="space-y-4">
+      <Tabs value={view} onValueChange={(v) => setView(v as any)} className="space-y-4">
         <TabsList>
           <TabsTrigger value="songs">Músicas</TabsTrigger>
-          <TabsTrigger value="artists">Artistas</TabsTrigger>
+          <TabsTrigger value="artists">
+            Artistas {selectedLetter !== 'all' && `(${selectedLetter})`}
+          </TabsTrigger>
           <TabsTrigger value="stats">Estatísticas</TabsTrigger>
           <TabsTrigger value="metrics">Métricas</TabsTrigger>
         </TabsList>
@@ -1054,29 +979,59 @@ export default function MusicCatalog() {
         </TabsContent>
 
         <TabsContent value="artists" className="space-y-4">
-          {loading ? (
+          {/* Filtro Alfabético */}
+          <div className="flex flex-wrap gap-1 p-4 bg-card rounded-lg border mb-4">
+            <Button
+              size="sm"
+              variant={selectedLetter === 'all' ? 'default' : 'outline'}
+              onClick={() => setSelectedLetter('all')}
+              className="h-8 px-3 text-xs"
+            >
+              Todos
+            </Button>
+            {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
+              <Button
+                key={letter}
+                size="sm"
+                variant={selectedLetter === letter ? 'default' : 'outline'}
+                onClick={() => setSelectedLetter(letter)}
+                className="h-8 w-8 p-0 text-xs font-mono"
+              >
+                {letter}
+              </Button>
+            ))}
+          </div>
+
+          {catalogLoading ? (
             <div className="text-center py-12">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
               <p className="text-muted-foreground">Carregando artistas...</p>
             </div>
+          ) : filteredArtists.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">
+                {selectedLetter !== 'all' 
+                  ? `Nenhum artista encontrado com a letra ${selectedLetter}`
+                  : 'Nenhum artista encontrado'
+                }
+              </p>
+            </div>
           ) : (
             <>
-              {/* ✅ FASE 6: Header com estatísticas */}
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold">
-                    {artistsWithStats.length} {artistsWithStats.length === 1 ? 'Artista' : 'Artistas'}
+                    {filteredArtists.length} {filteredArtists.length === 1 ? 'Artista' : 'Artistas'}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {stats.totalSongs} músicas no total
+                    {catalogStats?.totalSongs || 0} músicas no total
                   </p>
                 </div>
               </div>
               
-              {/* ✅ FASE 6: Grid de Cards usando dados memoizados */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {artistsWithStats.map((artist) => {
-                  const artistSongs = allSongsForStats.filter(s => s.artist_id === artist.id);
+                {filteredArtists.map((artist) => {
+                  const artistSongs = allSongs.filter(s => s.artist_id === artist.id);
                   
                   return (
                     <ArtistCard 
@@ -1086,9 +1041,9 @@ export default function MusicCatalog() {
                       genre={artist.genre}
                       corpusName={artist.corpora?.name}
                       corpusColor={artist.corpora?.color}
-                      totalSongs={artist.totalSongs}
-                      pendingSongs={artist.pendingSongs}
-                      enrichedPercentage={artist.enrichedPercentage}
+                      totalSongs={(artist as any).totalSongs || 0}
+                      pendingSongs={(artist as any).pendingSongs || 0}
+                      enrichedPercentage={(artist as any).enrichedPercentage || 0}
                       onViewDetails={() => {
                         setSelectedArtistId(artist.id);
                         setIsSheetOpen(true);
@@ -1113,7 +1068,8 @@ export default function MusicCatalog() {
                           });
                           
                           await enrichBatch(pendingSongIds);
-                          await loadData();
+                          await loadSongs();
+                          reload();
                         } catch (error) {
                           toast({
                             title: "Erro",
@@ -1138,7 +1094,8 @@ export default function MusicCatalog() {
                             
                           if (artistError) throw artistError;
                           
-                          await loadData();
+                          await loadSongs();
+                          reload();
                           toast({
                             title: "Sucesso!",
                             description: `Artista ${artist.name} excluído com sucesso`,
@@ -1172,17 +1129,17 @@ export default function MusicCatalog() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <StatsCard 
               title="Total de Músicas"
-              value={stats.totalSongs}
+              value={catalogStats?.totalSongs || 0}
               subtitle="no catálogo"
             />
             <StatsCard 
               title="Total de Artistas"
-              value={stats.totalArtists}
+              value={catalogStats?.totalArtists || 0}
               subtitle="artistas únicos"
             />
             <StatsCard 
               title="Confiança Média"
-              value={`${stats.avgConfidence.toFixed(1)}/100`}
+              value={`${(catalogStats?.avgConfidence || 0).toFixed(1)}/100`}
               subtitle="score de qualidade"
             />
           </div>
@@ -1226,7 +1183,7 @@ export default function MusicCatalog() {
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         artistId={selectedArtistId}
-        artist={selectedArtistId ? artists.find(a => a.id === selectedArtistId) : null}
+        artist={selectedArtistId ? artistsWithStats.find(a => a.id === selectedArtistId) : null}
         songs={selectedArtistId ? allSongs.filter(s => s.artist_id === selectedArtistId) : []}
         onEnrichSong={handleEnrichSong}
         onEditSong={handleEditSong}

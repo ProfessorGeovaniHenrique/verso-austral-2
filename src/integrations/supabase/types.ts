@@ -1968,6 +1968,13 @@ export type Database = {
             foreignKeyName: "songs_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
+            referencedRelation: "artist_stats_mv"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
           },
@@ -2278,7 +2285,30 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      artist_stats_mv: {
+        Row: {
+          artist_id: string | null
+          artist_name: string | null
+          corpus_color: string | null
+          corpus_id: string | null
+          corpus_name: string | null
+          enriched_songs: number | null
+          error_songs: number | null
+          genre: string | null
+          normalized_name: string | null
+          pending_songs: number | null
+          total_songs: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_tagset_hierarchy: { Args: never; Returns: undefined }

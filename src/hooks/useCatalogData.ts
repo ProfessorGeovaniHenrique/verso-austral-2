@@ -47,25 +47,42 @@ export function useCatalogData() {
   };
 
   const loadArtists = async () => {
-    console.log('[useCatalogData] Loading artists...');
+    console.log('[useCatalogData] Loading artists from materialized view...');
     
     try {
       const { data, error: fetchError } = await supabase
-        .from('artists')
-        .select(`
-          *,
-          corpora (
-            id,
-            name,
-            color
-          )
-        `)
-        .order('name', { ascending: true });
+        .from('artist_stats_mv')
+        .select('*')
+        .order('artist_name', { ascending: true });
       
       if (fetchError) throw fetchError;
       
-      console.log(`[useCatalogData] Loaded ${data?.length || 0} artists`);
-      setArtists((data as ArtistWithRelations[]) || []);
+      console.log(`[useCatalogData] Loaded ${data?.length || 0} artists with stats`);
+      
+      // Transformar para o formato ArtistWithRelations + stats
+      const artistsWithStats = data?.map(row => ({
+        id: row.artist_id,
+        name: row.artist_name,
+        normalized_name: row.normalized_name,
+        genre: row.genre,
+        corpus_id: row.corpus_id,
+        created_at: '',
+        updated_at: '',
+        biography: null,
+        biography_source: null,
+        biography_updated_at: null,
+        corpora: row.corpus_name ? {
+          id: row.corpus_id,
+          name: row.corpus_name,
+          color: row.corpus_color
+        } : null,
+        totalSongs: row.total_songs,
+        pendingSongs: row.pending_songs,
+        enrichedSongs: row.enriched_songs,
+        errorSongs: row.error_songs
+      })) || [];
+      
+      setArtists(artistsWithStats as any);
     } catch (err) {
       console.error('[useCatalogData] Error loading artists:', err);
       throw err;
@@ -73,30 +90,35 @@ export function useCatalogData() {
   };
 
   const loadStats = async () => {
-    console.log('[useCatalogData] Loading stats...');
+    console.log('[useCatalogData] Loading stats from aggregated queries...');
     
     try {
-      const { data: allSongs, error: fetchError } = await supabase
+      // Query otimizada 1: Contar total de músicas por status
+      const { data: statusCounts } = await supabase
         .from('songs')
-        .select('status, confidence_score');
-      
-      if (fetchError) throw fetchError;
+        .select('status')
+        .in('status', ['pending', 'enriched', 'error']);
 
+      // Query otimizada 2: Contar total de artistas
       const { count: artistCount } = await supabase
         .from('artists')
         .select('id', { count: 'exact', head: true });
 
-      const totalSongs = allSongs?.length || 0;
-      const pendingSongs = allSongs?.filter(s => s.status === 'pending').length || 0;
-      const enrichedSongs = allSongs?.filter(s => s.status === 'enriched').length || 0;
-      const errorSongs = allSongs?.filter(s => s.status === 'error').length || 0;
+      // Query otimizada 3: Calcular média de confidence
+      const { data: confidenceData } = await supabase
+        .from('songs')
+        .select('confidence_score')
+        .not('confidence_score', 'is', null);
       
-      const confidenceScores = allSongs
-        ?.map(s => s.confidence_score)
-        .filter((score): score is number => score !== null) || [];
+      const totalSongs = statusCounts?.length || 0;
+      const pendingSongs = statusCounts?.filter(s => s.status === 'pending').length || 0;
+      const enrichedSongs = statusCounts?.filter(s => s.status === 'enriched').length || 0;
+      const errorSongs = statusCounts?.filter(s => s.status === 'error').length || 0;
       
-      const avgConfidence = confidenceScores.length > 0
-        ? confidenceScores.reduce((sum, score) => sum + score, 0) / confidenceScores.length
+      const avgConfidence = confidenceData && confidenceData.length > 0
+        ? Math.round(
+            confidenceData.reduce((sum, s) => sum + (s.confidence_score || 0), 0) / confidenceData.length
+          )
         : 0;
 
       const calculatedStats: CatalogStats = {
@@ -105,7 +127,7 @@ export function useCatalogData() {
         pendingSongs,
         enrichedSongs,
         errorSongs,
-        avgConfidence: Math.round(avgConfidence)
+        avgConfidence
       };
 
       console.log('[useCatalogData] Stats:', calculatedStats);
