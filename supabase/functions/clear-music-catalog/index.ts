@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,13 +11,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('clear-music-catalog', requestId);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('🧹 Iniciando limpeza do catálogo de músicas...');
+    log.info('Starting music catalog cleanup');
 
     // Deletar songs primeiro (tem FK para artists e uploads)
     const { error: songsError, count: songsCount } = await supabase
@@ -25,7 +29,7 @@ Deno.serve(async (req) => {
       .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (songsError) {
-      console.error('❌ Erro ao deletar songs:', songsError);
+      log.error('Error deleting songs', songsError);
       throw songsError;
     }
 
@@ -36,7 +40,7 @@ Deno.serve(async (req) => {
       .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (artistsError) {
-      console.error('❌ Erro ao deletar artists:', artistsError);
+      log.error('Error deleting artists', artistsError);
       throw artistsError;
     }
 
@@ -47,14 +51,15 @@ Deno.serve(async (req) => {
       .neq('id', '00000000-0000-0000-0000-000000000000');
 
     if (uploadsError) {
-      console.error('❌ Erro ao deletar uploads:', uploadsError);
+      log.error('Error deleting uploads', uploadsError);
       throw uploadsError;
     }
 
-    console.log(`✅ Limpeza concluída:
-      - ${songsCount || 0} músicas deletadas
-      - ${artistsCount || 0} artistas deletados
-      - ${uploadsCount || 0} uploads deletados`);
+    log.info('Cleanup completed', {
+      songs: songsCount || 0,
+      artists: artistsCount || 0,
+      uploads: uploadsCount || 0
+    });
 
     // Log da operação
     await supabase.from('system_logs').insert({
@@ -83,7 +88,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Erro na limpeza:', error);
+    log.error('Error in cleanup', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

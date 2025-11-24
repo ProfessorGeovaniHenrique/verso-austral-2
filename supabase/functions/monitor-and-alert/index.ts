@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,12 +17,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('monitor-and-alert', requestId);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('🔔 Running monitoring and alert checks...');
+    log.info('Running monitoring and alert checks');
 
     const alerts: any[] = [];
 
@@ -171,7 +175,7 @@ serve(async (req) => {
             });
         }
       } catch (error) {
-        console.error(`❌ Error running check ${check.name}:`, error);
+        log.error(`Error running check ${check.name}`, error as Error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         // Log error
         await supabase
@@ -186,7 +190,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`✅ Monitoring complete. ${alerts.length} alert(s) triggered.`);
+    log.info('Monitoring complete', { alertsCount: alerts.length, totalChecks: checks.length });
 
     return new Response(JSON.stringify({ 
       alerts,
@@ -198,7 +202,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Error in monitor-and-alert:', error);
+    log.error('Error in monitor-and-alert', error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

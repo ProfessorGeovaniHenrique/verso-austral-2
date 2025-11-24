@@ -135,7 +135,7 @@ const CONJUNCTIONS = {
 };
 const ADVERBS = new Set(['não', 'sim', 'nunca', 'sempre', 'talvez', 'aqui', 'ali', 'lá', 'cá', 'hoje', 'ontem', 'amanhã', 'agora', 'já', 'ainda', 'logo', 'cedo', 'tarde', 'bem', 'mal', 'muito', 'pouco', 'mais', 'menos', 'bastante', 'demais', 'longe', 'perto', 'dentro', 'fora', 'acima', 'abaixo']);
 
-console.log(`[annotate-pos] Base carregada: ${Object.keys(IRREGULAR_VERBS).length} verbos irregulares, ${Object.keys(CONJUGATED_TO_INFINITIVE).length} formas catalogadas`);
+// Base carregada silenciosamente
 
 // ============= SERVER =============
 
@@ -195,9 +195,7 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    console.log(`[annotate-pos] Processando ${texto.length} caracteres (base expandida: 50+ verbos)`);
     const tokens = await processText(texto);
-    console.log(`[annotate-pos] ${tokens.length} tokens processados`);
 
     // Log de sucesso
     await logger.logResponse(req, 200, {
@@ -213,7 +211,7 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
     return addRateLimitHeaders(successResponse, rateLimit);
 
   } catch (error) {
-    console.error('[annotate-pos] Erro:', error);
+    // Error logged via EdgeFunctionLogger
     
     // Log de erro
     await logger.logResponse(req, 500, { error: error as Error });

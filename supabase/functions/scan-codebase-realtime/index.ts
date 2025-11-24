@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -41,6 +42,8 @@ serve(withInstrumentation('scan-codebase-realtime', async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('scan-codebase-realtime', requestId);
   const startTime = Date.now();
 
   try {
@@ -50,7 +53,7 @@ serve(withInstrumentation('scan-codebase-realtime', async (req) => {
 
     const { scanType, compareWithBaseline }: ScanRequest = await req.json();
 
-    console.log(`🔍 Starting code scan: ${scanType}`);
+    log.info('Starting code scan', { scanType, compareWithBaseline });
 
     // Baseline de bugs conhecidos do audit-report-2024-11.ts
     const baselineBugs: BugReport[] = await getBaselineBugs();
@@ -110,11 +113,11 @@ serve(withInstrumentation('scan-codebase-realtime', async (req) => {
       .single();
 
     if (insertError) {
-      console.error('❌ Erro ao salvar scan:', insertError);
+      log.error('Error saving scan', insertError);
       throw insertError;
     }
 
-    console.log(`✅ Scan concluído em ${scanDuration}ms`);
+    log.info('Scan completed', { scanDuration, totalIssues, filesAnalyzed });
 
     return new Response(
       JSON.stringify({
@@ -129,7 +132,7 @@ serve(withInstrumentation('scan-codebase-realtime', async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Erro no scan:', error);
+    log.error('Error in scan', error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
       JSON.stringify({ error: errorMessage }),

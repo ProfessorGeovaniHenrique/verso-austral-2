@@ -156,13 +156,12 @@ serve(withInstrumentation('calculate-priority-score', async (req) => {
     // Ordenar por score (maior primeiro)
     priorities.sort((a, b) => b.score - a.score);
 
-    console.log(`✅ Calculados ${priorities.length} scores de priorização`);
+    // Priority scores calculated
 
     return new Response(JSON.stringify({ priorities }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error('Erro ao calcular prioridades:', error);
     return new Response(
       JSON.stringify({ 
         error: error instanceof Error ? error.message : 'Erro desconhecido',

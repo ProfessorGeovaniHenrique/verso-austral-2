@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,13 +11,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('clear-all-dictionaries', requestId);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('🧹 Iniciando limpeza de todos os dicionários...');
+    log.info('Starting cleanup of all dictionaries');
 
     // Deletar todos os registros de cada tabela
     const tables = [
@@ -38,14 +42,14 @@ Deno.serve(async (req) => {
           .neq('id', '00000000-0000-0000-0000-000000000000');
         
         if (error) {
-          console.error(`❌ Erro ao limpar ${table}:`, error);
+          log.error(`Error clearing ${table}`, error);
           results[table] = { deleted: 0, error: error.message };
         } else {
-          console.log(`✅ Tabela ${table} limpa com sucesso (${count || 0} registros removidos)`);
+          log.info(`Table cleared`, { table, deleted: count || 0 });
           results[table] = { deleted: count || 0 };
         }
       } catch (err: any) {
-        console.error(`❌ Erro ao processar ${table}:`, err);
+        log.error(`Error processing ${table}`, err);
         results[table] = { deleted: 0, error: err.message };
       }
     }
@@ -83,7 +87,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Erro na limpeza:', error);
+    log.error('Error in cleanup', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

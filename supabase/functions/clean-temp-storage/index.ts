@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -10,13 +11,16 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('clean-temp-storage', requestId);
+
   try {
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    console.log('🧹 Limpando arquivos temporários do Storage...');
+    log.info('Cleaning temporary storage files');
 
     // Listar todos os arquivos em temp-imports/
     const { data: files, error: listError } = await supabase.storage
@@ -27,18 +31,18 @@ Deno.serve(async (req) => {
       });
 
     if (listError) {
-      console.error('❌ Erro ao listar arquivos:', listError);
+      log.error('Error listing files', listError);
       throw listError;
     }
 
-    console.log(`📂 Encontrados ${files?.length || 0} arquivos`);
+    log.info('Files found', { count: files?.length || 0 });
 
     // Filtrar apenas arquivos .json do Gutenberg
     const gutenbergFiles = files?.filter(f => 
       f.name.startsWith('gutenberg-') && f.name.endsWith('.json')
     ) || [];
 
-    console.log(`🎯 Arquivos Gutenberg para deletar: ${gutenbergFiles.length}`);
+    log.info('Gutenberg files to delete', { count: gutenbergFiles.length });
 
     if (gutenbergFiles.length === 0) {
       return new Response(
@@ -58,11 +62,11 @@ Deno.serve(async (req) => {
       .remove(filePaths);
 
     if (deleteError) {
-      console.error('❌ Erro ao deletar arquivos:', deleteError);
+      log.error('Error deleting files', deleteError);
       throw deleteError;
     }
 
-    console.log(`✅ Deletados ${gutenbergFiles.length} arquivos temporários`);
+    log.info('Temporary files deleted', { count: gutenbergFiles.length });
 
     return new Response(
       JSON.stringify({
@@ -75,7 +79,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Erro na limpeza:', error);
+    log.error('Error in cleanup', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@4.0.0";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -50,6 +51,9 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('send-critical-alert', requestId);
+
   try {
     const {
       analysisId,
@@ -60,11 +64,11 @@ const handler = async (req: Request): Promise<Response> => {
       timestamp,
     }: CriticalAlertRequest = await req.json();
 
-    console.log(`📧 Preparando alerta: ${criticalCount} problemas críticos detectados`);
+    log.info('Preparing alert', { criticalCount });
 
     // Verificar se realmente há problemas críticos
     if (!criticalIssues || criticalIssues.length === 0) {
-      console.log("ℹ️ Nenhum problema crítico, email não enviado");
+      log.info('No critical issues, email not sent');
       return new Response(
         JSON.stringify({ message: "No critical issues, email not sent" }),
         {
@@ -250,7 +254,7 @@ const handler = async (req: Request): Promise<Response> => {
       html: emailHtml,
     });
 
-    console.log("✅ Email enviado com sucesso:", emailResponse);
+    log.info('Email sent successfully', { emailId: emailResponse.data?.id });
 
     return new Response(
       JSON.stringify({
@@ -265,7 +269,7 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error: any) {
-    console.error("❌ Erro ao enviar alerta crítico:", error);
+    log.error('Error sending alert', error);
     return new Response(
       JSON.stringify({
         success: false,

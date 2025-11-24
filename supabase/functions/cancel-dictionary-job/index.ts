@@ -96,15 +96,7 @@ serve(withInstrumentation('cancel-dictionary-job', async (req) => {
       throw new Error("jobId e reason (mínimo 5 caracteres) são obrigatórios");
     }
 
-    console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║  🛑 CANCELAMENTO SOLICITADO (RESILIENTE)                  
-║  📋 Job ID: ${jobId.substring(0, 8)}...
-║  👤 Usuário: ${user.email}
-║  📝 Motivo: ${reason}
-║  🔒 Advisory Lock + Circuit Breaker + Retry
-╚═══════════════════════════════════════════════════════════╝
-`);
+    // Job cancellation requested
 
     // 🔒 Executar com Circuit Breaker + Retry + Timeout + Idempotência
     const result = await withTimeout(
@@ -135,14 +127,7 @@ serve(withInstrumentation('cancel-dictionary-job', async (req) => {
       throw new Error(result.message || 'Falha ao cancelar job');
     }
 
-    console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║  ✅ JOB CANCELADO COM SUCESSO (RESILIENTE)                
-║  📊 Status: ${result.job_status}
-║  ⏱️  Tipo: ${result.forced ? 'FORÇADO após timeout' : 'GRACEFUL'}
-║  💬 Mensagem: ${result.message}
-╚═══════════════════════════════════════════════════════════╝
-`);
+    // Job cancelled successfully
 
     return new Response(
       JSON.stringify({ 
@@ -162,13 +147,7 @@ serve(withInstrumentation('cancel-dictionary-job', async (req) => {
     );
 
   } catch (error: any) {
-    console.error(`
-╔═══════════════════════════════════════════════════════════╗
-║  💥 ERRO AO CANCELAR JOB                                  
-║  ❌ ${error.message}
-╚═══════════════════════════════════════════════════════════╝
-`);
-    console.error('Stack trace:', error.stack);
+    // Error cancelling job
 
     return new Response(
       JSON.stringify({ error: error.message }),

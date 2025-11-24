@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,12 +44,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('get-lexicon-stats', requestId);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('🔍 Fetching lexicon stats (optimized SQL aggregations)...');
+    log.info('Fetching lexicon stats');
 
     // ✅ FASE 1 & 2: Queries SQL otimizadas com RPC flexível (escalável)
     const [gauchoResult, navarroResult, gutenbergResult, rochaPomboResult, rochaPomboValidadosResult, unespResult, lastImportResult] = await Promise.all([
@@ -133,7 +137,7 @@ serve(async (req) => {
       },
     };
 
-    console.log('✅ Stats fetched successfully:', stats);
+    log.info('Stats fetched successfully', { totalEntries: stats.overall.total_entries });
 
     return new Response(JSON.stringify(stats), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -141,7 +145,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Error fetching lexicon stats:', error);
+    log.error('Error fetching stats', error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

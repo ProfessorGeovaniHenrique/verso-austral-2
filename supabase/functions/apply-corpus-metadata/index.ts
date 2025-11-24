@@ -71,10 +71,10 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
       throw new Error(`Corpus '${corpusType}' ainda não está disponível. O corpus nordestino está fragmentado em 3 partes e precisa ser consolidado primeiro. Disponíveis: ${availableCorpora.join(', ')}`);
     }
 
-    console.log(`🎯 Aplicando metadados ao corpus ${corpusType}: ${validatedSongs.length} músicas`);
+    // Applying metadata to corpus
 
     // 1. Carregar corpus original
-    console.log(`📂 Tentando carregar corpus: ${corpusType}`);
+    // Loading corpus
     
     // Tentar Storage primeiro
     const storagePath = `corpus/full-text/${corpusType}-completo.txt`;
@@ -85,11 +85,11 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
     
     if (storageResponse.ok) {
       originalContent = await storageResponse.text();
-      console.log(`✅ Corpus carregado do Supabase Storage: ${storagePath}`);
+      // Corpus loaded from Storage
     } else {
       // Fallback: buscar do URL público do projeto (arquivos em public/)
       const publicPath = `/corpus/full-text/${corpusType}-completo.txt`;
-      console.log(`⚠️ Storage não disponível, tentando URL pública: ${publicPath}`);
+      // Storage unavailable, trying public URL
       
       // Obter a URL base do referer (origem da requisição)
       const referer = req.headers.get('referer');
@@ -99,7 +99,7 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
       
       const baseUrl = new URL(referer).origin;
       const publicUrl = `${baseUrl}${publicPath}`;
-      console.log(`🔍 Buscando de: ${publicUrl}`);
+      // Fetching from public URL
       
       const publicResponse = await fetch(publicUrl);
       
@@ -108,7 +108,7 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
       }
       
       originalContent = await publicResponse.text();
-      console.log(`✅ Corpus carregado da URL pública: ${publicUrl}`);
+      // Corpus loaded from public URL
     }
 
     // 2. Criar backup se solicitado
@@ -127,10 +127,9 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
         .single();
 
       if (versionError) {
-        console.error('❌ Erro ao criar backup:', versionError);
+        // Error creating backup
       } else {
         backupVersionId = versionData.id;
-        console.log('✅ Backup criado:', backupVersionId);
       }
     }
 
@@ -151,11 +150,7 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
         backup_version_id: backupVersionId,
       });
 
-    if (historyError) {
-      console.error('⚠️ Erro ao registrar histórico:', historyError);
-    }
-
-    console.log('✅ Metadados aplicados com sucesso!');
+    // Metadata applied successfully
 
     return new Response(
       JSON.stringify({
@@ -169,7 +164,6 @@ Deno.serve(withInstrumentation('apply-corpus-metadata', async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Erro em apply-corpus-metadata:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
       JSON.stringify({ error: errorMessage }),
@@ -218,7 +212,7 @@ function generateUpdatedCorpus(
           
           const newHeader = `### ${artista} - ${musica} (${metadataParts.join(', ')})`;
           updatedLines.push(newHeader);
-          console.log(`📝 Atualizado: ${newHeader}`);
+          // Header updated
         } else {
           updatedLines.push(line);
         }

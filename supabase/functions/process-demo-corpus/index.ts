@@ -11,6 +11,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -130,8 +131,8 @@ function calculateMI(o1: number, n1: number, o2: number, n2: number): number {
   return Math.log2(o1 / e1);
 }
 
-function processDemoCorpus() {
-  console.log('🚀 Iniciando processamento do corpus demo...');
+function processDemoCorpus(log: ReturnType<typeof createEdgeLogger>) {
+  log.info('Starting demo corpus processing');
 
   // FASE 1: Processar keywords com LL/MI
   const processedKeywords = DEMO_CORPUS.map(item => {
@@ -169,7 +170,7 @@ function processDemoCorpus() {
     };
   }).sort((a, b) => b.ll - a.ll);
 
-  console.log(`✅ ${processedKeywords.length} keywords processadas`);
+  log.info('Keywords processed', { count: processedKeywords.length });
 
   // FASE 2: Agregar domínios semânticos com métricas completas
   const dominioMap = new Map<string, {
@@ -231,7 +232,7 @@ function processDemoCorpus() {
     };
   }).sort((a, b) => b.percentual - a.percentual);
 
-  console.log(`✅ ${dominios.length} domínios agregados`);
+  log.info('Domains aggregated', { count: dominios.length });
 
   // FASE 3: Dados para nuvem
   const cloudData = processedKeywords.slice(0, 20).map(k => ({
@@ -260,7 +261,7 @@ function processDemoCorpus() {
     significanciaBaixa: processedKeywords.filter(k => k.significancia === "Baixa").length
   };
 
-  console.log('✅ Processamento concluído com sucesso!');
+  log.info('Processing completed');
 
   return {
     keywords: processedKeywords,
@@ -282,17 +283,19 @@ serve(withInstrumentation('process-demo-corpus', async (req) => {
     });
   }
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('process-demo-corpus', requestId);
+
   try {
-    console.log('📥 Recebida requisição para processar demo corpus');
+    log.info('Request received for demo corpus');
     
-    const result = processDemoCorpus();
+    const result = processDemoCorpus(log);
     
-    console.log('📤 Retornando resultado processado');
+    log.info('Returning processed result');
     
     return new Response(
       JSON.stringify(result),
@@ -305,7 +308,7 @@ serve(withInstrumentation('process-demo-corpus', async (req) => {
       }
     );
   } catch (error) {
-    console.error('❌ Erro ao processar corpus:', error);
+    log.error('Error processing corpus', error as Error);
     
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     

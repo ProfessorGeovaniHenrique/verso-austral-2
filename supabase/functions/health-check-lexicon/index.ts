@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +20,9 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('health-check-lexicon', requestId);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -26,7 +30,7 @@ serve(async (req) => {
 
     const { forceRefresh } = await req.json().catch(() => ({ forceRefresh: false }));
 
-    console.log(`🏥 Running health check (forceRefresh: ${forceRefresh})...`);
+    log.info('Running health check', { forceRefresh });
 
     // Check if we have cached results (< 5 minutes old)
     if (!forceRefresh) {
@@ -36,7 +40,7 @@ serve(async (req) => {
         .gt('expires_at', new Date().toISOString());
 
       if (cachedResults && cachedResults.length > 0) {
-        console.log('✅ Returning cached health check results');
+        log.info('Returning cached health check results', { resultsCount: cachedResults.length });
         return new Response(JSON.stringify({ results: cachedResults, cached: true }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
@@ -197,14 +201,14 @@ serve(async (req) => {
         }, { onConflict: 'check_type' });
     }
 
-    console.log('✅ Health check completed and cached');
+    log.info('Health check completed and cached', { resultsCount: results.length });
 
     return new Response(JSON.stringify({ results, cached: false }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('❌ Error in health check:', error);
+    log.error('Error in health check', error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
