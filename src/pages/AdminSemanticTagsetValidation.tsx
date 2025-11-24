@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AdminSemanticTagsetValidation');
 import { MVPHeader } from '@/components/mvp/MVPHeader';
 import { MVPFooter } from '@/components/mvp/MVPFooter';
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
@@ -79,8 +82,8 @@ export default function AdminSemanticTagsetValidation() {
       if (error) throw error;
       setTagsets(data || []);
       toast.success(`${data?.length || 0} domínios semânticos carregados`);
-    } catch (error) {
-      console.error('Erro ao buscar tagsets:', error);
+    } catch (error: any) {
+      log.error('Failed to fetch semantic tagsets', error);
       toast.error('Erro ao carregar domínios semânticos');
     } finally {
       setIsLoading(false);
@@ -108,20 +111,20 @@ export default function AdminSemanticTagsetValidation() {
       if (error) throw error;
       
       // Recalcular hierarquia após aprovação
-      console.log('[Approve] Recalculando hierarquia...');
+      log.info('Recalculating hierarchy after approval', { tagsetId });
       const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
       
       if (hierarchyError) {
-        console.error('[Approve] Erro ao recalcular hierarquia:', hierarchyError);
+        log.error('Failed to recalculate hierarchy', hierarchyError, { tagsetId });
         toast.warning('Domínio aprovado, mas hierarquia não foi recalculada');
       } else {
-        console.log('[Approve] Hierarquia recalculada com sucesso');
+        log.success('Hierarchy recalculated successfully', { tagsetId });
       }
       
       toast.success('Domínio semântico aprovado e hierarquia atualizada!');
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao aprovar:', error);
+    } catch (error: any) {
+      log.error('Failed to approve tagset', error, { tagsetId });
       toast.error('Erro ao aprovar domínio semântico');
     }
   };
@@ -145,17 +148,17 @@ export default function AdminSemanticTagsetValidation() {
       if (error) throw error;
       
       // Recalcular hierarquia após rejeição (para limpar possíveis inconsistências)
-      console.log('[Reject] Recalculando hierarquia...');
+      log.info('Recalculating hierarchy after rejection', { tagsetId });
       const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
       
       if (hierarchyError) {
-        console.error('[Reject] Erro ao recalcular hierarquia:', hierarchyError);
+        log.error('Failed to recalculate hierarchy', hierarchyError, { tagsetId });
       }
       
       toast.success('Domínio semântico rejeitado');
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao rejeitar:', error);
+    } catch (error: any) {
+      log.error('Failed to reject tagset', error, { tagsetId });
       toast.error('Erro ao rejeitar domínio semântico');
     }
   };
@@ -174,17 +177,17 @@ export default function AdminSemanticTagsetValidation() {
       if (error) throw error;
 
       // Recalcular hierarquia após reversão
-      console.log('[Revert] Recalculando hierarquia...');
+      log.info('Recalculating hierarchy after validation revert', { tagsetId: tagset.id });
       const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
       
       if (hierarchyError) {
-        console.error('[Revert] Erro ao recalcular hierarquia:', hierarchyError);
+        log.error('Failed to recalculate hierarchy', hierarchyError, { tagsetId: tagset.id });
       }
 
       toast.success(`Validação revertida: "${tagset.nome}" retornou para pendentes`);
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao reverter validação:', error);
+    } catch (error: any) {
+      log.error('Failed to revert validation', error, { tagsetId: tagset.id });
       toast.error('Erro ao reverter a validação');
     }
   };
@@ -204,8 +207,8 @@ export default function AdminSemanticTagsetValidation() {
       
       await supabase.rpc('calculate_tagset_hierarchy');
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao restaurar:', error);
+    } catch (error: any) {
+      log.error('Failed to restore rejected tagset', error, { tagsetId: tagset.id });
       toast.error('Erro ao restaurar domínio');
     }
   };
@@ -218,11 +221,11 @@ export default function AdminSemanticTagsetValidation() {
         .eq('id', tagset.id);
 
       if (error) throw error;
-
+      
       toast.success(`Domínio excluído: "${tagset.nome}"`);
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao excluir:', error);
+    } catch (error: any) {
+      log.error('Failed to delete rejected tagset', error, { tagsetId: tagset.id });
       toast.error('Erro ao excluir domínio');
     }
   };
@@ -265,8 +268,8 @@ export default function AdminSemanticTagsetValidation() {
       await updateTagset(tagsetId, updates);
       toast.success('Nível alterado com sucesso!');
       fetchTagsets();
-    } catch (error) {
-      console.error('Erro ao alterar nível:', error);
+    } catch (error: any) {
+      log.error('Failed to change tagset level', error, { tagsetId, newLevel });
       toast.error('Erro ao alterar nível do domínio');
     }
   };
@@ -295,15 +298,15 @@ export default function AdminSemanticTagsetValidation() {
       const { error: hierarchyError } = await supabase.rpc('calculate_tagset_hierarchy');
       
       if (hierarchyError) {
-        console.error('[Create] Erro ao recalcular hierarquia:', hierarchyError);
+        log.error('Failed to recalculate hierarchy after creation', hierarchyError, { codigo: tagsetData.codigo });
         toast.warning('Domínio criado, mas hierarquia não foi recalculada');
       }
 
       toast.success('Domínio semântico criado com sucesso!');
       fetchTagsets();
       setIsCreatorOpen(false);
-    } catch (error) {
-      console.error('Erro ao criar tagset:', error);
+    } catch (error: any) {
+      log.error('Failed to create tagset', error, { codigo: tagsetData.codigo });
       toast.error('Erro ao criar domínio semântico');
       throw error;
     }
@@ -322,24 +325,10 @@ export default function AdminSemanticTagsetValidation() {
     'rejected': 'rejeitado'
   } as const;
 
-  // Filtros com DEBUG
+  // Filtros
   const filteredTagsets = tagsets.filter((tagset) => {
-    // 🔍 DEBUG: Info do tagset atual
-    const debugInfo = {
-      codigo: tagset.codigo,
-      nome: tagset.nome.substring(0, 30),
-      status: tagset.status,
-      nivel_profundidade: tagset.nivel_profundidade,
-      tipo_nivel: typeof tagset.nivel_profundidade,
-      filtros: { statusFilter, nivelFilter, searchTerm }
-    };
-    
     // Filtro de Status
     if (statusFilter !== 'all' && tagset.status !== STATUS_MAP[statusFilter as keyof typeof STATUS_MAP]) {
-      console.log('❌ Filtrado por STATUS:', debugInfo, {
-        esperado: STATUS_MAP[statusFilter as keyof typeof STATUS_MAP],
-        recebido: tagset.status
-      });
       return false;
     }
     
@@ -347,11 +336,6 @@ export default function AdminSemanticTagsetValidation() {
     if (nivelFilter !== 'all') {
       const tagsetLevel = tagset.nivel_profundidade?.toString() ?? 'null';
       if (tagsetLevel !== nivelFilter) {
-        console.log('❌ Filtrado por NÍVEL:', debugInfo, {
-          esperado: nivelFilter,
-          recebido_original: tagset.nivel_profundidade,
-          recebido_convertido: tagsetLevel
-        });
         return false;
       }
     }
@@ -359,21 +343,17 @@ export default function AdminSemanticTagsetValidation() {
     // Filtro de Busca
     if (searchTerm && !tagset.nome.toLowerCase().includes(searchTerm.toLowerCase()) 
         && !tagset.codigo.toLowerCase().includes(searchTerm.toLowerCase())) {
-      console.log('❌ Filtrado por BUSCA:', debugInfo);
       return false;
     }
     
-    console.log('✅ PASSOU nos filtros:', debugInfo);
     return true;
   });
 
-  // 🔍 DEBUG: Estatísticas de filtragem
-  console.group('📊 Resultado da Filtragem');
-  console.log('Total de tagsets:', tagsets.length);
-  console.log('Após filtros:', filteredTagsets.length);
-  console.log('Filtros ativos:', { statusFilter, nivelFilter, searchTerm });
-  console.log('STATUS_MAP:', STATUS_MAP);
-  console.groupEnd();
+  log.debug('Tagsets filtered', { 
+    total: tagsets.length, 
+    filtered: filteredTagsets.length,
+    filters: { statusFilter, nivelFilter, searchTerm }
+  });
 
   // Paginação
   const totalPages = Math.ceil(filteredTagsets.length / ITEMS_PER_PAGE);

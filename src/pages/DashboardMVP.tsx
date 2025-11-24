@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { createLogger } from "@/lib/loggerFactory";
+
+const log = createLogger('DashboardMVP');
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
 import { SubcorpusIndicator } from "@/components/corpus/SubcorpusIndicator";
@@ -23,8 +26,8 @@ export default function DashboardMVP() {
   useEffect(() => {
     const shouldShowQuickTour = localStorage.getItem('show_quick_tour') === 'true';
     if (shouldShowQuickTour) {
+      log.info('Quick tour triggered');
       localStorage.removeItem('show_quick_tour');
-      // Importar e iniciar tour dinamicamente
       import('@/hooks/useQuickTour').then(({ useQuickTour }) => {
         const { startQuickTour } = useQuickTour();
         setTimeout(() => startQuickTour(), 1000);
@@ -35,6 +38,7 @@ export default function DashboardMVP() {
   // Proteger: Se usuário não autenticado tentar acessar aba restrita, voltar para apresentação
   useEffect(() => {
     if (!loading && !user && (activeTab === 'tools' || activeTab === 'subcorpus' || activeTab === 'validation')) {
+      log.warn('Unauthorized access attempt to restricted tab', { activeTab });
       setActiveTab('apresentacao');
     }
   }, [user, loading, activeTab]);

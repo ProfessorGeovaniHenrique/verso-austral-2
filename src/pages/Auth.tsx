@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
+import { createLogger } from "@/lib/loggerFactory";
 
 const loginSchema = z.object({
   email: z.string().email("Email inválido").trim(),
@@ -36,22 +37,25 @@ type LoginFormData = z.infer<typeof loginSchema>;
 type SignupFormData = z.infer<typeof signupSchema>;
 type InviteFormData = z.infer<typeof inviteSchema>;
 
+const log = createLogger('Auth');
+
 export default function Auth() {
   const navigate = useNavigate();
   const { user, signIn, signUp, signInWithInvite } = useAuthContext();
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState("login");
+  
+  log.info('Auth page mounted', { activeTab });
 
   // Redirect se já estiver logado
   useEffect(() => {
     if (user) {
-      // Verificar se é primeiro login
       const hasSeenOnboarding = localStorage.getItem('onboarding_completed');
-      if (!hasSeenOnboarding) {
-        navigate("/onboarding");
-      } else {
-        navigate("/dashboard-mvp");
-      }
+      const redirectPath = !hasSeenOnboarding ? "/onboarding" : "/dashboard-mvp";
+      
+      log.logNavigation('/auth', redirectPath);
+      
+      navigate(redirectPath);
     }
   }, [user, navigate]);
 
@@ -69,13 +73,17 @@ export default function Auth() {
 
   const handleLogin = async (data: LoginFormData) => {
     setIsLoading(true);
+    log.info('Login attempt started', { email: data.email });
+    
     try {
       const { error } = await signIn(data.email, data.password);
       if (error) throw error;
 
+      log.success('Login successful', { email: data.email });
       toast.success("Login realizado com sucesso!");
       navigate("/dashboard-mvp");
     } catch (error: any) {
+      log.error('Login failed', error, { email: data.email });
       toast.error(error.message || "Erro ao fazer login");
     } finally {
       setIsLoading(false);
@@ -84,14 +92,18 @@ export default function Auth() {
 
   const handleSignup = async (data: SignupFormData) => {
     setIsLoading(true);
+    log.info('Signup attempt started', { email: data.email });
+    
     try {
       const { error } = await signUp(data.email, data.password);
       if (error) throw error;
 
+      log.success('Signup successful', { email: data.email });
       toast.success("Conta criada! Você já pode fazer login.");
       setActiveTab("login");
       signupForm.reset();
     } catch (error: any) {
+      log.error('Signup failed', error, { email: data.email });
       toast.error(error.message || "Erro ao criar conta");
     } finally {
       setIsLoading(false);
@@ -100,6 +112,8 @@ export default function Auth() {
 
   const handleInviteSignup = async (data: InviteFormData) => {
     setIsLoading(true);
+    log.info('Invite signup attempt started', { email: data.email, inviteKey: data.inviteKey });
+    
     try {
       const { error } = await signInWithInvite(
         data.email,
@@ -109,10 +123,12 @@ export default function Auth() {
 
       if (error) throw error;
 
+      log.success('Invite signup successful', { email: data.email, inviteKey: data.inviteKey });
       toast.success("Conta criada com sucesso! Faça login para continuar.");
       setActiveTab("login");
       inviteForm.reset();
     } catch (error: any) {
+      log.error('Invite signup failed', error, { email: data.email, inviteKey: data.inviteKey });
       toast.error(error.message || "Erro ao processar convite");
     } finally {
       setIsLoading(false);

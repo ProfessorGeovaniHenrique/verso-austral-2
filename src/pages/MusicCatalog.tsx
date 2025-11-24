@@ -1,5 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('MusicCatalog');
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useArtistSongs } from '@/hooks/useArtistSongs';
 import {
@@ -194,19 +197,21 @@ export default function MusicCatalog() {
 
       if (error) throw error;
       setCorpora(data || []);
-    } catch (error) {
-      console.error('Erro ao carregar corpora:', error);
+    } catch (error: any) {
+      log.error('Failed to load corpora', error);
     }
   };
 
   // ✅ REMOVIDO - Agora usa exclusivamente useCatalogData hook
 
   const handleEnrichSong = async (songId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
-    console.log(`[DEBUG] 🎵 handleEnrichSong chamado para songId: ${songId}`);
+    log.info('Starting song enrichment', { songId });
     
     try {
-      console.log(`[DEBUG] 🌐 Invocando edge function 'enrich-music-data'...`);
-      console.log(`[DEBUG] 📡 URL Base: ${import.meta.env.VITE_SUPABASE_URL}`);
+      log.debug('Invoking enrich-music-data edge function', { 
+        songId,
+        supabaseUrl: import.meta.env.VITE_SUPABASE_URL 
+      });
       
       // Timeout de 30s
       const enrichPromise = supabase.functions.invoke('enrich-music-data', {
@@ -217,32 +222,35 @@ export default function MusicCatalog() {
         setTimeout(() => reject(new Error('Timeout: operação demorou mais de 30s')), 30000)
       );
       
-      console.log(`[DEBUG] ⏳ Aguardando resposta (timeout: 30s)...`);
+      log.debug('Awaiting enrichment response (30s timeout)', { songId });
       const { data, error } = await Promise.race([enrichPromise, timeoutPromise]) as any;
       
-      console.log(`[DEBUG] 📦 Resposta recebida:`, { data, error });
+      log.debug('Enrichment response received', { songId, data, hasError: !!error });
       
       if (error) {
-        console.error(`[DEBUG] ⚠️ Erro na resposta:`, error);
+        log.error('Enrichment request failed', error, { songId });
         throw error;
       }
       
       if (data?.success) {
-        console.log(`[DEBUG] ✨ Enriquecimento bem-sucedido!`, data);
+        log.success('Song enriched successfully', { 
+          songId, 
+          composer: data.enrichedData?.composer,
+          confidenceScore: data.confidenceScore 
+        });
         return {
           success: true,
           message: `${data.enrichedData?.composer || 'Compositor'} - ${data.confidenceScore}%`
         };
       } else {
-        console.error(`[DEBUG] ❌ Enriquecimento falhou:`, data);
+        log.error('Enrichment returned failure', undefined, { songId, errorData: data });
         throw new Error(data?.error || 'Erro desconhecido ao enriquecer');
       }
     } catch (error: any) {
-      console.error('[DEBUG] 💥 Exceção capturada em handleEnrichSong:', error);
-      console.error('[DEBUG] 📋 Stack trace:', error.stack);
+      log.error('Exception in handleEnrichSong', error, { songId });
       
       // Reverter status em caso de erro
-      console.log(`[DEBUG] 🔄 Revertendo status para 'pending'...`);
+      log.info('Reverting song status to pending', { songId });
       await supabase
         .from('songs')
         .update({ status: 'pending' })
@@ -257,42 +265,41 @@ export default function MusicCatalog() {
 
   const handleEnrichSongUI = async (songId: string) => {
     if (enrichingIds.has(songId)) {
-      console.log(`[DEBUG] 🔒 Enriquecimento já em andamento para songId: ${songId}`);
+      log.warn('Enrichment already in progress', { songId });
       return;
     }
     
-    console.log(`[DEBUG] 🚀 Iniciando enriquecimento para songId: ${songId}`);
+    log.info('Starting UI enrichment flow', { songId });
     setEnrichingIds(prev => new Set(prev).add(songId));
     
     try {
-      console.log(`[DEBUG] 📞 Chamando handleEnrichSong...`);
       const result = await handleEnrichSong(songId);
-      console.log(`[DEBUG] 📊 Resultado do enriquecimento:`, result);
+      log.debug('Enrichment result received', { songId, success: result.success });
       
       if (result.success) {
-        console.log(`[DEBUG] ✅ Sucesso! Atualizando UI...`);
+        log.success('UI enrichment completed', { songId });
         toast({
           title: "✨ Música enriquecida!",
           description: result.message
         });
         await reload();
       } else {
-        console.error(`[DEBUG] ❌ Erro no enriquecimento:`, result.error);
+        log.error('Enrichment failed in result', undefined, { songId, errorMsg: result.error });
         toast({
           title: "Erro ao enriquecer",
           description: result.error,
           variant: "destructive"
         });
       }
-    } catch (error) {
-      console.error(`[DEBUG] 💥 Exceção capturada:`, error);
+    } catch (error: any) {
+      log.error('Exception in UI enrichment flow', error, { songId });
       toast({
         title: "Erro inesperado",
         description: error instanceof Error ? error.message : "Erro desconhecido",
         variant: "destructive"
       });
     } finally {
-      console.log(`[DEBUG] 🔓 Liberando lock para songId: ${songId}`);
+      log.debug('Releasing enrichment lock', { songId });
       setEnrichingIds(prev => {
         const next = new Set(prev);
         next.delete(songId);
@@ -331,7 +338,7 @@ export default function MusicCatalog() {
         artist: (s.artists as any)?.name || 'Desconhecido'
       })) || [];
 
-      console.log(`[handleBatchEnrich] ✅ ${pendingFormatted.length} músicas pendentes encontradas`);
+      log.info('Pending songs for batch enrichment found', { count: pendingFormatted.length });
 
       if (pendingFormatted.length === 0) {
         toast({
@@ -348,8 +355,8 @@ export default function MusicCatalog() {
       if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission();
       }
-    } catch (error) {
-      console.error('[handleBatchEnrich] Erro:', error);
+    } catch (error: any) {
+      log.error('Failed to fetch pending songs for batch', error);
       toast({
         title: "Erro ao buscar músicas",
         description: error instanceof Error ? error.message : "Erro desconhecido",
@@ -470,8 +477,8 @@ export default function MusicCatalog() {
         description: "Música marcada como revisada e aprovada."
       });
       await reload();
-    } catch (error) {
-      console.error('Erro ao marcar como revisado:', error);
+    } catch (error: any) {
+      log.error('Failed to mark song as reviewed', error, { songId });
       toast({
         title: "Erro",
         description: "Falha ao atualizar status da música.",
@@ -495,8 +502,8 @@ export default function MusicCatalog() {
         description: "A música foi removida do catálogo."
       });
       await reload();
-    } catch (error) {
-      console.error('Erro ao deletar música:', error);
+    } catch (error: any) {
+      log.error('Failed to delete song', error, { songId });
       toast({
         title: "Erro",
         description: "Falha ao deletar música.",
@@ -508,7 +515,7 @@ export default function MusicCatalog() {
   // Handler para quando a biografia for enriquecida
   const handleBioEnriched = async (artistId: string) => {
     try {
-      console.log('[handleBioEnriched] Recarregando biografia do artista:', artistId);
+      log.info('Reloading artist biography', { artistId });
       
       // 🔄 FORÇAR LIMPEZA do cache local ANTES de buscar novos dados
       setArtistBioOverrides(prev => {
@@ -538,11 +545,10 @@ export default function MusicCatalog() {
           return newMap;
         });
         
-        console.log('[handleBioEnriched] ✅ Biografia atualizada localmente:', {
+        log.success('Artist biography updated locally', {
           artistId,
           biographyLength: artistData.biography.length,
-          source: artistData.biography_source,
-          preview: artistData.biography.substring(0, 100)
+          source: artistData.biography_source
         });
         
         toast({
@@ -550,8 +556,8 @@ export default function MusicCatalog() {
           description: "A biografia do artista foi carregada com sucesso."
         });
       }
-    } catch (error) {
-      console.error('[handleBioEnriched] Erro ao recarregar artista:', error);
+    } catch (error: any) {
+      log.error('Failed to reload artist biography', error, { artistId });
       toast({
         title: "Erro ao atualizar biografia",
         description: "Tente fechar e reabrir o painel do artista.",
@@ -575,7 +581,7 @@ export default function MusicCatalog() {
         await reload();
       }
     } catch (error: any) {
-      console.error('Erro ao limpar catálogo:', error);
+      log.error('Failed to clear catalog', error);
       toast({
         title: "Erro",
         description: error.message || "Falha ao limpar o catálogo.",
@@ -614,7 +620,7 @@ export default function MusicCatalog() {
       );
     }
     
-    console.log(`📊 [filteredArtists] ${filtered.length} artistas após filtros (letra: ${selectedLetter})`);
+    log.debug('Artists filtered', { count: filtered.length, selectedLetter });
     return filtered;
   }, [artistsWithStats, selectedLetter, debouncedSearchQuery]);
 
@@ -655,8 +661,8 @@ export default function MusicCatalog() {
         if (error) throw error;
         
         setPendingCountForLetter(count || 0);
-      } catch (error) {
-        console.error('[getPendingSongsCountForLetter] Erro:', error);
+      } catch (error: any) {
+        log.error('Failed to get pending songs count for letter', error, { selectedLetter });
         setPendingCountForLetter(0);
       }
     };
@@ -672,8 +678,10 @@ export default function MusicCatalog() {
       // 1. Coletar IDs dos artistas filtrados pela letra
       const artistIds = filteredArtists.map(a => a.id);
       
-      console.log(`[EnrichByLetter] Letra selecionada: ${selectedLetter}`);
-      console.log(`[EnrichByLetter] ${artistIds.length} artistas encontrados`);
+      log.info('Starting enrichment by letter', { 
+        selectedLetter, 
+        artistCount: artistIds.length 
+      });
       
       toast({
         title: "Buscando músicas pendentes...",
@@ -696,7 +704,10 @@ export default function MusicCatalog() {
 
       if (error) throw error;
 
-      console.log(`[EnrichByLetter] ✅ ${pendingSongsData?.length || 0} músicas pendentes encontradas`);
+      log.success('Pending songs found for letter', { 
+        selectedLetter, 
+        count: pendingSongsData?.length || 0 
+      });
       
       if (!pendingSongsData || pendingSongsData.length === 0) {
         toast({
@@ -722,8 +733,8 @@ export default function MusicCatalog() {
         description: `Processando ${songsForBatch.length} músicas de ${artistIds.length} artistas com "${selectedLetter}"`,
       });
       
-    } catch (error) {
-      console.error('[EnrichByLetter] Erro:', error);
+    } catch (error: any) {
+      log.error('Failed to enrich by letter', error, { selectedLetter });
       toast({
         title: "Erro ao buscar músicas",
         description: error instanceof Error ? error.message : "Falha ao iniciar enriquecimento em lote.",
