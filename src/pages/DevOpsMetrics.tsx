@@ -44,11 +44,11 @@ export default function DevOpsMetrics() {
   );
 
   const handleDismissAlert = (alertId: string) => {
-    console.log('Dismiss alert:', alertId);
+    log.info('Dismiss alert', { alertId });
   };
 
   const handleMarkAsRead = (alertId: string) => {
-    console.log('Mark as read:', alertId);
+    log.info('Mark alert as read', { alertId });
   };
 
   if (error) {

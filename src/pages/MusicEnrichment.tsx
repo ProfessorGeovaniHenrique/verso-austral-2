@@ -10,6 +10,9 @@ import { MusicAnalysisResult } from '@/components/music/MusicAnalysisResult';
 import { MusicUploadDialog } from '@/components/music/MusicUploadDialog';
 import { MusicImportProgressModal } from '@/components/music/MusicImportProgressModal';
 import { ingestionService } from '@/services/ingestionService';
+import { createLogger } from "@/lib/loggerFactory";
+
+const log = createLogger('MusicEnrichment');
 
 function MusicEnrichmentContent() {
   const { uploadFile, uploadState, progress, error, parsedData, fileName, resetProcessing } = useProcessing();
@@ -91,7 +94,9 @@ function MusicEnrichmentContent() {
       
       setShowImportProgress(false);
       toast.error('Erro ao importar dados');
-      console.error('Import error:', error);
+      log.error('Erro ao importar dados', error instanceof Error ? error : undefined, {
+        errorType: error instanceof Error ? error.name : typeof error
+      });
     }
   }, [parsedData, navigate]);
 

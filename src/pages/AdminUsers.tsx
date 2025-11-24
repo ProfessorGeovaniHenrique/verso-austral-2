@@ -53,6 +53,9 @@ import { Users, Shield, Edit, Trash2, Search, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import type { Database } from "@/integrations/supabase/types";
+import { createLogger } from "@/lib/loggerFactory";
+
+const log = createLogger('AdminUsers');
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -95,7 +98,7 @@ export default function AdminUsers() {
       setUsers(data || []);
     } catch (error: any) {
       toast.error("Erro ao carregar usuários");
-      console.error(error);
+      log.error('Erro ao carregar usuários', error);
     } finally {
       setLoading(false);
     }
@@ -148,7 +151,7 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar role");
-      console.error(error);
+      log.error('Erro ao atualizar role', error);
     } finally {
       setSaving(false);
     }
@@ -187,7 +190,7 @@ export default function AdminUsers() {
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao remover role");
-      console.error(error);
+      log.error('Erro ao remover role', error);
     } finally {
       setDeleting(false);
     }

@@ -150,7 +150,7 @@ export default function AdminDictionaryValidation() {
           timestamp: new Date().toISOString()
         };
 
-        console.log('🔍 DIAGNÓSTICO DO BANCO (Rocha Pombo):', diagnostics);
+        log.debug('Diagnóstico do banco (Rocha Pombo)', diagnostics);
         setDbDiagnostics(diagnostics);
         toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
       } else {
@@ -169,12 +169,12 @@ export default function AdminDictionaryValidation() {
           timestamp: new Date().toISOString()
         };
 
-        console.log('🔍 DIAGNÓSTICO DO BANCO (Gutenberg):', diagnostics);
+        log.debug('Diagnóstico do banco (Gutenberg)', diagnostics);
         setDbDiagnostics(diagnostics);
         toast.success(`🔍 Diagnóstico Completo: ${count} registros no banco`);
       }
     } catch (error: any) {
-      console.error('❌ Erro ao verificar banco:', error);
+      log.error('Erro ao verificar banco', error);
       toast.error(`Erro no Diagnóstico: ${error.message}`);
     } finally {
       setIsCheckingDb(false);
@@ -183,7 +183,8 @@ export default function AdminDictionaryValidation() {
 
   // 🔄 FORÇAR ATUALIZAÇÃO: Limpar cache e recarregar
   const handleForceRefresh = async () => {
-    console.log('🔄 Forçando atualização completa...');
+    log.info('Forçando atualização completa');
+    
     
     // Limpar cache local do navegador
     if ('caches' in window) {
@@ -202,7 +203,8 @@ export default function AdminDictionaryValidation() {
     if (config.table === 'gutenberg' && allEntries.length > 0) {
       const firstEntry = allEntries[0];
       if (!firstEntry.classe_gramatical && !firstEntry.definicoes) {
-        console.warn('⚠️ DADOS INCOMPLETOS DETECTADOS:', firstEntry);
+        log.warn('Dados incompletos detectados', undefined, { firstEntry });
+      }
       }
     }
   }, [allEntries, config.table]);
@@ -232,7 +234,7 @@ export default function AdminDictionaryValidation() {
   React.useEffect(() => {
     if (allEntries.length > 0 && config.table === 'gutenberg') {
       const sample = allEntries.slice(0, 5);
-      console.log('📊 AMOSTRA GUTENBERG:', {
+      log.debug('Amostra Gutenberg', {
         total: allEntries.length,
         validatedCount,
         pendingCount,

@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { getBannerConversionTrend, getFeatureUsageTrend } from '@/services/analyticsService';
 import { exportAnalyticsToPDF } from '@/utils/exportAnalyticsPDF';
 import { toast } from 'sonner';
+import { createLogger } from "@/lib/loggerFactory";
+
+const log = createLogger('AdminAnalytics');
 import { AdminBreadcrumb } from '@/components/AdminBreadcrumb';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -93,8 +96,8 @@ export default function AdminAnalytics() {
         bannerTrend,
         featureTrend,
       });
-    } catch (error) {
-      console.error('Erro ao buscar métricas:', error);
+    } catch (error: any) {
+      log.error('Erro ao buscar métricas', error);
     } finally {
       setLoading(false);
     }
@@ -118,8 +121,8 @@ export default function AdminAnalytics() {
         },
       });
       toast.success('Relatório PDF exportado com sucesso!');
-    } catch (error) {
-      console.error('Error exporting PDF:', error);
+    } catch (error: any) {
+      log.error('Erro ao exportar PDF', error);
       toast.error('Erro ao exportar relatório PDF');
     } finally {
       setIsExporting(false);

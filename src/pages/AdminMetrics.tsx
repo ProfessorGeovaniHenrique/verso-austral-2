@@ -98,8 +98,8 @@ export default function AdminMetrics() {
         };
       });
       setLoginData(last7Days);
-    } catch (error) {
-      console.error("Erro ao carregar métricas:", error);
+    } catch (error: any) {
+      log.error('Erro ao carregar métricas', error);
     } finally {
       setLoading(false);
     }

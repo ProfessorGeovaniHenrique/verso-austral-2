@@ -21,6 +21,9 @@ import { useValidationShortcuts } from '@/hooks/useValidationShortcuts';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { LexiconEntry } from '@/hooks/useBackendLexicon';
+import { createLogger } from "@/lib/loggerFactory";
+
+const log = createLogger('AdminGauchoValidation');
 
 // ✅ FASE 2: Função unificada para determinar se verbete está validado
 const isEntryValidated = (entry: any): boolean => {
@@ -87,7 +90,7 @@ export default function AdminGauchoValidation() {
   // ✅ FASE 5: Debug logs para validação
   useEffect(() => {
     if (import.meta.env.DEV) {
-      console.log('📊 [Validação Debug]', {
+      log.debug('Validação Debug', {
         totalCarregado: allEntries.length,
         validados: allEntries.filter(isEntryValidated).length,
         pendentes: allEntries.filter(e => !isEntryValidated(e)).length,
