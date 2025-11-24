@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/react";
+import { trackPerformance } from "./sentry";
 
 export enum LogLevel {
   DEBUG = 0,
@@ -64,6 +65,25 @@ class StructuredLogger {
 
   success(message: string, context?: LogContext): void {
     this.info(`✅ ${message}`, context);
+  }
+
+  // Track performance automatically for slow operations
+  performanceTrack(operation: string, durationMs: number, context?: LogContext): void {
+    if (durationMs > 3000) { // 3 seconds threshold
+      this.warn(`Slow operation detected: ${operation}`, {
+        ...context,
+        duration_ms: durationMs,
+        performance_issue: true,
+      });
+      
+      // Send to Sentry for monitoring
+      trackPerformance(operation, durationMs, context);
+    } else {
+      this.debug(`Operation completed: ${operation}`, {
+        ...context,
+        duration_ms: durationMs,
+      });
+    }
   }
 
   error(message: string, error?: Error, context?: LogContext): void {

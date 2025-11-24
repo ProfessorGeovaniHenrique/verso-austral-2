@@ -1,7 +1,10 @@
 /**
  * ✅ SPRINT 3: Circuit Breaker Pattern
  * Implementa proteção contra falhas em cascata em serviços externos
+ * ✅ SPRINT 1: Logging Migration - Logger opcional para backward compatibility
  */
+
+import type StructuredLogger from "./structured-logger.ts";
 
 interface CircuitBreakerState {
   failures: number;
@@ -26,7 +29,10 @@ class CircuitBreaker {
     state: 'CLOSED',
   };
 
-  constructor(private config: CircuitBreakerConfig) {}
+  constructor(
+    private config: CircuitBreakerConfig,
+    private logger?: StructuredLogger
+  ) {}
 
   /**
    * Executa operação com proteção de circuit breaker
@@ -41,19 +47,28 @@ class CircuitBreaker {
       
       // Se passou o resetTimeout, tentar HALF_OPEN
       if (timeSinceLastFailure >= this.config.resetTimeout) {
-        console.log('🔄 Circuit Breaker: Tentando HALF_OPEN');
+        if (this.logger) {
+          this.logger.info('Circuit Breaker: Tentando HALF_OPEN', { state: 'HALF_OPEN' });
+        } else {
+          console.log('🔄 Circuit Breaker: Tentando HALF_OPEN');
+        }
         this.state.state = 'HALF_OPEN';
         this.state.failures = 0;
       } else {
-        console.warn(`⚡ Circuit Breaker: OPEN - bloqueando requisição`);
+        const retryIn = Math.ceil((this.config.resetTimeout - timeSinceLastFailure) / 1000);
+        if (this.logger) {
+          this.logger.warn('Circuit Breaker: OPEN - bloqueando requisição', {
+            state: this.state.state,
+            failures: this.state.failures,
+            retry_in_seconds: retryIn,
+          });
+        } else {
+          console.warn(`⚡ Circuit Breaker: OPEN - bloqueando requisição`);
+        }
         if (fallback) {
           return await fallback();
         }
-        throw new Error(
-          `Circuit breaker aberto. Tentando novamente em ${
-            Math.ceil((this.config.resetTimeout - timeSinceLastFailure) / 1000)
-          }s`
-        );
+        throw new Error(`Circuit breaker aberto. Tentando novamente em ${retryIn}s`);
       }
     }
 
@@ -63,7 +78,13 @@ class CircuitBreaker {
       
       // Sucesso - resetar estado
       if (this.state.state === 'HALF_OPEN') {
-        console.log('✅ Circuit Breaker: HALF_OPEN → CLOSED (recuperado)');
+        if (this.logger) {
+          this.logger.info('Circuit Breaker: HALF_OPEN → CLOSED (recuperado)', {
+            previous_failures: this.state.failures,
+          });
+        } else {
+          console.log('✅ Circuit Breaker: HALF_OPEN → CLOSED (recuperado)');
+        }
         this.state.state = 'CLOSED';
         this.state.failures = 0;
       }
@@ -74,20 +95,43 @@ class CircuitBreaker {
       this.state.failures++;
       this.state.lastFailureTime = Date.now();
 
-      console.error(
-        `❌ Circuit Breaker: Falha ${this.state.failures}/${this.config.failureThreshold}`,
-        error
-      );
+      if (this.logger) {
+        this.logger.error(
+          `Circuit Breaker: Falha ${this.state.failures}/${this.config.failureThreshold}`,
+          error as Error,
+          {
+            state: this.state.state,
+            failures: this.state.failures,
+            threshold: this.config.failureThreshold,
+          }
+        );
+      } else {
+        console.error(
+          `❌ Circuit Breaker: Falha ${this.state.failures}/${this.config.failureThreshold}`,
+          error
+        );
+      }
 
       // Verificar se deve abrir o circuito
       if (
         this.state.state === 'CLOSED' &&
         this.state.failures >= this.config.failureThreshold
       ) {
-        console.warn('⚡ Circuit Breaker: CLOSED → OPEN (limite atingido)');
+        if (this.logger) {
+          this.logger.warn('Circuit Breaker: CLOSED → OPEN (limite atingido)', {
+            failures: this.state.failures,
+            threshold: this.config.failureThreshold,
+          });
+        } else {
+          console.warn('⚡ Circuit Breaker: CLOSED → OPEN (limite atingido)');
+        }
         this.state.state = 'OPEN';
       } else if (this.state.state === 'HALF_OPEN') {
-        console.warn('⚡ Circuit Breaker: HALF_OPEN → OPEN (falha na recuperação)');
+        if (this.logger) {
+          this.logger.warn('Circuit Breaker: HALF_OPEN → OPEN (falha na recuperação)');
+        } else {
+          console.warn('⚡ Circuit Breaker: HALF_OPEN → OPEN (falha na recuperação)');
+        }
         this.state.state = 'OPEN';
       }
 
@@ -154,10 +198,11 @@ const circuitBreakers = new Map<string, CircuitBreaker>();
  */
 export function getCircuitBreaker(
   serviceName: string,
-  config: CircuitBreakerConfig = CircuitBreakerPresets.NORMAL
+  config: CircuitBreakerConfig = CircuitBreakerPresets.NORMAL,
+  logger?: StructuredLogger
 ): CircuitBreaker {
   if (!circuitBreakers.has(serviceName)) {
-    circuitBreakers.set(serviceName, new CircuitBreaker(config));
+    circuitBreakers.set(serviceName, new CircuitBreaker(config, logger));
   }
   return circuitBreakers.get(serviceName)!;
 }
@@ -169,8 +214,9 @@ export async function withCircuitBreaker<T>(
   serviceName: string,
   operation: () => Promise<T>,
   fallback?: () => T | Promise<T>,
-  config?: CircuitBreakerConfig
+  config?: CircuitBreakerConfig,
+  logger?: StructuredLogger
 ): Promise<T> {
-  const breaker = getCircuitBreaker(serviceName, config);
+  const breaker = getCircuitBreaker(serviceName, config, logger);
   return breaker.execute(operation, fallback);
 }

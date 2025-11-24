@@ -1,3 +1,7 @@
+/**
+ * ✅ SPRINT 1: Logging Migration - Critical logs migrated to structured logging
+ * Note: Internal debug logs remain as console.log for pragmatic ROI optimization
+ */
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { RateLimiter, addRateLimitHeaders } from "../_shared/rateLimiter.ts";

@@ -82,7 +82,7 @@ serve(withInstrumentation('analyze-and-suggest-fixes', async (req) => {
     );
 
     // 📚 FASE 1: BUSCAR CONTEXTO HISTÓRICO
-    console.log('📚 Buscando contexto histórico...');
+    log.info('Fetching historical context');
     const { data: previousAnalyses } = await supabase
       .from('ai_analysis_history')
       .select('*')

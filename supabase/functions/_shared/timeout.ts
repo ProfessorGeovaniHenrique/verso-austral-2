@@ -1,7 +1,10 @@
 /**
  * ✅ SPRINT 3: Timeout Configurável
  * Implementa timeouts para operações de edge functions
+ * ✅ SPRINT 1: Logging Migration - Logger opcional para backward compatibility
  */
+
+import type StructuredLogger from "./structured-logger.ts";
 
 /**
  * Executa operação com timeout configurável
@@ -69,6 +72,7 @@ export async function withTimeoutAndCleanup<T>(
       try {
         await cleanup();
       } catch (cleanupError) {
+        // Logger não disponível neste utilitário standalone
         console.error('❌ Erro no cleanup após timeout:', cleanupError);
       }
     }

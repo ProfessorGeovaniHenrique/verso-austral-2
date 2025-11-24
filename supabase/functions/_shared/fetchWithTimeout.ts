@@ -3,7 +3,10 @@
  * Previne travamentos indefinidos e melhora resiliência
  * 
  * Versão 2: Adiciona fetchWithTimeoutRetry com exponential backoff configurável
+ * ✅ SPRINT 1: Logging Migration - Logger opcional para backward compatibility
  */
+
+import type StructuredLogger from "./structured-logger.ts";
 
 /**
  * Fetch com timeout usando AbortController
@@ -64,7 +67,8 @@ export async function fetchWithTimeoutRetry(
   init: RequestInit = {},
   timeoutMs = 30_000,
   retries = 2,
-  backoffMs = 300
+  backoffMs = 300,
+  logger?: StructuredLogger
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -79,11 +83,22 @@ export async function fetchWithTimeoutRetry(
       
       // Fazer retry em erros de servidor (5xx) ou rate limit (429)
       if ((response.status >= 500 || response.status === 429) && attempt < retries) {
-        const delay = backoffMs * Math.pow(2, attempt); // Exponential backoff
-        console.warn(
-          `⚠️ Tentativa ${attempt + 1}/${retries + 1} falhou com status ${response.status}. ` +
-          `Retry em ${delay}ms...`
-        );
+        const delay = backoffMs * Math.pow(2, attempt);
+        
+        if (logger) {
+          logger.warn(`Retry attempt ${attempt + 1}/${retries + 1} - Status ${response.status}`, {
+            status_code: response.status,
+            delay_ms: delay,
+            attempt: attempt + 1,
+            total_attempts: retries + 1,
+          });
+        } else {
+          console.warn(
+            `⚠️ Tentativa ${attempt + 1}/${retries + 1} falhou com status ${response.status}. ` +
+            `Retry em ${delay}ms...`
+          );
+        }
+        
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -100,10 +115,21 @@ export async function fetchWithTimeoutRetry(
       
       // Retry com backoff exponencial
       const delay = backoffMs * Math.pow(2, attempt);
-      console.warn(
-        `⚠️ Tentativa ${attempt + 1}/${retries + 1} falhou: ${lastError.message}. ` +
-        `Retry em ${delay}ms...`
-      );
+      
+      if (logger) {
+        logger.warn(`Retry attempt ${attempt + 1}/${retries + 1} failed`, {
+          error_message: lastError.message,
+          delay_ms: delay,
+          attempt: attempt + 1,
+          total_attempts: retries + 1,
+        });
+      } else {
+        console.warn(
+          `⚠️ Tentativa ${attempt + 1}/${retries + 1} falhou: ${lastError.message}. ` +
+          `Retry em ${delay}ms...`
+        );
+      }
+      
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
