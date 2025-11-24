@@ -65,6 +65,26 @@ export function ArtistDetailsSheet({
   const [recentlyEnrichedIds, setRecentlyEnrichedIds] = useState<Set<string>>(new Set());
   const { toast } = useToast();
 
+  // 🔍 FASE 3: Log detalhado das props recebidas
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 [FASE 3] ARTIST DETAILS SHEET RENDERIZANDO');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log(`📂 Props recebidas:`);
+  console.log(`   - open: ${open}`);
+  console.log(`   - artistId: ${artistId}`);
+  console.log(`   - artist: ${artist ? artist.name : 'null'}`);
+  console.log(`   - songs (array): ${songs.length} items`);
+  
+  if (songs.length > 0) {
+    console.log('📝 Sample das músicas recebidas:');
+    songs.slice(0, 3).forEach((song, idx) => {
+      console.log(`  [${idx + 1}] ID: ${song.id}, Title: ${song.title}`);
+    });
+  } else {
+    console.error('❌ ARRAY DE MÚSICAS ESTÁ VAZIO!');
+  }
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
   const handleEnrichBio = async () => {
     if (!artistId || !artist) return;
 

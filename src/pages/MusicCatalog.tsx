@@ -96,31 +96,81 @@ export default function MusicCatalog() {
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
   const { toast } = useToast();
 
-  // ✅ Sincronizar e aplicar filtros localmente
+  // 🔍 FASE 5: Função helper para converter SongWithRelations → Song com type safety
+  const convertToSongCard = (songWithRelations: any): Song => {
+    return {
+      id: songWithRelations.id,
+      title: songWithRelations.title,
+      normalized_title: songWithRelations.normalized_title,
+      artist_id: songWithRelations.artist_id, // ✅ Garantir artist_id presente
+      composer: songWithRelations.composer,
+      release_year: songWithRelations.release_year,
+      lyrics: songWithRelations.lyrics,
+      status: songWithRelations.status,
+      confidence_score: songWithRelations.confidence_score,
+      enrichment_source: songWithRelations.enrichment_source,
+      youtube_url: songWithRelations.youtube_url,
+      corpus_id: songWithRelations.corpus_id,
+      upload_id: songWithRelations.upload_id,
+      raw_data: songWithRelations.raw_data,
+      created_at: songWithRelations.created_at,
+      updated_at: songWithRelations.updated_at,
+      artists: songWithRelations.artists,
+      corpora: songWithRelations.corpora
+    };
+  };
+
+  // 🔍 FASE 1: Sincronizar e aplicar filtros localmente COM LOGS DETALHADOS
   useEffect(() => {
-    console.log(`🔄 [Sync] Atualizando com ${catalogSongs.length} músicas do hook`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🔄 [FASE 1] SINCRONIZAÇÃO INICIADA');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📊 Total de músicas do hook: ${catalogSongs.length}`);
+    console.log(`🎛️ Filtro de corpus: ${selectedCorpusFilter}`);
+    console.log(`🎛️ Filtro de status: ${statusFilter}`);
     
-    let filtered = catalogSongs as unknown as Song[];
+    // Sample de 3 músicas para verificar estrutura
+    if (catalogSongs.length > 0) {
+      console.log('📝 Sample de 3 músicas do catalogSongs:');
+      catalogSongs.slice(0, 3).forEach((song: any, idx: number) => {
+        console.log(`  [${idx + 1}] ID: ${song.id}, Title: ${song.title}, artist_id: ${song.artist_id || '❌ UNDEFINED'}`);
+      });
+    }
+    
+    // 🔍 Converter com type safety
+    let filtered = catalogSongs.map(convertToSongCard);
+    console.log(`✅ Conversão type-safe completa: ${filtered.length} músicas`);
     
     // Filtrar por corpus
     if (selectedCorpusFilter !== 'all') {
+      const beforeCorpusFilter = filtered.length;
       if (selectedCorpusFilter === 'null') {
         filtered = filtered.filter(s => !s.corpus_id);
       } else {
         filtered = filtered.filter(s => s.corpus_id === selectedCorpusFilter);
       }
+      console.log(`📂 Após filtro de corpus: ${filtered.length} (removeu ${beforeCorpusFilter - filtered.length})`);
     }
     
     // Filtrar por status
+    const beforeStatusFilter = filtered.length;
     const displayedSongs = statusFilter === 'all' 
       ? filtered 
       : filtered.filter(s => s.status === statusFilter);
+    console.log(`📊 Após filtro de status: ${displayedSongs.length} (removeu ${beforeStatusFilter - displayedSongs.length})`);
     
-    setAllSongs(catalogSongs as unknown as Song[]);
+    // Converter allSongs com type safety
+    const allSongsConverted = catalogSongs.map(convertToSongCard);
+    
+    setAllSongs(allSongsConverted);
     setSongs(displayedSongs);
     setSongsWithoutYouTube(filtered.filter(s => !s.youtube_url));
     
-    console.log(`✅ [Filtros] ${displayedSongs.length} músicas após filtros`);
+    console.log(`✅ Estados atualizados:`);
+    console.log(`   - allSongs: ${allSongsConverted.length}`);
+    console.log(`   - songs (displayed): ${displayedSongs.length}`);
+    console.log(`   - songsWithoutYouTube: ${filtered.filter(s => !s.youtube_url).length}`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }, [catalogSongs, statusFilter, selectedCorpusFilter]);
 
   useEffect(() => {
@@ -990,8 +1040,40 @@ export default function MusicCatalog() {
                       pendingSongs={(artist as any).pendingSongs || 0}
                       enrichedPercentage={(artist as any).enrichedPercentage || 0}
                       onViewDetails={() => {
+                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                        console.log('🔍 [FASE 2] ABRINDO SHEET DO ARTISTA');
+                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+                        console.log(`👤 Artista selecionado: ${artist.name} (ID: ${artist.id})`);
+                        console.log(`📊 Total de músicas em allSongs: ${allSongs.length}`);
+                        
+                        // Verificar quantas músicas pertencem a este artista
+                        const artistSongsDebug = allSongs.filter(s => {
+                          const match = s.artist_id === artist.id;
+                          return match;
+                        });
+                        
+                        console.log(`🔍 Músicas encontradas para este artista: ${artistSongsDebug.length}`);
+                        
+                        if (artistSongsDebug.length > 0) {
+                          console.log('📝 Sample de músicas do artista:');
+                          artistSongsDebug.slice(0, 3).forEach((song, idx) => {
+                            console.log(`  [${idx + 1}] ID: ${song.id}, Title: ${song.title}, artist_id: ${song.artist_id}`);
+                          });
+                        } else {
+                          console.warn('⚠️ NENHUMA MÚSICA ENCONTRADA! Verificando allSongs:');
+                          console.log(`   - allSongs.length: ${allSongs.length}`);
+                          console.log(`   - artist.id: ${artist.id}`);
+                          if (allSongs.length > 0) {
+                            console.log('   - Sample de artist_id em allSongs:');
+                            allSongs.slice(0, 5).forEach((s, i) => {
+                              console.log(`     [${i}] artist_id: ${s.artist_id}`);
+                            });
+                          }
+                        }
+                        
                         setSelectedArtistId(artist.id);
                         setIsSheetOpen(true);
+                        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
                       }}
                       onEnrich={async () => {
                         try {
@@ -1120,14 +1202,48 @@ export default function MusicCatalog() {
       />
 
       {/* Artist Details Sheet */}
-      {/* Artist Details Sheet */}
-      {/* ✅ FASE 1 (CRÍTICA): Usar allSongs para sempre mostrar TODAS as músicas do artista */}
+      {/* 🔍 FASE 4: Filtro com IIFE e logs detalhados */}
       <ArtistDetailsSheet
         open={isSheetOpen}
         onOpenChange={setIsSheetOpen}
         artistId={selectedArtistId}
         artist={selectedArtistId ? artistsWithStats.find(a => a.id === selectedArtistId) : null}
-        songs={selectedArtistId ? allSongs.filter(s => s.artist_id === selectedArtistId) : []}
+        songs={(() => {
+          if (!selectedArtistId) {
+            console.log('[FASE 4] selectedArtistId é null, retornando array vazio');
+            return [];
+          }
+          
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log('🔍 [FASE 4] FILTRANDO MÚSICAS PARA O SHEET');
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+          console.log(`👤 selectedArtistId: ${selectedArtistId}`);
+          console.log(`📊 Total allSongs disponível: ${allSongs.length}`);
+          
+          const filtered = allSongs.filter((s, index) => {
+            const match = s.artist_id === selectedArtistId;
+            if (index < 5) { // Log primeiros 5 para debug
+              console.log(`  [${index}] song.artist_id: ${s.artist_id}, match: ${match ? '✅' : '❌'}`);
+            }
+            return match;
+          });
+          
+          console.log(`✅ Total de músicas filtradas: ${filtered.length}`);
+          if (filtered.length > 0) {
+            console.log('📝 Sample das músicas que serão passadas para o sheet:');
+            filtered.slice(0, 3).forEach((song, idx) => {
+              console.log(`  [${idx + 1}] ${song.title} (ID: ${song.id})`);
+            });
+          } else {
+            console.error('❌ ERRO: Nenhuma música filtrada! Verificando dados:');
+            console.log(`   - allSongs tem artist_id? ${allSongs.length > 0 ? allSongs[0].artist_id !== undefined : 'N/A'}`);
+            console.log(`   - Tipo de selectedArtistId: ${typeof selectedArtistId}`);
+            console.log(`   - Tipo de allSongs[0].artist_id: ${allSongs.length > 0 ? typeof allSongs[0].artist_id : 'N/A'}`);
+          }
+          console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+          
+          return filtered;
+        })()}
         onEnrichSong={handleEnrichSong}
         onEditSong={handleEditSong}
         onReEnrichSong={handleReEnrichSong}
