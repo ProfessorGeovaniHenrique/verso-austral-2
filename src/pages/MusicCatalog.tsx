@@ -96,18 +96,32 @@ export default function MusicCatalog() {
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
   const { toast } = useToast();
 
-  // ✅ Sincronizar allSongs com catalogSongs do hook
+  // ✅ Sincronizar e aplicar filtros localmente
   useEffect(() => {
-    if (catalogSongs.length > 0) {
-      console.log(`🔄 [Sync] Atualizando allSongs com ${catalogSongs.length} músicas do hook`);
-      setAllSongs(catalogSongs as unknown as Song[]);
-      setSongs(catalogSongs as unknown as Song[]);
+    console.log(`🔄 [Sync] Atualizando com ${catalogSongs.length} músicas do hook`);
+    
+    let filtered = catalogSongs as unknown as Song[];
+    
+    // Filtrar por corpus
+    if (selectedCorpusFilter !== 'all') {
+      if (selectedCorpusFilter === 'null') {
+        filtered = filtered.filter(s => !s.corpus_id);
+      } else {
+        filtered = filtered.filter(s => s.corpus_id === selectedCorpusFilter);
+      }
     }
-  }, [catalogSongs]);
-
-  useEffect(() => {
-    loadSongs();
-  }, [statusFilter, selectedCorpusFilter]);
+    
+    // Filtrar por status
+    const displayedSongs = statusFilter === 'all' 
+      ? filtered 
+      : filtered.filter(s => s.status === statusFilter);
+    
+    setAllSongs(catalogSongs as unknown as Song[]);
+    setSongs(displayedSongs);
+    setSongsWithoutYouTube(filtered.filter(s => !s.youtube_url));
+    
+    console.log(`✅ [Filtros] ${displayedSongs.length} músicas após filtros`);
+  }, [catalogSongs, statusFilter, selectedCorpusFilter]);
 
   useEffect(() => {
     loadCorpora();
@@ -127,173 +141,7 @@ export default function MusicCatalog() {
     }
   };
 
-  const loadSongs = async () => {
-    try {
-      setLoading(true);
-      console.log('🔄 [MusicCatalog] Carregando músicas...');
-
-      const { data: allSongsData, error: allSongsError } = await supabase
-        .from('songs')
-        .select(`
-          *,
-          artists (
-            id,
-            name,
-            genre,
-            normalized_name,
-            corpus_id
-          ),
-          corpora (
-            id,
-            name,
-            color
-          )
-        `)
-        .limit(50000)
-        .order('created_at', { ascending: false });
-
-      if (allSongsError) throw allSongsError;
-
-      const allSongsComplete = allSongsData || [];
-      console.log(`✅ [MusicCatalog] ${allSongsComplete.length} músicas carregadas`);
-
-      // Aplicar filtros
-      let filteredByCorpus = allSongsComplete;
-      if (selectedCorpusFilter !== 'all') {
-        if (selectedCorpusFilter === 'null') {
-          filteredByCorpus = allSongsComplete.filter(s => !s.corpus_id);
-        } else {
-          filteredByCorpus = allSongsComplete.filter(s => s.corpus_id === selectedCorpusFilter);
-        }
-      }
-
-      const displayedSongs = statusFilter === 'all' 
-        ? filteredByCorpus 
-        : filteredByCorpus.filter(s => s.status === statusFilter);
-
-      setAllSongs(allSongsComplete);
-      setSongs(displayedSongs);
-      setSongsWithoutYouTube(allSongsComplete.filter(s => !s.youtube_url));
-
-      // Calcular métricas para o dashboard
-      const enrichedCount = allSongsComplete.filter(s => s.status === 'enriched').length;
-      const pendingCount = allSongsComplete.filter(s => s.status === 'pending').length;
-      const errorCount = allSongsComplete.filter(s => s.status === 'error').length;
-      
-      const avgConfidence = enrichedCount > 0
-        ? allSongsComplete
-            .filter(s => s.status === 'enriched')
-            .reduce((acc, s) => acc + (s.confidence_score || 0), 0) / enrichedCount
-        : 0;
-        
-      const successRate = allSongsComplete.length > 0 
-        ? (enrichedCount / allSongsComplete.length) * 100 
-        : 0;
-
-      // Histórico dos últimos 30 dias
-      const last30Days = Array.from({ length: 30 }, (_, i) => {
-        const date = new Date();
-        date.setDate(date.getDate() - (29 - i));
-        return date.toISOString().split('T')[0];
-      });
-
-      const historyData = last30Days.map(date => {
-        const dayStart = new Date(date);
-        const dayEnd = new Date(date);
-        dayEnd.setDate(dayEnd.getDate() + 1);
-
-        const enrichedOnDay = allSongsComplete.filter(s => 
-          s.updated_at && 
-          new Date(s.updated_at) >= dayStart && 
-          new Date(s.updated_at) < dayEnd &&
-          s.status === 'enriched'
-        ).length;
-
-        const errorsOnDay = allSongsComplete.filter(s => 
-          s.updated_at && 
-          new Date(s.updated_at) >= dayStart && 
-          new Date(s.updated_at) < dayEnd &&
-          s.status === 'error'
-        ).length;
-
-        return {
-          date: date.split('-').slice(1).join('/'),
-          success: enrichedOnDay,
-          failure: errorsOnDay
-        };
-      });
-
-      const enrichedSongs = allSongsComplete.filter(s => s.status === 'enriched');
-      const sourceMap = new Map<string, { count: number; totalConfidence: number }>();
-      
-      enrichedSongs.forEach(song => {
-        const source = song.enrichment_source || 'Unknown';
-        const existing = sourceMap.get(source) || { count: 0, totalConfidence: 0 };
-        sourceMap.set(source, {
-          count: existing.count + 1,
-          totalConfidence: existing.totalConfidence + (song.confidence_score || 0)
-        });
-      });
-
-      const sourceDistribution = Array.from(sourceMap.entries()).map(([source, data]) => ({
-        source,
-        count: data.count,
-        avgConfidence: data.count > 0 ? (data.totalConfidence / data.count) : 0
-      }));
-
-      const confidenceRanges = [
-        { range: '0-20%', min: 0, max: 20 },
-        { range: '21-40%', min: 21, max: 40 },
-        { range: '41-60%', min: 41, max: 60 },
-        { range: '61-80%', min: 61, max: 80 },
-        { range: '81-100%', min: 81, max: 100 }
-      ];
-
-      const confidenceDistribution = confidenceRanges.map(range => ({
-        range: range.range,
-        count: enrichedSongs.filter(s => 
-          s.confidence_score >= range.min && s.confidence_score <= range.max
-        ).length
-      }));
-
-      const recentEnrichments = filteredByCorpus
-        .filter(s => s.status === 'enriched' || s.status === 'error')
-        .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime())
-        .slice(0, 10)
-        .map(s => ({
-          id: s.id,
-          title: s.title,
-          artist: s.artists?.name || 'Unknown',
-          timestamp: s.updated_at || s.created_at,
-          status: s.status,
-          confidence: s.confidence_score || 0,
-          source: s.enrichment_source || 'Unknown'
-        }));
-
-      setMetricsData({
-        totalSongs: filteredByCorpus.length,
-        enriched: enrichedCount,
-        pending: pendingCount,
-        errors: errorCount,
-        successRate,
-        avgConfidence,
-        enrichmentHistory: historyData,
-        sourceDistribution,
-        confidenceDistribution,
-        recentEnrichments
-      });
-
-    } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao carregar o catálogo de músicas.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+  // ✅ REMOVIDO - Agora usa exclusivamente useCatalogData hook
 
   const handleEnrichSong = async (songId: string): Promise<{ success: boolean; message?: string; error?: string }> => {
     console.log(`[DEBUG] 🎵 handleEnrichSong chamado para songId: ${songId}`);
@@ -369,8 +217,7 @@ export default function MusicCatalog() {
           title: "✨ Música enriquecida!",
           description: result.message
         });
-        await loadSongs();
-        reload();
+        await reload();
       } else {
         console.error(`[DEBUG] ❌ Erro no enriquecimento:`, result.error);
         toast({
@@ -414,8 +261,7 @@ export default function MusicCatalog() {
   };
 
   const handleBatchComplete = async () => {
-    await loadSongs();
-    reload();
+    await reload();
     toast({
       title: "🎉 Enriquecimento concluído!",
       description: "Todas as músicas foram processadas."
@@ -486,8 +332,7 @@ export default function MusicCatalog() {
           title: "✨ Re-enriquecimento concluído!",
           description: result.message
         });
-        await loadSongs();
-        reload();
+        await reload();
       } else {
         toast({
           title: "Erro",
@@ -518,8 +363,7 @@ export default function MusicCatalog() {
         title: "✓ Aprovado",
         description: "Música marcada como revisada e aprovada."
       });
-      await loadSongs();
-      reload();
+      await reload();
     } catch (error) {
       console.error('Erro ao marcar como revisado:', error);
       toast({
@@ -544,8 +388,7 @@ export default function MusicCatalog() {
         title: "🗑️ Música deletada",
         description: "A música foi removida do catálogo."
       });
-      await loadSongs();
-      reload();
+      await reload();
     } catch (error) {
       console.error('Erro ao deletar música:', error);
       toast({
@@ -596,8 +439,7 @@ export default function MusicCatalog() {
           title: "🧹 Catálogo limpo!",
           description: `${data.deleted.songs} músicas, ${data.deleted.artists} artistas e ${data.deleted.uploads} uploads foram removidos.`
         });
-        await loadSongs();
-        reload();
+        await reload();
       }
     } catch (error: any) {
       console.error('Erro ao limpar catálogo:', error);
@@ -737,7 +579,7 @@ export default function MusicCatalog() {
                 variant="ghost"
                 size="sm"
                 className="h-9 gap-2"
-                onClick={() => { loadSongs(); reload(); }}
+                onClick={() => reload()}
               >
                 <RefreshCw className="h-4 w-4" />
                 <span className="hidden sm:inline">Atualizar</span>
@@ -1171,8 +1013,7 @@ export default function MusicCatalog() {
                           });
                           
                           await enrichBatch(pendingSongIds);
-                          await loadSongs();
-                          reload();
+                          await reload();
                         } catch (error) {
                           toast({
                             title: "Erro",
@@ -1197,8 +1038,7 @@ export default function MusicCatalog() {
                             
                           if (artistError) throw artistError;
                           
-                          await loadSongs();
-                          reload();
+                          await reload();
                           toast({
                             title: "Sucesso!",
                             description: `Artista ${artist.name} excluído com sucesso`,
