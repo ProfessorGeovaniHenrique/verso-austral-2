@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createEdgeLogger } from "../_shared/unified-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,12 +12,15 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('recover-stalled-jobs', requestId);
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('🔄 Checking for stalled jobs...');
+    log.info('Checking for stalled jobs', { stalledThresholdMinutes: 15 });
 
     // Find jobs stalled for > 15 minutes
     const stalledThreshold = new Date(Date.now() - 15 * 60 * 1000);
@@ -31,18 +35,22 @@ serve(async (req) => {
     if (fetchError) throw fetchError;
 
     if (!stalledJobs || stalledJobs.length === 0) {
-      console.log('✅ No stalled jobs found');
+      log.info('No stalled jobs found', { recoveryStatus: 'none_needed' });
       return new Response(JSON.stringify({ message: 'No stalled jobs', recovered: 0 }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`⚠️ Found ${stalledJobs.length} stalled job(s)`);
+    log.warn('Found stalled jobs', { count: stalledJobs.length });
 
     const recoveryResults = [];
 
     for (const job of stalledJobs) {
-      console.log(`🔧 Attempting recovery for job ${job.id} (${job.tipo_dicionario})...`);
+      log.info('Attempting job recovery', { 
+        jobId: job.id, 
+        tipoDicionario: job.tipo_dicionario,
+        verbetesProcessados: job.verbetes_processados 
+      });
 
       // Check how many recovery attempts already exist
       const { data: previousAttempts } = await supabase
@@ -56,7 +64,11 @@ serve(async (req) => {
 
       if (attemptNumber > 3) {
         // Too many attempts, mark as error
-        console.log(`❌ Job ${job.id} has failed recovery ${attemptNumber} times. Marking as error.`);
+        log.error('Max recovery attempts exceeded', undefined, { 
+          jobId: job.id, 
+          attemptNumber,
+          strategy: 'force-complete'
+        });
 
         await supabase
           .from('dictionary_import_jobs')
@@ -117,7 +129,12 @@ serve(async (req) => {
             }
           });
 
-        console.log(`✅ Job ${job.id} marked for retry (attempt ${attemptNumber})`);
+        log.info('Job marked for retry', { 
+          jobId: job.id, 
+          attemptNumber, 
+          lastOffset,
+          strategy: 'auto-retry'
+        });
 
         recoveryResults.push({
           job_id: job.id,
@@ -128,7 +145,10 @@ serve(async (req) => {
         });
 
       } catch (error) {
-        console.error(`❌ Failed to recover job ${job.id}:`, error);
+        log.error('Failed to recover job', error as Error, { 
+          jobId: job.id,
+          strategy: 'auto-retry'
+        });
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
         await supabase
@@ -153,7 +173,11 @@ serve(async (req) => {
 
     const successCount = recoveryResults.filter(r => r.success).length;
 
-    console.log(`✅ Recovery complete: ${successCount}/${stalledJobs.length} jobs recovered`);
+    log.info('Recovery complete', { 
+      totalStalled: stalledJobs.length, 
+      recovered: successCount,
+      failed: stalledJobs.length - successCount 
+    });
 
     return new Response(JSON.stringify({ 
       message: `Recovered ${successCount}/${stalledJobs.length} stalled jobs`,
@@ -164,7 +188,8 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Error in recover-stalled-jobs:', error);
+    const log = createEdgeLogger('recover-stalled-jobs', crypto.randomUUID());
+    log.fatal('Unhandled error in function', error as Error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

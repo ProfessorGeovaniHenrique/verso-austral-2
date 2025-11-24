@@ -4,6 +4,7 @@ import { RateLimiter, addRateLimitHeaders } from "../_shared/rateLimiter.ts";
 import { EdgeFunctionLogger } from "../_shared/logger.ts";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from "../_shared/unified-logger.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -230,7 +231,7 @@ function parseRealCorpus(
     }
   }
 
-  console.log(`[parseRealCorpus] Extraídas ${words.length} palavras do corpus`);
+  // Log estruturado movido para função chamadora
   return words;
 }
 
@@ -247,7 +248,7 @@ async function loadCorpusFile(corpusType: string): Promise<string> {
     throw new Error(`Corpus type não suportado: ${corpusType}`);
   }
 
-  console.log(`[loadCorpusFile] Carregando corpus de: ${url}`);
+  // Log estruturado movido para função chamadora
   const response = await fetch(url);
   
   if (!response.ok) {
@@ -255,7 +256,7 @@ async function loadCorpusFile(corpusType: string): Promise<string> {
   }
 
   const text = await response.text();
-  console.log(`[loadCorpusFile] Corpus carregado: ${text.length} caracteres`);
+  // Log estruturado movido para função chamadora
   return text;
 }
 
@@ -476,7 +477,8 @@ serve(async (req) => {
           try {
             await processCorpusWithAI(jobId, rawBody.corpus_type || 'gaucho', Deno.env.get('SUPABASE_URL')!, supabaseServiceKey, rawBody.custom_text, rawBody.artist_filter, rawBody.start_line, rawBody.end_line, rawBody.reference_corpus);
           } catch (e) {
-            console.error('[annotate-semantic] Error processing job invoked by process-pending-jobs:', e);
+            const bgLog = createEdgeLogger('annotate-semantic', jobId);
+            bgLog.fatal('Error processing job invoked by process-pending-jobs', e as Error, { jobId });
             const sup = createClient(Deno.env.get('SUPABASE_URL')!, supabaseServiceKey);
             const errorMsg = (e && (e as Error).message) || String(e);
             await sup.from('annotation_jobs').update({ status: 'erro', erro_mensagem: errorMsg, tempo_fim: new Date().toISOString() }).eq('id', jobId);
@@ -489,13 +491,12 @@ serve(async (req) => {
     
     const requestStartTime = Date.now();
     const requestId = crypto.randomUUID();
+    const log = createEdgeLogger('annotate-semantic', requestId);
     
-    console.log('[annotate-semantic] 📥 Payload recebido:', {
-      request_id: requestId,
-      corpus_type: rawBody.corpus_type,
-      demo_mode: rawBody.demo_mode,
-      demo_mode_type: typeof rawBody.demo_mode,
-      has_auth_header: !!req.headers.get('authorization')
+    log.info('Payload received', {
+      corpusType: rawBody.corpus_type,
+      demoMode: rawBody.demo_mode,
+      hasAuthHeader: !!req.headers.get('authorization')
     });
     
     const validatedRequest = validateRequest(rawBody);
@@ -514,14 +515,13 @@ serve(async (req) => {
     if (demo_mode) {
       userId = '00000000-0000-0000-0000-000000000000';
       authStatus = 'demo';
-      console.log('[annotate-semantic] 🎭 MODO DEMO ATIVADO - Bypass de autenticação');
+      log.info('Demo mode activated - bypassing authentication');
     } else {
     // Modo normal: REQUER autenticação válida
     const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
     
-    console.log('[annotate-semantic] 🔍 Verificando autenticação:', {
-      has_auth_header: !!authHeader,
-      header_preview: authHeader ? authHeader.substring(0, 20) + '...' : 'NONE'
+    log.debug('Verifying authentication', {
+      hasAuthHeader: !!authHeader
     });
     
     if (!authHeader) {
@@ -533,7 +533,7 @@ serve(async (req) => {
         details: 'Auth session missing!'
       };
       
-      console.error('[annotate-semantic] ❌ No auth header found');
+      log.error('No authentication header found', undefined, { authStatus: 'missing' });
       
       // Registrar log de debug
       await supabase.from('annotation_debug_logs').insert({
@@ -555,7 +555,7 @@ serve(async (req) => {
     }
 
     const userToken = authHeader.replace('Bearer ', '').replace('bearer ', '');
-    console.log('[annotate-semantic] 🎫 Token extraído:', userToken.substring(0, 30) + '...');
+    log.debug('Token extracted from header');
     
     // Criar cliente com o token do usuário para validação
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
@@ -578,10 +578,7 @@ serve(async (req) => {
         hint: 'Faça login novamente ou use demo_mode: true'
       };
       
-      console.error('[annotate-semantic] ❌ Auth error:', {
-        error: authError?.message,
-        has_user: !!user
-      });
+      log.error('Authentication failed', authError as Error, { hasUser: !!user });
       
       // Registrar log de debug
       await supabase.from('annotation_debug_logs').insert({
@@ -604,7 +601,7 @@ serve(async (req) => {
 
     userId = user.id;
     authStatus = 'authenticated';
-    console.log(`[annotate-semantic] ✅ Usuário autenticado: ${userId}`);
+    log.info('User authenticated successfully', { userId });
     }
 
     console.log(`[annotate-semantic] 🚀 Iniciando anotação: ${corpus_type}`, {
@@ -636,14 +633,14 @@ serve(async (req) => {
       .single();
 
     if (jobError || !job) {
-      console.error('[annotate-semantic] Error creating job:', jobError);
+      log.error('Error creating annotation job', jobError as Error);
       return new Response(
         JSON.stringify({ error: 'Erro ao criar job de anotação' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log(`[annotate-semantic] Job criado: ${job.id}`);
+    log.logJobStart(job.id, 1, { corpusType: corpus_type, demoMode: demo_mode });
 
     // @ts-ignore
     EdgeRuntime.waitUntil(
@@ -653,7 +650,8 @@ serve(async (req) => {
           setTimeout(() => reject(new Error('Timeout: processamento excedeu 30 minutos')), 30 * 60 * 1000)
         )
       ]).catch(async (error) => {
-        console.error(`[annotate-semantic] Erro no processamento background do job ${job.id}:`, error);
+        const bgLog = createEdgeLogger('annotate-semantic', job.id);
+        bgLog.fatal('Error in background job processing', error as Error, { jobId: job.id });
         const supabase = createClient(supabaseUrl, supabaseServiceKey);
         await supabase.from('annotation_jobs').update({
           status: 'erro',
@@ -700,7 +698,8 @@ serve(async (req) => {
     return addRateLimitHeaders(successResponse, rateLimit);
 
   } catch (error: any) {
-    console.error('[annotate-semantic] Error:', error);
+    const errorLog = createEdgeLogger('annotate-semantic', crypto.randomUUID());
+    errorLog.fatal('Unhandled error in function', error as Error);
     
     // Log de erro para monitoramento
     await logger.logResponse(req, 500, { error });
@@ -722,7 +721,7 @@ serve(async (req) => {
         processing_time_ms: 0
       });
     } catch (logError) {
-      console.error('[annotate-semantic] Erro ao registrar log de erro:', logError);
+      // Silent fail - logging error should not crash function
     }
     
     return new Response(
@@ -756,15 +755,16 @@ async function processCorpusWithAI(
     refWords = [];
   };
 
+  const log = createEdgeLogger('annotate-semantic', jobId);
+
   try {
-    console.log(`[processCorpusWithAI] Iniciando processamento do job ${jobId}`, {
+    log.logJobStart(jobId, 1, {
       corpusType,
       hasCustomText: !!customText,
       artistFilter,
       startLine,
       endLine,
-      hasReferenceCorpus: !!referenceCorpus,
-      timestamp: new Date().toISOString()
+      hasReferenceCorpus: !!referenceCorpus
     });
 
     // Atualizar status para processando com lock otimista
@@ -780,7 +780,7 @@ async function processCorpusWithAI(
       .single();
 
     if (updateError || !updatedJob) {
-      console.error(`[processCorpusWithAI] Job ${jobId} já está sendo processado ou não existe`);
+      log.error('Job already processing or does not exist', updateError as Error, { jobId, lockStatus: 'failed' });
       cleanup();
       throw new Error('Job já está sendo processado ou foi cancelado');
     }
@@ -798,7 +798,7 @@ async function processCorpusWithAI(
       throw new Error('Nenhum tagset aprovado encontrado. Execute o script de seed primeiro.');
     }
 
-    console.log(`[processCorpusWithAI] ${tagsets.length} tagsets aprovados carregados`);
+    log.info('Tagsets loaded', { count: tagsets.length });
 
     // Extrair palavras do corpus
     let words: CorpusWord[];
@@ -816,15 +816,19 @@ async function processCorpusWithAI(
       throw new Error('Nenhuma palavra encontrada no corpus com os filtros aplicados');
     }
 
-    console.log(`[processCorpusWithAI] Total de palavras a processar: ${words.length}`);
+    log.info('Corpus parsed successfully', { 
+      totalWords: words.length,
+      source: customText ? 'custom_text' : 'file'
+    });
 
     // ============ ANÁLISE COMPARATIVA: CARREGAR CORPUS DE REFERÊNCIA ============
     let culturalMarkersCount = 0;
 
     if (referenceCorpus) {
-      console.log(`[processCorpusWithAI] 🔄 Carregando corpus de referência: ${referenceCorpus.corpus_type}`, {
-        artist_filter: referenceCorpus.artist_filter,
-        size_ratio: referenceCorpus.size_ratio || 1.0
+      log.info('Loading reference corpus', {
+        corpusType: referenceCorpus.corpus_type,
+        artistFilter: referenceCorpus.artist_filter,
+        sizeRatio: referenceCorpus.size_ratio || 1.0
       });
 
       try {
@@ -833,7 +837,7 @@ async function processCorpusWithAI(
         
         // ✅ VALIDAÇÃO CRÍTICA: verificar se corpus de referência é válido
         if (!parsedRefCorpus || parsedRefCorpus.length === 0) {
-          console.warn(`[processCorpusWithAI] ⚠️ Corpus de referência vazio ou inválido`);
+          log.warn('Reference corpus empty or invalid');
           refWords = [];
         } else {
           // Aplicar balanceamento por amostragem aleatória (Fisher-Yates shuffle)
@@ -841,11 +845,11 @@ async function processCorpusWithAI(
           const targetSize = Math.floor(words.length * sizeRatio);
           refWords = shuffleArray(parsedRefCorpus).slice(0, targetSize);
 
-          console.log(`[processCorpusWithAI] ✅ Corpus de referência carregado:`, {
-            total_parsed: parsedRefCorpus.length,
-            target_size: targetSize,
-            final_size: refWords.length,
-            ratio_applied: sizeRatio
+          log.info('Reference corpus loaded', {
+            totalParsed: parsedRefCorpus.length,
+            targetSize,
+            finalSize: refWords.length,
+            ratioApplied: sizeRatio
           });
 
           // Calcular mapas de frequência

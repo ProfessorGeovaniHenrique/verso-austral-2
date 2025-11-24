@@ -1,7 +1,9 @@
 /**
  * Utilitários de Logging Padronizado
- * FASE 3 - BLOCO 2: Observabilidade
+ * FASE 3 - Migrado para Structured Logging
  */
+
+import StructuredLogger from './structured-logger.ts';
 
 export function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
@@ -39,15 +41,16 @@ export interface JobStartLogParams {
 
 export function logJobStart(params: JobStartLogParams): void {
   const { fonte, jobId, totalEntries, batchSize, timeoutMs, maxRetries } = params;
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║  📚 [${fonte}] Job ${jobId.substring(0, 8)} iniciado                      
-║  📊 Total de entradas: ${totalEntries.toLocaleString()}
-║  📦 Batch size: ${batchSize}
-║  ⏱️  Timeout: ${timeoutMs}ms
-║  🔄 Retry: ${maxRetries}x com backoff exponencial
-╚═══════════════════════════════════════════════════════════╝
-`);
+  const logger = new StructuredLogger(undefined, jobId);
+  
+  logger.info(`[${fonte}] Job started`, {
+    jobId,
+    totalEntries,
+    batchSize,
+    timeoutMs,
+    maxRetries,
+    stage: 'start'
+  });
 }
 
 export interface JobProgressLogParams {
@@ -66,14 +69,19 @@ export function logJobProgress(params: JobProgressLogParams): void {
   const elapsed = Date.now() - startTime;
   const estimatedTotal = (elapsed / processed) * totalEntries;
   const estimatedRemaining = estimatedTotal - elapsed;
+  const logger = new StructuredLogger(undefined, jobId);
   
-  console.log(`
-⏳ [${jobId.substring(0, 8)}] Progresso: ${progress}% (${processed.toLocaleString()}/${totalEntries.toLocaleString()})
-   ├─ ✅ Inseridos: ${inserted.toLocaleString()}
-   ├─ ❌ Erros: ${errors}
-   ├─ ⏱️  Tempo decorrido: ${formatDuration(elapsed)}
-   └─ 🔮 Tempo estimado restante: ${formatDuration(estimatedRemaining)}
-`);
+  logger.info(`Job progress: ${progress}%`, {
+    jobId,
+    processed,
+    totalEntries,
+    inserted,
+    errors,
+    progress: parseFloat(progress),
+    elapsedMs: elapsed,
+    estimatedRemainingMs: estimatedRemaining,
+    stage: 'progress'
+  });
 }
 
 export interface JobCompleteLogParams {
@@ -91,17 +99,19 @@ export function logJobComplete(params: JobCompleteLogParams): void {
   
   const successRate = ((inserted / processed) * 100).toFixed(1);
   const throughput = formatThroughput(processed, totalTime);
+  const logger = new StructuredLogger(undefined, jobId);
   
-  console.log(`
-╔═══════════════════════════════════════════════════════════╗
-║  ✅ [${fonte}] Job ${jobId.substring(0, 8)} CONCLUÍDO                    
-║  📊 Processados: ${processed.toLocaleString()}/${totalEntries.toLocaleString()} (${successRate}%)
-║  ✔️  Inseridos: ${inserted.toLocaleString()}
-║  ❌ Erros: ${errors}
-║  ⏱️  Tempo total: ${formatDuration(totalTime)}
-║  🚀 Throughput: ${throughput}
-╚═══════════════════════════════════════════════════════════╝
-`);
+  logger.info(`[${fonte}] Job completed`, {
+    jobId,
+    processed,
+    totalEntries,
+    inserted,
+    errors,
+    successRate: parseFloat(successRate),
+    totalTimeMs: totalTime,
+    throughput,
+    stage: 'complete'
+  });
 }
 
 export interface JobErrorLogParams {
@@ -112,12 +122,10 @@ export interface JobErrorLogParams {
 
 export function logJobError(params: JobErrorLogParams): void {
   const { fonte, jobId, error } = params;
+  const logger = new StructuredLogger(undefined, jobId);
   
-  console.error(`
-╔═══════════════════════════════════════════════════════════╗
-║  💥 [${fonte}] Job ${jobId.substring(0, 8)} ERRO FATAL                   
-║  ❌ ${error.message}
-╚═══════════════════════════════════════════════════════════╝
-`);
-  console.error('Stack trace:', error.stack);
+  logger.fatal(`[${fonte}] Job failed`, error, {
+    jobId,
+    stage: 'error'
+  });
 }

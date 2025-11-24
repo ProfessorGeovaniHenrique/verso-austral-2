@@ -17,6 +17,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createEdgeLogger } from "../_shared/unified-logger.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -32,13 +33,19 @@ serve(async (req) => {
   }
 
   const requestId = crypto.randomUUID();
-  console.log(`[${requestId}] process-pending-jobs invoked`);
+  const requestStartTime = Date.now();
+  const log = createEdgeLogger('process-pending-jobs', requestId);
+  
+  log.info('Function invoked', { maxJobsPerRun: MAX_JOBS_PER_RUN, timeout: INVOKE_TIMEOUT_MS });
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (!supabaseUrl || !supabaseServiceKey) {
-      console.error(`[${requestId}] Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY`);
+      log.fatal('Missing required environment variables', undefined, { 
+        hasUrl: !!supabaseUrl, 
+        hasKey: !!supabaseServiceKey 
+      });
       return new Response(JSON.stringify({ error: "Missing env SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -58,7 +65,7 @@ serve(async (req) => {
       .limit(MAX_JOBS_PER_RUN);
 
     if (fetchError) {
-      console.error(`[${requestId}] Error fetching pending jobs:`, fetchError);
+      log.error('Error fetching pending jobs', fetchError as Error, { operation: 'fetch_jobs' });
       return new Response(JSON.stringify({ error: fetchError.message }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,19 +73,19 @@ serve(async (req) => {
     }
 
     if (!pendingJobs || pendingJobs.length === 0) {
-      console.log(`[${requestId}] No pending jobs`);
+      log.info('No pending jobs found', { queueStatus: 'empty' });
       return new Response(JSON.stringify({ message: "No pending jobs", processed: 0 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`[${requestId}] Found ${pendingJobs.length} pending job(s)`);
+    log.info('Found pending jobs', { count: pendingJobs.length });
 
     const results: Array<{ job_id: any; success: boolean; error?: string }> = [];
 
     for (const job of pendingJobs) {
       const jobId = job.id;
-      console.log(`[${requestId}] Attempting to lock job ${jobId}`);
+      log.debug('Attempting to lock job', { jobId, corpusType: job.corpus_type });
 
       // Optimistic lock melhorado: transition pending -> processing atômicamente
       // A condição .eq("status", "pending") garante que apenas um worker processa o job
@@ -96,12 +103,20 @@ serve(async (req) => {
         .single();
 
       if (updateErr || !updated) {
-        console.warn(`[${requestId}] Could not lock job ${jobId}:`, updateErr?.message || "already claimed by another worker");
+        log.warn('Could not lock job - race condition', { 
+          jobId, 
+          error: updateErr?.message || 'already_claimed',
+          lockStatus: 'failed'
+        });
         results.push({ job_id: jobId, success: false, error: updateErr?.message || "lock_failed_race_condition" });
         continue;
       }
 
-      console.log(`[${requestId}] Successfully locked job ${jobId}, invoking annotate-semantic`);
+      log.logJobStart(jobId, 1, { 
+        corpusType: job.corpus_type, 
+        demoMode: job.demo_mode,
+        lockStatus: 'acquired'
+      });
 
       try {
         // Payload enviado para o processor (a função annotate-semantic deve suportar job_id)
@@ -127,7 +142,9 @@ serve(async (req) => {
         clearTimeout(timeout);
 
         if (invokeResponse.error) {
-          console.error(`[${requestId}] Invocation error for job ${jobId}:`, invokeResponse.error);
+          log.logJobError(jobId, invokeResponse.error as Error, { 
+            operation: 'invoke_annotate_semantic'
+          });
           await supabase
             .from("annotation_jobs")
             .update({
@@ -139,12 +156,12 @@ serve(async (req) => {
 
           results.push({ job_id: jobId, success: false, error: String(invokeResponse.error.message || invokeResponse.error) });
         } else {
-          console.log(`[${requestId}] Invocation success for job ${jobId}`);
+          log.logJobComplete(jobId, 1, Date.now() - requestStartTime, { status: 'invoked_successfully' });
           results.push({ job_id: jobId, success: true });
         }
       } catch (err) {
         const msg = ((err && (err as Error).message) || String(err)) as string;
-        console.error(`[${requestId}] Fatal error invoking job ${jobId}:`, msg);
+        log.fatal('Fatal error invoking job', err as Error, { jobId, operation: 'invoke' });
         await supabase
           .from("annotation_jobs")
           .update({
@@ -158,12 +175,17 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[${requestId}] Processing completed; results:`, results);
+    log.info('Processing completed', { 
+      totalProcessed: results.length, 
+      successful: results.filter(r => r.success).length,
+      failed: results.filter(r => !r.success).length
+    });
     return new Response(JSON.stringify({ message: "Jobs processed", processed: results.length, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error(`[${requestId}] Unhandled error:`, error);
+    const log = createEdgeLogger('process-pending-jobs', crypto.randomUUID());
+    log.fatal('Unhandled error in function', error as Error);
     return new Response(JSON.stringify({ error: (error as Error).message || String(error) }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

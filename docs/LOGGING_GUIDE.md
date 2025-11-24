@@ -79,7 +79,18 @@ log.logNavigation('/music', '/music/catalog');
 log.logUserInteraction('click', 'enrich-button', { songId: '123' });
 ```
 
-### **3. Exemplos Práticos**
+### Phase 3: Backend Edge Functions (~33 functions)
+**Status:** 🟢 SPRINT 3.1 COMPLETO  
+**Tempo Investido:** 2.5 horas  
+**Progresso:** 15% (6/39 functions)
+
+**SPRINT 3.1 - Job Processing ✅ COMPLETO**
+- ✅ logging.ts migrado (propaga para 10+ funções)
+- ✅ process-pending-jobs
+- ✅ recover-stalled-jobs
+- ✅ annotate-semantic (logs críticos)
+- ✅ process-dialectal-dictionary (via logging.ts)
+- ✅ process-gutenberg-dictionary (via logging.ts)
 
 #### **Em uma Página**
 ```typescript
