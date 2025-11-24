@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +20,9 @@ interface DictionaryJob {
 }
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('import-navarro-backend', requestId);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -36,7 +40,7 @@ Deno.serve(async (req) => {
         requestBody = JSON.parse(text);
       }
     } catch (parseError) {
-      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
+      log.warn('Failed to parse request body', { error: parseError });
     }
 
     const { offset = 0 } = requestBody;
@@ -44,7 +48,7 @@ Deno.serve(async (req) => {
     const tipoDicionario = 'navarro_nordeste_2014';
     const fileUrl = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/Dicion%C3%A1rio%20do%20Nordeste%20definitivo.txt';
 
-    console.log(`📥 Carregando Dicionário do Nordeste (Navarro 2014) do GitHub...`);
+    log.info('Loading Navarro dictionary from GitHub');
 
     // Buscar arquivo do GitHub
     const fileResponse = await fetch(fileUrl);
@@ -53,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     const fileContent = await fileResponse.text();
-    console.log(`✅ Arquivo Navarro carregado com sucesso: ${(fileContent.length / 1024).toFixed(2)} KB`);
+    log.info('Dictionary file loaded', { sizeKB: (fileContent.length / 1024).toFixed(2) });
 
     // Verificar se já existe job em andamento
     const { data: existingJobs } = await supabase
@@ -69,7 +73,7 @@ Deno.serve(async (req) => {
     if (existingJobs && existingJobs.length > 0) {
       // Retomar job existente
       job = existingJobs[0] as DictionaryJob;
-      console.log(`🔄 Retomando job existente: ${job.id}`);
+      log.info('Resuming existing job', { jobId: job.id });
     } else {
       // Criar novo job
       const { data: newJob, error: jobError } = await supabase
@@ -100,11 +104,11 @@ Deno.serve(async (req) => {
       }
 
       job = newJob as DictionaryJob;
-      console.log(`✅ Novo job criado: ${job.id}`);
+      log.logJobStart(job.id, 0, { tipoDicionario });
     }
 
     // Chamar a edge function de processamento
-    console.log(`🔄 Chamando process-nordestino-navarro...`);
+    log.info('Invoking process-nordestino-navarro', { jobId: job.id });
     const processResponse = await supabase.functions.invoke('process-nordestino-navarro', {
       body: {
         jobId: job.id,
@@ -114,6 +118,7 @@ Deno.serve(async (req) => {
     });
 
     if (processResponse.error) {
+      log.error('Processing invocation failed', processResponse.error as Error);
       throw new Error(`Erro no processamento: ${processResponse.error.message}`);
     }
 
@@ -126,7 +131,7 @@ Deno.serve(async (req) => {
       .eq('id', job.id)
       .single();
 
-    console.log(`✅ Importação Navarro 2014 concluída`);
+    log.logJobComplete(job.id, result.verbetesProcessados || 0, Date.now() - Date.now());
 
     return new Response(
       JSON.stringify({
@@ -141,7 +146,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('❌ Erro na importação do Dicionário Navarro 2014:', error);
+    log.fatal('Import failed', error instanceof Error ? error : new Error(String(error)));
     return new Response(
       JSON.stringify({
         error: error.message,

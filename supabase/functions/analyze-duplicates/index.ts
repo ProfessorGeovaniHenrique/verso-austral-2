@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,6 +27,9 @@ interface DuplicateAnalysis {
 }
 
 serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('analyze-duplicates', requestId);
+  
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -42,7 +46,7 @@ serve(async (req) => {
       throw new Error('Campo "source" é obrigatório (ex: "Navarro 2014")');
     }
 
-    console.log(`🔍 Analisando duplicatas para: ${source} na tabela ${table}`);
+    log.info('Analyzing duplicates', { source, table });
 
     // Buscar todos os verbetes da fonte especificada
     const { data: entries, error } = await supabase
@@ -53,6 +57,7 @@ serve(async (req) => {
     if (error) throw error;
 
     if (!entries || entries.length === 0) {
+      log.warn('No entries found for source', { source });
       return new Response(
         JSON.stringify({
           error: `Nenhum verbete encontrado para a fonte "${source}"`,
@@ -64,7 +69,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`📊 Total de entradas encontradas: ${entries.length}`);
+    log.info('Entries found', { totalEntries: entries.length });
 
     // Agrupar por verbete_normalizado
     type EntryType = typeof entries[0];
@@ -78,7 +83,8 @@ serve(async (req) => {
       grouped[key].push(entry);
     }
 
-    console.log(`📈 Verbetes únicos: ${Object.keys(grouped).length}`);
+    const uniqueCount = Object.keys(grouped).length;
+    log.info('Grouping complete', { uniqueEntries: uniqueCount });
 
     // Filtrar duplicatas (mais de 1 ocorrência)
     const duplicates = Object.entries(grouped)
@@ -98,7 +104,7 @@ serve(async (req) => {
       }))
       .sort((a, b) => b.occurrences - a.occurrences);
 
-    console.log(`🔁 Duplicatas encontradas: ${duplicates.length}`);
+    log.info('Duplicate analysis complete', { duplicatesFound: duplicates.length });
 
     const analysis: DuplicateAnalysis = {
       dictionarySource: source,
@@ -121,7 +127,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Erro na análise de duplicatas:', error);
+    log.fatal('Duplicate analysis failed', error instanceof Error ? error : new Error(String(error)));
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     
     return new Response(

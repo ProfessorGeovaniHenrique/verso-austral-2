@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -63,9 +64,12 @@ serve(withInstrumentation('analyze-and-suggest-fixes', async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('analyze-and-suggest-fixes', requestId);
+  
   try {
     const { logsType, context } = await req.json();
-    console.log('Analyzing logs:', { logsType, contextLength: context?.length });
+    log.info('Analyzing logs', { logsType, contextLength: context?.length });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -107,7 +111,11 @@ serve(withInstrumentation('analyze-and-suggest-fixes', async (req) => {
     const falsePositives = feedbackHistory?.filter(f => f.human_verdict === 'false_positive').map(f => f.suggestion_id) || [];
     const alreadyFixed = feedbackHistory?.filter(f => f.human_verdict === 'already_fixed').map(f => f.suggestion_id) || [];
 
-    console.log(`📊 Contexto: ${previousBugIds.length} bugs anteriores, ${resolvedBugIds.length} resolvidos, ${appliedFixes.length} fixes aplicados, ${falsePositives.length} falsos positivos, ${alreadyFixed.length} já corrigidos`);
+    log.info('Historical context loaded', { 
+      previousBugs: previousBugIds.length, 
+      resolved: resolvedBugIds.length, 
+      falsePositives: falsePositives.length 
+    });
 
     // Snapshot do código atual implementado
     const codeSnapshot: CodeSnapshot = {
@@ -122,7 +130,7 @@ serve(withInstrumentation('analyze-and-suggest-fixes', async (req) => {
       }
     };
 
-    console.log('Calling Lovable AI Gateway...');
+    log.info('Calling Lovable AI Gateway');
 
     // 🔥 FASE 3: PROMPT REFATORADO COM REGRAS ABSOLUTAS
     const systemPrompt = `Você é um especialista em análise de código com foco em PRECISÃO e CONTEXTO.
@@ -222,6 +230,8 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
     });
 
     if (!response.ok) {
+      log.logApiCall('Lovable AI', '/v1/chat/completions', 'POST', response.status);
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({
           error: 'Rate limit exceeded. Please try again in a few moments.'
@@ -241,12 +251,13 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       }
 
       const errorText = await response.text();
-      console.error('AI Gateway error:', response.status, errorText);
+      log.error('AI Gateway error', undefined, { status: response.status, response: errorText });
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log('AI response received');
+    log.logApiCall('Lovable AI', '/v1/chat/completions', 'POST', 200);
+    log.info('AI response received');
 
     const content = data.choices[0].message.content;
     const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -261,7 +272,7 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       .replace(/,(\s*[}\]])/g, '$1');
 
     const parsed = JSON.parse(cleanedJson);
-    console.log('Analysis complete:', { totalIssues: parsed.suggestions?.length || 0, suggestions: parsed.suggestions?.length });
+    log.info('Analysis complete', { totalIssues: parsed.suggestions?.length || 0 });
 
     let result: AnalysisResult = {
       summary: parsed.summary || {
@@ -276,21 +287,21 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
     };
 
     // 🔍 FASE 2: FILTRO DE VALIDAÇÃO PÓS-ANÁLISE
-    console.log(`🔍 Aplicando filtro de validação em ${result.suggestions.length} sugestões...`);
+    log.info('Applying post-analysis validation filter', { suggestionsCount: result.suggestions.length });
     
     const filteredSuggestions = result.suggestions.filter(suggestion => {
       if (resolvedBugIds.includes(suggestion.id)) {
-        console.log(`❌ Filtrado (já resolvido): ${suggestion.id}`);
+        log.debug('Filtered - already resolved', { suggestionId: suggestion.id });
         return false;
       }
 
       if (falsePositives.includes(suggestion.id)) {
-        console.log(`❌ Filtrado (falso positivo): ${suggestion.id}`);
+        log.debug('Filtered - false positive', { suggestionId: suggestion.id });
         return false;
       }
 
       if (alreadyFixed.includes(suggestion.id)) {
-        console.log(`❌ Filtrado (já corrigido): ${suggestion.id}`);
+        log.debug('Filtered - already fixed', { suggestionId: suggestion.id });
         return false;
       }
 
@@ -328,16 +339,19 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       suggestion.verificationStatus = confidenceScore >= 60 ? 'auto-verified' : 'pending';
 
       if (confidenceScore < 60) {
-        console.log(`⚠️ Baixa confiança (${confidenceScore}%): ${suggestion.id} - ${suggestion.title}`);
+        log.debug('Low confidence suggestion filtered', { 
+          suggestionId: suggestion.id, 
+          confidence: confidenceScore 
+        });
         return false;
       }
 
-      console.log(`✅ Aprovado (${confidenceScore}%): ${suggestion.id}`);
+      log.debug('Suggestion approved', { suggestionId: suggestion.id, confidence: confidenceScore });
       return true;
     });
 
     const filteredCount = result.suggestions.length - filteredSuggestions.length;
-    console.log(`📊 Filtrados: ${filteredCount} falsos positivos`);
+    log.info('False positives filtered', { count: filteredCount });
 
     result = {
       ...result,
@@ -353,7 +367,7 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       !result.suggestions.some(s => s.id === id)
     );
 
-    console.log(`✨ Auto-resolvendo ${bugsToResolve.length} bugs...`);
+    log.info('Auto-resolving disappeared bugs', { count: bugsToResolve.length });
     
     // Salvar análise no banco
     const totalCredits = result.suggestions.reduce((sum, s) => sum + s.creditsSaved, 0);
@@ -382,11 +396,12 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
       .single();
 
     if (saveError) {
-      console.error('Erro ao salvar análise:', saveError);
+      log.error('Failed to save analysis', saveError as Error);
       throw saveError;
     }
 
-    console.log(`Saved analysis ${savedAnalysis.id} with ${result.suggestions.length} suggestions`);
+    log.logDatabaseQuery('ai_analysis_history', 'insert', 1);
+    log.info('Analysis saved', { analysisId: savedAnalysis.id, suggestionsCount: result.suggestions.length });
 
     // Salvar status individual de cada sugestão
     for (const suggestion of result.suggestions) {
@@ -444,7 +459,8 @@ Lembre-se: NÃO reporte bugs já resolvidos ou problemas já implementados lista
     });
 
   } catch (error) {
-    console.error('Error in analyze-and-suggest-fixes:', error);
+    const log = createEdgeLogger('analyze-and-suggest-fixes', crypto.randomUUID());
+    log.fatal('Analysis failed', error instanceof Error ? error : new Error(String(error)));
     return new Response(JSON.stringify({
       error: error instanceof Error ? error.message : 'Unknown error occurred'
     }), {

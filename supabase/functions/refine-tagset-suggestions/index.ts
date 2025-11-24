@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -51,17 +52,19 @@ serve(withInstrumentation('refine-tagset-suggestions', async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('refine-tagset-suggestions', requestId);
+  
   try {
     const { tagsetPendente, tagsetsAtivos } = await req.json() as {
       tagsetPendente: Tagset;
       tagsetsAtivos: Tagset[];
     };
 
-    console.log('[CURADORIA] ========================================');
-    console.log('[CURADORIA] Iniciando análise de curadoria...');
-    console.log('[CURADORIA] Tagset pendente:', JSON.stringify(tagsetPendente, null, 2));
-    console.log('[CURADORIA] Contexto:', tagsetsAtivos.length, 'tagsets ativos disponíveis');
-    console.log('[CURADORIA] ========================================');
+    log.info('Starting tagset curation analysis', { 
+      pendingTagset: tagsetPendente.codigo, 
+      activeTagsetsCount: tagsetsAtivos.length 
+    });
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -124,8 +127,7 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
   ]
 }`;
 
-    console.log('[CURADORIA] Chamando Lovable AI com Gemini 2.5 Flash...');
-    console.log('[CURADORIA] Prompt construído com', tagsetsAtivos.length, 'tagsets no contexto');
+    log.info('Calling Lovable AI with Gemini', { contextualizedTagsets: tagsetsAtivos.length });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -152,7 +154,7 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[AI Analysis] API Error: ${response.status} - ${errorText}`);
+      log.logApiCall('Lovable AI', '/v1/chat/completions', 'POST', response.status);
       
       if (response.status === 429) {
         throw new Error("Rate limit exceeded. Please try again later.");
@@ -165,19 +167,15 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
     }
 
     const aiResponse = await response.json();
-    console.log('[CURADORIA] Resposta da API recebida. Tokens usados:', 
-      aiResponse.usage?.total_tokens || 'N/A');
+    log.logApiCall('Lovable AI', '/v1/chat/completions', 'POST', 200);
+    log.info('AI response received', { tokensUsed: aiResponse.usage?.total_tokens || 0 });
     
     const content = aiResponse.choices?.[0]?.message?.content;
 
     if (!content) {
-      console.error('[CURADORIA] ❌ Resposta vazia da IA!');
+      log.error('Empty AI response', undefined, { aiResponse });
       throw new Error("No content in AI response");
     }
-
-    console.log('[CURADORIA] Resposta raw da IA:');
-    console.log(content);
-    console.log('[CURADORIA] ========================================');
 
     // Extrair JSON da resposta (pode vir com markdown)
     let jsonContent = content.trim();
@@ -189,18 +187,13 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
 
     const refinedSuggestion: AIRefinedSuggestion = JSON.parse(jsonContent);
 
-    console.log('[CURADORIA] ✅ JSON parseado com sucesso!');
-    console.log('[CURADORIA] Resposta estruturada:', JSON.stringify(refinedSuggestion, null, 2));
-    console.log('[CURADORIA] ========================================');
-    console.log('[CURADORIA] RESULTADO DA ANÁLISE:');
-    console.log('[CURADORIA] - Tagset analisado:', tagsetPendente.codigo);
-    console.log('[CURADORIA] - Pai recomendado:', refinedSuggestion.tagsetPaiRecomendado?.codigo || 'null (nível 1)');
-    console.log('[CURADORIA] - Nome do pai:', refinedSuggestion.tagsetPaiRecomendado?.nome || 'N/A');
-    console.log('[CURADORIA] - Nível sugerido:', refinedSuggestion.nivelSugerido);
-    console.log('[CURADORIA] - Confiança:', refinedSuggestion.tagsetPaiRecomendado?.confianca + '%');
-    console.log('[CURADORIA] - Melhorias sugeridas:', refinedSuggestion.melhorias);
-    console.log('[CURADORIA] - Alternativas:', refinedSuggestion.alternativas?.length || 0);
-    console.log('[CURADORIA] ========================================');
+    log.info('Curation analysis complete', {
+      tagsetAnalyzed: tagsetPendente.codigo,
+      recommendedParent: refinedSuggestion.tagsetPaiRecomendado?.codigo || 'null',
+      suggestedLevel: refinedSuggestion.nivelSugerido,
+      confidence: refinedSuggestion.tagsetPaiRecomendado?.confianca,
+      alternativesCount: refinedSuggestion.alternativas?.length || 0
+    });
 
     return new Response(
       JSON.stringify(refinedSuggestion),
@@ -213,7 +206,8 @@ Retorne APENAS um objeto JSON válido seguindo esta estrutura EXATA:
     );
 
   } catch (error) {
-    console.error('[AI Analysis] Error:', error);
+    const log = createEdgeLogger('refine-tagset-suggestions', crypto.randomUUID());
+    log.fatal('Curation analysis failed', error instanceof Error ? error : new Error(String(error)));
     
     return new Response(
       JSON.stringify({

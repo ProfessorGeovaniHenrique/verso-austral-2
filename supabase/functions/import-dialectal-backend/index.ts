@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,6 +20,9 @@ interface DictionaryJob {
 }
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('import-dialectal-backend', requestId);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -36,7 +40,7 @@ Deno.serve(async (req) => {
         requestBody = JSON.parse(text);
       }
     } catch (parseError) {
-      console.warn('⚠️ Failed to parse request body, using defaults:', parseError);
+      log.warn('Failed to parse request body, using defaults', { error: parseError });
     }
 
     const { offset = 0, tipoDicionario = 'gaucho_unificado' } = requestBody;
@@ -44,7 +48,7 @@ Deno.serve(async (req) => {
     // Arquivo unificado - gaucho.txt contém todos os verbetes
     const GAUCHO_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/gaucho.txt';
 
-    console.log(`📥 Carregando dicionário ${tipoDicionario} do GitHub...`);
+    log.info('Loading dictionary from GitHub', { tipoDicionario });
 
     // Buscar arquivo do GitHub
     const fileResponse = await fetch(GAUCHO_URL);
@@ -53,7 +57,7 @@ Deno.serve(async (req) => {
     }
 
     const fileContent = await fileResponse.text();
-    console.log(`✅ Arquivo Gaúcho Unificado carregado com sucesso: ${(fileContent.length / 1024).toFixed(2)} KB`);
+    log.info('Dictionary file loaded successfully', { sizeKB: (fileContent.length / 1024).toFixed(2) });
 
     // Verificar se já existe job em andamento
     const { data: existingJobs } = await supabase
@@ -69,7 +73,7 @@ Deno.serve(async (req) => {
     if (existingJobs && existingJobs.length > 0) {
       // Retomar job existente
       job = existingJobs[0] as DictionaryJob;
-      console.log(`🔄 Retomando job existente: ${job.id}`);
+      log.info('Resuming existing job', { jobId: job.id });
     } else {
       // Criar novo job
       const { data: newJob, error: jobError } = await supabase
@@ -98,22 +102,23 @@ Deno.serve(async (req) => {
       }
 
       job = newJob as DictionaryJob;
-      console.log(`✅ Novo job criado: ${job.id}`);
+      log.logJobStart(job.id, 0, { tipoDicionario, offset });
     }
 
     // Chamar a edge function de processamento
-    console.log(`🔄 Chamando process-dialectal-dictionary...`);
+    log.info('Invoking process-dialectal-dictionary', { jobId: job.id });
     const processResponse = await supabase.functions.invoke('process-dialectal-dictionary', {
       body: {
         jobId: job.id,
         fileContent,
         volumeNum: 'I',
-        tipoDicionario, // ✅ Usar o tipo passado no body
+        tipoDicionario,
         offset: job.offset_inicial || 0
       }
     });
 
     if (processResponse.error) {
+      log.error('Processing invocation failed', processResponse.error as Error);
       throw new Error(`Erro no processamento: ${processResponse.error.message}`);
     }
 
@@ -126,7 +131,11 @@ Deno.serve(async (req) => {
       .eq('id', job.id)
       .single();
 
-    console.log('✅ Importação concluída - Dicionário Gaúcho Unificado');
+    log.info('Import completed', { 
+      jobId: job.id, 
+      processed: result.processados || 0, 
+      inserted: result.inseridos || 0 
+    });
 
     return new Response(
       JSON.stringify({
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error: any) {
-    console.error('❌ Erro na importação do dicionário Dialectal:', error);
+    log.fatal('Import failed', error instanceof Error ? error : new Error(String(error)));
     return new Response(
       JSON.stringify({
         error: error.message,

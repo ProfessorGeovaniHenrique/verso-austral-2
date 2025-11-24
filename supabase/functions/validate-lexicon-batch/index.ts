@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,9 @@ interface ValidationRequest {
 }
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('validate-lexicon-batch', requestId);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -23,7 +27,7 @@ Deno.serve(async (req) => {
 
     const { dictionaryType, batchSize }: ValidationRequest = await req.json();
 
-    console.log(`🔍 Iniciando validação em lote: ${dictionaryType}, tamanho: ${batchSize}`);
+    log.info('Starting batch validation', { dictionaryType, batchSize });
 
     let tableName: string;
     let validationCriteria: any = {};
@@ -92,7 +96,7 @@ Deno.serve(async (req) => {
     }
 
     if (!entries || entries.length === 0) {
-      console.log('⚠️ Nenhuma entrada encontrada para validação');
+      log.warn('No entries found for validation');
       return new Response(
         JSON.stringify({ validated: 0, skipped: 0, message: 'Nenhuma entrada disponível para validação' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
@@ -116,14 +120,16 @@ Deno.serve(async (req) => {
     const chunks = chunkArray(ids, 100);
     let totalUpdated = 0;
 
-    console.log(`🔄 Atualizando ${ids.length} entradas na tabela ${tableName}`);
-    console.log(`📝 Campo de update: ${updateField} = true`);
-    console.log(`📦 Processando ${chunks.length} chunks de ~100 IDs cada`);
+    log.info('Updating entries in chunks', { 
+      totalEntries: ids.length, 
+      tableName, 
+      updateField, 
+      chunksCount: chunks.length 
+    });
 
     // Processar cada chunk sequencialmente
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
-      console.log(`🔄 Chunk ${i + 1}/${chunks.length}: ${chunk.length} IDs`);
 
       const { data, error } = await supabase
         .from(tableName)
@@ -136,22 +142,16 @@ Deno.serve(async (req) => {
         .select('id');
 
       if (error) {
-        console.error(`❌ Erro no chunk ${i + 1}:`, {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code
-        });
+        log.error('Chunk update failed', error as Error, { chunkIndex: i + 1 });
         throw new Error(`Erro ao atualizar chunk ${i + 1}/${chunks.length}: ${error.message}`);
       }
 
       totalUpdated += data?.length || 0;
-      console.log(`✅ Chunk ${i + 1} completo: ${data?.length || 0} linhas atualizadas`);
+      log.debug('Chunk complete', { chunkIndex: i + 1, rowsUpdated: data?.length || 0 });
     }
 
-    console.log(`✅ Total atualizado: ${totalUpdated} de ${ids.length} entradas`);
-
-    console.log(`✅ ${entries.length} entradas validadas com sucesso`);
+    log.logDatabaseQuery(tableName, 'update', totalUpdated);
+    log.info('Batch validation complete', { totalUpdated, totalEntries: ids.length });
 
     return new Response(
       JSON.stringify({
@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('❌ Erro na validação em lote:', error);
+    log.fatal('Batch validation failed', error instanceof Error ? error : new Error(String(error)));
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
     return new Response(
       JSON.stringify({ error: errorMessage }),

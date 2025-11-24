@@ -1,4 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -6,6 +7,9 @@ const corsHeaders = {
 };
 
 Deno.serve(async (req) => {
+  const requestId = crypto.randomUUID();
+  const log = createEdgeLogger('import-rocha-pombo-backend', requestId);
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -15,12 +19,10 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    console.log('🚀 Iniciando importação do Dicionário Rocha Pombo (ABL)...');
+    log.info('Starting Rocha Pombo ABL dictionary import');
 
     // Buscar arquivo do repositório GitHub
     const GITHUB_RAW_URL = 'https://raw.githubusercontent.com/ProfessorGeovaniHenrique/estilisticadecorpus/main/public/Dicionarios/DicionariodeSinonimosdaABL.txt';
-    
-    console.log(`📥 Buscando arquivo de: ${GITHUB_RAW_URL}`);
     
     const fileResponse = await fetch(GITHUB_RAW_URL);
     
@@ -30,7 +32,7 @@ Deno.serve(async (req) => {
     
     const fileContent = await fileResponse.text();
     
-    console.log(`✅ Arquivo carregado: ${(fileContent.length / 1024 / 1024).toFixed(2)} MB`);
+    log.info('File loaded from GitHub', { sizeMB: (fileContent.length / 1024 / 1024).toFixed(2) });
 
     // Criar job de importação
     const { data: job, error: jobError } = await supabase
@@ -54,11 +56,11 @@ Deno.serve(async (req) => {
       .single();
 
     if (jobError) {
-      console.error('❌ Erro ao criar job:', jobError);
+      log.error('Failed to create job', jobError as Error);
       throw jobError;
     }
 
-    console.log(`✅ Job criado: ${job.id}`);
+    log.logJobStart(job.id, 0, { source: 'ABL' });
 
     // Invocar função de processamento
     const { data: processData, error: processError } = await supabase.functions.invoke(
@@ -73,7 +75,7 @@ Deno.serve(async (req) => {
     );
 
     if (processError) {
-      console.error('❌ Erro ao processar:', processError);
+      log.error('Processing failed', processError as Error);
       
       // Atualizar job com erro
       await supabase
@@ -88,7 +90,7 @@ Deno.serve(async (req) => {
       throw processError;
     }
 
-    console.log('✅ Importação do Rocha Pombo iniciada com sucesso!');
+    log.info('Import initiated successfully', { jobId: job.id });
 
     return new Response(
       JSON.stringify({
@@ -104,7 +106,7 @@ Deno.serve(async (req) => {
     );
 
   } catch (error: any) {
-    console.error('❌ Erro na importação do Rocha Pombo:', error);
+    log.fatal('Import failed', error instanceof Error ? error : new Error(String(error)));
     
     return new Response(
       JSON.stringify({

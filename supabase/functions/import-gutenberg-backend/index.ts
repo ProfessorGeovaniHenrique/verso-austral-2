@@ -1,6 +1,7 @@
 // 🔥 DEPLOY TIMESTAMP: 2025-01-20T23:00:00Z - v8.0: CSV Upload Simple & Clean
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { parse } from 'https://deno.land/std@0.224.0/csv/parse.ts';
+import { createEdgeLogger } from '../_shared/unified-logger.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,15 +38,14 @@ async function processChunk(
   jobId: string,
   verbetes: VerbeteGutenberg[],
   startIndex: number,
-  supabaseClient: any
+  supabaseClient: any,
+  log: ReturnType<typeof createEdgeLogger>
 ): Promise<void> {
   try {
-    console.log(`\n📦 Processando chunk: ${startIndex} a ${Math.min(startIndex + CHUNK_SIZE, verbetes.length)}`);
-    
     const endIndex = Math.min(startIndex + CHUNK_SIZE, verbetes.length);
     const chunk = verbetes.slice(startIndex, endIndex);
 
-    console.log(`🔄 Inserindo ${chunk.length} verbetes...`);
+    log.info('Processing chunk', { startIndex, endIndex, chunkSize: chunk.length });
     
     // Inserir chunk no banco com validação
     const { data: insertedData, error, count } = await supabaseClient
@@ -54,19 +54,22 @@ async function processChunk(
       .select('id', { count: 'exact' });
 
     if (error) {
-      console.error(`❌ ERRO DE INSERÇÃO NO CHUNK ${startIndex}:`, error);
+      log.error('Chunk insertion failed', error as Error, { startIndex, chunkSize: chunk.length });
       throw error;
     }
 
     const insertedCount = count || insertedData?.length || 0;
     if (insertedCount !== chunk.length) {
-      const warning = `⚠️ AVISO: Esperava inserir ${chunk.length} verbetes, mas apenas ${insertedCount} foram inseridos`;
-      console.warn(warning);
+      log.warn('Partial chunk insertion', { 
+        expected: chunk.length, 
+        actual: insertedCount,
+        difference: chunk.length - insertedCount 
+      });
       
       await supabaseClient.from('system_logs').insert({
         level: 'warn',
         category: 'dictionary_import',
-        message: warning,
+        message: 'Partial chunk insertion detected',
         metadata: { 
           jobId, 
           startIndex, 
@@ -77,7 +80,7 @@ async function processChunk(
       });
     }
 
-    console.log(`✅ ${insertedCount} verbetes inseridos com sucesso no chunk ${startIndex}-${endIndex}`);
+    log.logDatabaseQuery('gutenberg_lexicon', 'insert', insertedCount);
 
     // Atualizar progresso
     const progressPercentage = Math.round((endIndex / verbetes.length) * 100);
@@ -91,11 +94,11 @@ async function processChunk(
       })
       .eq('id', jobId);
 
-    console.log(`📊 Progresso: ${endIndex}/${verbetes.length} (${progressPercentage}%)`);
+    log.logJobProgress(jobId, endIndex, verbetes.length, progressPercentage);
 
     // Se ainda há verbetes, invocar próximo chunk
     if (endIndex < verbetes.length) {
-      console.log(`🔄 Auto-invocando próximo chunk...`);
+      log.info('Invoking next chunk', { nextIndex: endIndex });
       
       const { error: invokeError } = await supabaseClient.functions.invoke('import-gutenberg-backend', {
         body: {
@@ -105,30 +108,35 @@ async function processChunk(
       });
 
       if (invokeError) {
-        console.error('❌ Erro ao invocar próximo chunk:', invokeError);
+        log.error('Failed to invoke next chunk', invokeError as Error);
         throw invokeError;
       }
     } else {
       // Verificação final da importação
-      console.log('✅ Todos os chunks processados! Finalizando...');
+      log.info('All chunks processed, finalizing job', { totalProcessed: endIndex });
       
       const { count: finalCount } = await supabaseClient
         .from('gutenberg_lexicon')
         .select('*', { count: 'exact', head: true });
 
-      console.log(`🎯 VERIFICAÇÃO FINAL:`);
-      console.log(`   Verbetes esperados: ${verbetes.length}`);
-      console.log(`   Verbetes no banco: ${finalCount}`);
-      console.log(`   Taxa de sucesso: ${((finalCount! / verbetes.length) * 100).toFixed(2)}%`);
+      const successRate = ((finalCount! / verbetes.length) * 100).toFixed(2);
+      log.info('Final verification', { 
+        expected: verbetes.length, 
+        actual: finalCount, 
+        successRate 
+      });
 
       if (finalCount !== verbetes.length) {
-        const warning = `⚠️ DISCREPÂNCIA DETECTADA! Esperava ${verbetes.length}, mas banco tem ${finalCount}`;
-        console.warn(warning);
+        log.warn('Count discrepancy detected', { 
+          expected: verbetes.length, 
+          actual: finalCount, 
+          missing: verbetes.length - (finalCount || 0) 
+        });
         
         await supabaseClient.from('system_logs').insert({
           level: 'warn',
           category: 'dictionary_import_verification',
-          message: warning,
+          message: 'Final count discrepancy detected',
           metadata: {
             jobId,
             expected: verbetes.length,
@@ -158,22 +166,19 @@ async function processChunk(
         .eq('id', jobId);
 
       // Limpar arquivo temporário do Storage
+      const storageKey = `temp-imports/gutenberg-${jobId}.json`;
       const { error: deleteError } = await supabaseClient.storage
         .from('corpus')
-        .remove([`temp-imports/gutenberg-${jobId}.json`]);
+        .remove([storageKey]);
 
       if (deleteError) {
-        console.warn('⚠️ Erro ao deletar arquivo temporário:', deleteError);
-      } else {
-        console.log('🗑️ Arquivo temporário removido do Storage');
+        log.warn('Failed to delete temp file', { key: storageKey, error: deleteError.message });
       }
 
-      console.log(`✅ IMPORTAÇÃO COMPLETA! Total de verbetes processados: ${verbetes.length}`);
+      log.logJobComplete(jobId, verbetes.length, Date.now() - startIndex, { finalCount });
     }
   } catch (error: any) {
-    console.error('❌ ERRO CRÍTICO ao processar chunk:', error);
-    console.error('Stack trace:', error.stack);
-    console.error('Detalhes:', JSON.stringify(error, null, 2));
+    log.fatal('Critical chunk processing error', error instanceof Error ? error : new Error(String(error)), { startIndex });
     
     // Logar no banco também
     await supabaseClient.from('system_logs').insert({
@@ -214,25 +219,16 @@ async function processChunk(
 Deno.serve(async (req) => {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
+  const log = createEdgeLogger('import-gutenberg-backend', requestId);
   
-  console.log(`\n${'='.repeat(70)}`);
-  console.log(`🔵 REQUEST RECEBIDA [${requestId}]`);
-  console.log(`   Method: ${req.method}`);
-  console.log(`   URL: ${req.url}`);
-  console.log(`   Timestamp: ${new Date().toISOString()}`);
-  console.log(`${'='.repeat(70)}\n`);
+  log.info('Request received', { method: req.method, url: req.url });
   
   if (req.method === 'OPTIONS') {
-    console.log('✅ Respondendo CORS preflight');
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('🚀 VERSÃO 8.0 - CSV Upload (Simple & Clean)');
-    console.log('   📄 Upload direto de CSV pré-processado');
-    console.log('   🧹 Truncate automático antes da importação');
-    console.log('   ⚡ Inserção otimizada em chunks de 1000');
-    console.log(`📊 Request ID: ${requestId}`);
+    log.info('Version 8.0 - CSV Upload', { strategy: 'csv-pre-processed', chunkSize: CHUNK_SIZE });
     
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
@@ -246,8 +242,7 @@ Deno.serve(async (req) => {
       const body = await req.json();
       
       if (body.resumeJobId) {
-        console.log(`\n🔄 Continuando job existente: ${body.resumeJobId}`);
-        console.log(`   Retomando do índice: ${body.startIndex || 0}`);
+        log.info('Resuming existing job', { jobId: body.resumeJobId, startIndex: body.startIndex || 0 });
         
         const jobId = body.resumeJobId;
         const startIndex = body.startIndex || 0;
@@ -264,21 +259,16 @@ Deno.serve(async (req) => {
         const fileContent = await fileData.text();
         const verbetes: VerbeteGutenberg[] = JSON.parse(fileContent);
         
-        console.log(`📋 Verbetes carregados do Storage: ${verbetes.length}`);
-        console.log(`🎯 Processando a partir do índice: ${startIndex}`);
+        log.info('Verbetes loaded from storage', { count: verbetes.length, startIndex });
 
         // Processar próximo chunk em background (sem await)
-        processChunk(jobId, verbetes, startIndex, supabase).catch(error => {
-          console.error('❌ Erro no processamento em background:', error);
+        processChunk(jobId, verbetes, startIndex, supabase, log).catch(error => {
+          log.error('Background processing failed', error as Error, { jobId });
         });
 
-        const responseTime = Date.now() - startTime;
-        console.log(`\n${'='.repeat(70)}`);
-        console.log(`✅ RESPOSTA ENVIADA [${requestId}]`);
-        console.log(`   Status: 200 OK`);
-        console.log(`   Continuando processamento em background`);
-        console.log(`   Tempo de resposta: ${responseTime}ms`);
-        console.log(`${'='.repeat(70)}\n`);
+        log.info('Response sent - processing continues in background', { 
+          duration: Date.now() - startTime 
+        });
 
         return new Response(
           JSON.stringify({
@@ -310,31 +300,28 @@ Deno.serve(async (req) => {
 
     // Ler conteúdo do CSV
     const csvText = await file.text();
-    console.log(`📄 Arquivo CSV lido: ${csvText.length} caracteres`);
+    log.debug('CSV file read', { charCount: csvText.length });
 
     // Parse CSV
     const rows = parse(csvText, {
-      skipFirstRow: true, // Pula cabeçalho
+      skipFirstRow: true,
       columns: ['verbete', 'classe_gramatical', 'definicao']
     }) as CSVRow[];
 
-    console.log(`📊 Total de linhas no CSV: ${rows.length}`);
+    log.info('CSV parsed', { totalRows: rows.length });
 
     // 🧹 TRUNCATE: Limpar tabela antes de importar
-    console.log('🧹 Fazendo TRUNCATE completo de gutenberg_lexicon...');
-
-    // Contar registros ANTES
     const { count: countBefore } = await supabase
       .from('gutenberg_lexicon')
       .select('*', { count: 'exact', head: true });
 
-    console.log(`📊 Registros ANTES da limpeza: ${countBefore || 0}`);
+    log.info('Truncating table', { recordsBeforeCleanup: countBefore || 0 });
 
     // Usar função SQL para TRUNCATE (mais eficiente)
     const { error: truncateError } = await supabase.rpc('truncate_gutenberg_table');
 
     if (truncateError) {
-      console.error('❌ Erro no TRUNCATE:', truncateError);
+      log.error('Truncate failed', truncateError as Error);
       throw truncateError;
     }
 
@@ -347,7 +334,7 @@ Deno.serve(async (req) => {
       throw new Error(`TRUNCATE falhou! Ainda existem ${countAfter} registros`);
     }
 
-    console.log('✅ Tabela completamente limpa e pronta para importação');
+    log.info('Table truncated successfully', { recordsAfter: countAfter });
 
     // Converter para formato do banco
     const verbetesValidos: VerbeteGutenberg[] = rows
@@ -362,7 +349,7 @@ Deno.serve(async (req) => {
         validation_status: 'approved' // ✅ Definir status de validação
       }));
 
-    console.log(`✅ Verbetes válidos extraídos do CSV: ${verbetesValidos.length}`);
+    log.info('Valid entries extracted from CSV', { count: verbetesValidos.length });
 
     // Criar job de importação
     const { data: job, error: jobError } = await supabase
@@ -389,7 +376,7 @@ Deno.serve(async (req) => {
     }
 
     const jobId = job.id;
-    console.log(`✅ Job criado: ${jobId}`);
+    log.logJobStart(jobId, verbetesValidos.length, { strategy: 'csv-upload' });
 
     // Salvar verbetes no Storage para processamento em chunks
     const storageKey = `temp-imports/gutenberg-${jobId}.json`;
@@ -404,25 +391,18 @@ Deno.serve(async (req) => {
       throw new Error(`Erro ao salvar no Storage: ${uploadError.message}`);
     }
 
-    console.log(`💾 Verbetes salvos no Storage: ${storageKey}`);
+    log.info('Verbetes saved to storage', { storageKey });
 
     // Iniciar processamento do primeiro chunk em background
-    console.log('🚀 Iniciando processamento do primeiro chunk em background...');
-    console.log(`📦 Processando chunk: 0 a ${Math.min(CHUNK_SIZE, verbetesValidos.length)}`);
-    
-    // Processar primeiro chunk em background (sem await)
-    processChunk(jobId, verbetesValidos, 0, supabase).catch(error => {
-      console.error('❌ Erro no processamento em background:', error);
+    processChunk(jobId, verbetesValidos, 0, supabase, log).catch(error => {
+      log.error('Background processing failed', error as Error, { jobId });
     });
 
-    const responseTime = Date.now() - startTime;
-    console.log(`\n${'='.repeat(70)}`);
-    console.log(`✅ RESPOSTA ENVIADA [${requestId}]`);
-    console.log(`   Status: 200 OK`);
-    console.log(`   Job ID: ${jobId}`);
-    console.log(`   Total verbetes: ${verbetesValidos.length}`);
-    console.log(`   Tempo de resposta: ${responseTime}ms`);
-    console.log(`${'='.repeat(70)}\n`);
+    log.info('Import initiated successfully', { 
+      jobId, 
+      totalVerbetes: verbetesValidos.length, 
+      duration: Date.now() - startTime 
+    });
 
     return new Response(
       JSON.stringify({
@@ -441,12 +421,9 @@ Deno.serve(async (req) => {
       }
     );
   } catch (error: any) {
-    const responseTime = Date.now() - startTime;
-    console.error(`\n❌ ERRO FATAL [${requestId}]:`);
-    console.error(`   Mensagem: ${error.message}`);
-    console.error(`   Stack: ${error.stack}`);
-    console.error(`   Tempo até falha: ${responseTime}ms`);
-    console.error(`${'='.repeat(70)}\n`);
+    log.fatal('Fatal error in import', error instanceof Error ? error : new Error(String(error)), { 
+      duration: Date.now() - startTime 
+    });
 
     return new Response(
       JSON.stringify({
