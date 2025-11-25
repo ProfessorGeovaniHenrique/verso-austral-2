@@ -45,8 +45,8 @@ export const SpacyHealthDashboard = () => {
   const runHealthCheck = async () => {
     setChecking(true);
     try {
-      const response = await supabase.functions.invoke('annotate-pos', {
-        body: { health: true }
+      const response = await supabase.functions.invoke('annotate-pos?health=true', {
+        method: 'GET'
       });
 
       if (response.error) throw response.error;
