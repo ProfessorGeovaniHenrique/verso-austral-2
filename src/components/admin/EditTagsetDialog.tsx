@@ -30,10 +30,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Plus, X, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Plus, X, Loader2, AlertTriangle } from 'lucide-react';
 import { useTagsets } from '@/hooks/useTagsets';
 import { toast } from 'sonner';
 import { validateNivelAndPai } from '@/lib/tagsetValidation';
+import { cn } from '@/lib/utils';
 
 const editTagsetSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
@@ -147,10 +149,27 @@ export function EditTagsetDialog({
 
     setIsSubmitting(true);
     try {
-      // Usar validação centralizada
+      // 🔥 FASE 3: Validação robusta antes do submit
+      console.log('[EditTagsetDialog] Validando dados antes do submit:', {
+        nivel_profundidade: data.nivel_profundidade,
+        categoria_pai: data.categoria_pai,
+        codigo: tagset.codigo,
+      });
+
+      // Validação centralizada
       const validation = validateNivelAndPai(data.nivel_profundidade, data.categoria_pai);
       if (!validation.valid) {
-        toast.error(validation.error);
+        console.error('[EditTagsetDialog] Falha na validação:', validation.error);
+        toast.error(validation.error || 'Erro de validação');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validação adicional para nível 2+
+      if (data.nivel_profundidade > 1 && (!data.categoria_pai || data.categoria_pai.trim() === '')) {
+        const errorMsg = '⚠️ Selecione uma categoria pai para domínios de nível 2-4';
+        console.error('[EditTagsetDialog] Categoria pai obrigatória para nível', data.nivel_profundidade);
+        toast.error(errorMsg);
         setIsSubmitting(false);
         return;
       }
@@ -159,6 +178,11 @@ export function EditTagsetDialog({
       const categoriaPaiValue = data.nivel_profundidade === 1 
         ? null 
         : (data.categoria_pai?.trim() || null);
+
+      console.log('[EditTagsetDialog] Enviando atualização com valores validados:', {
+        categoria_pai: categoriaPaiValue,
+        nivel_profundidade: data.nivel_profundidade,
+      });
 
       await updateTagset(tagset.id, {
         nome: data.nome,
@@ -169,30 +193,34 @@ export function EditTagsetDialog({
         tagset_pai: categoriaPaiValue, // Sincronizar
       });
 
-      toast.success('Domínio semântico atualizado com sucesso!');
+      toast.success('✅ Domínio semântico atualizado com sucesso!');
       onClose();
     } catch (error) {
-      console.error('Erro ao atualizar tagset:', error);
-      toast.error('Erro ao atualizar domínio semântico');
+      console.error('[EditTagsetDialog] Erro ao atualizar tagset:', error);
+      toast.error('❌ Erro ao atualizar domínio semântico. Verifique o console.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const nivelAtual = form.watch('nivel_profundidade');
+  const categoriaPaiAtual = form.watch('categoria_pai');
+
+  // 🔥 FASE 2: Validação de estado inconsistente
+  const isStateInconsistent = nivelAtual > 1 && (!categoriaPaiAtual || categoriaPaiAtual.trim() === '');
 
   // 🔥 CORREÇÃO 1: useEffect para sincronizar categoria_pai com nivel_profundidade
   useEffect(() => {
-    const categoriaPaiAtual = form.getValues('categoria_pai');
+    const categoriaPaiValue = form.getValues('categoria_pai');
     
     // Se mudou para nível 1 E tem pai definido → limpar
-    if (nivelAtual === 1 && categoriaPaiAtual) {
+    if (nivelAtual === 1 && categoriaPaiValue) {
       console.log('[EditTagsetDialog] Nível 1 detectado, limpando categoria_pai');
       form.setValue('categoria_pai', '', { shouldValidate: true });
     }
     
     // Se mudou para nível 2+ E não tem pai → forçar validação
-    if (nivelAtual > 1 && !categoriaPaiAtual) {
+    if (nivelAtual > 1 && !categoriaPaiValue) {
       console.log('[EditTagsetDialog] Nível 2+ detectado sem pai, forçando validação');
       form.trigger('categoria_pai');
     }
@@ -286,6 +314,17 @@ export function EditTagsetDialog({
               </div>
             </div>
 
+            {/* 🔥 FASE 1: Alert de validação quando estado inconsistente */}
+            {isStateInconsistent && (
+              <Alert variant="destructive" className="border-destructive/50 bg-destructive/10">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Atenção:</strong> Domínios de nível {nivelAtual} devem ter uma categoria pai selecionada.
+                  Por favor, selecione uma categoria pai abaixo.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -319,8 +358,10 @@ export function EditTagsetDialog({
                 name="categoria_pai"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>
-                      Categoria Pai {nivelAtual > 1 ? '*' : ''}
+                    <FormLabel className={cn(
+                      nivelAtual > 1 && "text-primary font-semibold"
+                    )}>
+                      Categoria Pai {nivelAtual > 1 && <span className="text-destructive">*</span>}
                     </FormLabel>
                     <Select
                       onValueChange={field.onChange}
@@ -328,20 +369,39 @@ export function EditTagsetDialog({
                       disabled={nivelAtual === 1}
                     >
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o pai" />
+                        {/* 🔥 FASE 2: Indicador visual de campo obrigatório */}
+                        <SelectTrigger className={cn(
+                          isStateInconsistent && "border-destructive ring-2 ring-destructive/20"
+                        )}>
+                          <SelectValue placeholder={
+                            nivelAtual === 1 
+                              ? "Não aplicável" 
+                              : "⚠️ Selecione uma categoria pai"
+                          } />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {filteredParents.map((parent) => (
-                          <SelectItem key={parent.codigo} value={parent.codigo}>
-                            {parent.codigo} - {parent.nome}
-                          </SelectItem>
-                        ))}
+                        {filteredParents.length === 0 ? (
+                          <div className="p-2 text-sm text-muted-foreground text-center">
+                            Nenhuma categoria disponível
+                          </div>
+                        ) : (
+                          filteredParents.map((parent) => (
+                            <SelectItem key={parent.codigo} value={parent.codigo}>
+                              {parent.codigo} - {parent.nome}
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
-                    <FormDescription>
-                      {nivelAtual === 1 ? 'Nível 1 não possui pai' : 'Obrigatório para níveis 2-4'}
+                    <FormDescription className={cn(
+                      isStateInconsistent && "text-destructive font-medium"
+                    )}>
+                      {nivelAtual === 1 
+                        ? '✓ Nível 1 não possui pai' 
+                        : isStateInconsistent
+                          ? '⚠️ Campo obrigatório - selecione acima'
+                          : '✓ Obrigatório para níveis 2-4'}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -358,9 +418,13 @@ export function EditTagsetDialog({
               >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              {/* 🔥 FASE 2: Desabilitar botão Salvar se estado inconsistente */}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || isStateInconsistent}
+              >
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Salvar Alterações
+                {isStateInconsistent ? '⚠️ Selecione Categoria Pai' : 'Salvar Alterações'}
               </Button>
             </DialogFooter>
           </form>
