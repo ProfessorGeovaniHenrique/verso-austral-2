@@ -62,3 +62,45 @@ verify_jwt = false
 
 [functions.semantic-chat-assistant]
 verify_jwt = true
+
+[functions.get-artists-with-songs]
+verify_jwt = false
+
+[functions.enrich-youtube-batch]
+verify_jwt = false
+
+[functions.health-check]
+verify_jwt = false
+
+[functions.health-aggregator]
+verify_jwt = false
+
+[functions.check-gutenberg-import]
+verify_jwt = false
+
+[functions.check-dialectal-import]
+verify_jwt = false
+
+[functions.check-houaiss-import]
+verify_jwt = false
+
+[functions.validate-import-env]
+verify_jwt = false
+
+[functions.check-navarro-import]
+verify_jwt = false
+
+[functions.check-nordestino-import]
+verify_jwt = false
+
+[functions.cancel-dictionary-import]
+verify_jwt = false
+
+[functions.generate-semantic-consultant-response]
+verify_jwt = false
+
+[functions.annotate-semantic-domain]
+verify_jwt = false
+
+[functions.assign-cultural-insignias]
+verify_jwt = false

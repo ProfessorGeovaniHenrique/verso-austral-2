@@ -349,6 +349,7 @@ export type Database = {
           tagset_codigo: string | null
           tagset_primario: string | null
           tagsets: Json | null
+          tagsets_array: string[] | null
         }
         Insert: {
           confianca?: number | null
@@ -372,6 +373,7 @@ export type Database = {
           tagset_codigo?: string | null
           tagset_primario?: string | null
           tagsets?: Json | null
+          tagsets_array?: string[] | null
         }
         Update: {
           confianca?: number | null
@@ -395,6 +397,7 @@ export type Database = {
           tagset_codigo?: string | null
           tagset_primario?: string | null
           tagsets?: Json | null
+          tagsets_array?: string[] | null
         }
         Relationships: [
           {
@@ -724,6 +727,39 @@ export type Database = {
           name?: string
           normalized_name?: string
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      cultural_insignia_attribution: {
+        Row: {
+          confianca: number | null
+          criado_em: string | null
+          fonte: string
+          id: string
+          insignia: string
+          metadata: Json | null
+          palavra: string
+          tipo_atribuicao: string
+        }
+        Insert: {
+          confianca?: number | null
+          criado_em?: string | null
+          fonte: string
+          id?: string
+          insignia: string
+          metadata?: Json | null
+          palavra: string
+          tipo_atribuicao: string
+        }
+        Update: {
+          confianca?: number | null
+          criado_em?: string | null
+          fonte?: string
+          id?: string
+          insignia?: string
+          metadata?: Json | null
+          palavra?: string
+          tipo_atribuicao?: string
         }
         Relationships: []
       }
@@ -1771,6 +1807,59 @@ export type Database = {
         }
         Relationships: []
       }
+      semantic_disambiguation_cache: {
+        Row: {
+          cached_at: string | null
+          confianca: number | null
+          contexto_hash: string
+          fonte: string | null
+          hits_count: number | null
+          id: string
+          justificativa: string | null
+          last_hit_at: string | null
+          lema: string | null
+          palavra: string
+          pos: string | null
+          tagset_codigo: string
+        }
+        Insert: {
+          cached_at?: string | null
+          confianca?: number | null
+          contexto_hash: string
+          fonte?: string | null
+          hits_count?: number | null
+          id?: string
+          justificativa?: string | null
+          last_hit_at?: string | null
+          lema?: string | null
+          palavra: string
+          pos?: string | null
+          tagset_codigo: string
+        }
+        Update: {
+          cached_at?: string | null
+          confianca?: number | null
+          contexto_hash?: string
+          fonte?: string | null
+          hits_count?: number | null
+          id?: string
+          justificativa?: string | null
+          last_hit_at?: string | null
+          lema?: string | null
+          palavra?: string
+          pos?: string | null
+          tagset_codigo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_disambiguation_cache_tagset_codigo_fkey"
+            columns: ["tagset_codigo"]
+            isOneToOne: false
+            referencedRelation: "semantic_tagset_gaucho"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
       semantic_lexicon: {
         Row: {
           atualizado_em: string | null
@@ -1982,6 +2071,65 @@ export type Database = {
             columns: ["tagset_pai"]
             isOneToOne: false
             referencedRelation: "semantic_tagset"
+            referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      semantic_tagset_gaucho: {
+        Row: {
+          atualizado_em: string | null
+          categoria_pai: string | null
+          codigo: string
+          codigo_en: string
+          cor_hex: string | null
+          criado_em: string | null
+          descricao: string | null
+          exemplos: string[] | null
+          icone: string | null
+          id: string
+          nivel_profundidade: number | null
+          nome: string
+          nome_en: string
+          status: string | null
+        }
+        Insert: {
+          atualizado_em?: string | null
+          categoria_pai?: string | null
+          codigo: string
+          codigo_en: string
+          cor_hex?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          exemplos?: string[] | null
+          icone?: string | null
+          id?: string
+          nivel_profundidade?: number | null
+          nome: string
+          nome_en: string
+          status?: string | null
+        }
+        Update: {
+          atualizado_em?: string | null
+          categoria_pai?: string | null
+          codigo?: string
+          codigo_en?: string
+          cor_hex?: string | null
+          criado_em?: string | null
+          descricao?: string | null
+          exemplos?: string[] | null
+          icone?: string | null
+          id?: string
+          nivel_profundidade?: number | null
+          nome?: string
+          nome_en?: string
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "semantic_tagset_gaucho_categoria_pai_fkey"
+            columns: ["categoria_pai"]
+            isOneToOne: false
+            referencedRelation: "semantic_tagset_gaucho"
             referencedColumns: ["codigo"]
           },
         ]
@@ -2428,6 +2576,7 @@ export type Database = {
       }
       clean_expired_gemini_cache: { Args: never; Returns: undefined }
       clean_expired_health_checks: { Args: never; Returns: undefined }
+      clean_expired_semantic_cache: { Args: never; Returns: undefined }
       clean_old_system_logs: { Args: never; Returns: undefined }
       generate_invite_key: { Args: never; Returns: string }
       get_dialectal_stats: {
@@ -2498,6 +2647,10 @@ export type Database = {
       }
       increment_feature_usage: {
         Args: { _feature_name: string; _user_id: string }
+        Returns: undefined
+      }
+      increment_semantic_cache_hit: {
+        Args: { cache_id: string }
         Returns: undefined
       }
       increment_youtube_quota: { Args: never; Returns: number }
