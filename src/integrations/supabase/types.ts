@@ -1253,6 +1253,84 @@ export type Database = {
         }
         Relationships: []
       }
+      gemini_pos_api_usage: {
+        Row: {
+          cached_hits: number | null
+          cost_usd: number | null
+          created_at: string | null
+          function_name: string | null
+          id: string
+          latency_ms: number | null
+          tokens_annotated: number | null
+          tokens_input: number | null
+          tokens_output: number | null
+        }
+        Insert: {
+          cached_hits?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          function_name?: string | null
+          id?: string
+          latency_ms?: number | null
+          tokens_annotated?: number | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Update: {
+          cached_hits?: number | null
+          cost_usd?: number | null
+          created_at?: string | null
+          function_name?: string | null
+          id?: string
+          latency_ms?: number | null
+          tokens_annotated?: number | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+        }
+        Relationships: []
+      }
+      gemini_pos_cache: {
+        Row: {
+          cached_at: string | null
+          confianca: number | null
+          contexto_hash: string
+          features: Json | null
+          hits_count: number | null
+          id: string
+          justificativa: string | null
+          lema: string | null
+          palavra: string
+          pos: string | null
+          pos_detalhada: string | null
+        }
+        Insert: {
+          cached_at?: string | null
+          confianca?: number | null
+          contexto_hash: string
+          features?: Json | null
+          hits_count?: number | null
+          id?: string
+          justificativa?: string | null
+          lema?: string | null
+          palavra: string
+          pos?: string | null
+          pos_detalhada?: string | null
+        }
+        Update: {
+          cached_at?: string | null
+          confianca?: number | null
+          contexto_hash?: string
+          features?: Json | null
+          hits_count?: number | null
+          id?: string
+          justificativa?: string | null
+          lema?: string | null
+          palavra?: string
+          pos?: string | null
+          pos_detalhada?: string | null
+        }
+        Relationships: []
+      }
       gutenberg_lexicon: {
         Row: {
           antonimos: string[] | null

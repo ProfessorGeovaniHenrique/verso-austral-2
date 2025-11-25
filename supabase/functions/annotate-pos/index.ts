@@ -9,6 +9,7 @@ import { withInstrumentation } from "../_shared/instrumentation.ts";
 import { createHealthCheck } from "../_shared/health-check.ts";
 import { annotateWithVAGrammar, calculateVAGrammarCoverage } from "../_shared/hybrid-pos-annotator.ts";
 import { annotateWithSpacy, checkSpacyHealth } from '../_shared/spacy-annotator.ts';
+import { annotateWithGemini } from '../_shared/gemini-pos-annotator.ts';
 import { getCacheStatistics } from "../_shared/pos-annotation-cache.ts";
 
 const corsHeaders = {
@@ -248,17 +249,42 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
       console.log(`✅ Layer 2 (spaCy): ${spacyCovered}/${unknownTokens.length} tokens cobertos (${layer2Time}ms)`);
     }
     
-    // Calculate coverage statistics
-    const stats = calculateVAGrammarCoverage(annotations);
-    console.log(`📊 Cobertura total (Layer 1+2): ${stats.coverageRate.toFixed(1)}%`);
+    // Layer 3: Gemini Flash para casos remanescentes
+    let finalAnnotations = annotations;
+    let layer3Time = 0;
+    let geminiMetrics = { cachedHits: 0, apiCalls: 0, tokensInput: 0, tokensOutput: 0, latency: 0 };
+    
+    const stillUnknown = annotations.filter(t => t.pos === 'UNKNOWN' || (t.confianca && t.confianca < 0.85));
+    
+    if (stillUnknown.length > 0) {
+      console.log(`✨ Layer 3 (Gemini): processando ${stillUnknown.length} tokens...`);
+      const startLayer3 = Date.now();
+      const geminiResult = await annotateWithGemini(stillUnknown, inputText);
+      layer3Time = Date.now() - startLayer3;
+      geminiMetrics = geminiResult.metrics;
+      
+      // Substituir tokens com baixa confiança por resultados Gemini
+      const geminiMap = new Map(geminiResult.annotations.map(t => [t.palavra, t]));
+      finalAnnotations = annotations.map(t => 
+        geminiMap.has(t.palavra) ? geminiMap.get(t.palavra)! : t
+      );
+      
+      const geminiCovered = geminiResult.annotations.filter(t => t.pos !== 'UNKNOWN').length;
+      console.log(`✅ Layer 3 (Gemini): ${geminiCovered}/${stillUnknown.length} cobertos | Cache: ${geminiMetrics.cachedHits} | API: ${geminiMetrics.apiCalls}`);
+    }
+    
+    // Calculate final coverage statistics
+    const stats = calculateVAGrammarCoverage(finalAnnotations);
+    console.log(`📊 Cobertura final (3-Layer): ${stats.coverageRate.toFixed(1)}%`);
 
     // Log de sucesso
     await logger.logResponse(req, 200, {
       requestPayload: { text: inputText.substring(0, 100), mode },
       responsePayload: { 
-        annotationsCount: annotations.length,
+        annotationsCount: finalAnnotations.length,
         coverageRate: stats.coverageRate,
-        unknownWordsCount: stats.unknownWords.length
+        unknownWordsCount: stats.unknownWords.length,
+        geminiMetrics
       },
       rateLimited: false,
       rateLimitRemaining: rateLimit.remaining
@@ -267,7 +293,7 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
     const successResponse = new Response(
       JSON.stringify({ 
         success: true,
-        annotations: annotations.map(t => ({
+        annotations: finalAnnotations.map(t => ({
           palavra: t.palavra,
           lema: t.lema,
           pos: t.pos,
@@ -281,7 +307,9 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
         performance: {
           layer1Time,
           layer2Time,
-          totalTime: layer1Time + layer2Time
+          layer3Time,
+          totalTime: layer1Time + layer2Time + layer3Time,
+          gemini: geminiMetrics
         },
         mode
       }), 

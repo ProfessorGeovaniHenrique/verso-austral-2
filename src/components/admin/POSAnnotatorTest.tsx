@@ -39,7 +39,15 @@ interface CoverageStats {
 interface PerformanceStats {
   layer1Time: number;
   layer2Time: number;
+  layer3Time?: number;
   totalTime: number;
+  gemini?: {
+    cachedHits: number;
+    apiCalls: number;
+    tokensInput: number;
+    tokensOutput: number;
+    latency: number;
+  };
 }
 
 const SAMPLE_TEXTS = {
@@ -78,7 +86,7 @@ export const POSAnnotatorTest = () => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('annotate-pos', {
-        body: { text: inputText, mode: 'layer1_only' }
+        body: { text: inputText, mode: 'full_pipeline' }
       });
 
       if (error) throw error;
@@ -308,10 +316,41 @@ export const POSAnnotatorTest = () => {
                             <span className="font-mono font-semibold">{performance.layer2Time}ms</span>
                           </div>
                         )}
+                        {performance.layer3Time && performance.layer3Time > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">✨ Layer 3 (Gemini):</span>
+                            <span className="font-mono font-semibold">{performance.layer3Time}ms</span>
+                          </div>
+                        )}
                         <div className="flex justify-between pt-2 border-t">
                           <span className="font-semibold">Total:</span>
                           <span className="font-mono font-bold">{performance.totalTime}ms</span>
                         </div>
+                        
+                        {/* Gemini Metrics */}
+                        {performance.gemini && performance.gemini.apiCalls > 0 && (
+                          <div className="mt-4 pt-4 border-t space-y-2">
+                            <h4 className="text-xs font-semibold text-muted-foreground">🤖 Gemini Metrics</h4>
+                            <div className="flex justify-between text-xs">
+                              <span>Cache Hits:</span>
+                              <span className="font-mono text-green-600">{performance.gemini.cachedHits}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span>API Calls:</span>
+                              <span className="font-mono text-yellow-600">{performance.gemini.apiCalls}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span>Tokens (in/out):</span>
+                              <span className="font-mono">{performance.gemini.tokensInput}/{performance.gemini.tokensOutput}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                              <span>Cost:</span>
+                              <span className="font-mono text-cyan-600">
+                                ${((performance.gemini.tokensInput * 0.075 + performance.gemini.tokensOutput * 0.30) / 1000000).toFixed(6)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </CardContent>
                   </Card>

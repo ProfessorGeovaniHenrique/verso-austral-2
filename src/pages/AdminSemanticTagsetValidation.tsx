@@ -28,6 +28,7 @@ import { RejectedTagsetsList } from '@/components/admin/RejectedTagsetsList';
 import { TagsetCreator } from '@/components/advanced/TagsetCreator';
 import { POSAnnotatorTest } from '@/components/admin/POSAnnotatorTest';
 import { SpacyHealthDashboard } from '@/components/admin/SpacyHealthDashboard';
+import { GeminiPOSMonitoring } from '@/components/admin/GeminiPOSMonitoring';
 import { Tagset } from '@/hooks/useTagsets';
 
 interface SemanticTagset {
@@ -763,12 +764,18 @@ export default function AdminSemanticTagsetValidation() {
           </TabsContent>
 
           <TabsContent value="pos-test" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
-                <POSAnnotatorTest />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <POSAnnotatorTest />
+                </div>
+                <div>
+                  <SpacyHealthDashboard />
+                </div>
               </div>
+              
               <div>
-                <SpacyHealthDashboard />
+                <GeminiPOSMonitoring />
               </div>
             </div>
           </TabsContent>
