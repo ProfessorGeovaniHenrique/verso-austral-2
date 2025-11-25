@@ -26,6 +26,7 @@ import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantCha
 import { ValidatedTagsetsHierarchy } from '@/components/admin/ValidatedTagsetsHierarchy';
 import { RejectedTagsetsList } from '@/components/admin/RejectedTagsetsList';
 import { TagsetCreator } from '@/components/advanced/TagsetCreator';
+import { POSAnnotatorTest } from '@/components/admin/POSAnnotatorTest';
 import { Tagset } from '@/hooks/useTagsets';
 
 interface SemanticTagset {
@@ -451,9 +452,9 @@ export default function AdminSemanticTagsetValidation() {
           </Card>
         </div>
 
-        {/* Tabs para alternar entre Validação, Validados, Rejeitados e Hierarquia */}
+        {/* Tabs para alternar entre Validação, Validados, Rejeitados, Hierarquia e Teste POS */}
         <Tabs defaultValue="validation" className="mt-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-4">
+          <TabsList className="grid w-full max-w-4xl grid-cols-5">
             <TabsTrigger value="validation" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Validação
@@ -469,6 +470,9 @@ export default function AdminSemanticTagsetValidation() {
             <TabsTrigger value="hierarchy" className="flex items-center gap-2">
               <TreePine className="h-4 w-4" />
               Hierarquia
+            </TabsTrigger>
+            <TabsTrigger value="pos-test" className="flex items-center gap-2">
+              🧪 Teste POS
             </TabsTrigger>
           </TabsList>
 
@@ -755,6 +759,10 @@ export default function AdminSemanticTagsetValidation() {
 
           <TabsContent value="hierarchy" className="mt-6">
             <SemanticHierarchyView />
+          </TabsContent>
+
+          <TabsContent value="pos-test" className="mt-6">
+            <POSAnnotatorTest />
           </TabsContent>
         </Tabs>
       </div>

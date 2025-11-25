@@ -197,11 +197,13 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
     // Log de início
     logger.logRequest(req);
 
-    const { texto, idioma = 'pt' } = await req.json();
+    const body = await req.json();
+    const { text, texto, mode = 'layer1_only' } = body;
+    const inputText = text || texto;
 
-    if (!texto || typeof texto !== 'string') {
+    if (!inputText || typeof inputText !== 'string') {
       await logger.logResponse(req, 400, {
-        requestPayload: { texto: 'invalid' },
+        requestPayload: { text: 'invalid' },
         error: new Error('Texto inválido')
       });
 
@@ -209,18 +211,34 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const tokens = await processText(texto);
+    // Processar anotação com Layer 1
+    const annotations = await annotateWithVAGrammar(inputText);
+    const stats = calculateVAGrammarCoverage(annotations);
+
+    console.log(`✅ Layer 1 (VA Grammar): ${stats.coveredByVA}/${stats.totalTokens} tokens (${stats.coverageRate.toFixed(1)}% cobertura)`);
+    console.log(`📊 Source distribution:`, stats.sourceDistribution);
 
     // Log de sucesso
     await logger.logResponse(req, 200, {
-      requestPayload: { texto: texto.substring(0, 100), idioma },
-      responsePayload: { tokensCount: tokens.length },
+      requestPayload: { text: inputText.substring(0, 100), mode },
+      responsePayload: { 
+        annotationsCount: annotations.length,
+        coverageRate: stats.coverageRate,
+        unknownWordsCount: stats.unknownWords.length
+      },
       rateLimited: false,
       rateLimitRemaining: rateLimit.remaining
     });
 
-    const successResponse = new Response(JSON.stringify({ tokens }), 
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    const successResponse = new Response(
+      JSON.stringify({ 
+        success: true,
+        annotations,
+        stats,
+        mode
+      }), 
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
     return addRateLimitHeaders(successResponse, rateLimit);
 
