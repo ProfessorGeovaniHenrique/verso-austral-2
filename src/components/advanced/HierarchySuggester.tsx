@@ -51,6 +51,7 @@ interface HierarchySuggesterProps {
   onAcceptSuggestion: (tagsetId: string, tagsetPaiCodigo: string) => void;
   onRejectTagset: (tagsetId: string) => void;
   onEditManual?: (tagset: Tagset) => void;
+  onApplyFullEdit?: (tagsetId: string, updates: Partial<Tagset>) => Promise<void>;
 }
 
 export function HierarchySuggester({
@@ -59,6 +60,7 @@ export function HierarchySuggester({
   onAcceptSuggestion,
   onRejectTagset,
   onEditManual,
+  onApplyFullEdit,
 }: HierarchySuggesterProps) {
   const [suggestions, setSuggestions] = useState<Map<string, HierarchySuggestion[]>>(new Map());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -101,10 +103,21 @@ export function HierarchySuggester({
     onRejectTagset(tagsetId);
   };
 
-  const handleApplyCurated = (editedTagset: Partial<Tagset> & { tagset_pai: string }) => {
+  const handleApplyCurated = async (editedTagset: Partial<Tagset> & { tagset_pai: string }) => {
     if (!selectedForCuration) return;
-    onAcceptSuggestion(selectedForCuration.tagset.id, editedTagset.tagset_pai);
-    toast.success("Tagset curado aplicado");
+    
+    // Usar nova função que aceita todas as edições
+    if (onApplyFullEdit) {
+      await onApplyFullEdit(selectedForCuration.tagset.id, {
+        ...editedTagset,
+        categoria_pai: editedTagset.tagset_pai, // Sincronizar com tagset_pai
+      });
+      toast.success("Tagset curado aplicado");
+    } else {
+      // Fallback para método antigo
+      onAcceptSuggestion(selectedForCuration.tagset.id, editedTagset.tagset_pai);
+      toast.success("Tagset curado aplicado (método legado)");
+    }
   };
 
   const refineWithAI = async (pendente: Tagset) => {

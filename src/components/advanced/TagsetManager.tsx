@@ -146,6 +146,28 @@ export function TagsetManager() {
     }
   };
 
+  const handleApplyFullEdit = async (tagsetId: string, updates: Partial<Tagset>) => {
+    setIsProcessing(true);
+    try {
+      // Garantir sincronização entre tagset_pai e categoria_pai
+      const syncedUpdates = {
+        ...updates,
+        categoria_pai: updates.tagset_pai || updates.categoria_pai,
+        status: 'ativo' as TagsetStatus
+      };
+      
+      await updateTagset(tagsetId, syncedUpdates);
+      await approveTagsets([tagsetId]);
+      await refetch();
+      toast.success("Tagset editado e aprovado!");
+    } catch (error) {
+      console.error("Erro ao aplicar edição completa:", error);
+      toast.error("Erro ao aplicar edição");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleRejectTagsetFromSuggestion = async (tagsetId: string) => {
     setIsProcessing(true);
     try {
@@ -395,6 +417,7 @@ export function TagsetManager() {
                 onAcceptSuggestion={handleAcceptSuggestion}
                 onRejectTagset={handleRejectTagsetFromSuggestion}
                 onEditManual={handleEdit}
+                onApplyFullEdit={handleApplyFullEdit}
               />
             </TabsContent>
 

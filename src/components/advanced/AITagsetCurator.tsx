@@ -100,6 +100,21 @@ export function AITagsetCurator({
   };
 
   const aplicarEdicao = () => {
+    // Validação frontend: consistência nivel/pai
+    if (editedNivel === 1 && editedPai) {
+      toast.error("Erro de Consistência", {
+        description: "Nível 1 não pode ter pai. Remova o pai ou altere o nível."
+      });
+      return;
+    }
+    
+    if (editedNivel > 1 && !editedPai) {
+      toast.error("Erro de Consistência", {
+        description: "Níveis 2-4 precisam de um tagset pai."
+      });
+      return;
+    }
+
     const exemplosArray = editedExemplos
       .split(",")
       .map(e => e.trim())
