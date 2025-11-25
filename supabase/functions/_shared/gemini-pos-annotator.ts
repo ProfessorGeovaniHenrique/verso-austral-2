@@ -8,8 +8,8 @@
 import type { AnnotatedToken } from './hybrid-pos-annotator.ts';
 import { createSupabaseClient } from './supabase.ts';
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const GEMINI_MODEL = 'google/gemini-2.5-flash';
 const GEMINI_TIMEOUT_MS = 15000; // 15s timeout
 
 interface GeminiPOSResponse {
@@ -264,26 +264,29 @@ async function annotateTokenWithGemini(
       };
     }
     
-    // ✅ CHAMAR GEMINI
+    // ✅ CHAMAR LOVABLE AI GATEWAY
+    console.log(`🔮 Lovable AI (Gemini Flash) - Anotando: "${token.palavra}"`);
+    
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      'https://ai.gateway.lovable.dev/v1/chat/completions',
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
         signal: controller.signal,
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `${GEMINI_POS_PROMPT}\n\npalavra="${token.palavra}"\ncontexto="${sentenceContext}"`
-            }]
-          }],
-          generationConfig: {
-            temperature: 0.1,
-            maxOutputTokens: 250,
-          }
+          model: GEMINI_MODEL,
+          messages: [
+            { role: 'system', content: GEMINI_POS_PROMPT },
+            { role: 'user', content: `palavra="${token.palavra}"\ncontexto="${sentenceContext}"` }
+          ],
+          temperature: 0.1,
+          max_tokens: 250,
         })
       }
     );
@@ -291,11 +294,22 @@ async function annotateTokenWithGemini(
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const errorText = await response.text();
+      
+      // Tratamento específico de erros Lovable AI
+      if (response.status === 429) {
+        console.warn(`⚠️ Rate limit Lovable AI excedido - token: ${token.palavra}`);
+      } else if (response.status === 402) {
+        console.error(`❌ Créditos Lovable AI esgotados - verifique Settings → Workspace → Usage`);
+      } else {
+        console.error(`❌ Lovable AI Gateway error: ${response.status}`, errorText);
+      }
+      
+      throw new Error(`Lovable AI error: ${response.status}`);
     }
     
     const data = await response.json();
-    const textResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const textResponse = data.choices?.[0]?.message?.content || '{}';
     
     // Parsear JSON (remover markdown se presente)
     const cleanedText = textResponse.replace(/```json\n?|```\n?/g, '').trim();
@@ -333,8 +347,8 @@ export async function annotateWithGemini(
   unknownTokens: AnnotatedToken[],
   fullText: string
 ): Promise<{ annotations: AnnotatedToken[]; metrics: { cachedHits: number; apiCalls: number; tokensInput: number; tokensOutput: number; latency: number } }> {
-  if (!GEMINI_API_KEY) {
-    console.warn('⚠️ GEMINI_API_KEY não configurado - pulando Layer 3');
+  if (!LOVABLE_API_KEY) {
+    console.warn('⚠️ LOVABLE_API_KEY não configurado - pulando Layer 3 (Gemini)');
     return {
       annotations: unknownTokens,
       metrics: { cachedHits: 0, apiCalls: 0, tokensInput: 0, tokensOutput: 0, latency: 0 }
