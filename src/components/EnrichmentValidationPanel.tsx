@@ -51,6 +51,65 @@ export function EnrichmentValidationPanel() {
     }
   };
 
+  const handleResetSong = async () => {
+    if (!testSongId) {
+      alert('Por favor, preencha o Song ID primeiro');
+      return;
+    }
+
+    const confirmReset = confirm(
+      '⚠️ Isso resetará COMPLETAMENTE a música e biografia do artista.\n\n' +
+      'Todos os dados de enrichment serão apagados:\n' +
+      '• Composer, Release Year, YouTube URL\n' +
+      '• Confidence Score → 0\n' +
+      '• Status → pending\n' +
+      '• Biografia do artista\n\n' +
+      'Confirmar reset?'
+    );
+
+    if (!confirmReset) return;
+
+    setIsRunning(true);
+    try {
+      // Reset song data
+      const { error: songError } = await supabase
+        .from('songs')
+        .update({
+          composer: null,
+          release_year: null,
+          youtube_url: null,
+          enrichment_source: null,
+          confidence_score: 0,
+          status: 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', testSongId);
+
+      if (songError) throw songError;
+
+      // Reset artist biography (se testArtistId estiver preenchido)
+      if (testArtistId) {
+        const { error: artistError } = await supabase
+          .from('artists')
+          .update({
+            biography: null,
+            biography_source: null,
+            biography_updated_at: null
+          })
+          .eq('id', testArtistId);
+
+        if (artistError) throw artistError;
+      }
+
+      alert('✅ Música resetada com sucesso!\n\nAgora você pode executar os testes novamente.');
+    } catch (error) {
+      console.error('Error resetting song:', error);
+      alert(`❌ Erro ao resetar música: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsRunning(false);
+    }
+  };
+
   const handleRunTests = async () => {
     if (!testSongId || !testArtistId) {
       alert('Por favor, preencha ambos os IDs');
@@ -158,6 +217,16 @@ export function EnrichmentValidationPanel() {
           >
             <RefreshCw className="mr-2 h-4 w-4" />
             🔍 Auto-detectar IDs de Teste
+          </Button>
+
+          <Button 
+            onClick={handleResetSong} 
+            disabled={isRunning || !testSongId}
+            variant="destructive"
+            className="w-full"
+          >
+            <RefreshCw className="mr-2 h-4 w-4" />
+            🔄 Reset Música para Testes
           </Button>
 
           <div className="grid grid-cols-2 gap-4">
@@ -279,7 +348,9 @@ export function EnrichmentValidationPanel() {
         </CardHeader>
         <CardContent className="space-y-2 text-xs text-muted-foreground">
           <p>1. <strong>Quick Check:</strong> Verifica estado geral do enrichment sem modificar dados</p>
-          <p>2. <strong>Full Suite:</strong> Executa 4 testes que chamam edge functions e verificam persistência:</p>
+          <p>2. <strong>Auto-detectar IDs:</strong> Busca automaticamente uma música pendente</p>
+          <p>3. <strong>Reset Música:</strong> Apaga todos os dados de enrichment da música selecionada (útil para testes repetidos)</p>
+          <p>4. <strong>Full Suite:</strong> Executa 4 testes que chamam edge functions e verificam persistência:</p>
           <ul className="list-disc list-inside ml-4 space-y-1">
             <li>Test 1: Metadata enrichment (composer, year) + database persistence</li>
             <li>Test 2: YouTube enrichment + URL persistence</li>
