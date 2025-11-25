@@ -73,12 +73,15 @@ export function TagsetManager() {
       return;
     }
 
+    const reason = window.prompt('Justificativa da rejeição (opcional):');
+    if (reason === null) return; // User cancelled
+
     setIsProcessing(true);
     try {
-      await rejectTagsets(selectedIds);
+      await rejectTagsets(selectedIds, reason || undefined);
       setSelectedIds([]);
       await refetch();
-      toast.success(`${selectedIds.length} tagset(s) rejeitados`);
+      toast.success(`${selectedIds.length} tagset(s) rejeitado(s)`);
     } catch (err) {
       console.error('Erro ao rejeitar:', err);
     } finally {
@@ -100,9 +103,12 @@ export function TagsetManager() {
   };
 
   const handleRejectOne = async (id: string) => {
+    const reason = window.prompt('Justificativa da rejeição (opcional):');
+    if (reason === null) return; // User cancelled
+
     setIsProcessing(true);
     try {
-      await rejectTagsets([id]);
+      await rejectTagsets([id], reason || undefined);
       await refetch();
       toast.success('Tagset rejeitado');
     } catch (err) {
@@ -169,9 +175,12 @@ export function TagsetManager() {
   };
 
   const handleRejectTagsetFromSuggestion = async (tagsetId: string) => {
+    const reason = window.prompt('Justificativa da rejeição (opcional):');
+    if (reason === null) return; // User cancelled
+
     setIsProcessing(true);
     try {
-      await rejectTagsets([tagsetId]);
+      await rejectTagsets([tagsetId], reason || undefined);
       await refetch();
       toast.info("Tagset rejeitado");
     } catch (error) {

@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { Plus, X, Loader2 } from 'lucide-react';
 import { useTagsets } from '@/hooks/useTagsets';
 import { toast } from 'sonner';
+import { validateNivelAndPai } from '@/lib/tagsetValidation';
 
 const editTagsetSchema = z.object({
   nome: z.string().min(3, 'Nome deve ter no mínimo 3 caracteres'),
@@ -146,19 +147,15 @@ export function EditTagsetDialog({
 
     setIsSubmitting(true);
     try {
-      // Validações de negócio
-      if (data.nivel_profundidade > 1 && !data.categoria_pai) {
-        toast.error('Tagsets de nível 2-4 devem ter um pai');
-        setIsSubmitting(false); // 🔥 CORREÇÃO 2: Liberar loading state
+      // Usar validação centralizada
+      const validation = validateNivelAndPai(data.nivel_profundidade, data.categoria_pai);
+      if (!validation.valid) {
+        toast.error(validation.error);
+        setIsSubmitting(false);
         return;
       }
 
-      if (data.nivel_profundidade === 1 && data.categoria_pai) {
-        toast.warning('Tagsets de nível 1 não podem ter pai. Removendo pai...');
-        data.categoria_pai = undefined;
-      }
-
-      // 🔥 CORREÇÃO 3: Garantir envio correto de NULL para categoria_pai
+      // Garantir envio correto de NULL para categoria_pai
       const categoriaPaiValue = data.nivel_profundidade === 1 
         ? null 
         : (data.categoria_pai?.trim() || null);
@@ -169,6 +166,7 @@ export function EditTagsetDialog({
         exemplos: (data.exemplos || []).map(e => e.value),
         nivel_profundidade: data.nivel_profundidade,
         categoria_pai: categoriaPaiValue,
+        tagset_pai: categoriaPaiValue, // Sincronizar
       });
 
       toast.success('Domínio semântico atualizado com sucesso!');

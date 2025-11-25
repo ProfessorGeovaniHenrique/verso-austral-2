@@ -30,6 +30,7 @@ export interface Tagset {
   codigo_nivel_2: string | null;
   codigo_nivel_3: string | null;
   codigo_nivel_4: string | null;
+  rejection_reason: string | null;
 }
 
 export function useTagsets() {
@@ -119,12 +120,15 @@ export function useTagsets() {
     }
   };
 
-  const rejectTagsets = async (tagsetIds: string[]) => {
+  const rejectTagsets = async (tagsetIds: string[], rejectionReason?: string) => {
     try {
       await retrySupabaseOperation(async () => {
         const { error } = await supabase
           .from('semantic_tagset')
-          .update({ status: 'rejeitado' })
+          .update({ 
+            status: 'rejeitado',
+            rejection_reason: rejectionReason || null
+          })
           .in('id', tagsetIds);
 
         if (error) throw error;
@@ -145,9 +149,16 @@ export function useTagsets() {
   const updateTagset = async (tagsetId: string, updates: Partial<Tagset>) => {
     try {
       await retrySupabaseOperation(async () => {
+        // Sincronizar tagset_pai e categoria_pai
+        const syncedUpdates = {
+          ...updates,
+          tagset_pai: updates.categoria_pai ?? updates.tagset_pai ?? updates.tagset_pai,
+          categoria_pai: updates.tagset_pai ?? updates.categoria_pai ?? updates.categoria_pai,
+        };
+        
         const { error } = await supabase
           .from('semantic_tagset')
-          .update(updates)
+          .update(syncedUpdates)
           .eq('id', tagsetId);
 
         if (error) throw error;

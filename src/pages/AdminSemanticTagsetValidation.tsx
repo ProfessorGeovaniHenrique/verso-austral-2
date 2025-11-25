@@ -830,6 +830,7 @@ export default function AdminSemanticTagsetValidation() {
             codigo_nivel_2: null,
             codigo_nivel_3: null,
             codigo_nivel_4: null,
+            rejection_reason: null,
             tagsets_filhos: []
           }))}
           onSave={handleCreateTagset}

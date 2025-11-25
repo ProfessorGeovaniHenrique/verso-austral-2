@@ -2009,6 +2009,7 @@ export type Database = {
           id: string
           nivel_profundidade: number | null
           nome: string
+          rejection_reason: string | null
           status: string
           tagset_pai: string | null
           tagsets_filhos: string[] | null
@@ -2031,6 +2032,7 @@ export type Database = {
           id?: string
           nivel_profundidade?: number | null
           nome: string
+          rejection_reason?: string | null
           status?: string
           tagset_pai?: string | null
           tagsets_filhos?: string[] | null
@@ -2053,6 +2055,7 @@ export type Database = {
           id?: string
           nivel_profundidade?: number | null
           nome?: string
+          rejection_reason?: string | null
           status?: string
           tagset_pai?: string | null
           tagsets_filhos?: string[] | null

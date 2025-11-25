@@ -11,6 +11,7 @@ import { Copy, RotateCcw, CheckCircle2, Sparkles } from "lucide-react";
 import { INSIGNIAS_OPTIONS, type InsigniaCultural } from "@/data/types/cultural-insignia.types";
 import { toast } from "sonner";
 import { MultiSelectInsignias } from "@/components/ui/multi-select-insignias";
+import { validateNivelAndPai } from "@/lib/tagsetValidation";
 
 interface Tagset {
   id: string;
@@ -100,17 +101,11 @@ export function AITagsetCurator({
   };
 
   const aplicarEdicao = () => {
-    // Validação frontend: consistência nivel/pai
-    if (editedNivel === 1 && editedPai) {
+    // Usar validação centralizada
+    const validation = validateNivelAndPai(editedNivel, editedPai);
+    if (!validation.valid) {
       toast.error("Erro de Consistência", {
-        description: "Nível 1 não pode ter pai. Remova o pai ou altere o nível."
-      });
-      return;
-    }
-    
-    if (editedNivel > 1 && !editedPai) {
-      toast.error("Erro de Consistência", {
-        description: "Níveis 2-4 precisam de um tagset pai."
+        description: validation.error
       });
       return;
     }
