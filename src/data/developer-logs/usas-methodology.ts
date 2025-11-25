@@ -59,7 +59,24 @@ export interface USASPipeline {
 export interface VersoAustralProposal {
   systemName: string;
   targetDomain: string;
+  architectureType: string;
   technologicalAdvantages: string[];
+  dualLayerSystem: {
+    overview: string;
+    layer1_semanticDomain: {
+      name: string;
+      purpose: string;
+      scope: string;
+      benefits: string[];
+    };
+    layer2_culturalInsignia: {
+      name: string;
+      purpose: string;
+      scope: string;
+      benefits: string[];
+    };
+    synergy: string[];
+  };
   optimizedPipeline: {
     phases: {
       id: string;
@@ -82,11 +99,30 @@ export interface VersoAustralProposal {
     improvement: string;
     technology: string;
   }>;
+  insigniaAttributionSystem: {
+    overview: string;
+    primaryInsigniaRules: Array<{
+      rule: string;
+      source: string;
+      confidence: string;
+    }>;
+    secondaryInsigniaRules: Array<{
+      rule: string;
+      source: string;
+      confidence: string;
+    }>;
+    geminiInference: {
+      when: string;
+      prompt: string;
+      validation: string;
+    };
+  };
   expectedMetrics: {
     targetAccuracy: number;
     targetCoverage: number;
     costPerSong: string;
     processingSpeed: string;
+    insigniaAccuracy: number;
   };
   architecturalDecisions: Array<{
     decision: string;
@@ -99,7 +135,13 @@ export interface VersoAustralProposal {
     duration: string;
     deliverables: string[];
     dependencies: string[];
+    detailedSteps?: string[];
   }[];
+  scalabilityPlan: {
+    regionalExpansion: string[];
+    generalLanguageSupport: string;
+    literaryWorksAdaptation: string;
+  };
 }
 
 // ===================================
@@ -458,42 +500,93 @@ export const usasSystem: USASPipeline = {
 // =========================================
 
 export const versoAustralProposal: VersoAustralProposal = {
-  systemName: "Anotador Semântico Híbrido Gauchesco (ASHG)",
-  targetDomain: "Corpus de Música Gaúcha (35,000+ letras de música)",
+  systemName: "Anotador Semântico Dual-Layer Verso Austral (ASDVA)",
+  targetDomain: "Corpus cultural brasileiro escalável (inicial: 35k+ músicas gaúchas; expansão: literatura, outros regionalismos)",
+  architectureType: "Dual-Layer System: Semantic Domain (universal) + Cultural Insignia (contextual)",
   
   technologicalAdvantages: [
-    "LLMs multimodais (Gemini 2.5 Pro) para zero-shot semantic classification",
+    "LLMs multimodais (Gemini 2.5 Pro/Flash) para zero-shot semantic classification",
     "Embeddings contextuais (text-embedding-005) para similarity search",
     "Vector databases (pgvector) para nearest-neighbor lookups",
     "Edge functions serverless para processamento escalável",
     "Caching inteligente (semantic_disambiguation_cache) para reduzir custos de API",
-    "Feedback loop humano integrado para continuous learning"
+    "Feedback loop humano integrado para continuous learning",
+    "Sinergia com dialectal_lexicon existente (106k entradas regionalistas)",
+    "Sistema de insígnias culturais para escalabilidade multi-regional"
   ],
+
+  dualLayerSystem: {
+    overview: `Arquitetura que separa significado semântico funcional (DS) de identidade cultural/regional (Insígnia).
+    Permite comparabilidade estatística entre corpora de diferentes regiões mantendo granularidade cultural.`,
+    
+    layer1_semanticDomain: {
+      name: "Camada 1: Domínio Semântico Universal (DS)",
+      purpose: "Classificar palavras em categorias semânticas generalizáveis e comparáveis entre corpora",
+      scope: "18 domínios principais (adaptados do USAS) aplicáveis a qualquer corpus lusófono",
+      benefits: [
+        "Comparabilidade estatística: 'Equipamentos de Montaria' comparável entre RS, MT, Nordeste",
+        "Escalabilidade: mesma taxonomia serve para música, literatura, jornalismo",
+        "Análise cross-cultural: identificar temas universais (Natureza, Amor, Morte) vs. específicos",
+        "Base para log-likelihood: domínios universais permitem análise de keywords entre corpora"
+      ]
+    },
+    
+    layer2_culturalInsignia: {
+      name: "Camada 2: Insígnia Cultural (IC)",
+      purpose: "Marcar identidade regional/cultural de palavras SEM alterar seu DS funcional",
+      scope: "Insígnias: Gaúcho, Nordestino, Platino, Indígena, Alemão, Italiano, etc.",
+      benefits: [
+        "Granularidade cultural: 'xergão' é DS=Equipamentos (universal) + IC=Gaúcho (específico)",
+        "Comparação semântica preservada: corpus nordestino também tem Equipamentos, mas com nomes diferentes",
+        "Multi-insignia support: 'chimarrão' pode ser IC=[Gaúcho, Platino] simultaneamente",
+        "Escalabilidade trivial: adicionar novo regionalismo = criar nova insígnia (não reestruturar DS)"
+      ]
+    },
+    
+    synergy: [
+      "dialectal_lexicon fornece insígnias primárias (origem_regionalista: ['Gaúcho', 'Platino'])",
+      "corpus_type (artist/corpus separation) atribui insígnia contextual automaticamente",
+      "Gemini infere insígnias secundárias via contextos_culturais quando dialectal_lexicon não contém",
+      "Feedback loop: validações humanas refinam regras de atribuição de insígnias"
+    ]
+  },
 
   optimizedPipeline: {
     phases: [
       {
-        id: "phase-1-lexicon",
-        name: "Fase 1: Léxico Semântico Gauchesco",
-        description: "Construir léxico adaptado para música gaúcha com ~15,000 palavras",
+        id: "phase-1-lexicon-universal",
+        name: "Fase 1: Léxico Semântico Universal + Sistema de Insígnias",
+        description: "Construir taxonomia DS universal (~18 domínios) + sistema de insígnias culturais escalável",
         components: [
           {
-            name: "Taxonomia Adaptada USAS→Gaúcha",
-            technology: "Mapeamento manual de 21 categorias USAS para contexto regional",
-            purpose: "Adaptar categorias genéricas (ex: S3.2 'Relationships') para contexto gaúcho ('Prenda', 'Patrão', 'Peão')",
-            improvement: "Cobertura 40% maior de termos regionais vs. USAS original"
+            name: "Taxonomia DS Universal (18 Domínios)",
+            technology: "Adaptação USAS para língua portuguesa universal (não específica regional)",
+            purpose: "Criar categorias semânticas generalizáveis: Natureza, Objetos & Artefatos, Ações Humanas, Sentimentos, etc.",
+            improvement: "100% comparável entre corpora de diferentes regiões"
           },
           {
-            name: "Bootstrapping via Dialectal Lexicon",
-            technology: "União de 3 fontes: Nunes (27k), UFRGS (19k), Gutenberg (60k)",
-            purpose: "Reutilizar léxicos dialetais existentes como base inicial",
-            improvement: "0→15,000 palavras anotadas sem trabalho manual"
+            name: "Sistema de Insígnias Culturais",
+            technology: "Enum InsigniaCultural + regras de atribuição baseadas em dialectal_lexicon",
+            purpose: "Marcar identidade regional (Gaúcho, Nordestino, Platino, etc.) SEM alterar DS",
+            improvement: "Escalabilidade trivial para novos regionalismos (adicionar insígnia vs. reestruturar DS)"
           },
           {
-            name: "AI-Driven Expansion",
-            technology: "Gemini 2.5 Flash para classificação automática de palavras sem tag",
-            purpose: "Preencher gaps do léxico via zero-shot classification",
-            improvement: "Reduz trabalho manual de 200h para 10h"
+            name: "Sinergia com Dialectal Lexicon",
+            technology: "106k entradas com origem_regionalista + influencia_platina + contextos_culturais",
+            purpose: "Reutilizar dados existentes para atribuição automática de insígnias",
+            improvement: "Zero trabalho manual para 70%+ das palavras regionais"
+          },
+          {
+            name: "Bootstrapping DS via Corpus Analysis",
+            technology: "Log-Likelihood analysis + Gemini Flash classification",
+            purpose: "Anotar palavras gerais do português (não-dialetais) automaticamente",
+            improvement: "Cobertura de língua geral (30k palavras) em 2 semanas vs. 6 meses manual"
+          },
+          {
+            name: "AI-Driven Expansion Bilateral",
+            technology: "Gemini 2.5 Flash para DS classification + Gemini 2.5 Pro para insignia inference",
+            purpose: "Classificar DS e inferir insígnias simultaneamente em single API call",
+            improvement: "Reduz API calls em 50% vs. pipeline sequencial"
           }
         ],
         estimatedTime: "2 semanas",
@@ -501,9 +594,9 @@ export const versoAustralProposal: VersoAustralProposal = {
       },
       
       {
-        id: "phase-2-disambiguation",
-        name: "Fase 2: Pipeline de Desambiguação Inteligente",
-        description: "Implementar 7 métodos de desambiguação modernizados",
+        id: "phase-2-disambiguation-ds",
+        name: "Fase 2: Pipeline de Desambiguação de DS (Camada 1)",
+        description: "Implementar 7 métodos de desambiguação para atribuição de Domínio Semântico Universal",
         components: [
           {
             name: "POS Tagging com spaCy",
@@ -553,8 +646,48 @@ export const versoAustralProposal: VersoAustralProposal = {
       },
       
       {
-        id: "phase-3-optimization",
-        name: "Fase 3: Otimização de Performance e Custos",
+        id: "phase-3-insignia-attribution",
+        name: "Fase 3: Sistema de Atribuição de Insígnias Culturais (Camada 2)",
+        description: "Implementar pipeline de atribuição de insígnias baseado em regras + AI inference",
+        components: [
+          {
+            name: "Primary Insignia Rules",
+            technology: "Lookup direto em dialectal_lexicon.origem_regionalista",
+            purpose: "Atribuir insígnia primária baseada em fonte lexicográfica confiável",
+            improvement: "Cobertura de 70% das palavras regionais com 95%+ confidence"
+          },
+          {
+            name: "Secondary Insignia Rules",
+            technology: "Análise de influencia_platina + contextos_culturais do dialectal_lexicon",
+            purpose: "Detectar insígnias secundárias (ex: 'chimarrão' = [Gaúcho, Platino])",
+            improvement: "Multi-insignia support aumenta riqueza da análise cultural"
+          },
+          {
+            name: "Corpus-Type Auto-Attribution",
+            technology: "Regra simples: se corpus_type='gaucho' → adiciona IC='Gaúcho' automaticamente",
+            purpose: "Atribuir insígnia contextual baseada na separação de corpora",
+            improvement: "100% das palavras recebem pelo menos 1 insígnia contextual"
+          },
+          {
+            name: "Gemini Cultural Inference",
+            technology: "Gemini 2.5 Flash com prompt especializado em cultural markers",
+            purpose: "Inferir insígnias para palavras não presentes no dialectal_lexicon",
+            improvement: "Cobertura 95%+ incluindo neologismos e gírias recentes"
+          },
+          {
+            name: "Validation Dashboard para Insígnias",
+            technology: "Interface admin para validar/corrigir insígnias atribuídas",
+            purpose: "Feedback loop para refinar regras e prompts Gemini",
+            improvement: "Convergência para 98% accuracy após 1000 validações"
+          }
+        ],
+        estimatedTime: "1 semana",
+        priority: "high"
+      },
+      
+      {
+        id: "phase-4-optimization",
+        name: "Fase 4: Otimização de Performance e Custos",
         description: "Caching, batch processing, vector search",
         components: [
           {
@@ -634,16 +767,107 @@ export const versoAustralProposal: VersoAustralProposal = {
     }
   ],
 
+  insigniaAttributionSystem: {
+    overview: `Sistema de 3 camadas para atribuição de insígnias culturais:
+    1. Regras determinísticas (dialectal_lexicon lookup) - 70% cobertura, 95% confidence
+    2. Regras contextuais (corpus_type, influencia_platina) - 100% cobertura, 80% confidence
+    3. AI inference (Gemini Flash) - 95% cobertura, 85% confidence para palavras não catalogadas`,
+    
+    primaryInsigniaRules: [
+      {
+        rule: "Se palavra existe em dialectal_lexicon E origem_regionalista=['Gaúcho'] → IC primária = 'Gaúcho'",
+        source: "dialectal_lexicon.origem_regionalista (106k entradas)",
+        confidence: "95% (fonte lexicográfica confiável)"
+      },
+      {
+        rule: "Se dialectal_lexicon.tipo_dicionario='nunes' OU 'ufrgs' → IC primária = 'Gaúcho'",
+        source: "Metadados do dicionário fonte",
+        confidence: "90% (Nunes e UFRGS são dicionários gauchescos)"
+      },
+      {
+        rule: "Se palavra NÃO existe em dialectal_lexicon E corpus_type='gaucho' → IC contextual = 'Gaúcho'",
+        source: "Tipo do corpus (artist/corpus metadata)",
+        confidence: "70% (contextual, pode ser palavra geral usada em contexto gaúcho)"
+      }
+    ],
+    
+    secondaryInsigniaRules: [
+      {
+        rule: "Se dialectal_lexicon.influencia_platina=true → adiciona IC secundária = 'Platino'",
+        source: "dialectal_lexicon.influencia_platina (campo boolean)",
+        confidence: "85% (baseado em análise etimológica)"
+      },
+      {
+        rule: "Se termos_espanhol array não vazio → adiciona IC secundária = 'Platino'",
+        source: "dialectal_lexicon.termos_espanhol[] (palavras emprestadas/cognatas)",
+        confidence: "80% (indica influência rio-platense)"
+      },
+      {
+        rule: "Se contextos_culturais contém 'imigração italiana/alemã' → adiciona IC = 'Italiano'/'Alemão'",
+        source: "dialectal_lexicon.contextos_culturais (JSON rich data)",
+        confidence: "75% (baseado em contexto histórico)"
+      }
+    ],
+    
+    geminiInference: {
+      when: "Palavra NÃO encontrada em dialectal_lexicon OU insígnias das regras têm confidence < 70%",
+      prompt: `Analise a palavra "{palavra}" no contexto da música gaúcha brasileira.
+      
+Definição: {definição se disponível}
+Contexto cultural: {contextos_culturais se disponível}
+Domínio Semântico: {DS já atribuído}
+
+Retorne um array JSON com as insígnias culturais aplicáveis:
+["Gaúcho", "Platino", "Indígena", "Alemão", "Italiano", "Nordestino", "Geral"]
+
+Critérios:
+- "Gaúcho": específico da cultura gaúcha (mate, galpão, bombacha)
+- "Platino": influência rio-platense/uruguaia (chimarrão, che, pulperia)
+- "Indígena": origem tupi-guarani (capim, taquara)
+- "Alemão/Italiano": imigração europeia (schimia, polenta)
+- "Nordestino": específico do nordeste (forró, baião)
+- "Geral": português geral sem marca regional forte
+
+Retorne apenas o array JSON, nada mais.`,
+      validation: "Validar que insígnias retornadas estão no enum InsigniaCultural. Se insígnia inválida, descartar."
+    }
+  },
+
   expectedMetrics: {
     targetAccuracy: 0.94,
     targetCoverage: 0.95,
     costPerSong: "< $0.01 (com cache 85% hit rate)",
-    processingSpeed: "< 5 segundos por música (~200 palavras)"
+    processingSpeed: "< 5 segundos por música (~200 palavras)",
+    insigniaAccuracy: 0.92
   },
 
   architecturalDecisions: [
     {
-      decision: "LLM-First vs Rule-First Disambiguation",
+      decision: "Dual-Layer Architecture: DS Universal + Insígnias Culturais",
+      rationale: `Separar significado funcional (DS) de identidade cultural (IC) permite:
+      1. Comparabilidade estatística entre corpora regionais (mesmo DS, diferentes ICs)
+      2. Escalabilidade trivial para novos regionalismos (adicionar IC sem reestruturar DS)
+      3. Análise cross-cultural rica (identificar temas universais vs. específicos)
+      4. Suporte a língua geral (palavras sem IC forte recebem IC='Geral')`,
+      tradeoff: "Complexidade aumentada (2 pipelines vs. 1), mas ganho em escalabilidade e comparabilidade compensa largamente"
+    },
+    {
+      decision: "Sinergia com Dialectal Lexicon vs. Criar Novo Léxico",
+      rationale: "dialectal_lexicon já contém 106k entradas com metadados ricos (origem_regionalista, influencia_platina, contextos_culturais). Reutilizar esses dados para atribuição automática de insígnias elimina 200h+ de trabalho manual",
+      tradeoff: "Dependência de qualidade do dialectal_lexicon, mas validação humana já aplicada (95% das entradas revisadas)"
+    },
+    {
+      decision: "Insígnias via Enum vs. Taxonomia Hierárquica",
+      rationale: "Insígnias são flat (não hierárquicas): 'Gaúcho' ≠ 'Gaúcho → Sul → Brasil'. Permite atribuição múltipla simples ('chimarrão' = [Gaúcho, Platino]) sem conflitos hierárquicos",
+      tradeoff: "Menos expressivo que hierarquia completa, mas suficiente para análise cultural e muito mais simples de implementar"
+    },
+    {
+      decision: "Corpus-Type como Insígnia Contextual Automática",
+      rationale: "Todo corpus está segregado por região (artist.corpus_id → corpora.normalized_name = 'gaucho'). Usar essa informação para atribuir IC contextual automaticamente",
+      tradeoff: "Pode gerar false positives (palavra geral em corpus gaúcho recebe IC='Gaúcho'), mas validação humana corrige isso"
+    },
+    {
+      decision: "LLM-First vs Rule-First Disambiguation (DS)",
       rationale: "Priorizar regras baratas para casos conhecidos (20%), usar LLM apenas para ambiguidade real (80%)",
       tradeoff: "Regras são frágeis mas rápidas; LLM é robusto mas caro. Híbrido otimiza custo-benefício."
     },
@@ -667,50 +891,91 @@ export const versoAustralProposal: VersoAustralProposal = {
   implementationRoadmap: [
     {
       sprint: 1,
-      name: "Léxico Semântico Foundation",
-      duration: "2 semanas",
+      name: "Schema Dual-Layer: DS Universal + Insígnias",
+      duration: "1 semana",
       deliverables: [
-        "Tabela semantic_tagset_gaucho (taxonomia adaptada)",
-        "Migração de 15k palavras dos léxicos dialetais",
-        "Edge function: semantic-lookup (busca básica)",
-        "Dashboard de visualização do léxico"
+        "Migração: adicionar insignias_culturais TEXT[] em annotated_corpus",
+        "Migração: adicionar insignias_culturais TEXT[] em semantic_lexicon",
+        "Atualizar cultural-insignia.types.ts com novas insígnias (Alemão, Italiano, Indígena)",
+        "Documentação: guia de taxonomia DS universal (18 domínios)",
+        "Documentação: critérios de atribuição de insígnias"
       ],
-      dependencies: ["Supabase pgvector extension", "dialectal_lexicon populated"]
+      dependencies: ["dialectal_lexicon populated (106k entradas)"],
+      detailedSteps: [
+        "1. Executar migration adicionando insignias_culturais column com default []",
+        "2. Criar índice GIN em insignias_culturais para queries eficientes",
+        "3. Atualizar InsigniaCultural enum com novas insígnias (total: 7-10 insígnias)",
+        "4. Documentar cada DS universal com exemplos multi-regionais",
+        "5. Criar exemplos de palavras com DS+IC (ex: 'xergão' = DS:Equipamentos + IC:[Gaúcho, Platino])"
+      ]
     },
     {
       sprint: 2,
-      name: "MWE Templates Gaúchos",
-      duration: "1 semana",
+      name: "Pipeline DS: POS + Likelihood + MWE",
+      duration: "2 semanas",
       deliverables: [
-        "Tabela gaucho_mwe_templates (~5k expressões)",
-        "Edge function: mwe-resolver (matching + similarity)",
-        "Interface de criação de templates (admin)"
+        "Integrar spaCy pt_core_news_lg para POS tagging",
+        "Edge function: pos-tagger (wrapper para spaCy)",
+        "Implementar Likelihood Ranking automático (baseado em freq corpus)",
+        "Edge function: mwe-resolver (templates + similarity embeddings)",
+        "Tabela mwe_templates (5k expressões gaúchas + templates slots)",
+        "Testes unitários para cada método"
       ],
-      dependencies: ["Sprint 1 completo", "text-embedding-005 configurado"]
+      dependencies: ["Sprint 1 completo"],
+      detailedSteps: [
+        "1. Instalar spaCy via npm package (ou via Python microservice se necessário)",
+        "2. Criar edge function pos-tagger que recebe texto e retorna tokens com POS tags",
+        "3. Calcular likelihood rankings via SQL: freq(palavra, DS) / freq(palavra total)",
+        "4. Extrair MWE templates do corpus via análise de coocorrência (n-grams)",
+        "5. Implementar matching longest-first + similarity fallback (cosine > 0.85)",
+        "6. Criar unit tests com exemplos gaúchos ('mate amargo', 'tropa desgarrada')"
+      ]
     },
     {
       sprint: 3,
-      name: "AI-Powered Disambiguation",
+      name: "AI-Powered DS Disambiguation + Insignia Inference",
       duration: "2 semanas",
       deliverables: [
-        "Edge function: domain-detector (Gemini Flash)",
-        "Edge function: zero-shot-disambiguator (Gemini Pro)",
-        "Tabela semantic_disambiguation_cache",
-        "Sistema de confidence scoring"
+        "Edge function: domain-detector (Gemini Flash para DS)",
+        "Edge function: insignia-inferencer (Gemini Flash para IC)",
+        "Edge function: zero-shot-disambiguator-dual (DS + IC simultâneo)",
+        "Tabela semantic_disambiguation_cache (DS + IC results)",
+        "Sistema de confidence scoring bilateral (DS confidence + IC confidence)",
+        "Prompt engineering para cultural markers detection"
       ],
-      dependencies: ["Sprint 1 completo", "Lovable AI Gateway configurado"]
+      dependencies: ["Sprint 2 completo", "Lovable AI Gateway configurado"],
+      detailedSteps: [
+        "1. Criar prompt Gemini para DS classification (retorna código DS + confidence)",
+        "2. Criar prompt Gemini para IC inference (retorna array insígnias + confidence)",
+        "3. Implementar edge function que chama ambos em single request (otimização)",
+        "4. Cache estrutura: (palavra, contexto_hash) → {ds_codigo, ds_confidence, insignias[], ic_confidence}",
+        "5. Implementar fallback rules: se Gemini falhar, usar regras determinísticas",
+        "6. Testes com 100 palavras conhecidas para calibrar prompts"
+      ]
     },
     {
       sprint: 4,
-      name: "Validation Dashboard & Feedback Loop",
-      duration: "1 semana",
+      name: "Validation Dashboard Dual-Layer & Feedback Loop",
+      duration: "1.5 semanas",
       deliverables: [
-        "Interface de validação humana de anotações",
-        "Sistema de feedback para atualizar likelihood rankings",
-        "Métricas de concordância inter-anotadores (Kappa)",
-        "Exportação de corpus anotado (CSV/XML)"
+        "Interface de validação dual-layer (separar DS vs IC validation)",
+        "Tabela human_validations_insignias (armazenar correções de insígnias)",
+        "Sistema de feedback para atualizar likelihood rankings (DS)",
+        "Sistema de feedback para refinar regras de insígnias (IC)",
+        "Métricas de concordância inter-anotadores (Kappa para DS e IC separadamente)",
+        "Dashboard de qualidade: Precision/Recall DS, Accuracy IC, Coverage global",
+        "Exportação de corpus anotado dual-layer (CSV/JSON/XML)"
       ],
-      dependencies: ["Sprint 3 completo", "Corpus anotado inicial"]
+      dependencies: ["Sprint 3 completo", "Corpus anotado inicial (500 músicas gold standard)"],
+      detailedSteps: [
+        "1. Criar interface com 2 seções: validação DS (esquerda) + validação IC (direita)",
+        "2. Permitir correção independente: alterar DS sem alterar IC e vice-versa",
+        "3. Implementar justificativa obrigatória para correções (audit trail)",
+        "4. Auto-update: ao corrigir DS de 'saudade', atualizar likelihood ranking de 'saudade'",
+        "5. Auto-update: ao corrigir IC de 'chimarrão', adicionar exemplo em regra de inferência",
+        "6. Calcular Kappa entre 2 anotadores humanos (gold standard validation)",
+        "7. Exportar corpus com colunas: palavra | lema | DS | IC[] | confidence_DS | confidence_IC"
+      ]
     },
     {
       sprint: 5,
@@ -718,13 +983,60 @@ export const versoAustralProposal: VersoAustralProposal = {
       duration: "1 semana",
       deliverables: [
         "Batch processing edge function (50 músicas simultâneas)",
-        "Vector search para palavras similares (OOV handling)",
+        "Vector search para palavras similares (OOV handling para DS)",
         "Cost optimization (cache hit rate 85%+)",
-        "Performance monitoring (< 5s por música)"
+        "Performance monitoring (< 5s por música)",
+        "Otimização de queries: índices GIN para insignias_culturais",
+        "Compression de embeddings (1536 dims → 384 dims se necessário)"
       ],
       dependencies: ["Sprints 1-4 completos"]
+    },
+    {
+      sprint: 6,
+      name: "Escalabilidade Multi-Regional & Literatura",
+      duration: "2 semanas",
+      deliverables: [
+        "Suporte a corpus_type='nordestino' (novo regionalismo)",
+        "Adicionar insígnias: Nordestino, Amazônico, Caipira, Carioca",
+        "Adaptar pipeline para obras literárias (prosa vs. música)",
+        "Edge function: literary-analyzer (detecção de narrador, diálogos, descrições)",
+        "Dashboard comparativo: análise cross-regional (Gaúcho vs. Nordestino)",
+        "API pública: POST /annotate com suporte a custom corpus_type"
+      ],
+      dependencies: ["Sprint 5 completo", "Corpus nordestino test (500 músicas)"],
+      detailedSteps: [
+        "1. Adicionar enum values: NORDESTINO, AMAZONICO, CAIPIRA, CARIOCA",
+        "2. Criar regras de atribuição: corpus_type='nordestino' → IC='Nordestino'",
+        "3. Expandir dialectal_lexicon com termos nordestinos (forró, baião, etc.)",
+        "4. Para literatura: detectar discurso direto (diálogos) vs. narração",
+        "5. Adaptar MWE templates para expressões literárias (não apenas música)",
+        "6. Implementar análise comparativa: gerar relatório 'DS distribution: Gaúcho vs. Nordestino'",
+        "7. Testar pipeline completo com corpus nordestino (validação cross-regional)"
+      ]
     }
-  ]
+  ],
+
+  scalabilityPlan: {
+    regionalExpansion: [
+      "Fase 1 (MVP): Gaúcho (35k músicas) - ATUAL",
+      "Fase 2: Nordestino (música sertaneja, forró, baião) - adicionar IC=Nordestino",
+      "Fase 3: Platino (música uruguaia, argentina) - adicionar IC=Platino explícito",
+      "Fase 4: Indígena (música de povos originários) - adicionar IC=Indígena",
+      "Fase 5: Caipira/Sertanejo (centro-oeste, sudeste) - adicionar IC=Caipira",
+      "Fase 6: Multi-regional analysis (comparar 5 regionalismos simultaneamente)"
+    ],
+    generalLanguageSupport: `Pipeline já suporta língua geral portuguesa por design:
+    - DS Universal não tem bias regional (Natureza, Objetos, Ações são universais)
+    - Palavras gerais recebem IC='Geral' (ou nenhuma IC se não há marca regional)
+    - Exemplo: 'casa' = DS:Habitação + IC:Geral vs. 'galpão' = DS:Habitação + IC:Gaúcho`,
+    literaryWorksAdaptation: `Adaptações necessárias para processar literatura:
+    1. Detecção de discurso direto (diálogos) vs. narração
+    2. MWE literários (não apenas expressões orais/musicais)
+    3. Tratamento de personagens (names vs. common nouns)
+    4. Análise de registro linguístico (formal vs. coloquial)
+    5. Prosódia semântica mais rica (ironia, sarcasmo em narrativas)
+    Estimativa: +2 semanas para adaptar pipeline literário após Sprint 6`
+  }
 };
 
 // ===================================
