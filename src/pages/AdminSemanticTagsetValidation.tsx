@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine, Edit, Sparkles, XCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, Clock, Search, Filter, RefreshCw, TreePine, Edit, Sparkles, XCircle, GitMerge } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,7 @@ import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantCha
 import { ValidatedTagsetsHierarchy } from '@/components/admin/ValidatedTagsetsHierarchy';
 import { RejectedTagsetsList } from '@/components/admin/RejectedTagsetsList';
 import { TagsetCreator } from '@/components/advanced/TagsetCreator';
+import { TagsetMergeAnalysisDashboard } from '@/components/admin/TagsetMergeAnalysisDashboard';
 import { POSAnnotatorTest } from '@/components/admin/POSAnnotatorTest';
 import { SpacyHealthDashboard } from '@/components/admin/SpacyHealthDashboard';
 import { GeminiPOSMonitoring } from '@/components/admin/GeminiPOSMonitoring';
@@ -473,6 +474,10 @@ export default function AdminSemanticTagsetValidation() {
               <TreePine className="h-4 w-4" />
               Hierarquia
             </TabsTrigger>
+            <TabsTrigger value="merge" className="flex items-center gap-2">
+              <GitMerge className="h-4 w-4" />
+              Mesclagem
+            </TabsTrigger>
             <TabsTrigger value="pos-test" className="flex items-center gap-2">
               🧪 Teste POS
             </TabsTrigger>
@@ -761,6 +766,13 @@ export default function AdminSemanticTagsetValidation() {
 
           <TabsContent value="hierarchy" className="mt-6">
             <SemanticHierarchyView />
+          </TabsContent>
+
+          <TabsContent value="merge" className="mt-6">
+            <TagsetMergeAnalysisDashboard 
+              tagsets={tagsets as any}
+              onMergeApplied={fetchTagsets}
+            />
           </TabsContent>
 
           <TabsContent value="pos-test" className="space-y-4">
