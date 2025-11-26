@@ -2,28 +2,29 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Download } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { loadFullTextCorpus } from "@/lib/fullTextParser";
-import { CorpusType } from "@/data/types/corpus-tools.types";
 import { analyzeCohesion } from "@/services/cohesionAnalysisService";
 import { CohesionProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function CohesionAnalysisTool() {
-  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
+  const { loadedCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<CohesionProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleAnalyze = async () => {
+    if (!loadedCorpus) {
+      toast.error("Nenhum corpus selecionado");
+      return;
+    }
+
     try {
       setIsAnalyzing(true);
-      toast.info("Carregando corpus...");
-      
-      const corpus = await loadFullTextCorpus(selectedCorpus);
-      
       toast.info("Analisando elementos de coesão...");
-      const cohesionProfile = analyzeCohesion(corpus);
+      
+      const cohesionProfile = analyzeCohesion(loadedCorpus);
       setProfile(cohesionProfile);
       
       toast.success("Análise de coesão concluída!");
@@ -51,7 +52,7 @@ export function CohesionAnalysisTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `coesao_${selectedCorpus}.csv`;
+    a.download = `coesao_${loadedCorpus.tipo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -82,17 +83,7 @@ export function CohesionAnalysisTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
-                <SelectItem value="nordestino">Corpus Nordestino</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <UnifiedCorpusSelector />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>

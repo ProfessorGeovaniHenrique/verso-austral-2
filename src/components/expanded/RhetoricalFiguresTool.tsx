@@ -2,29 +2,30 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Download } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { loadFullTextCorpus } from "@/lib/fullTextParser";
-import { CorpusType } from "@/data/types/corpus-tools.types";
 import { detectRhetoricalFigures } from "@/services/rhetoricalAnalysisService";
 import { RhetoricalProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function RhetoricalFiguresTool() {
-  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
+  const { loadedCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<RhetoricalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const handleAnalyze = async () => {
+    if (!loadedCorpus) {
+      toast.error("Nenhum corpus selecionado");
+      return;
+    }
+
     try {
       setIsAnalyzing(true);
-      toast.info("Carregando corpus...");
-      
-      const corpus = await loadFullTextCorpus(selectedCorpus);
-      
       toast.info("Detectando figuras retóricas...");
-      const rhetoricalProfile = detectRhetoricalFigures(corpus);
+      
+      const rhetoricalProfile = detectRhetoricalFigures(loadedCorpus);
       setProfile(rhetoricalProfile);
       
       toast.success("Figuras retóricas identificadas!");
@@ -50,7 +51,7 @@ export function RhetoricalFiguresTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `figuras_retoricas_${selectedCorpus}.csv`;
+    a.download = `figuras_retoricas_${loadedCorpus.tipo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -73,17 +74,7 @@ export function RhetoricalFiguresTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
-                <SelectItem value="nordestino">Corpus Nordestino</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <UnifiedCorpusSelector />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>

@@ -259,14 +259,14 @@ export const versoAustralStylisticsRoadmap = {
     ]
   },
   phase2: {
-    name: "Ferramentas Avançadas (EM PROGRESSO)",
+    name: "Ferramentas Avançadas (COMPLETO)",
     duration: "2 semanas",
-    status: "in-progress",
+    status: "complete",
     deliverables: [
       "Speech & Thought Presentation Tool",
       "Mind Style Analyzer",
       "Foregrounding Detector",
-      "Integração com UnifiedCorpusSelector"
+      "Integração completa com UnifiedCorpusSelector em todas as ferramentas"
     ]
   },
   phase3: {

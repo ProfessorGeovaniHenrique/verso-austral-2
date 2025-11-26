@@ -2,32 +2,35 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Download } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { annotatePOSForCorpus } from "@/services/posAnnotationService";
-import { loadFullTextCorpus } from "@/lib/fullTextParser";
-import { CorpusType } from "@/data/types/corpus-tools.types";
 import { calculateSyntacticProfile } from "@/services/syntacticAnalysisService";
 import { SyntacticProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
+import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function SyntacticProfileTool() {
-  const [selectedCorpus, setSelectedCorpus] = useState<CorpusType>('gaucho');
+  const { loadedCorpus } = useSubcorpus();
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [profile, setProfile] = useState<SyntacticProfile | null>(null);
 
   const handleAnalyze = async () => {
+    if (!loadedCorpus) {
+      toast.error("Nenhum corpus selecionado");
+      return;
+    }
+
     try {
       setIsAnalyzing(true);
       setProgress(10);
-      toast.info("Carregando corpus...");
+      toast.info("Processando corpus...");
       
-      const corpus = await loadFullTextCorpus(selectedCorpus);
       setProgress(30);
       
       toast.info("Anotando corpus com POS tags...");
-      const annotatedCorpus = await annotatePOSForCorpus(corpus);
+      const annotatedCorpus = await annotatePOSForCorpus(loadedCorpus);
       setProgress(70);
       
       toast.info("Calculando perfil sintático...");
@@ -66,7 +69,7 @@ export function SyntacticProfileTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `perfil_sintatico_${selectedCorpus}.csv`;
+    a.download = `perfil_sintatico_${loadedCorpus.tipo}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -81,17 +84,7 @@ export function SyntacticProfileTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Select value={selectedCorpus} onValueChange={(value) => setSelectedCorpus(value as CorpusType)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gaucho">Corpus Gaúcho</SelectItem>
-                <SelectItem value="nordestino">Corpus Nordestino</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <UnifiedCorpusSelector />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>
