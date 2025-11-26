@@ -1774,6 +1774,60 @@ export type Database = {
           },
         ]
       }
+      semantic_annotation_jobs: {
+        Row: {
+          artist_id: string
+          artist_name: string
+          cached_words: number
+          created_at: string
+          erro_mensagem: string | null
+          id: string
+          metadata: Json | null
+          new_words: number
+          processed_words: number
+          status: string
+          tempo_fim: string | null
+          tempo_inicio: string
+          total_songs: number
+          total_words: number
+          updated_at: string
+        }
+        Insert: {
+          artist_id: string
+          artist_name: string
+          cached_words?: number
+          created_at?: string
+          erro_mensagem?: string | null
+          id?: string
+          metadata?: Json | null
+          new_words?: number
+          processed_words?: number
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string
+          total_songs?: number
+          total_words?: number
+          updated_at?: string
+        }
+        Update: {
+          artist_id?: string
+          artist_name?: string
+          cached_words?: number
+          created_at?: string
+          erro_mensagem?: string | null
+          id?: string
+          metadata?: Json | null
+          new_words?: number
+          processed_words?: number
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string
+          total_songs?: number
+          total_words?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       semantic_consultant_conversations: {
         Row: {
           context_snapshot: Json | null

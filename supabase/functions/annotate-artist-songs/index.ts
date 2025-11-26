@@ -27,7 +27,6 @@ serve(async (req) => {
 
   const requestId = crypto.randomUUID();
   const logger = createEdgeLogger('annotate-artist-songs', requestId);
-  const startTime = Date.now();
 
   try {
     const supabaseClient = createClient(
@@ -41,8 +40,6 @@ serve(async (req) => {
     if (!artistId && !artistName) {
       throw new Error('artistId ou artistName obrigatório');
     }
-
-    logger.info('Iniciando anotação por artista', { artistId, artistName });
 
     // 1️⃣ Buscar artista
     let artist;
@@ -81,16 +78,100 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
-          progress: { totalWords: 0, processedWords: 0, cachedWords: 0, newWords: 0, songs: 0 },
+          jobId: null,
           message: 'Nenhuma música com letra encontrada',
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    logger.info('Músicas carregadas', { count: songs.length });
+    // Calcular total de palavras
+    let totalWords = 0;
+    for (const song of songs) {
+      const words = tokenizeLyrics(song.lyrics);
+      totalWords += words.length;
+    }
 
-    // 3️⃣ Processar cada música
+    logger.info('Músicas carregadas', { count: songs.length, totalWords });
+
+    // 3️⃣ Criar job na tabela
+    const { data: job, error: jobError } = await supabaseClient
+      .from('semantic_annotation_jobs')
+      .insert({
+        artist_id: artist.id,
+        artist_name: artist.name,
+        status: 'iniciado',
+        total_songs: songs.length,
+        total_words: totalWords,
+        processed_words: 0,
+        cached_words: 0,
+        new_words: 0,
+      })
+      .select()
+      .single();
+
+    if (jobError || !job) {
+      throw new Error('Erro ao criar job: ' + jobError?.message);
+    }
+
+    logger.info('Job criado', { jobId: job.id });
+
+    // 4️⃣ Retornar job_id imediatamente
+    const response = new Response(
+      JSON.stringify({
+        success: true,
+        jobId: job.id,
+        artistId: artist.id,
+        artistName: artist.name,
+        totalSongs: songs.length,
+        totalWords,
+        message: 'Processamento iniciado em background'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+    // 5️⃣ Processar em background (não aguardar)
+    processAnnotationJob(supabaseClient, job.id, artist, songs, logger).catch(err => {
+      logger.error('Background processing failed', err);
+    });
+
+    return response;
+
+  } catch (error) {
+    const errorObj = error instanceof Error ? error : new Error(String(error));
+    logger.error('Erro ao iniciar job de anotação', errorObj);
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: errorObj.message,
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});
+
+/**
+ * Processar anotação em background
+ */
+async function processAnnotationJob(
+  supabase: any,
+  jobId: string,
+  artist: { id: string; name: string },
+  songs: any[],
+  logger: any
+) {
+  const startTime = Date.now();
+  
+  try {
+    // Atualizar status para 'processando'
+    await supabase
+      .from('semantic_annotation_jobs')
+      .update({ status: 'processando' })
+      .eq('id', jobId);
+
+    logger.info('Iniciando processamento de job', { jobId, artistName: artist.name });
+
     const progress: ProcessingProgress = {
       totalWords: 0,
       processedWords: 0,
@@ -100,92 +181,97 @@ serve(async (req) => {
     };
 
     for (const song of songs) {
-      // Tokenizar letra em palavras
       const words = tokenizeLyrics(song.lyrics);
       progress.totalWords += words.length;
 
-      // Processar cada palavra com contexto
       for (let i = 0; i < words.length; i++) {
         const palavra = words[i];
         const contextoEsquerdo = words.slice(Math.max(0, i - 5), i).join(' ');
         const contextoDireito = words.slice(i + 1, Math.min(words.length, i + 6)).join(' ');
 
-        // Verificar cache (com hash de contexto)
         const contextoHash = await hashContext(contextoEsquerdo, contextoDireito);
-        const cached = await checkCache(supabaseClient, palavra, contextoHash);
+        const cached = await checkCache(supabase, palavra, contextoHash);
 
         if (cached) {
           progress.cachedWords++;
           progress.processedWords++;
-          continue;
-        }
-
-        // Chamar annotate-semantic-domain
-        try {
-          const annotationResult = await callSemanticAnnotator(
-            palavra,
-            contextoEsquerdo,
-            contextoDireito
-          );
-
-          if (annotationResult.success) {
-            // Salvar com artist_id e song_id
-            await saveWithArtistSong(
-              supabaseClient,
+        } else {
+          try {
+            const annotationResult = await callSemanticAnnotator(
               palavra,
-              contextoHash,
-              annotationResult.result.tagset_codigo,
-              annotationResult.result.confianca,
-              annotationResult.result.fonte,
-              annotationResult.result.justificativa,
-              artist.id,
-              song.id
+              contextoEsquerdo,
+              contextoDireito
             );
 
-            progress.newWords++;
+            if (annotationResult.success) {
+              await saveWithArtistSong(
+                supabase,
+                palavra,
+                contextoHash,
+                annotationResult.result.tagset_codigo,
+                annotationResult.result.confianca,
+                annotationResult.result.fonte,
+                annotationResult.result.justificativa,
+                artist.id,
+                song.id
+              );
+
+              progress.newWords++;
+              progress.processedWords++;
+            }
+          } catch (error) {
+            logger.warn('Erro ao anotar palavra', { 
+              palavra, 
+              error: error instanceof Error ? error.message : String(error) 
+            });
             progress.processedWords++;
           }
-        } catch (error) {
-          logger.warn('Erro ao anotar palavra', { 
-            palavra, 
-            error: error instanceof Error ? error.message : String(error) 
-          });
-          progress.processedWords++;
+        }
+
+        // Atualizar progresso a cada 50 palavras
+        if (progress.processedWords % 50 === 0) {
+          await supabase
+            .from('semantic_annotation_jobs')
+            .update({
+              processed_words: progress.processedWords,
+              cached_words: progress.cachedWords,
+              new_words: progress.newWords,
+            })
+            .eq('id', jobId);
         }
       }
     }
 
+    // Job concluído
     const processingTime = Date.now() - startTime;
-    logger.info('Anotação de artista concluída', { 
-      artistName: artist.name, 
-      progress, 
-      processingTime 
-    });
+    await supabase
+      .from('semantic_annotation_jobs')
+      .update({
+        status: 'concluido',
+        processed_words: progress.processedWords,
+        cached_words: progress.cachedWords,
+        new_words: progress.newWords,
+        tempo_fim: new Date().toISOString(),
+        metadata: { processingTime }
+      })
+      .eq('id', jobId);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        progress,
-        processingTime,
-        artist: { id: artist.id, name: artist.name },
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    logger.info('Job concluído', { jobId, progress, processingTime });
 
   } catch (error) {
     const errorObj = error instanceof Error ? error : new Error(String(error));
-    logger.error('Erro na anotação de artista', errorObj);
+    logger.error('Erro no processamento do job', errorObj, { jobId });
 
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: errorObj.message,
-        processingTime: Date.now() - startTime,
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    await supabase
+      .from('semantic_annotation_jobs')
+      .update({
+        status: 'erro',
+        erro_mensagem: errorObj.message,
+        tempo_fim: new Date().toISOString(),
+      })
+      .eq('id', jobId);
   }
-});
+}
 
 /**
  * Tokenizar letra em palavras

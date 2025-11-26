@@ -285,11 +285,12 @@ function buildDomainsFromCache(cacheData: any[]): DominioSemantico[] {
 
 /**
  * Disparar anotação on-demand via edge function
+ * Retorna jobId para polling
  */
 async function triggerArtistAnnotation(
   artistName: string,
   onProgress?: (progress: { processedWords: number; totalWords: number; message: string }) => void
-): Promise<void> {
+): Promise<string> {
   try {
     const response = await supabase.functions.invoke('annotate-artist-songs', {
       body: { artistName }
@@ -299,21 +300,23 @@ async function triggerArtistAnnotation(
       throw new Error(response.error.message);
     }
 
-    const { progress } = response.data;
+    const { jobId, totalWords } = response.data;
     
-    if (onProgress && progress) {
+    if (!jobId) {
+      throw new Error('Job ID não retornado');
+    }
+
+    if (onProgress) {
       onProgress({
-        processedWords: progress.processedWords,
-        totalWords: progress.totalWords,
-        message: `${progress.newWords} novas palavras anotadas`
+        processedWords: 0,
+        totalWords: totalWords || 0,
+        message: `Job ${jobId} iniciado`
       });
     }
 
-    log.info('On-demand annotation completed', { 
-      artistName, 
-      totalWords: progress?.totalWords,
-      newWords: progress?.newWords 
-    });
+    log.info('Job created', { artistName, jobId, totalWords });
+    return jobId;
+    
   } catch (error) {
     log.error('Error triggering on-demand annotation', error as Error);
     throw error;

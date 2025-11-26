@@ -26,17 +26,17 @@ import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { getSemanticDomainsFromAnnotatedCorpus } from "@/services/semanticDomainsService";
 import { toast } from "sonner";
 import { createLogger } from "@/lib/loggerFactory";
+import { useSemanticAnnotationJob } from "@/hooks/useSemanticAnnotationJob";
 
 const log = createLogger('TabLexicalProfile');
 
 export function TabLexicalProfile() {
   const subcorpusContext = useSubcorpus();
+  const { job, isProcessing, progress, startJob } = useSemanticAnnotationJob();
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [studyProfile, setStudyProfile] = useState<LexicalProfile | null>(null);
   const [referenceProfile, setReferenceProfile] = useState<LexicalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [processingProgress, setProcessingProgress] = useState({ processedWords: 0, totalWords: 0, message: '' });
   const [studyDominios, setStudyDominios] = useState<DominioSemantico[]>([]);
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
 
@@ -47,24 +47,33 @@ export function TabLexicalProfile() {
     if (!crossSelection) return;
 
     setIsAnalyzing(true);
-    setIsProcessing(true);
     
     try {
-      // Buscar domínios semânticos reais do corpus de estudo
       const studyArtistFilter = crossSelection.study.mode === 'artist' 
         ? crossSelection.study.artist 
         : undefined;
+
+      // Se selecionar artista, disparar job e aguardar conclusão via polling
+      if (studyArtistFilter) {
+        toast.info(`Iniciando processamento de ${studyArtistFilter}...`);
+        const jobId = await startJob(studyArtistFilter);
+        
+        if (!jobId) {
+          throw new Error('Falha ao iniciar processamento');
+        }
+
+        // Aguardar conclusão do job (polling automático pelo hook)
+        toast.info('Processamento em andamento. Aguarde...');
+        return; // UI será atualizada automaticamente quando job concluir
+      }
       
+      // Buscar domínios semânticos do cache
       const studyDominiosData = await getSemanticDomainsFromAnnotatedCorpus(
         crossSelection.study.corpusType,
-        studyArtistFilter,
-        (progress) => {
-          setProcessingProgress(progress);
-        }
+        studyArtistFilter
       );
       
       setStudyDominios(studyDominiosData);
-      setIsProcessing(false);
 
       // Analyze study corpus
       const studyCorpusData = crossSelection.study.corpusType === 'gaucho' ? gauchoCorpus : nordestinoCorpus;
@@ -72,18 +81,14 @@ export function TabLexicalProfile() {
         const studyProfile = calculateLexicalProfile(studyCorpusData, studyDominiosData);
         setStudyProfile(studyProfile);
       } else if (studyDominiosData.length === 0) {
-        toast.error('Nenhum domínio semântico encontrado para o corpus de estudo. Execute a anotação semântica primeiro.');
+        toast.error('Nenhum domínio semântico encontrado. Execute a anotação primeiro.');
       }
 
       // Analyze reference corpus if comparative mode
       if (crossSelection.isComparative) {
-        const refArtistFilter = crossSelection.reference.mode === 'proportional-sample'
-          ? undefined
-          : undefined; // Referência sempre usa corpus completo
-
         const refDominiosData = await getSemanticDomainsFromAnnotatedCorpus(
           crossSelection.reference.corpusType,
-          refArtistFilter
+          undefined
         );
 
         setReferenceDominios(refDominiosData);
@@ -105,14 +110,21 @@ export function TabLexicalProfile() {
         }
       }
 
-      toast.success('Análise léxica concluída com dados reais do banco!');
+      toast.success('Análise léxica concluída!');
     } catch (error) {
       log.error('Error analyzing corpus', error as Error);
-      toast.error('Erro ao analisar corpus. Verifique se há dados anotados.');
+      toast.error('Erro ao analisar corpus.');
     } finally {
       setIsAnalyzing(false);
     }
   };
+
+  // Auto-analisar quando job concluir
+  useEffect(() => {
+    if (job?.status === 'concluido' && crossSelection) {
+      handleAnalyze();
+    }
+  }, [job?.status]);
 
   const handleExport = () => {
     if (!studyProfile) return;
@@ -206,7 +218,7 @@ export function TabLexicalProfile() {
         availableArtists={subcorpusContext.availableArtists}
       />
 
-      {isProcessing && (
+      {isProcessing && job && (
         <Card className="border-primary/50 bg-primary/5">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-3">
@@ -214,23 +226,21 @@ export function TabLexicalProfile() {
               <div className="flex-1">
                 <CardTitle className="text-lg">Processando Anotação Semântica</CardTitle>
                 <CardDescription className="mt-1">
-                  {processingProgress.message || 'Analisando palavras do artista...'}
+                  {job.artist_name} - {job.status === 'iniciado' ? 'Iniciando...' : 'Processando...'}
                 </CardDescription>
               </div>
+              <Badge variant="outline">
+                {job.processed_words} / {job.total_words} palavras
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Progress 
-                value={processingProgress.totalWords > 0 
-                  ? (processingProgress.processedWords / processingProgress.totalWords) * 100 
-                  : 0
-                } 
-                className="h-2"
-              />
-              <p className="text-sm text-muted-foreground text-center">
-                {processingProgress.processedWords} / {processingProgress.totalWords} palavras processadas
-              </p>
+              <Progress value={progress} className="h-2" />
+              <div className="flex justify-between text-sm text-muted-foreground">
+                <span>{job.new_words} novas | {job.cached_words} em cache</span>
+                <span>{progress.toFixed(1)}%</span>
+              </div>
             </div>
           </CardContent>
         </Card>
