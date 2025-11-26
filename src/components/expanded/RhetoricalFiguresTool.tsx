@@ -12,7 +12,8 @@ import { SignificanceIndicator } from "@/components/visualization/SignificanceIn
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function RhetoricalFiguresTool() {
-  const { loadedCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<RhetoricalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -80,7 +81,7 @@ export function RhetoricalFiguresTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">

@@ -16,7 +16,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8'];
 
 export function ForegroundingDetectorTool() {
-  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<ForegroundingProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -105,7 +106,7 @@ export function ForegroundingDetectorTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">

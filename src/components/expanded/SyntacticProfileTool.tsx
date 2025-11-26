@@ -13,7 +13,8 @@ import { SignificanceIndicator } from "@/components/visualization/SignificanceIn
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function SyntacticProfileTool() {
-  const { loadedCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -91,7 +92,7 @@ export function SyntacticProfileTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">

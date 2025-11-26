@@ -14,7 +14,8 @@ import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export function SpeechThoughtPresentationTool() {
-  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<SpeechThoughtProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -103,7 +104,7 @@ export function SpeechThoughtPresentationTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">

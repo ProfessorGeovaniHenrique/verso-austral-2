@@ -21,8 +21,10 @@ import { ComparisonRadarChart } from "@/components/visualization/ComparisonRadar
 import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { ProportionalSampleInfo } from "@/components/visualization/ProportionalSampleInfo";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function TabLexicalProfile() {
+  const subcorpusContext = useSubcorpus();
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [studyProfile, setStudyProfile] = useState<LexicalProfile | null>(null);
   const [referenceProfile, setReferenceProfile] = useState<LexicalProfile | null>(null);
@@ -152,7 +154,7 @@ export function TabLexicalProfile() {
         mode="study-only"
         showRatioControl={false}
         onSelectionChange={setCrossSelection}
-        availableArtists={[]}
+        availableArtists={subcorpusContext.availableArtists}
       />
 
       {crossSelection?.isComparative && validation && validation.warnings.length > 0 && (

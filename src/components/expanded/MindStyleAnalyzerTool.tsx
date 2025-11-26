@@ -15,7 +15,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
 export function MindStyleAnalyzerTool() {
-  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<MindStyleProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -101,7 +102,7 @@ export function MindStyleAnalyzerTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">

@@ -11,7 +11,8 @@ import { SignificanceIndicator } from "@/components/visualization/SignificanceIn
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function CohesionAnalysisTool() {
-  const { loadedCorpus } = useSubcorpus();
+  const subcorpusContext = useSubcorpus();
+  const { loadedCorpus } = subcorpusContext;
   const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<CohesionProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -89,7 +90,7 @@ export function CohesionAnalysisTool() {
             mode="study-only"
             showRatioControl={false}
             onSelectionChange={setCrossSelection}
-            availableArtists={[]}
+            availableArtists={subcorpusContext.availableArtists}
           />
 
           <div className="flex gap-2">
