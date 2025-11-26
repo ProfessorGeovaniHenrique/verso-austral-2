@@ -129,7 +129,11 @@ export function TagsetManager() {
   };
 
   const handleCreateTagset = async (newTagset: Partial<Tagset>) => {
-    await proposeTagset(newTagset as any);
+    const tagsetToCreate = {
+      ...newTagset,
+      status: 'proposto' as const,
+    };
+    await proposeTagset(tagsetToCreate as any);
     await refetch();
     setIsCreating(false);
   };

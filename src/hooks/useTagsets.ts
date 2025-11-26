@@ -58,11 +58,10 @@ export function useTagsets() {
         }
       });
     },
-    // ✅ CORREÇÃO #11: Cache estratégico para dados estáticos
-    staleTime: 30 * 60 * 1000, // 30 minutos
-    gcTime: 60 * 60 * 1000, // 1 hora
-    refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   const proposeTagset = async (tagset: Omit<Tagset, 'id' | 'criado_em' | 'aprovado_por' | 'aprovado_em' | 'validacoes_humanas'>) => {
@@ -75,7 +74,9 @@ export function useTagsets() {
             nome: tagset.nome,
             descricao: tagset.descricao,
             categoria_pai: tagset.categoria_pai,
-            status: tagset.status,
+            tagset_pai: tagset.categoria_pai,
+            nivel_profundidade: tagset.nivel_profundidade,
+            status: tagset.status || 'proposto',
             exemplos: tagset.exemplos,
             criado_por: tagset.criado_por
           });
@@ -149,11 +150,23 @@ export function useTagsets() {
   const updateTagset = async (tagsetId: string, updates: Partial<Tagset>) => {
     try {
       await retrySupabaseOperation(async () => {
-        // Sincronizar tagset_pai e categoria_pai
+        let categoriaPai = updates.categoria_pai ?? updates.tagset_pai;
+        const nivelProfundidade = updates.nivel_profundidade;
+        
+        // Se nível 1, forçar categoria_pai como null
+        if (nivelProfundidade === 1) {
+          categoriaPai = null;
+        }
+        
+        // Se nível 2+, garantir que categoria_pai está preenchido
+        if (nivelProfundidade && nivelProfundidade > 1 && !categoriaPai) {
+          throw new Error('Domínios de nível 2-4 precisam de categoria pai');
+        }
+
         const syncedUpdates = {
           ...updates,
-          tagset_pai: updates.categoria_pai ?? updates.tagset_pai ?? updates.tagset_pai,
-          categoria_pai: updates.tagset_pai ?? updates.categoria_pai ?? updates.categoria_pai,
+          tagset_pai: categoriaPai,
+          categoria_pai: categoriaPai,
         };
         
         const { error } = await supabase

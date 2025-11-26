@@ -16,7 +16,7 @@ const tagsetSchema = z.object({
     .trim()
     .min(1, 'Código é obrigatório')
     .max(20, 'Código deve ter no máximo 20 caracteres')
-    .regex(/^[0-9.]+$/, 'Código deve conter apenas números e pontos'),
+    .regex(/^[A-Z0-9.]+$/i, 'Código deve conter letras, números e pontos'),
   nome: z.string()
     .trim()
     .min(1, 'Nome é obrigatório')
@@ -166,7 +166,7 @@ export function TagsetCreator({ allTagsets, onSave, onClose, defaultLevel = 1 }:
         categoria_pai: validated.categoria_pai,
         descricao: validated.descricao,
         exemplos: validated.exemplos.length > 0 ? validated.exemplos : null,
-        status: 'pendente'
+        status: 'proposto'
       });
 
       onClose();

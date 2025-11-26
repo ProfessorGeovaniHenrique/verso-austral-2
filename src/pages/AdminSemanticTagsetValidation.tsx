@@ -219,6 +219,18 @@ export default function AdminSemanticTagsetValidation() {
 
   const handleDeleteRejected = async (tagset: SemanticTagset) => {
     try {
+      // Verificar se há filhos referenciando este código
+      const { data: children } = await supabase
+        .from('semantic_tagset')
+        .select('id')
+        .eq('categoria_pai', tagset.codigo)
+        .limit(1);
+      
+      if (children && children.length > 0) {
+        toast.error('Não é possível excluir: existem domínios filhos');
+        return;
+      }
+
       const { error } = await supabase
         .from('semantic_tagset')
         .delete()
@@ -230,7 +242,7 @@ export default function AdminSemanticTagsetValidation() {
       fetchTagsets();
     } catch (error: any) {
       log.error('Failed to delete rejected tagset', error, { tagsetId: tagset.id });
-      toast.error('Erro ao excluir domínio');
+      toast.error(`Erro ao excluir: ${error.message}`);
     }
   };
 
