@@ -7,7 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
+import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeForegrounding, exportForegroundingToCSV, ForegroundingProfile } from "@/services/foregroundingAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -16,6 +17,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export function ForegroundingDetectorTool() {
   const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<ForegroundingProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -99,7 +101,12 @@ export function ForegroundingDetectorTool() {
             </AlertDescription>
           </Alert>
 
-          <UnifiedCorpusSelector allowComparison={false} />
+          <CrossCorpusSelectorWithRatio
+            mode="study-only"
+            showRatioControl={false}
+            onSelectionChange={setCrossSelection}
+            availableArtists={[]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>

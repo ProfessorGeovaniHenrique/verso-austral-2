@@ -7,13 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
+import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeSpeechThoughtPresentation, exportSpeechThoughtToCSV, SpeechThoughtProfile } from "@/services/speechThoughtAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export function SpeechThoughtPresentationTool() {
   const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<SpeechThoughtProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -97,7 +99,12 @@ export function SpeechThoughtPresentationTool() {
             </AlertDescription>
           </Alert>
 
-          <UnifiedCorpusSelector allowComparison={false} />
+          <CrossCorpusSelectorWithRatio
+            mode="study-only"
+            showRatioControl={false}
+            onSelectionChange={setCrossSelection}
+            availableArtists={[]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>

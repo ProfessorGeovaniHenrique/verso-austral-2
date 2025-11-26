@@ -246,6 +246,32 @@ export const versoAustralStylisticsTools: StylisticsTool[] = [
   }
 ];
 
+export const crossCorpusMethodology = {
+  concept: "Análise Comparativa Cross-Corpus com Amostragem Proporcional",
+  theoreticalBasis: [
+    "Log-Likelihood Ratio para identificação de diferenças estatisticamente significativas",
+    "Normalização por milhão de palavras para comparabilidade entre corpora de tamanhos diferentes",
+    "Amostragem aleatória estratificada para balanceamento de tamanhos (Baker 2006)",
+    "Chi-square test para cálculo de p-value e significância estatística"
+  ],
+  proportionalSampling: {
+    purpose: "Permitir comparação estatisticamente válida entre corpora de tamanhos drasticamente diferentes",
+    method: "Amostragem aleatória por música até atingir tamanho alvo baseado em proporção definida pelo usuário",
+    ratios: [
+      { value: 1, label: "1x - Tamanho igual ao corpus de estudo (comparação 1:1)" },
+      { value: 3, label: "3x - 3 vezes maior (adequado para corpus médios)" },
+      { value: 5, label: "5x - 5 vezes maior (RECOMENDADO - padrão estatístico)" },
+      { value: 10, label: "10x - 10 vezes maior (para corpus muito pequenos)" }
+    ],
+    customRatio: "Usuário pode definir proporção personalizada (ex: 7.5x, 20x)"
+  },
+  implementation: "Integrado em todas as 7 ferramentas estilísticas via CrossCorpusSelectorWithRatio",
+  references: [
+    "BAKER, Paul. Using Corpora in Discourse Analysis. London: Continuum, 2006.",
+    "MCINTYRE, Dan; WALKER, Brian. Corpus Stylistics: Theory and Practice. Edinburgh University Press, 2019."
+  ]
+};
+
 export const versoAustralStylisticsRoadmap = {
   phase1: {
     name: "Ferramentas Base (COMPLETO)",
@@ -272,12 +298,14 @@ export const versoAustralStylisticsRoadmap = {
   phase3: {
     name: "Análise Comparativa Cross-Corpus",
     duration: "1 semana",
-    status: "planned",
+    status: "complete",
     deliverables: [
-      "Comparação estatística entre artistas",
-      "Identificação de keywords estilísticas",
-      "Gráficos radar comparativos",
-      "Relatórios automatizados"
+      "CrossCorpusSelectorWithRatio - seletor unificado com controle de proporção (1x, 3x, 5x, 10x)",
+      "proportionalSamplingService - amostragem aleatória proporcional com validação estatística",
+      "Integração em todas as 7 ferramentas estilísticas (Léxico, Sintático, Retórico, Coesão, Speech/Thought, Mind Style, Foregrounding)",
+      "ComparisonRadarChart - gráficos radar comparativos",
+      "SignificanceIndicator - badges de significância estatística (Chi-square test)",
+      "ProportionalSampleInfo - card informativo sobre amostragem aplicada"
     ]
   },
   phase4: {

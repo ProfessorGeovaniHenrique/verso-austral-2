@@ -7,11 +7,14 @@ import { calculateSyntacticProfile } from "@/services/syntacticAnalysisService";
 import { SyntacticProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
+import { ComparisonRadarChart } from "@/components/visualization/ComparisonRadarChart";
+import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function SyntacticProfileTool() {
   const { loadedCorpus } = useSubcorpus();
+  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [profile, setProfile] = useState<SyntacticProfile | null>(null);
@@ -84,7 +87,12 @@ export function SyntacticProfileTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <UnifiedCorpusSelector />
+          <CrossCorpusSelectorWithRatio
+            mode="study-only"
+            showRatioControl={false}
+            onSelectionChange={setCrossSelection}
+            availableArtists={[]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>

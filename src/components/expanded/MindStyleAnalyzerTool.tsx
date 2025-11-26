@@ -6,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
+import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeMindStyle, exportMindStyleToCSV, MindStyleProfile } from "@/services/mindStyleAnalysisService";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -15,6 +16,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export function MindStyleAnalyzerTool() {
   const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<MindStyleProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -95,7 +97,12 @@ export function MindStyleAnalyzerTool() {
             </AlertDescription>
           </Alert>
 
-          <UnifiedCorpusSelector allowComparison={false} />
+          <CrossCorpusSelectorWithRatio
+            mode="study-only"
+            showRatioControl={false}
+            onSelectionChange={setCrossSelection}
+            availableArtists={[]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>

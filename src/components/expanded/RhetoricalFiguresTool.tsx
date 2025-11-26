@@ -7,11 +7,13 @@ import { RhetoricalProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
+import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
+import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function RhetoricalFiguresTool() {
   const { loadedCorpus } = useSubcorpus();
+  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
   const [profile, setProfile] = useState<RhetoricalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -74,7 +76,12 @@ export function RhetoricalFiguresTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <UnifiedCorpusSelector />
+          <CrossCorpusSelectorWithRatio
+            mode="study-only"
+            showRatioControl={false}
+            onSelectionChange={setCrossSelection}
+            availableArtists={[]}
+          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>
