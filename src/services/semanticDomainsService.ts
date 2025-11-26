@@ -13,15 +13,43 @@ const log = createLogger('semanticDomainsService');
 
 /**
  * Busca domínios semânticos reais do corpus anotado
+ * Se cache vazio, dispara processamento on-demand
  */
 export async function getSemanticDomainsFromAnnotatedCorpus(
   corpusType: 'gaucho' | 'nordestino',
-  artistFilter?: string
+  artistFilter?: string,
+  onProgress?: (progress: { processedWords: number; totalWords: number; message: string }) => void
 ): Promise<DominioSemantico[]> {
   try {
     log.info('Fetching semantic domains from annotated corpus', { corpusType, artistFilter });
 
-    // Buscar corpus_id
+    // 🔍 FASE 1: Verificar cache primeiro (por artista se filtrado)
+    if (artistFilter) {
+      const cacheData = await fetchFromCacheByArtist(artistFilter);
+      
+      // Se cache tem dados suficientes (>50 palavras), usar
+      if (cacheData && cacheData.length > 50) {
+        log.info('Using cache data', { count: cacheData.length });
+        return buildDomainsFromCache(cacheData);
+      }
+
+      // Cache vazio ou insuficiente → processar on-demand
+      log.warn('Cache insufficient, triggering on-demand processing', { artistFilter });
+      
+      if (onProgress) {
+        onProgress({ processedWords: 0, totalWords: 0, message: `Processando ${artistFilter}...` });
+      }
+
+      await triggerArtistAnnotation(artistFilter, onProgress);
+
+      // Buscar novamente após processamento
+      const newCacheData = await fetchFromCacheByArtist(artistFilter);
+      if (newCacheData && newCacheData.length > 0) {
+        return buildDomainsFromCache(newCacheData);
+      }
+    }
+
+    // 🔍 FASE 2: Fallback - buscar de annotated_corpus (método original)
     const { data: corpus } = await supabase
       .from('corpora')
       .select('id, name')
@@ -174,6 +202,120 @@ export async function getSemanticDomainsFromAnnotatedCorpus(
 
   } catch (error) {
     log.error('Error fetching semantic domains', error as Error);
+    throw error;
+  }
+}
+
+/**
+ * Buscar dados do cache por artista
+ */
+async function fetchFromCacheByArtist(artistName: string): Promise<any[] | null> {
+  // Primeiro buscar artist_id
+  const { data: artist } = await supabase
+    .from('artists')
+    .select('id')
+    .ilike('name', `%${artistName}%`)
+    .single();
+
+  if (!artist) return null;
+
+  // Buscar palavras do cache deste artista
+  const { data, error } = await supabase
+    .from('semantic_disambiguation_cache')
+    .select('palavra, tagset_codigo, confianca')
+    .eq('artist_id', artist.id);
+
+  if (error || !data) return null;
+  return data;
+}
+
+/**
+ * Construir domínios a partir do cache
+ */
+function buildDomainsFromCache(cacheData: any[]): DominioSemantico[] {
+  const colorMap: Record<string, string> = {
+    'AB': '#9333EA', 'AP': '#10B981', 'CC': '#F59E0B', 'EL': '#EF4444',
+    'EQ': '#8B5CF6', 'MG': '#6B7280', 'NA': '#268BC8', 'NC': '#6B7280',
+    'OA': '#F97316', 'SB': '#EC4899', 'SE': '#8B5CF6', 'SH': '#24A65B', 'SP': '#EC4899'
+  };
+
+  // Agregar por domínio (usar tagset_codigo completo ou primeiros 2 chars)
+  const domainMap = new Map<string, {
+    palavras: string[];
+    ocorrencias: number;
+  }>();
+
+  cacheData.forEach(word => {
+    const domain = word.tagset_codigo.substring(0, 2); // N1
+    
+    if (!domainMap.has(domain)) {
+      domainMap.set(domain, { palavras: [], ocorrencias: 0 });
+    }
+
+    const data = domainMap.get(domain)!;
+    data.palavras.push(word.palavra);
+    data.ocorrencias++;
+  });
+
+  const totalOcorrencias = Array.from(domainMap.values())
+    .reduce((sum, d) => sum + d.ocorrencias, 0);
+
+  return Array.from(domainMap.entries())
+    .map(([codigo, data]) => {
+      const percentual = (data.ocorrencias / totalOcorrencias) * 100;
+      
+      return {
+        dominio: codigo,
+        cor: colorMap[codigo] || '#6B7280',
+        corTexto: colorMap[codigo] || '#6B7280',
+        palavras: [...new Set(data.palavras)],
+        palavrasComFrequencia: data.palavras.map(p => ({ palavra: p, ocorrencias: 1 })),
+        ocorrencias: data.ocorrencias,
+        percentual,
+        frequenciaNormalizada: percentual,
+        percentualTematico: percentual,
+        riquezaLexical: data.palavras.length / data.ocorrencias,
+        comparacaoCorpus: 'equilibrado' as const,
+        diferencaCorpus: 0,
+        percentualCorpusNE: 0
+      };
+    })
+    .sort((a, b) => b.ocorrencias - a.ocorrencias);
+}
+
+/**
+ * Disparar anotação on-demand via edge function
+ */
+async function triggerArtistAnnotation(
+  artistName: string,
+  onProgress?: (progress: { processedWords: number; totalWords: number; message: string }) => void
+): Promise<void> {
+  try {
+    const response = await supabase.functions.invoke('annotate-artist-songs', {
+      body: { artistName }
+    });
+
+    if (response.error) {
+      throw new Error(response.error.message);
+    }
+
+    const { progress } = response.data;
+    
+    if (onProgress && progress) {
+      onProgress({
+        processedWords: progress.processedWords,
+        totalWords: progress.totalWords,
+        message: `${progress.newWords} novas palavras anotadas`
+      });
+    }
+
+    log.info('On-demand annotation completed', { 
+      artistName, 
+      totalWords: progress?.totalWords,
+      newWords: progress?.newWords 
+    });
+  } catch (error) {
+    log.error('Error triggering on-demand annotation', error as Error);
     throw error;
   }
 }

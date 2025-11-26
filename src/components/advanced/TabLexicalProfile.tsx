@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { LexicalProfile } from "@/data/types/stylistic-analysis.types";
 import { DominioSemantico } from "@/data/types/corpus.types";
 import { 
@@ -34,6 +35,8 @@ export function TabLexicalProfile() {
   const [studyProfile, setStudyProfile] = useState<LexicalProfile | null>(null);
   const [referenceProfile, setReferenceProfile] = useState<LexicalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState({ processedWords: 0, totalWords: 0, message: '' });
   const [studyDominios, setStudyDominios] = useState<DominioSemantico[]>([]);
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
 
@@ -44,6 +47,7 @@ export function TabLexicalProfile() {
     if (!crossSelection) return;
 
     setIsAnalyzing(true);
+    setIsProcessing(true);
     
     try {
       // Buscar domínios semânticos reais do corpus de estudo
@@ -53,10 +57,14 @@ export function TabLexicalProfile() {
       
       const studyDominiosData = await getSemanticDomainsFromAnnotatedCorpus(
         crossSelection.study.corpusType,
-        studyArtistFilter
+        studyArtistFilter,
+        (progress) => {
+          setProcessingProgress(progress);
+        }
       );
       
       setStudyDominios(studyDominiosData);
+      setIsProcessing(false);
 
       // Analyze study corpus
       const studyCorpusData = crossSelection.study.corpusType === 'gaucho' ? gauchoCorpus : nordestinoCorpus;
@@ -197,6 +205,36 @@ export function TabLexicalProfile() {
         onSelectionChange={setCrossSelection}
         availableArtists={subcorpusContext.availableArtists}
       />
+
+      {isProcessing && (
+        <Card className="border-primary/50 bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <div className="flex-1">
+                <CardTitle className="text-lg">Processando Anotação Semântica</CardTitle>
+                <CardDescription className="mt-1">
+                  {processingProgress.message || 'Analisando palavras do artista...'}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Progress 
+                value={processingProgress.totalWords > 0 
+                  ? (processingProgress.processedWords / processingProgress.totalWords) * 100 
+                  : 0
+                } 
+                className="h-2"
+              />
+              <p className="text-sm text-muted-foreground text-center">
+                {processingProgress.processedWords} / {processingProgress.totalWords} palavras processadas
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {crossSelection?.isComparative && validation && validation.warnings.length > 0 && (
         <ProportionalSampleInfo

@@ -1809,6 +1809,7 @@ export type Database = {
       }
       semantic_disambiguation_cache: {
         Row: {
+          artist_id: string | null
           cached_at: string | null
           confianca: number | null
           contexto_hash: string
@@ -1820,9 +1821,11 @@ export type Database = {
           lema: string | null
           palavra: string
           pos: string | null
+          song_id: string | null
           tagset_codigo: string
         }
         Insert: {
+          artist_id?: string | null
           cached_at?: string | null
           confianca?: number | null
           contexto_hash: string
@@ -1834,9 +1837,11 @@ export type Database = {
           lema?: string | null
           palavra: string
           pos?: string | null
+          song_id?: string | null
           tagset_codigo: string
         }
         Update: {
+          artist_id?: string | null
           cached_at?: string | null
           confianca?: number | null
           contexto_hash?: string
@@ -1848,9 +1853,31 @@ export type Database = {
           lema?: string | null
           palavra?: string
           pos?: string | null
+          song_id?: string | null
           tagset_codigo?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "semantic_disambiguation_cache_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_stats_mv"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "semantic_disambiguation_cache_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "semantic_disambiguation_cache_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "semantic_disambiguation_cache_tagset_codigo_fkey"
             columns: ["tagset_codigo"]

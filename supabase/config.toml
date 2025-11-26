@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.assign-cultural-insignias]
 verify_jwt = false
+
+[functions.annotate-artist-songs]
+verify_jwt = false
