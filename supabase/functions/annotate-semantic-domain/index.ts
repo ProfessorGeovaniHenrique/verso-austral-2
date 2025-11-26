@@ -1,7 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
 import { createEdgeLogger } from "../_shared/unified-logger.ts";
-import { getLexiconRule } from "../_shared/semantic-rules-lexicon.ts";
+import { getLexiconRule, GUTENBERG_POS_TO_DOMAIN } from "../_shared/semantic-rules-lexicon.ts";
+import { propagateSemanticDomain, inheritDomainFromSynonyms } from "../_shared/synonym-propagation.ts";
+import { getGutenbergPOS } from "../_shared/gutenberg-pos-lookup.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -80,10 +82,47 @@ serve(async (req) => {
         justificativa: lexiconRule.justificativa,
       });
 
+      // 🔄 FASE 2: Propagar domínio para sinônimos
+      try {
+        const propagationResult = await propagateSemanticDomain(
+          palavra,
+          lexiconRule.tagset_codigo,
+          lexiconRule.confianca
+        );
+        logger.info('Synonym propagation', { 
+          palavra, 
+          propagated: propagationResult.propagated,
+          synonyms: propagationResult.synonyms.length 
+        });
+      } catch (error) {
+        logger.warn('Erro na propagação de sinônimos', { error: error instanceof Error ? error.message : String(error) });
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
           result: lexiconRule,
+          processingTime: Date.now() - startTime,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2.5️⃣ FASE 2: Tentar herdar domínio de sinônimos
+    const inheritedDomain = await inheritDomainFromSynonyms(palavra);
+    if (inheritedDomain) {
+      logger.info('Domain inherited from synonym', { 
+        palavra, 
+        tagset: inheritedDomain.tagset_codigo,
+        synonymSource: inheritedDomain.synonymSource 
+      });
+      
+      await saveToCache(supabaseClient, palavra, contextoHash, lema, pos, inheritedDomain);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          result: inheritedDomain,
           processingTime: Date.now() - startTime,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -97,6 +136,21 @@ serve(async (req) => {
       
       await saveToCache(supabaseClient, palavra, contextoHash, lema, pos, ruleBasedResult);
 
+      // 🔄 FASE 2: Propagar domínio para sinônimos
+      try {
+        const propagationResult = await propagateSemanticDomain(
+          palavra,
+          ruleBasedResult.tagset_codigo,
+          ruleBasedResult.confianca
+        );
+        logger.info('Synonym propagation', { 
+          palavra, 
+          propagated: propagationResult.propagated 
+        });
+      } catch (error) {
+        logger.warn('Erro na propagação de sinônimos', { error: error instanceof Error ? error.message : String(error) });
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -105,6 +159,38 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // 3.5️⃣ FASE 3: Tentar mapear via classe gramatical do Gutenberg
+    const gutenbergPOS = await getGutenbergPOS(palavra);
+    if (gutenbergPOS) {
+      const gutenbergMapping = GUTENBERG_POS_TO_DOMAIN[gutenbergPOS.pos];
+      
+      if (gutenbergMapping) {
+        logger.info('Gutenberg grammatical class mapped', { 
+          palavra, 
+          pos: gutenbergPOS.pos,
+          tagset: gutenbergMapping.codigo 
+        });
+        
+        const gutenbergResult: SemanticDomainResult = {
+          tagset_codigo: gutenbergMapping.codigo,
+          confianca: gutenbergMapping.confianca,
+          fonte: 'rule_based',
+          justificativa: `Mapeado via classe gramatical Gutenberg: ${gutenbergPOS.pos} → ${gutenbergMapping.codigo}`,
+        };
+
+        await saveToCache(supabaseClient, palavra, contextoHash, lema, pos, gutenbergResult);
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            result: gutenbergResult,
+            processingTime: Date.now() - startTime,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // 4️⃣ Chamar Gemini Flash via Lovable AI Gateway
@@ -123,6 +209,21 @@ serve(async (req) => {
 
     // 5️⃣ Salvar resultado no cache
     await saveToCache(supabaseClient, palavra, contextoHash, lema, pos, geminiResult);
+
+    // 🔄 FASE 2: Propagar domínio para sinônimos
+    try {
+      const propagationResult = await propagateSemanticDomain(
+        palavra,
+        geminiResult.tagset_codigo,
+        geminiResult.confianca
+      );
+      logger.info('Synonym propagation after Gemini', { 
+        palavra, 
+        propagated: propagationResult.propagated 
+      });
+    } catch (error) {
+      logger.warn('Erro na propagação de sinônimos', { error: error instanceof Error ? error.message : String(error) });
+    }
 
     logger.info('Anotação semântica concluída', {
       palavra,

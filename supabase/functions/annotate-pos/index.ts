@@ -11,6 +11,7 @@ import { annotateWithVAGrammar, calculateVAGrammarCoverage } from "../_shared/hy
 import { annotateWithSpacy, checkSpacyHealth } from '../_shared/spacy-annotator.ts';
 import { annotateWithGemini } from '../_shared/gemini-pos-annotator.ts';
 import { getCacheStatistics } from "../_shared/pos-annotation-cache.ts";
+import { getGutenbergPOS } from "../_shared/gutenberg-pos-lookup.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,7 @@ interface POSToken {
   posDetalhada: string;
   features: Record<string, string>;
   posicao: number;
-  source?: string;
+  source?: 'va_grammar' | 'spacy' | 'gemini' | 'cache' | 'gutenberg';
   confianca?: number;
 }
 
@@ -247,6 +248,54 @@ Deno.serve(withInstrumentation('annotate-pos', async (req) => {
       
       const spacyCovered = spacyAnnotations.filter(t => t.pos !== 'UNKNOWN').length;
       console.log(`✅ Layer 2 (spaCy): ${spacyCovered}/${unknownTokens.length} tokens cobertos (${layer2Time}ms)`);
+    }
+
+     // Layer 2.5: Gutenberg para unknowns remanescentes (FASE 1)
+    let layer25Time = 0;
+    const stillUnknownAfterSpacy = annotations.filter(t => t.pos === 'UNKNOWN');
+    
+    if (stillUnknownAfterSpacy.length > 0) {
+      console.log(`📚 Layer 2.5 (Gutenberg): processando ${stillUnknownAfterSpacy.length} tokens...`);
+      const startLayer25 = Date.now();
+      
+      const gutenbergPromises = stillUnknownAfterSpacy.map(async (token): Promise<POSToken> => {
+        const gutenbergPOS = await getGutenbergPOS(token.palavra);
+        
+        if (gutenbergPOS) {
+          return {
+            palavra: token.palavra,
+            lema: gutenbergPOS.lema,
+            pos: gutenbergPOS.pos,
+            posDetalhada: gutenbergPOS.posDetalhada,
+            features: {},
+            posicao: token.posicao,
+            source: 'gutenberg',
+            confianca: gutenbergPOS.confianca,
+          };
+        }
+        
+        return token;
+      });
+
+      const gutenbergResults = await Promise.all(gutenbergPromises);
+      
+      // Mesclar resultados Gutenberg com annotations
+      const gutenbergMap = new Map(gutenbergResults.map(t => [t.palavra, t]));
+      annotations = annotations.map(t => {
+        const gutenbergToken = gutenbergMap.get(t.palavra);
+        if (gutenbergToken) {
+          return {
+            ...gutenbergToken,
+            source: gutenbergToken.source || 'gutenberg' as const,
+            confianca: gutenbergToken.confianca || 0.92,
+          };
+        }
+        return t;
+      });
+
+      layer25Time = Date.now() - startLayer25;
+      const gutenbergCovered = gutenbergResults.filter(t => t.pos !== 'UNKNOWN').length;
+      console.log(`✅ Layer 2.5 (Gutenberg): ${gutenbergCovered}/${stillUnknownAfterSpacy.length} tokens cobertos (${layer25Time}ms)`);
     }
     
     // Layer 3: Gemini Flash para casos remanescentes

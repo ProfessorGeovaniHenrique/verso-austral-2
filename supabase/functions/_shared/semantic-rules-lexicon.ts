@@ -53,6 +53,29 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'politica': { codigo: 'SP', nome: 'Sociedade' },
 };
 
+/**
+ * FASE 3: Mapeamento de Classes Gramaticais Gutenberg → Domínios
+ * Usado como fallback quando palavra não encontrada em outros métodos
+ */
+export const GUTENBERG_POS_TO_DOMAIN: Record<string, { codigo: string; confianca: number }> = {
+  // Interjeições → Sentimentos
+  '_interj._': { codigo: 'SE', confianca: 0.90 },
+  
+  // Locuções adverbiais → Estruturas/Lugares (ex: "em casa", "no campo")
+  '_loc. adv._': { codigo: 'EL', confianca: 0.75 },
+  
+  // Prefixos e Sufixos → Marcadores Gramaticais
+  '_pref._': { codigo: 'MG', confianca: 0.98 },
+  '_suf._': { codigo: 'MG', confianca: 0.98 },
+  
+  // Locuções prepositivas → Marcadores Gramaticais
+  '_loc. prep._': { codigo: 'MG', confianca: 0.95 },
+  
+  // Conjunções → Marcadores Gramaticais
+  '_conj._': { codigo: 'MG', confianca: 0.98 },
+  '_conj. subord._': { codigo: 'MG', confianca: 0.98 },
+};
+
 let lexiconRulesCache: Map<string, LexiconRule> | null = null;
 let cacheLoadedAt: number | null = null;
 const CACHE_TTL_MS = 1000 * 60 * 60; // 1 hora
