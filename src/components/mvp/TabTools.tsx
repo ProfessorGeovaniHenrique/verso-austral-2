@@ -2,12 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Wrench, Sparkles, Database, HelpCircle, ChevronRight, ChevronDown, Menu } from "lucide-react";
 import { ToolsProvider, useTools } from "@/contexts/ToolsContext";
-import { UnifiedCorpusSelector } from "@/components/corpus/UnifiedCorpusSelector";
-import { WordlistTool } from "./tools/WordlistTool";
-import { KeywordsTool } from "./tools/KeywordsTool";
-import { KWICTool } from "./tools/KWICTool";
-import { DispersionTool } from "./tools/DispersionTool";
-import { NGramsTool } from "./tools/NGramsTool";
 import { AdvancedAnalysisTab } from "./tools/AdvancedAnalysisTab";
 import { useAnalytics } from '@/hooks/useAnalytics';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
@@ -20,14 +14,6 @@ import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-// Static constant to prevent re-creation on every render
-const BASIC_TOOLS = [
-  { id: 'wordlist', label: 'Word List', icon: Database },
-  { id: 'keywords', label: 'Keywords', icon: Sparkles },
-  { id: 'kwic', label: 'KWIC', icon: Database },
-  { id: 'dispersion', label: 'Dispersão', icon: Database },
-  { id: 'ngrams', label: 'N-grams', icon: Database },
-] as const;
 
 // Sidebar Menu Component
 function ToolsSidebarMenu({ 
@@ -43,11 +29,6 @@ function ToolsSidebarMenu({
   const [isAvancadasOpen, setIsAvancadasOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(externalIsCollapsed);
 
-  // Memoize allowComparison to prevent unnecessary re-renders of UnifiedCorpusSelector
-  const allowComparison = useMemo(
-    () => activeTab === 'keywords',
-    [activeTab]
-  );
 
   const handleToolChange = (toolId: string) => {
     setActiveTab(toolId);
@@ -74,64 +55,7 @@ function ToolsSidebarMenu({
 
       <ScrollArea className="flex-1">
         <div className="p-2 space-y-2">
-          {/* Corpus Section - Always visible */}
-          <div className="mb-4">
-            {!isCollapsed && (
-              <UnifiedCorpusSelector 
-                allowComparison={allowComparison} 
-                layout="vertical"
-              />
-            )}
-            {isCollapsed && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-center"
-                title="Corpus"
-              >
-                <Database className="w-4 h-4" />
-              </Button>
-            )}
-          </div>
 
-          {/* Ferramentas Básicas */}
-          <Collapsible open={isBasicasOpen} onOpenChange={setIsBasicasOpen}>
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className="w-full justify-start"
-                size="sm"
-              >
-                <ChevronDown className={cn("w-4 h-4 mr-2 transition-transform", !isBasicasOpen && "-rotate-90")} />
-                {!isCollapsed && (
-                  <>
-                    <Wrench className="w-4 h-4 mr-2" />
-                    <span>Básicas</span>
-                  </>
-                )}
-                {isCollapsed && <Wrench className="w-4 h-4" />}
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-1 mt-1">
-              {BASIC_TOOLS.map((tool) => (
-                <Button
-                  key={tool.id}
-                  variant={activeTab === tool.id ? 'secondary' : 'ghost'}
-                  className={cn(
-                    "w-full justify-start",
-                    activeTab === tool.id && "bg-primary/10 text-primary font-medium"
-                  )}
-                  size="sm"
-                  onClick={() => handleToolChange(tool.id)}
-                  data-tool={tool.id}
-                  data-tour={`tool-menu-${tool.id}`}
-                >
-                  <tool.icon className="w-4 h-4 mr-2" />
-                  {!isCollapsed && <span>{tool.label}</span>}
-                </Button>
-              ))}
-            </CollapsibleContent>
-          </Collapsible>
 
           {/* Análise Avançada */}
           <Collapsible open={isAvancadasOpen} onOpenChange={setIsAvancadasOpen}>
@@ -179,33 +103,13 @@ function HelpPanel() {
   const [isOpen, setIsOpen] = useState(true);
 
   const helpContent: Record<string, { title: string; description: string }> = {
-    wordlist: {
-      title: 'Word List',
-      description: 'Gera uma lista de todas as palavras do corpus com suas frequências absolutas e relativas, permitindo análise estatística do vocabulário.',
-    },
-    keywords: {
-      title: 'Keywords',
-      description: 'Compara dois corpora para identificar palavras estatisticamente mais frequentes em um corpus em relação ao outro, revelando características distintivas.',
-    },
-    kwic: {
-      title: 'KWIC',
-      description: 'Key Word in Context mostra todas as ocorrências de uma palavra com seu contexto à esquerda e à direita, facilitando análise de padrões de uso.',
-    },
-    dispersion: {
-      title: 'Dispersão',
-      description: 'Analisa a distribuição de uma palavra ao longo do corpus, identificando se ela aparece uniformemente ou em segmentos específicos.',
-    },
-    ngrams: {
-      title: 'N-grams',
-      description: 'Identifica sequências de 2, 3 ou mais palavras que aparecem frequentemente juntas, revelando colocações e padrões linguísticos.',
-    },
     avancadas: {
       title: 'Análises Avançadas',
       description: 'Ferramentas especializadas para análises linguísticas profundas, incluindo estudos dialetais, temporais e morfossintáticos.',
     },
   };
 
-  const content = helpContent[activeTab] || helpContent.wordlist;
+  const content = helpContent[activeTab] || helpContent.avancadas;
 
   if (!isOpen) {
     return (
@@ -264,15 +168,10 @@ function TabToolsContent() {
 
   // Map tools to components
   const toolComponents: Record<string, React.ReactNode> = {
-    wordlist: <WordlistTool />,
-    keywords: <KeywordsTool />,
-    kwic: <KWICTool />,
-    dispersion: <DispersionTool />,
-    ngrams: <NGramsTool />,
     avancadas: <AdvancedAnalysisTab />,
   };
 
-  const ActiveTool = toolComponents[activeTab] || toolComponents.wordlist;
+  const ActiveTool = toolComponents[activeTab] || toolComponents.avancadas;
 
   if (isMobile) {
     return (

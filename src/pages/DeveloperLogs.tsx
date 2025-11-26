@@ -12,8 +12,7 @@ import {
   TemporalEvolutionDashboard,
   CreditsSavingsIndicator,
   AIAnalysisReview,
-  AnnotationDebugPanel,
-  SubcorpusDebugPanel
+  AnnotationDebugPanel
 } from '@/components/devlogs';
 import { SentrySmokeTest } from '@/components/SentrySmokeTest';
 import { projectStats } from "@/data/developer-logs/construction-log";
@@ -128,7 +127,7 @@ export default function DeveloperLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-6 container mx-auto px-4 pb-8">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-6 lg:w-auto">
             <TabsTrigger value="ai-assistant" className="gap-2">
               <Bot className="w-4 h-4" />
               <span className="hidden sm:inline">🤖 IA Assistant</span>
@@ -152,10 +151,6 @@ export default function DeveloperLogs() {
             <TabsTrigger value="temporal-evolution" className="gap-2">
               <BarChart3 className="w-4 h-4" />
               <span className="hidden sm:inline">📊 Evolução</span>
-            </TabsTrigger>
-            <TabsTrigger value="subcorpus-debug" className="gap-2">
-              <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">🔍 Subcorpus Debug</span>
             </TabsTrigger>
           </TabsList>
 
@@ -205,11 +200,6 @@ export default function DeveloperLogs() {
           {/* TAB TEMPORAL EVOLUTION: Dashboard de Evolução */}
           <TabsContent value="temporal-evolution">
             <TemporalEvolutionDashboard />
-          </TabsContent>
-
-          {/* TAB SUBCORPUS DEBUG: Debug do SubcorpusContext */}
-          <TabsContent value="subcorpus-debug">
-            <SubcorpusDebugPanel />
           </TabsContent>
         </Tabs>
       </div>

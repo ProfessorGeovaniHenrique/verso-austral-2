@@ -13,7 +13,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, Circle, Sparkles, Cloud, TrendingUp, MapPin } from 'lucide-react';
-import { TabSemanticAnnotation } from '@/components/advanced/TabSemanticAnnotation';
 import { SemanticDomainsCloud } from './SemanticDomainsCloud';
 import { TemporalAnalysisTool } from './TemporalAnalysisTool';
 import { DialectalAnalysisTool } from './DialectalAnalysisTool';
@@ -148,7 +147,11 @@ export function AdvancedAnalysisWorkflow() {
       {/* Content */}
       <Tabs value={activeStep} onValueChange={(v) => setActiveStep(v as WorkflowStep)}>
         <TabsContent value="annotation" className="mt-0">
-          <TabSemanticAnnotation />
+          <Card>
+            <CardContent className="p-6">
+              <p className="text-muted-foreground">Etiquetagem Semântica - Em desenvolvimento</p>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="domains" className="mt-0">

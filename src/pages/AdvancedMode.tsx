@@ -4,7 +4,7 @@ import { MVPFooter } from "@/components/mvp/MVPFooter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Tag, Sparkles, Database, BookOpen, TestTube, Network, FlaskConical, GitBranch, Activity } from "lucide-react";
 import { POSAnalysisTool } from "@/components/mvp/tools/POSAnalysisTool";
-import { TabSemanticAnnotation, TabGrammarRules, TabBackendLexicon, TabLexicalProfile, AnnotationTestInterface, DemoModeBlocker } from "@/components/advanced";
+import { TabGrammarRules, TabBackendLexicon, TabLexicalProfile, AnnotationTestInterface, DemoModeBlocker } from "@/components/advanced";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -48,7 +48,11 @@ export default function AdvancedMode() {
           </div>
 
           <TabsContent value="pos"><POSAnalysisTool /></TabsContent>
-          <TabsContent value="semantic"><TabSemanticAnnotation /></TabsContent>
+          <TabsContent value="semantic">
+            <div className="text-center py-12 text-muted-foreground">
+              Anotação Semântica - Em desenvolvimento
+            </div>
+          </TabsContent>
           <TabsContent value="grammar"><TabGrammarRules /></TabsContent>
           <TabsContent value="lexicon"><TabBackendLexicon /></TabsContent>
           <TabsContent value="test"><AnnotationTestInterface /></TabsContent>

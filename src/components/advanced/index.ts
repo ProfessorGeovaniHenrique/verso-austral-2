@@ -1,6 +1,5 @@
 // Advanced Mode Components
 export { TabLexicalProfile } from './TabLexicalProfile';
-export { TabSemanticAnnotation } from './TabSemanticAnnotation';
 export { TabGrammarRules } from './TabGrammarRules';
 export { TabBackendLexicon } from './TabBackendLexicon';
 
@@ -32,5 +31,3 @@ export type { ViewMode } from './HierarchyViewSelector';
 export { DemoModeBlocker } from './DemoModeBlocker';
 export { AnnotationDemoAlert } from './AnnotationDemoAlert';
 export { AnnotationProgressModal } from './AnnotationProgressModal';
-export { AnnotationResultsView } from './AnnotationResultsView';
-export { DualCorpusSelector } from './DualCorpusSelector';
