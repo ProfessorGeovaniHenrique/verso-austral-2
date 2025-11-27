@@ -86,10 +86,12 @@ export async function fetchSemanticDomainsFromCache(songId: string): Promise<Dom
       
       return {
         dominio: tagset?.nome || codigo,
+        descricao: tagset?.descricao || '', // Campo adicionado
         ocorrencias: data.ocorrencias,
         percentual: (data.ocorrencias / totalOcorrencias) * 100,
         riquezaLexical: data.palavras.length,
         avgLL: 0, // Não calculado para demo
+        avgMI: 0, // Campo adicionado - não calculado para demo
         cor: tagset?.cor || '#666666',
         palavras: data.palavras,
         palavrasComFrequencia: data.palavras.map(p => ({ palavra: p, ocorrencias: 1 })),

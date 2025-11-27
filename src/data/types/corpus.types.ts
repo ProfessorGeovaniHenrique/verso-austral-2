@@ -11,9 +11,12 @@ export type KWICDataMap = Record<string, KWICEntry[]>;
 
 export interface DominioSemantico {
   dominio: string;
+  descricao?: string; // Campo adicionado para compatibilidade com CorpusDomain
   riquezaLexical: number;
   ocorrencias: number;
   percentual: number;
+  avgLL?: number; // Campo adicionado para compatibilidade com CorpusDomain
+  avgMI?: number; // Campo adicionado para compatibilidade com CorpusDomain
   palavras: string[];
   palavrasComFrequencia: Array<{ palavra: string; ocorrencias: number }>;
   cor: string;

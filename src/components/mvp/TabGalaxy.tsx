@@ -18,6 +18,9 @@ import { getDomainColor } from '@/config/domainColors';
 import { useCorpusData } from '@/hooks/useCorpusData';
 import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
+import { useQuery } from '@tanstack/react-query';
+import { fetchSemanticDomainsFromCache } from '@/services/semanticDomainsService';
+import { CorpusAnalysisResult } from '@/services/corpusDataService';
 
 interface TabGalaxyProps {
   demo?: boolean;
@@ -27,15 +30,48 @@ interface TabGalaxyProps {
 type ViewMode = 'domains' | 'keywords';
 
 export function TabGalaxy({ demo = false, songId }: TabGalaxyProps) {
-  const { gauchoData, isLoading: isLoadingCorpus } = useCorpusData({ 
+  const { gauchoData: fetchedData, isLoading: isLoadingCorpus } = useCorpusData({ 
     loadGaucho: !songId, 
     loadNordestino: false,
     limit: demo ? 1000 : undefined 
   });
 
+  // Buscar dados do cache por songId
+  const { data: songDomains, isLoading: isLoadingSong } = useQuery({
+    queryKey: ['song-domains-galaxy', songId],
+    queryFn: () => fetchSemanticDomainsFromCache(songId!),
+    enabled: !!songId
+  });
+
+  // Priorizar: songDomains (cache) > fetchedData (corpus geral)
+  const gauchoData = useMemo(() => {
+    if (songId && songDomains && songDomains.length > 0) {
+      return { 
+        dominios: songDomains, 
+        keywords: [], 
+        cloudData: [],
+        estatisticas: {
+          totalPalavras: 0,
+          palavrasUnicas: 0,
+          dominiosIdentificados: songDomains.length,
+          palavrasChaveSignificativas: 0,
+          prosodiaDistribution: { 
+            positivas: 0, 
+            negativas: 0, 
+            neutras: 0,
+            percentualPositivo: 0,
+            percentualNegativo: 0,
+            percentualNeutro: 0
+          }
+        }
+      } as CorpusAnalysisResult;
+    }
+    return fetchedData;
+  }, [songId, songDomains, fetchedData]);
+
   const [viewMode, setViewMode] = useState<ViewMode>('domains');
   const demoData = gauchoData;
-  const isLoading = isLoadingCorpus;
+  const isLoading = songId ? isLoadingSong : isLoadingCorpus;
   const [padding, setPadding] = useState(6);
   const [spiral, setSpiral] = useState<'archimedean' | 'rectangular'>('archimedean');
   const [rotation, setRotation] = useState(0);

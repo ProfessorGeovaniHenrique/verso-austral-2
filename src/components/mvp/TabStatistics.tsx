@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSemanticDomainsFromCache } from "@/services/semanticDomainsService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -92,8 +94,40 @@ export function TabStatistics({ demo = false, preloadedData, songId }: TabStatis
     limit: demo ? 1000 : undefined
   });
 
-  const gauchoData = preloadedData || fetchedData;
-  const isLoadingCorpus = preloadedData ? false : isFetching;
+  // Buscar dados do cache por songId
+  const { data: songDomains, isLoading: isLoadingSong } = useQuery({
+    queryKey: ['song-domains-stats', songId],
+    queryFn: () => fetchSemanticDomainsFromCache(songId!),
+    enabled: !!songId
+  });
+
+  // Priorizar: songDomains (cache) > preloadedData > fetchedData (corpus geral)
+  const gauchoData = useMemo(() => {
+    if (songId && songDomains && songDomains.length > 0) {
+      return { 
+        dominios: songDomains, 
+        keywords: [], 
+        cloudData: [],
+        estatisticas: {
+          totalPalavras: 0,
+          palavrasUnicas: 0,
+          dominiosIdentificados: songDomains.length,
+          palavrasChaveSignificativas: 0,
+          prosodiaDistribution: { 
+            positivas: 0, 
+            negativas: 0, 
+            neutras: 0,
+            percentualPositivo: 0,
+            percentualNegativo: 0,
+            percentualNeutro: 0
+          }
+        }
+      } as CorpusAnalysisResult;
+    }
+    return preloadedData || fetchedData;
+  }, [songId, songDomains, preloadedData, fetchedData]);
+
+  const isLoadingCorpus = songId ? isLoadingSong : (preloadedData ? false : isFetching);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<SortColumn>('frequenciaNormalizada');
