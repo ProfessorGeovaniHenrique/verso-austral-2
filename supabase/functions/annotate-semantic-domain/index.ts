@@ -477,6 +477,10 @@ async function batchClassifyWithGemini(
 - CC.EDU (Educação): escola, professor, estudar
 - CC.COM (Comunicação): conversa, jornal, mensagem
 - CC.REL (Religiosidade): Deus, fé, igreja, reza
+- AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude, honra
+- AB.SOC (Social/Político): poder, direito, democracia, cidadania, paz
+- AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte
+- AB.LOG (Lógico/Matemático): lógica, razão, infinito, proporção
 
 **PALAVRAS A CLASSIFICAR:**
 ${palavrasList}
@@ -589,7 +593,7 @@ async function classifyWithGemini(
 **13 DOMÍNIOS N1:**
 AB (Abstrações), AP (Atividades), CC (Cultura), EL (Estruturas), EQ (Qualidades), MG (Marcadores), NA (Natureza), NC (Não Classificado), OA (Objetos), SB (Saúde), SE (Sentimentos), SH (Ser Humano), SP (Sociedade)
 
-**SUBDOMÍNIOS:** AP.ALI (Alimentação), NA.FAU (Fauna), NA.GEO (Geografia), OA.FER (Ferramentas), SE.NOS (Nostalgia), CC.ART (Arte), CC.ART.MUS (Música), CC.ART.POE (Poesia), CC.CIT (Ciência), CC.EDU (Educação), CC.COM (Comunicação), CC.REL (Religiosidade)
+**SUBDOMÍNIOS:** AP.ALI (Alimentação), NA.FAU (Fauna), NA.GEO (Geografia), OA.FER (Ferramentas), SE.NOS (Nostalgia), CC.ART (Arte), CC.ART.MUS (Música), CC.ART.POE (Poesia), CC.CIT (Ciência), CC.EDU (Educação), CC.COM (Comunicação), CC.REL (Religiosidade), AB.FIL (Filosofia/Ética), AB.SOC (Social/Político), AB.EXI (Existencial/Metafísico), AB.LOG (Lógico/Matemático)
 
 **CONTEXTO:** "${sentencaCompleta}"
 Palavra: "${palavra}" | Lema: "${lema}" | POS: ${pos}
