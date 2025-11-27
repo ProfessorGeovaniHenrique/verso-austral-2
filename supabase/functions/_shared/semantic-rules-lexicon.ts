@@ -30,11 +30,15 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'transporte': { codigo: 'AP', nome: 'Atividades' },
   'trabalho_rural': { codigo: 'AP', nome: 'Atividades' },
   
-  // Cultura e Conhecimento
-  'musica_danca': { codigo: 'CC', nome: 'Cultura' },
-  'literatura': { codigo: 'CC', nome: 'Cultura' },
-  'tradicoes': { codigo: 'CC', nome: 'Cultura' },
-  'religiosidade': { codigo: 'CC', nome: 'Cultura' },
+  // Cultura e Conhecimento - EXPANDIDO
+  'musica_danca': { codigo: 'CC.ART.MUS', nome: 'Música' },
+  'literatura': { codigo: 'CC.ART', nome: 'Arte e Expressão Cultural' },
+  'poesia': { codigo: 'CC.ART.POE', nome: 'Literatura em Poesia' },
+  'tradicoes': { codigo: 'CC', nome: 'Cultura e Conhecimento' },
+  'religiosidade': { codigo: 'CC.REL', nome: 'Religiosidade e Espiritualidade' },
+  'educacao': { codigo: 'CC.EDU', nome: 'Educação e Aprendizado' },
+  'ciencia': { codigo: 'CC.CIT', nome: 'Ciência e Tecnologia' },
+  'comunicacao': { codigo: 'CC.COM', nome: 'Comunicação e Mídia' },
   
   // Objetos e Artefatos
   'vestimenta': { codigo: 'OA', nome: 'Objetos' },
