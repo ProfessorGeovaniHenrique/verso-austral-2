@@ -194,7 +194,7 @@ async function processChunk(
       .from('semantic_annotation_jobs')
       .update({ last_chunk_at: new Date().toISOString() })
       .eq('id', jobId)
-      .lte('last_chunk_at', new Date(Date.now() - 2000).toISOString()) // FASE 4: 2s threshold
+      .lte('last_chunk_at', new Date(Date.now() - 5000).toISOString()) // FASE 4: 5s threshold (compensar remoção do setTimeout delay)
       .select('id')
       .single();
 
@@ -584,39 +584,45 @@ async function processChunk(
       const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-      // FASE 4: Delay reduzido para 2s
-      setTimeout(() => {
-        fetch(`${SUPABASE_URL}/functions/v1/annotate-artist-songs`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            jobId: jobId,
-            continueFrom: {
-              songIndex: currentSongIndex,
-              wordIndex: currentWordIndex,
-            }
-          }),
-        })
-        .then(response => {
-          if (response.ok) {
-            logger.info('Auto-invocação bem-sucedida', { jobId });
-          } else {
-            logger.warn('Auto-invocação falhou', { jobId, status: response.status });
+      logger.info('Iniciando auto-invocação', { 
+        jobId, 
+        nextSongIndex: currentSongIndex, 
+        nextWordIndex: currentWordIndex 
+      });
+      
+      // Fire-and-forget: executar fetch diretamente sem setTimeout (que não funciona em Edge Functions)
+      fetch(`${SUPABASE_URL}/functions/v1/annotate-artist-songs`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          jobId: jobId,
+          continueFrom: {
+            songIndex: currentSongIndex,
+            wordIndex: currentWordIndex,
           }
-        })
-        .catch(err => {
-          logger.error('Auto-invoke failed', err);
-          // Marcar job como pausado se auto-invocação falhar
-          supabase
-            .from('semantic_annotation_jobs')
-            .update({ status: 'pausado' })
-            .eq('id', jobId)
-            .then(() => logger.warn('Job marcado como pausado', { jobId }));
-        });
-      }, 2000); // FASE 4: 2s delay
+        }),
+      })
+      .then(response => {
+        if (response.ok) {
+          logger.info('Auto-invocação bem-sucedida', { jobId });
+        } else {
+          logger.warn('Auto-invocação falhou', { jobId, status: response.status });
+        }
+      })
+      .catch(err => {
+        logger.error('Auto-invoke failed', err);
+        // Marcar job como pausado se auto-invocação falhar
+        supabase
+          .from('semantic_annotation_jobs')
+          .update({ status: 'pausado' })
+          .eq('id', jobId)
+          .then(() => logger.warn('Job marcado como pausado', { jobId }));
+      });
+      
+      logger.info('Auto-invocação disparada (fire-and-forget)', { jobId });
     }
 
   } catch (error) {
