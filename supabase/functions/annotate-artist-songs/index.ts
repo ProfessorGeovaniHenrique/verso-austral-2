@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
 import { createEdgeLogger } from "../_shared/unified-logger.ts";
+import { classifySafeStopword, isContextDependent } from "../_shared/stopwords-classifier.ts";
+import { getLexiconRule } from "../_shared/semantic-rules-lexicon.ts";
+import { inheritDomainFromSynonyms } from "../_shared/synonym-propagation.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,8 +20,9 @@ interface AnnotateArtistRequest {
   };
 }
 
-const CHUNK_SIZE = 50; // Palavras por chunk (reduzido para garantir conclusão em 4min)
+const CHUNK_SIZE = 100; // FASE 4: Aumentado de 50 para 100 (batch processing suporta mais)
 const CHUNK_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutos
+const BATCH_SIZE = 15; // Máximo de palavras por batch Gemini
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -142,7 +146,7 @@ serve(async (req) => {
         artistName: artist.name,
         totalSongs: songs.length,
         totalWords,
-        message: 'Processamento iniciado em chunks'
+        message: 'Processamento iniciado em chunks (batch optimized)'
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -168,7 +172,7 @@ serve(async (req) => {
 });
 
 /**
- * Processar um chunk de palavras
+ * FASE 4: Processar chunk com batch Gemini e cache inline
  */
 async function processChunk(
   supabase: any,
@@ -184,7 +188,7 @@ async function processChunk(
       .from('semantic_annotation_jobs')
       .update({ last_chunk_at: new Date().toISOString() })
       .eq('id', jobId)
-      .lte('last_chunk_at', new Date(Date.now() - 5000).toISOString()) // AJUSTADO: 5s ao invés de 30s
+      .lte('last_chunk_at', new Date(Date.now() - 2000).toISOString()) // FASE 4: 2s threshold
       .select('id')
       .single();
 
@@ -228,7 +232,7 @@ async function processChunk(
       throw new Error('Nenhuma música encontrada');
     }
 
-    logger.info('Processando chunk', { 
+    logger.info('Processando chunk (batch optimized)', { 
       jobId, 
       songIndex: continueFrom.songIndex, 
       wordIndex: continueFrom.wordIndex,
@@ -241,20 +245,25 @@ async function processChunk(
     let currentSongIndex = continueFrom.songIndex;
     let currentWordIndex = continueFrom.wordIndex;
 
-    // Processar até CHUNK_SIZE palavras ou timeout
+    // FASE 4: Coletar palavras do chunk para batch processing
+    const chunkWords: Array<{
+      palavra: string;
+      lema: string;
+      pos: string;
+      contextoEsquerdo: string;
+      contextoDireito: string;
+      songId: string;
+      songIndex: number;
+      wordIndex: number;
+    }> = [];
+
+    // Coletar até CHUNK_SIZE palavras
     outer: for (let s = currentSongIndex; s < songs.length; s++) {
       const song = songs[s];
       const words = tokenizeLyrics(song.lyrics);
 
       for (let w = (s === currentSongIndex ? currentWordIndex : 0); w < words.length; w++) {
-        // Timeout check
-        if (Date.now() - startTime > CHUNK_TIMEOUT_MS) {
-          logger.warn('Chunk timeout, salvando progresso', { processedInChunk });
-          break outer;
-        }
-
-        // Chunk size check
-        if (processedInChunk >= CHUNK_SIZE) {
+        if (chunkWords.length >= CHUNK_SIZE) {
           break outer;
         }
 
@@ -262,52 +271,262 @@ async function processChunk(
         const contextoEsquerdo = words.slice(Math.max(0, w - 5), w).join(' ');
         const contextoDireito = words.slice(w + 1, Math.min(words.length, w + 6)).join(' ');
 
-        const contextoHash = await hashContext(contextoEsquerdo, contextoDireito);
-        const cached = await checkCache(supabase, palavra, contextoHash);
+        chunkWords.push({
+          palavra,
+          lema: palavra, // TODO: melhorar lematização
+          pos: 'UNKNOWN',
+          contextoEsquerdo,
+          contextoDireito,
+          songId: song.id,
+          songIndex: s,
+          wordIndex: w,
+        });
+      }
+    }
 
-        if (cached) {
-          cachedInChunk++;
-          processedInChunk++;
-        } else {
-          try {
-            const annotationResult = await callSemanticAnnotator(
-              palavra,
-              contextoEsquerdo,
-              contextoDireito
-            );
+    logger.info('Chunk coletado', { wordsCount: chunkWords.length });
 
-            if (annotationResult.success) {
-              await saveWithArtistSong(
-                supabase,
-                palavra,
-                contextoHash,
-                annotationResult.result.tagset_codigo,
-                annotationResult.result.confianca,
-                annotationResult.result.fonte,
-                annotationResult.result.justificativa,
-                artist.id,
-                song.id
-              );
+    // FASE 1+2: Classificar palavras usando stopwords + cache de dois níveis
+    const wordsNeedingGemini: typeof chunkWords = [];
 
-              newInChunk++;
-              processedInChunk++;
-            }
-          } catch (error) {
-            logger.warn('Erro ao anotar palavra', { 
-              palavra, 
-              error: error instanceof Error ? error.message : String(error) 
-            });
-            processedInChunk++;
-          }
-        }
-
-        currentSongIndex = s;
-        currentWordIndex = w + 1;
+    for (const wordData of chunkWords) {
+      // FASE 1: Safe stopwords (0ms)
+      const safeResult = classifySafeStopword(wordData.palavra);
+      if (safeResult) {
+        const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+        await saveWithArtistSong(
+          supabase,
+          wordData.palavra,
+          hash,
+          safeResult.tagset_codigo,
+          safeResult.confianca,
+          'rule_based',
+          safeResult.justificativa,
+          artist.id,
+          wordData.songId
+        );
+        cachedInChunk++; // Contabilizar como "cached" (zero cost)
+        processedInChunk++;
+        continue;
       }
 
+      // FASE 2: Cache nível 1 (palavra apenas)
+      const wordCache = await checkWordOnlyCache(supabase, wordData.palavra);
+      if (wordCache) {
+        const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+        await saveWithArtistSong(
+          supabase,
+          wordData.palavra,
+          hash,
+          wordCache.tagset_codigo,
+          wordCache.confianca,
+          'cache',
+          wordCache.justificativa || 'Cache palavra',
+          artist.id,
+          wordData.songId
+        );
+        await supabase.rpc('increment_semantic_cache_hit', { cache_id: wordCache.id });
+        cachedInChunk++;
+        processedInChunk++;
+        continue;
+      }
+
+      // FASE 2: Cache nível 2 (palavra + contexto)
+      const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+      const contextCache = await checkContextCache(supabase, wordData.palavra, hash);
+      if (contextCache) {
+        await saveWithArtistSong(
+          supabase,
+          wordData.palavra,
+          hash,
+          contextCache.tagset_codigo,
+          contextCache.confianca,
+          'cache',
+          contextCache.justificativa || 'Cache contexto',
+          artist.id,
+          wordData.songId
+        );
+        await supabase.rpc('increment_semantic_cache_hit', { cache_id: contextCache.id });
+        cachedInChunk++;
+        processedInChunk++;
+        continue;
+      }
+
+      // Regras do léxico dialetal
+      const lexiconRule = await getLexiconRule(wordData.palavra);
+      if (lexiconRule) {
+        await saveWithArtistSong(
+          supabase,
+          wordData.palavra,
+          hash,
+          lexiconRule.tagset_codigo,
+          lexiconRule.confianca,
+          'rule_based',
+          lexiconRule.justificativa,
+          artist.id,
+          wordData.songId
+        );
+        newInChunk++;
+        processedInChunk++;
+        continue;
+      }
+
+      // Herança de sinônimos
+      const inherited = await inheritDomainFromSynonyms(wordData.palavra);
+      if (inherited) {
+        await saveWithArtistSong(
+          supabase,
+          wordData.palavra,
+          hash,
+          inherited.tagset_codigo,
+          inherited.confianca,
+          'rule_based',
+          inherited.justificativa || 'Herdado de sinônimo',
+          artist.id,
+          wordData.songId
+        );
+        newInChunk++;
+        processedInChunk++;
+        continue;
+      }
+
+      // Se não é context-dependent, tentar regras contextuais
+      if (!isContextDependent(wordData.palavra)) {
+        const ruleResult = applyContextualRules(wordData.palavra, wordData.lema, wordData.pos);
+        if (ruleResult) {
+          await saveWithArtistSong(
+            supabase,
+            wordData.palavra,
+            hash,
+            ruleResult.tagset_codigo,
+            ruleResult.confianca,
+            'rule_based',
+            ruleResult.justificativa,
+            artist.id,
+            wordData.songId
+          );
+          newInChunk++;
+          processedInChunk++;
+          continue;
+        }
+      }
+
+      // Não classificada por nenhuma regra → precisa Gemini
+      wordsNeedingGemini.push(wordData);
+    }
+
+    logger.info('Pré-processamento concluído', {
+      total: chunkWords.length,
+      cached: cachedInChunk,
+      needingGemini: wordsNeedingGemini.length,
+    });
+
+    // FASE 3: Processar palavras restantes em batches via Gemini
+    if (wordsNeedingGemini.length > 0) {
+      for (let i = 0; i < wordsNeedingGemini.length; i += BATCH_SIZE) {
+        const batch = wordsNeedingGemini.slice(i, i + BATCH_SIZE);
+        
+        try {
+          const batchResults = await batchClassifyWithGemini(batch, logger);
+
+          // Salvar resultados do batch
+          for (const wordData of batch) {
+            const result = batchResults.get(wordData.palavra.toLowerCase());
+            
+            if (result) {
+              const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+              await saveWithArtistSong(
+                supabase,
+                wordData.palavra,
+                hash,
+                result.tagset_codigo,
+                result.confianca,
+                result.fonte,
+                result.justificativa || 'Gemini batch',
+                artist.id,
+                wordData.songId
+              );
+              newInChunk++;
+              processedInChunk++;
+            } else {
+              // Fallback: tentar individual
+              try {
+                const individualResult = await callSemanticAnnotatorSingle(
+                  wordData.palavra,
+                  wordData.contextoEsquerdo,
+                  wordData.contextoDireito,
+                  logger
+                );
+                
+                if (individualResult) {
+                  const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+                  await saveWithArtistSong(
+                    supabase,
+                    wordData.palavra,
+                    hash,
+                    individualResult.tagset_codigo,
+                    individualResult.confianca,
+                    individualResult.fonte,
+                    individualResult.justificativa || 'Gemini individual',
+                    artist.id,
+                    wordData.songId
+                  );
+                  newInChunk++;
+                }
+                processedInChunk++;
+              } catch (err) {
+                logger.warn('Erro individual fallback', { palavra: wordData.palavra, error: err });
+                processedInChunk++;
+              }
+            }
+          }
+        } catch (batchError) {
+          logger.error('Erro no batch Gemini', batchError);
+          // Fallback: processar individualmente
+          for (const wordData of batch) {
+            try {
+              const result = await callSemanticAnnotatorSingle(
+                wordData.palavra,
+                wordData.contextoEsquerdo,
+                wordData.contextoDireito,
+                logger
+              );
+              
+              if (result) {
+                const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+                await saveWithArtistSong(
+                  supabase,
+                  wordData.palavra,
+                  hash,
+                  result.tagset_codigo,
+                  result.confianca,
+                  result.fonte,
+                  result.justificativa || 'Gemini fallback',
+                  artist.id,
+                  wordData.songId
+                );
+                newInChunk++;
+              }
+              processedInChunk++;
+            } catch (err) {
+              logger.warn('Erro em fallback individual', { palavra: wordData.palavra, error: err });
+              processedInChunk++;
+            }
+          }
+        }
+      }
+    }
+
+    // Atualizar posição atual
+    if (chunkWords.length > 0) {
+      const lastWord = chunkWords[chunkWords.length - 1];
+      currentSongIndex = lastWord.songIndex;
+      currentWordIndex = lastWord.wordIndex + 1;
+      
       // Se terminou a música, avançar para próxima
-      if (currentWordIndex >= words.length) {
-        currentSongIndex = s + 1;
+      const currentSongWords = tokenizeLyrics(songs[currentSongIndex].lyrics);
+      if (currentWordIndex >= currentSongWords.length) {
+        currentSongIndex++;
         currentWordIndex = 0;
       }
     }
@@ -327,10 +546,10 @@ async function processChunk(
       cachedInChunk, 
       newInChunk,
       currentSongIndex,
-      currentWordIndex
+      currentWordIndex,
+      wordsPerSecond: processedInChunk / ((Date.now() - startTime) / 1000)
     });
 
-    // CRÍTICO: NÃO atualizar last_chunk_at aqui (será atualizado pelo próximo chunk no lockCheck)
     await supabase
       .from('semantic_annotation_jobs')
       .update({
@@ -350,15 +569,16 @@ async function processChunk(
       processedInChunk, 
       totalProcessed, 
       isCompleted,
-      chunksProcessed 
+      chunksProcessed,
+      elapsedSeconds: (Date.now() - startTime) / 1000
     });
 
-    // Se não terminou, auto-invocar para próximo chunk (ASSÍNCRONO com delay)
+    // Se não terminou, auto-invocar para próximo chunk
     if (!isCompleted) {
       const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-      // Aguardar 5 segundos antes de disparar (garantir margem de segurança para threshold de 5s)
+      // FASE 4: Delay reduzido para 2s
       setTimeout(() => {
         fetch(`${SUPABASE_URL}/functions/v1/annotate-artist-songs`, {
           method: 'POST',
@@ -390,7 +610,7 @@ async function processChunk(
             .eq('id', jobId)
             .then(() => logger.warn('Job marcado como pausado', { jobId }));
         });
-      }, 5000); // AJUSTADO: 5s delay garante margem (processamento ~3s + delay 5s > threshold 5s)
+      }, 2000); // FASE 4: 2s delay
     }
 
   } catch (error) {
@@ -408,6 +628,8 @@ async function processChunk(
   }
 }
 
+// ============= UTILITY FUNCTIONS =============
+
 function tokenizeLyrics(lyrics: string): string[] {
   return lyrics
     .toLowerCase()
@@ -424,10 +646,42 @@ async function hashContext(left: string, right: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 16);
 }
 
-async function checkCache(supabase: any, palavra: string, contextoHash: string) {
+/**
+ * Cache Nível 1: palavra apenas (alta confiança + não-polissêmica)
+ */
+async function checkWordOnlyCache(supabase: any, palavra: string) {
+  const palavraNorm = palavra.toLowerCase();
+  
+  const { data: wordCache, error } = await supabase
+    .from('semantic_disambiguation_cache')
+    .select('id, tagset_codigo, confianca, justificativa')
+    .eq('palavra', palavraNorm)
+    .gte('confianca', 0.90)
+    .order('confianca', { ascending: false })
+    .limit(1)
+    .single();
+
+  if (error || !wordCache) return null;
+  
+  // Verificar se é polissêmica
+  const { count } = await supabase
+    .from('semantic_disambiguation_cache')
+    .select('*', { count: 'exact', head: true })
+    .eq('palavra', palavraNorm)
+    .neq('tagset_codigo', wordCache.tagset_codigo);
+  
+  if (count && count > 0) return null;
+  
+  return wordCache;
+}
+
+/**
+ * Cache Nível 2: palavra + contexto
+ */
+async function checkContextCache(supabase: any, palavra: string, contextoHash: string) {
   const { data, error } = await supabase
     .from('semantic_disambiguation_cache')
-    .select('id')
+    .select('id, tagset_codigo, confianca, justificativa')
     .eq('palavra', palavra.toLowerCase())
     .eq('contexto_hash', contextoHash)
     .single();
@@ -436,11 +690,176 @@ async function checkCache(supabase: any, palavra: string, contextoHash: string) 
   return data;
 }
 
-async function callSemanticAnnotator(
+/**
+ * Regras contextuais (copiadas de annotate-semantic-domain)
+ */
+function applyContextualRules(palavra: string, lema?: string, pos?: string) {
+  const lemaNorm = (lema || palavra).toLowerCase();
+  
+  if (isContextDependent(lemaNorm)) {
+    return null;
+  }
+  
+  const sentimentos = ['saudade', 'amor', 'paixão', 'dor', 'alegria', 'tristeza', 'verso', 'sonho'];
+  if (sentimentos.includes(lemaNorm)) {
+    return {
+      tagset_codigo: 'SE',
+      confianca: 0.98,
+      fonte: 'rule_based',
+      justificativa: 'Sentimento universal',
+    };
+  }
+
+  const natureza = ['sol', 'lua', 'estrela', 'céu', 'campo', 'rio', 'vento', 'chuva', 'pampa', 'coxilha', 'várzea'];
+  if (natureza.includes(lemaNorm)) {
+    return {
+      tagset_codigo: 'NA',
+      confianca: 0.98,
+      fonte: 'rule_based',
+      justificativa: 'Elemento natural',
+    };
+  }
+
+  if (pos && ['ADP', 'DET', 'CONJ', 'SCONJ', 'PRON'].includes(pos)) {
+    return {
+      tagset_codigo: 'MG',
+      confianca: 0.99,
+      fonte: 'rule_based',
+      justificativa: 'Marcador gramatical',
+    };
+  }
+
+  if (pos === 'VERB') {
+    return {
+      tagset_codigo: 'AP',
+      confianca: 0.90,
+      fonte: 'rule_based',
+      justificativa: 'Verbo → Atividades',
+    };
+  }
+
+  if (pos === 'ADJ') {
+    return {
+      tagset_codigo: 'EQ',
+      confianca: 0.85,
+      fonte: 'rule_based',
+      justificativa: 'Adjetivo → Qualidades',
+    };
+  }
+
+  return null;
+}
+
+/**
+ * FASE 3: Batch classify com Gemini (inline)
+ */
+async function batchClassifyWithGemini(
+  palavras: Array<{ palavra: string; lema: string; pos: string; contextoEsquerdo: string; contextoDireito: string }>,
+  logger: any
+) {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY não configurado');
+  }
+
+  const palavrasList = palavras.map((p, i) => {
+    const sentenca = `${p.contextoEsquerdo} **${p.palavra}** ${p.contextoDireito}`.trim();
+    return `${i + 1}. Palavra: "${p.palavra}" | Lema: "${p.lema}" | POS: ${p.pos} | Contexto: "${sentenca}"`;
+  }).join('\n');
+
+  const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra abaixo em um dos 13 domínios semânticos.
+
+**13 DOMÍNIOS SEMÂNTICOS N1:**
+- AB (Abstrações): ideias abstratas, conceitos filosóficos
+- AP (Atividades): trabalho, lida campeira, alimentação, lazer
+- CC (Cultura): arte, música, literatura, educação
+- EL (Estruturas): construções, locais físicos
+- EQ (Qualidades): adjetivos, qualidades, medidas, tempo
+- MG (Marcadores): artigos, preposições, conjunções
+- NA (Natureza): flora, fauna, elementos naturais
+- NC (Não Classificado): não se encaixa
+- OA (Objetos): ferramentas, utensílios, artefatos
+- SB (Saúde): corpo humano, doenças
+- SE (Sentimentos): amor, saudade, emoções
+- SH (Ser Humano): aspectos da humanidade
+- SP (Sociedade): relações sociais, política
+
+**SUBDOMÍNIOS IMPORTANTES:**
+- AP.ALI (Alimentação): mate, churrasco, cuia
+- NA.FAU (Fauna): cavalo, gado, galo
+- NA.GEO (Geografia): coxilha, várzea, pampa
+- OA.FER (Ferramentas): arreio, espora, laço
+- SE.NOS (Nostalgia): saudade, querência
+
+**PALAVRAS A CLASSIFICAR:**
+${palavrasList}
+
+**RETORNE JSON ARRAY (ordem idêntica):**
+[
+  {"palavra": "palavra1", "tagset_codigo": "XX", "confianca": 0.95, "justificativa": "razão"},
+  {"palavra": "palavra2", "tagset_codigo": "YY", "confianca": 0.90, "justificativa": "razão"},
+  ...
+]`;
+
+  const timer = logger.startTimer();
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'Você é um classificador semântico preciso. Retorne APENAS JSON array válido.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.2,
+      max_tokens: 1500,
+    }),
+  });
+
+  timer.end({ operation: 'gemini_batch_classify', count: palavras.length });
+
+  if (!response.ok) {
+    throw new Error(`Lovable AI error: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content || '';
+
+  const jsonMatch = content.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) {
+    logger.error('Batch response sem JSON', { content });
+    return new Map();
+  }
+
+  const results = JSON.parse(jsonMatch[0]);
+  const resultMap = new Map();
+
+  for (const r of results) {
+    if (r.palavra && r.tagset_codigo && typeof r.confianca === 'number') {
+      resultMap.set(r.palavra.toLowerCase(), {
+        tagset_codigo: r.tagset_codigo,
+        confianca: r.confianca,
+        fonte: 'gemini_flash',
+        justificativa: r.justificativa || 'Batch',
+      });
+    }
+  }
+
+  return resultMap;
+}
+
+/**
+ * Fallback: classificação individual via Gemini
+ */
+async function callSemanticAnnotatorSingle(
   palavra: string,
   contextoEsquerdo: string,
-  contextoDireito: string
-): Promise<any> {
+  contextoDireito: string,
+  logger: any
+) {
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
@@ -458,11 +877,11 @@ async function callSemanticAnnotator(
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Semantic annotator error: ${response.status} - ${errorText}`);
+    return null;
   }
 
-  return await response.json();
+  const data = await response.json();
+  return data.success ? data.result : null;
 }
 
 async function saveWithArtistSong(
@@ -476,7 +895,6 @@ async function saveWithArtistSong(
   artistId: string,
   songId: string
 ): Promise<void> {
-  // UPSERT: se já existe (palavra + contexto_hash), atualiza com artist_id/song_id
   await supabase.from('semantic_disambiguation_cache').upsert({
     palavra: palavra.toLowerCase(),
     contexto_hash: contextoHash,
@@ -488,6 +906,6 @@ async function saveWithArtistSong(
     song_id: songId,
   }, {
     onConflict: 'palavra,contexto_hash',
-    ignoreDuplicates: false // false = UPDATE em caso de conflito
+    ignoreDuplicates: false
   });
 }
