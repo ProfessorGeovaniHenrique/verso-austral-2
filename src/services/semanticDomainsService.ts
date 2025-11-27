@@ -11,6 +11,23 @@ import { DominioSemantico } from '@/data/types/corpus.types';
 
 const log = createLogger('semanticDomainsService');
 
+// Mapeamento de cores por código N1
+const DOMAIN_COLORS: Record<string, string> = {
+  'AB': '#9333EA', // Abstrações
+  'AP': '#10B981', // Atividades e Práticas
+  'CC': '#F59E0B', // Cultura e Conhecimento
+  'EL': '#EF4444', // Elementos Linguísticos
+  'EQ': '#8B5CF6', // Equipamentos
+  'MG': '#6B7280', // Marcadores Gramaticais
+  'NA': '#268BC8', // Natureza
+  'NC': '#6B7280', // Não Classificado
+  'OA': '#F97316', // Objetos e Artefatos
+  'SB': '#EC4899', // Saúde e Bem-Estar
+  'SE': '#8B5CF6', // Sentimentos e Emoções
+  'SH': '#24A65B', // Ser Humano
+  'SP': '#DC2626', // Sociedade e Política
+};
+
 /**
  * Busca domínios semânticos por song_id do cache
  * Usado para demo de música específica
@@ -28,7 +45,7 @@ export async function fetchSemanticDomainsFromCache(songId: string): Promise<Dom
         semantic_tagset!inner(
           codigo,
           nome,
-          cor,
+          descricao,
           codigo_nivel_1,
           nivel_profundidade
         )
@@ -92,7 +109,7 @@ export async function fetchSemanticDomainsFromCache(songId: string): Promise<Dom
         riquezaLexical: data.palavras.length,
         avgLL: 0, // Não calculado para demo
         avgMI: 0, // Campo adicionado - não calculado para demo
-        cor: tagset?.cor || '#666666',
+        cor: DOMAIN_COLORS[codigo] || '#6B7280',
         palavras: data.palavras,
         palavrasComFrequencia: data.palavras.map(p => ({ palavra: p, ocorrencias: 1 })),
         corTexto: '#ffffff',

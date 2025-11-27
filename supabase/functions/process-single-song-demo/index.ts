@@ -94,17 +94,17 @@ serve(async (req) => {
         }
 
         // Salvar no cache com song_id
-        if (annotationData?.tagset_codigo) {
+        if (annotationData?.result?.tagset_codigo) {
           await supabase.from('semantic_disambiguation_cache').insert({
             palavra,
-            tagset_codigo: annotationData.tagset_codigo,
-            confianca: annotationData.confianca || 0.5,
-            fonte: 'gemini',
+            tagset_codigo: annotationData.result.tagset_codigo,
+            confianca: annotationData.result.confianca || 0.5,
+            fonte: annotationData.result.fonte || 'gemini',
             song_id: songId,
             artist_id: song.artist_id,
             contexto_hash: `${words[i - 1] || ''}_${palavra}_${words[i + 1] || ''}`,
-            lema: annotationData.lema || palavra,
-            pos: annotationData.pos
+            lema: annotationData.result.lema || palavra,
+            pos: annotationData.result.pos
           });
         }
 
@@ -171,12 +171,12 @@ serve(async (req) => {
               { body: { palavra, corpusType: 'nordestino' } }
             );
 
-            if (annotationData?.tagset_codigo) {
+            if (annotationData?.result?.tagset_codigo) {
               await supabase.from('semantic_disambiguation_cache').insert({
                 palavra,
-                tagset_codigo: annotationData.tagset_codigo,
-                confianca: annotationData.confianca || 0.5,
-                fonte: 'gemini',
+                tagset_codigo: annotationData.result.tagset_codigo,
+                confianca: annotationData.result.confianca || 0.5,
+                fonte: annotationData.result.fonte || 'gemini',
                 song_id: refSong.id,
                 artist_id: refSong.artist_id,
                 contexto_hash: palavra
