@@ -15,7 +15,9 @@ interface ClassificationResult {
   palavra: string;
   lema?: string;
   pos?: string;
-  tagset_codigo: string;
+  tagset_codigo: string;           // DS primário (mais provável no contexto)
+  tagsets_alternativos?: string[]; // DSs secundários quando polissêmico
+  is_polysemous?: boolean;         // Indica polissemia
   confianca: number;
 }
 
@@ -77,6 +79,8 @@ export async function classifyBatchWithGemini(
       lema: w.lema,
       pos: w.pos,
       tagset_codigo: 'NC',
+      tagsets_alternativos: [],
+      is_polysemous: false,
       confianca: 0.50
     }));
   }
@@ -85,10 +89,23 @@ export async function classifyBatchWithGemini(
 function getSystemPrompt(): string {
   return `Você é um especialista em classificação semântica para o projeto Verso Austral.
 Classifique cada palavra no domínio semântico mais apropriado usando os códigos fornecidos.
+
+IMPORTANTE - POLISSEMIA:
+- Se a palavra tem múltiplos sentidos (ex: "manga", "banco", "vela"), identifique TODOS os DSs possíveis
+- "tagset_codigo" deve ser o DS mais provável NO CONTEXTO
+- "tagsets_alternativos" deve conter os outros DSs possíveis (array)
+- "is_polysemous" deve ser true quando há múltiplos sentidos
+
 Retorne APENAS um JSON válido no formato:
 {
   "classifications": [
-    {"palavra": "...", "tagset_codigo": "...", "confianca": 0.85}
+    {
+      "palavra": "banco",
+      "tagset_codigo": "OA",
+      "tagsets_alternativos": ["AP", "NA"],
+      "is_polysemous": true,
+      "confianca": 0.85
+    }
   ]
 }`;
 }

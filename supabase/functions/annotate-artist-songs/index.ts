@@ -309,7 +309,10 @@ async function processChunk(
           'rule_based',
           safeResult.justificativa,
           artist.id,
-          wordData.songId
+          wordData.songId,
+          [],
+          false,
+          'gaucho'
         );
         cachedInChunk++; // Contabilizar como "cached" (zero cost)
         processedInChunk++;
@@ -329,7 +332,10 @@ async function processChunk(
           'cache',
           wordCache.justificativa || 'Cache palavra',
           artist.id,
-          wordData.songId
+          wordData.songId,
+          [],
+          false,
+          'gaucho'
         );
         await supabase.rpc('increment_semantic_cache_hit', { cache_id: wordCache.id });
         cachedInChunk++;
@@ -350,7 +356,10 @@ async function processChunk(
           'cache',
           contextCache.justificativa || 'Cache contexto',
           artist.id,
-          wordData.songId
+          wordData.songId,
+          [],
+          false,
+          'gaucho'
         );
         await supabase.rpc('increment_semantic_cache_hit', { cache_id: contextCache.id });
         cachedInChunk++;
@@ -370,7 +379,10 @@ async function processChunk(
           'rule_based',
           lexiconRule.justificativa,
           artist.id,
-          wordData.songId
+          wordData.songId,
+          lexiconRule.tagsets_alternativos || [],
+          lexiconRule.is_polysemous || false,
+          'gaucho'
         );
         newInChunk++;
         processedInChunk++;
@@ -389,7 +401,10 @@ async function processChunk(
           'rule_based',
           inherited.justificativa || 'Herdado de sinônimo',
           artist.id,
-          wordData.songId
+          wordData.songId,
+          [],
+          false,
+          'gaucho'
         );
         newInChunk++;
         processedInChunk++;
@@ -409,7 +424,10 @@ async function processChunk(
             'rule_based',
             ruleResult.justificativa,
             artist.id,
-            wordData.songId
+            wordData.songId,
+            [],
+            false,
+            'gaucho'
           );
           newInChunk++;
           processedInChunk++;
@@ -475,7 +493,10 @@ async function processChunk(
                     individualResult.fonte,
                     individualResult.justificativa || 'Gemini individual',
                     artist.id,
-                    wordData.songId
+                    wordData.songId,
+                    individualResult.tagsets_alternativos || [],
+                    individualResult.is_polysemous || false,
+                    'gaucho'
                   );
                   newInChunk++;
                 }
@@ -509,7 +530,10 @@ async function processChunk(
                   result.fonte,
                   result.justificativa || 'Gemini fallback',
                   artist.id,
-                  wordData.songId
+                  wordData.songId,
+                  result.tagsets_alternativos || [],
+                  result.is_polysemous || false,
+                  'gaucho'
                 );
                 newInChunk++;
               }
@@ -853,6 +877,8 @@ ${palavrasList}
     if (r.palavra && r.tagset_codigo && typeof r.confianca === 'number') {
       resultMap.set(r.palavra.toLowerCase(), {
         tagset_codigo: r.tagset_codigo,
+        tagsets_alternativos: r.tagsets_alternativos || [],
+        is_polysemous: r.is_polysemous || false,
         confianca: r.confianca,
         fonte: 'gemini_flash',
         justificativa: r.justificativa || 'Batch',
@@ -896,6 +922,46 @@ async function callSemanticAnnotatorSingle(
   return data.success ? data.result : null;
 }
 
+/**
+ * Inferir insígnias culturais para uma palavra
+ */
+async function inferCulturalInsignias(
+  palavra: string,
+  corpusType: string,
+  supabase: any
+): Promise<string[]> {
+  const insignias: string[] = [];
+  
+  // Buscar no dialectal_lexicon
+  const { data: dialectal } = await supabase
+    .from('dialectal_lexicon')
+    .select('origem_regionalista, influencia_platina')
+    .eq('verbete_normalizado', palavra.toLowerCase())
+    .single();
+  
+  if (dialectal) {
+    if (dialectal.origem_regionalista?.includes('campeiro')) {
+      insignias.push('Gaúcho');
+    }
+    if (dialectal.influencia_platina) {
+      insignias.push('Platino');
+    }
+  }
+  
+  // Adicionar insígnia do corpus de origem
+  const corpusInsignias: Record<string, string> = {
+    'gaucho': 'Gaúcho',
+    'nordestino': 'Nordestino',
+    'sertanejo': 'Sertanejo',
+  };
+  
+  if (corpusInsignias[corpusType] && !insignias.includes(corpusInsignias[corpusType])) {
+    insignias.push(corpusInsignias[corpusType]);
+  }
+  
+  return insignias;
+}
+
 async function saveWithArtistSong(
   supabase: any,
   palavra: string,
@@ -905,12 +971,21 @@ async function saveWithArtistSong(
   fonte: string,
   justificativa: string,
   artistId: string,
-  songId: string
+  songId: string,
+  tagsetsAlternativos: string[] = [],
+  isPolysemous: boolean = false,
+  corpusType: string = 'gaucho'
 ): Promise<void> {
+  // Inferir insígnias culturais
+  const insignias = await inferCulturalInsignias(palavra, corpusType, supabase);
+  
   await supabase.from('semantic_disambiguation_cache').upsert({
     palavra: palavra.toLowerCase(),
     contexto_hash: contextoHash,
     tagset_codigo: tagsetCodigo,
+    tagsets_alternativos: tagsetsAlternativos,
+    is_polysemous: isPolysemous,
+    insignias_culturais: insignias,
     confianca,
     fonte,
     justificativa,
@@ -920,4 +995,18 @@ async function saveWithArtistSong(
     onConflict: 'palavra,contexto_hash',
     ignoreDuplicates: false
   });
+  
+  // Salvar atribuição em cultural_insignia_attribution para auditoria
+  if (insignias.length > 0) {
+    for (const insignia of insignias) {
+      await supabase.from('cultural_insignia_attribution').insert({
+        palavra: palavra.toLowerCase(),
+        insignia,
+        fonte: fonte,
+        tipo_atribuicao: 'automatico',
+        confianca: confianca,
+        metadata: { corpus_type: corpusType, tagset: tagsetCodigo }
+      });
+    }
+  }
 }

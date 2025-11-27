@@ -9,6 +9,8 @@ export interface PipelineStats {
     avgConfidence: number;
     geminiPercentage: number;
     ruleBasedPercentage: number;
+    wordsWithInsignias: number;
+    polysemousWords: number;
   };
   semanticLexicon: {
     totalEntries: number;
@@ -39,7 +41,7 @@ export function useSemanticPipelineStats() {
       // 1. Cache stats
       const { data: cacheData, error: cacheError } = await supabase
         .from('semantic_disambiguation_cache')
-        .select('palavra, tagset_codigo, confianca, fonte');
+        .select('palavra, tagset_codigo, confianca, fonte, insignias_culturais, is_polysemous');
 
       if (cacheError) throw cacheError;
 
@@ -49,6 +51,10 @@ export function useSemanticPipelineStats() {
       const avgConfidence = cacheData.reduce((sum, d) => sum + (d.confianca || 0), 0) / cacheData.length;
       const geminiCount = cacheData.filter(d => d.fonte === 'gemini').length;
       const ruleBasedCount = cacheData.filter(d => d.fonte === 'rule_based').length;
+      const wordsWithInsignias = cacheData.filter(d => 
+        d.insignias_culturais && Array.isArray(d.insignias_culturais) && d.insignias_culturais.length > 0
+      ).length;
+      const polysemousWords = cacheData.filter(d => d.is_polysemous === true).length;
 
       // 2. Semantic lexicon stats
       const { count: lexiconCount, error: lexiconError } = await supabase
@@ -93,7 +99,9 @@ export function useSemanticPipelineStats() {
           ncWords,
           avgConfidence: Math.round(avgConfidence * 100) / 100,
           geminiPercentage: (geminiCount / cacheData.length) * 100,
-          ruleBasedPercentage: (ruleBasedCount / cacheData.length) * 100
+          ruleBasedPercentage: (ruleBasedCount / cacheData.length) * 100,
+          wordsWithInsignias,
+          polysemousWords
         },
         semanticLexicon: {
           totalEntries: lexiconCount || 0,

@@ -1885,6 +1885,8 @@ export type Database = {
           fonte: string | null
           hits_count: number | null
           id: string
+          insignias_culturais: string[] | null
+          is_polysemous: boolean | null
           justificativa: string | null
           last_hit_at: string | null
           lema: string | null
@@ -1892,6 +1894,7 @@ export type Database = {
           pos: string | null
           song_id: string | null
           tagset_codigo: string
+          tagsets_alternativos: string[] | null
         }
         Insert: {
           artist_id?: string | null
@@ -1901,6 +1904,8 @@ export type Database = {
           fonte?: string | null
           hits_count?: number | null
           id?: string
+          insignias_culturais?: string[] | null
+          is_polysemous?: boolean | null
           justificativa?: string | null
           last_hit_at?: string | null
           lema?: string | null
@@ -1908,6 +1913,7 @@ export type Database = {
           pos?: string | null
           song_id?: string | null
           tagset_codigo: string
+          tagsets_alternativos?: string[] | null
         }
         Update: {
           artist_id?: string | null
@@ -1917,6 +1923,8 @@ export type Database = {
           fonte?: string | null
           hits_count?: number | null
           id?: string
+          insignias_culturais?: string[] | null
+          is_polysemous?: boolean | null
           justificativa?: string | null
           last_hit_at?: string | null
           lema?: string | null
@@ -1924,6 +1932,7 @@ export type Database = {
           pos?: string | null
           song_id?: string | null
           tagset_codigo?: string
+          tagsets_alternativos?: string[] | null
         }
         Relationships: [
           {

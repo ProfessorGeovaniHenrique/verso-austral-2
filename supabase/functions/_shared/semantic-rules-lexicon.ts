@@ -10,6 +10,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 interface LexiconRule {
   palavra: string;
   tagset_codigo: string;
+  tagsets_alternativos?: string[];
+  is_polysemous?: boolean;
   confianca: number;
   justificativa: string;
 }
@@ -140,18 +142,31 @@ export async function loadLexiconRules(): Promise<Map<string, LexiconRule>> {
     const palavra = entry.verbete_normalizado.toLowerCase();
     const categorias = entry.categorias_tematicas || [];
 
-    // Mapear primeira categoria válida encontrada
+    // Mapear primeira categoria válida encontrada como primária
+    let primaryMapping = null;
+    const alternativeMappings: string[] = [];
+    
     for (const categoria of categorias) {
       const mapping = CATEGORY_TO_DOMAIN_MAP[categoria];
       if (mapping) {
-        rulesMap.set(palavra, {
-          palavra,
-          tagset_codigo: mapping.codigo,
-          confianca: 0.95,
-          justificativa: `Palavra do léxico dialetal gaúcho - categoria: ${categoria} → ${mapping.nome}`,
-        });
-        break; // Usar apenas primeira categoria
+        if (!primaryMapping) {
+          primaryMapping = mapping;
+        } else {
+          // Categorias adicionais → DSs alternativos (polissemia)
+          alternativeMappings.push(mapping.codigo);
+        }
       }
+    }
+    
+    if (primaryMapping) {
+      rulesMap.set(palavra, {
+        palavra,
+        tagset_codigo: primaryMapping.codigo,
+        tagsets_alternativos: alternativeMappings,
+        is_polysemous: alternativeMappings.length > 0,
+        confianca: 0.95,
+        justificativa: `Palavra do léxico dialetal gaúcho - categoria: ${categorias[0]} → ${primaryMapping.nome}${alternativeMappings.length > 0 ? ` (+ ${alternativeMappings.length} DSs alternativos)` : ''}`,
+      });
     }
   });
 
