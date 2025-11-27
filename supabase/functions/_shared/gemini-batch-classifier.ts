@@ -45,22 +45,30 @@ export async function classifyBatchWithGemini(
     });
 
     if (!response.ok) {
-      throw new Error(`Gemini API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('[gemini-batch] API error:', response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    console.log('[gemini-batch] Raw response:', JSON.stringify(data).substring(0, 500));
+    
     const content = data.choices[0]?.message?.content;
 
     if (!content) {
+      console.error('[gemini-batch] Empty content in response:', data);
       throw new Error('Empty response from Gemini');
     }
 
     // Parse JSON response
+    console.log('[gemini-batch] Parsing content:', content.substring(0, 300));
     const parsed = JSON.parse(content);
     
+    console.log('[gemini-batch] Successfully classified', parsed.classifications?.length || 0, 'words');
     return parsed.classifications || [];
 
   } catch (error) {
+    console.error('[gemini-batch] Classification error:', error);
     logger.error('Batch classification error', error as Error);
     
     // Fallback: retornar NC para todas

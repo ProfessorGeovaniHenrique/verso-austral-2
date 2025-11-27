@@ -148,15 +148,45 @@ async function getCandidateWords(
   
   const candidates: any[] = [];
 
+  console.log(`[getCandidateWords] Starting with source=${source}, limit=${limit}, offset=${offset}`);
+
   // 1. Gutenberg (priorizar substantivos, verbos, adjetivos)
   if (source === 'gutenberg' || source === 'all') {
-    const { data: gutenbergWords } = await supabase
+    // Buscar palavras que ainda não estão no semantic_lexicon
+    const { data: existingWords } = await supabase
+      .from('semantic_lexicon')
+      .select('palavra');
+    
+    console.log(`[getCandidateWords] Existing words in lexicon: ${existingWords?.length || 0}`);
+    
+    const existingSet = new Set(existingWords?.map((w: { palavra: string }) => w.palavra) || []);
+    
+    const { data: allGutenbergWords } = await supabase
       .from('gutenberg_lexicon')
       .select('verbete, classe_gramatical')
-      .in('classe_gramatical', ['substantivo', 'verbo', 'adjetivo', 'advérbio'])
-      .not('verbete', 'in', `(SELECT palavra FROM semantic_lexicon)`)
-      .limit(Math.floor(limit * 0.6))
-      .range(offset, offset + Math.floor(limit * 0.6) - 1);
+      .not('classe_gramatical', 'is', null)
+      .order('verbete')
+      .limit(1000);
+    
+    console.log(`[getCandidateWords] Gutenberg words fetched: ${allGutenbergWords?.length || 0}`);
+    
+    // Filtrar por classes gramaticais relevantes (substantivos, verbos, adjetivos, advérbios)
+    const gutenbergWords = allGutenbergWords
+      ?.filter((w: any) => {
+        const classe = w.classe_gramatical || '';
+        // m. = masculino, f. = feminino (substantivos)
+        // adj. = adjetivo
+        // v. = verbo
+        // adv. = advérbio
+        return (
+          classe.includes('m.') || classe.includes('f.') || 
+          classe.includes('adj') || classe.includes('v.') || 
+          classe.includes('adv')
+        ) && !existingSet.has(w.verbete.toLowerCase().trim());
+      })
+      .slice(offset, offset + Math.floor(limit * 0.6));
+    
+    console.log(`[getCandidateWords] Gutenberg filtered: ${gutenbergWords?.length || 0}`);
     
     if (gutenbergWords) {
       candidates.push(...gutenbergWords.map((w: any) => ({
@@ -169,12 +199,21 @@ async function getCandidateWords(
 
   // 2. Dialectal (todas categorias temáticas)
   if (source === 'dialectal' || source === 'all') {
-    const { data: dialectalWords } = await supabase
+    const { data: existingWords } = await supabase
+      .from('semantic_lexicon')
+      .select('palavra');
+    
+    const existingSet = new Set(existingWords?.map((w: { palavra: string }) => w.palavra) || []);
+    
+    const { data: allDialectalWords } = await supabase
       .from('dialectal_lexicon')
       .select('verbete, classe_gramatical')
-      .not('verbete', 'in', `(SELECT palavra FROM semantic_lexicon)`)
-      .limit(Math.floor(limit * 0.4))
-      .range(offset, offset + Math.floor(limit * 0.4) - 1);
+      .order('verbete')
+      .limit(1000);
+    
+    const dialectalWords = allDialectalWords
+      ?.filter((w: any) => !existingSet.has(w.verbete.toLowerCase().trim()))
+      .slice(offset, offset + Math.floor(limit * 0.4));
     
     if (dialectalWords) {
       candidates.push(...dialectalWords.map((w: any) => ({
@@ -295,13 +334,20 @@ async function processWordsChunk(
 }
 
 function mapPOSFromGutenberg(classe: string): string | undefined {
-  const map: Record<string, string> = {
-    'substantivo': 'NOUN',
-    'verbo': 'VERB',
-    'adjetivo': 'ADJ',
-    'advérbio': 'ADV'
-  };
-  return map[classe?.toLowerCase()];
+  if (!classe) return undefined;
+  
+  // Normalizar classe gramatical do Gutenberg
+  const classeNorm = classe.toLowerCase();
+  
+  if (classeNorm.includes('m.') || classeNorm.includes('f.') || 
+      classeNorm.includes('s.') || classeNorm.includes('subst')) {
+    return 'NOUN';
+  }
+  if (classeNorm.includes('v.')) return 'VERB';
+  if (classeNorm.includes('adj')) return 'ADJ';
+  if (classeNorm.includes('adv')) return 'ADV';
+  
+  return undefined;
 }
 
 function mapPOSFromDialectal(classe: string): string | undefined {
