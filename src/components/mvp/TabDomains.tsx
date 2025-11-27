@@ -14,6 +14,8 @@ import { toast } from "sonner";
 import { useDomainsTour } from "@/hooks/useDomainsTour";
 import { exportDomainsToPDF } from "@/utils/exportDomainsPDF";
 import { DomainComparison } from "./DomainComparison";
+import { useQuery } from "@tanstack/react-query";
+import { fetchSemanticDomainsFromCache } from "@/services/semanticDomainsService";
 
 interface TabDomainsProps {
   demo?: boolean;
@@ -28,8 +30,40 @@ export function TabDomains({ demo = false, preloadedData, songId }: TabDomainsPr
     limit: demo ? 1000 : undefined 
   });
 
-  const gauchoData = preloadedData || fetchedData;
-  const isLoading = preloadedData ? false : isFetching;
+  // Buscar dados do cache por songId
+  const { data: songDomains, isLoading: isLoadingSong } = useQuery({
+    queryKey: ['song-domains', songId],
+    queryFn: () => fetchSemanticDomainsFromCache(songId!),
+    enabled: !!songId
+  });
+
+  // Priorizar: songDomains (cache) > preloadedData > fetchedData (corpus geral)
+  const gauchoData = useMemo(() => {
+    if (songId && songDomains && songDomains.length > 0) {
+      return { 
+        dominios: songDomains, 
+        keywords: [], 
+        cloudData: [],
+        estatisticas: {
+          totalPalavras: 0,
+          palavrasUnicas: 0,
+          dominiosIdentificados: songDomains.length,
+          palavrasChaveSignificativas: 0,
+          prosodiaDistribution: { 
+            positivas: 0, 
+            negativas: 0, 
+            neutras: 0,
+            percentualPositivo: 0,
+            percentualNegativo: 0,
+            percentualNeutro: 0
+          }
+        }
+      } as CorpusAnalysisResult;
+    }
+    return preloadedData || fetchedData;
+  }, [songId, songDomains, preloadedData, fetchedData]);
+
+  const isLoading = songId ? isLoadingSong : (preloadedData ? false : isFetching);
   
   const [searchTerm, setSearchTerm] = useState("");
   const [showTour, setShowTour] = useState(false);
@@ -133,6 +167,21 @@ export function TabDomains({ demo = false, preloadedData, songId }: TabDomainsPr
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  // Se songId fornecido mas cache vazio
+  if (songId && (!songDomains || songDomains.length === 0) && !isLoadingSong) {
+    return (
+      <Card className="card-academic">
+        <CardContent className="py-8 text-center">
+          <Database className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            Dados ainda não processados para esta música.
+            Clique em "Processar Corpus" na aba Apresentação.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 

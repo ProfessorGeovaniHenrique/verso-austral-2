@@ -46,10 +46,29 @@ export function CorpusLoadingModal({ open, songId, onComplete }: CorpusLoadingMo
     
     const processCorpus = async () => {
       try {
-        // Iniciar processamento
+        // Etapa 1: Iniciar processamento
         setCurrentStep(0);
         setProgress(10);
 
+        // Simular progresso de forma realista durante o processamento
+        const simulateProgress = async () => {
+          const intervals = [
+            { step: 1, progress: 30, delay: 2000 },
+            { step: 2, progress: 60, delay: 3000 },
+            { step: 3, progress: 85, delay: 2000 }
+          ];
+
+          for (const { step, progress: p, delay } of intervals) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            setCurrentStep(step);
+            setProgress(p);
+          }
+        };
+
+        // Iniciar simulação de progresso em paralelo
+        const progressPromise = simulateProgress();
+
+        // Chamar edge function e AGUARDAR resposta real
         const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-single-song-demo`,
           {
@@ -66,27 +85,24 @@ export function CorpusLoadingModal({ open, songId, onComplete }: CorpusLoadingMo
           throw new Error('Erro ao processar corpus');
         }
 
-        // Simular progresso enquanto processa
-        const progressIntervals = [
-          { step: 1, progress: 30, delay: 2000 },  // Anotando domínios
-          { step: 2, progress: 60, delay: 3000 },  // Alimentando base
-          { step: 3, progress: 85, delay: 2000 },  // Gerando gráficos
-          { step: 4, progress: 100, delay: 1000 }  // Pronto
-        ];
+        const result = await response.json();
 
-        for (const { step, progress: p, delay } of progressIntervals) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-          setCurrentStep(step);
-          setProgress(p);
+        // Aguardar simulação terminar
+        await progressPromise;
+
+        // Verificar sucesso do processamento
+        if (result.success) {
+          setCurrentStep(4);
+          setProgress(100);
+          setIsComplete(true);
+
+          // Fechar modal e completar
+          setTimeout(() => {
+            onComplete();
+          }, 1000);
+        } else {
+          throw new Error(result.error || 'Falha no processamento');
         }
-
-        setIsComplete(true);
-        setProgress(100);
-
-        // Fechar modal e completar
-        setTimeout(() => {
-          onComplete();
-        }, 1000);
 
       } catch (error) {
         console.error('Error processing corpus:', error);
