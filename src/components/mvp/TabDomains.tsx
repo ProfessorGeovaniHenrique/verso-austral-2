@@ -29,8 +29,6 @@ export function TabDomains({ demo = false, preloadedData }: TabDomainsProps) {
 
   const gauchoData = preloadedData || fetchedData;
   const isLoading = preloadedData ? false : isFetching;
-    limit: demo ? 1000 : undefined 
-  });
   
   const [searchTerm, setSearchTerm] = useState("");
   const [showTour, setShowTour] = useState(false);
@@ -39,7 +37,7 @@ export function TabDomains({ demo = false, preloadedData }: TabDomainsProps) {
 
   const demoData = gauchoData?.dominios || null;
   const demoKeywords = gauchoData?.keywords || null;
-  const isLoadingDemo = isLoadingCorpus;
+  const isLoadingDemo = isLoading;
 
   // 🔍 Função de normalização de texto (remove acentos)
   const normalizeText = (text: string): string => {
