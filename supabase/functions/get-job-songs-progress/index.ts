@@ -40,8 +40,25 @@ Deno.serve(async (req) => {
       .eq('id', jobId)
       .single();
 
-    if (jobError || !job) {
-      throw new Error('Job não encontrado');
+    // Se job não encontrado, retornar array vazio (não é erro fatal)
+    if (jobError) {
+      if (jobError.code === 'PGRST116') {
+        // PGRST116 = no rows found
+        log.info('Job not found, returning empty array', { jobId });
+        return new Response(
+          JSON.stringify({ songs: [] }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      throw jobError;
+    }
+
+    if (!job) {
+      log.info('Job data is null, returning empty array', { jobId });
+      return new Response(
+        JSON.stringify({ songs: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Buscar todas as músicas do artista

@@ -29,7 +29,10 @@ export function useJobSongsProgress(jobId: string | null, isProcessing: boolean)
   const [error, setError] = useState<string | null>(null);
 
   const fetchSongsProgress = useCallback(async () => {
-    if (!jobId) return;
+    if (!jobId) {
+      setSongs([]);
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -41,10 +44,16 @@ export function useJobSongsProgress(jobId: string | null, isProcessing: boolean)
       );
 
       if (invokeError) {
+        // Se job não encontrado, apenas limpar lista sem mostrar erro
+        if (invokeError.message.includes('Job não encontrado')) {
+          log.info('Job not found, clearing songs list', { jobId });
+          setSongs([]);
+          return;
+        }
         throw new Error(invokeError.message);
       }
 
-      if (data.error) {
+      if (data.error && !data.error.includes('Job não encontrado')) {
         throw new Error(data.error);
       }
 
@@ -55,6 +64,7 @@ export function useJobSongsProgress(jobId: string | null, isProcessing: boolean)
       const errorMsg = err instanceof Error ? err.message : 'Erro ao buscar progresso';
       log.error('Error fetching songs progress', err as Error);
       setError(errorMsg);
+      setSongs([]); // Limpar lista em caso de erro
     } finally {
       setIsLoading(false);
     }
