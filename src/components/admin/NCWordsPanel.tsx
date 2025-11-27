@@ -1,24 +1,36 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Edit } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { NCWordValidationModal } from './NCWordValidationModal';
+
+interface NCWord {
+  palavra: string;
+  confianca: number;
+  contexto_hash: string;
+  song_id?: string;
+}
 
 export function NCWordsPanel() {
+  const [selectedWord, setSelectedWord] = useState<NCWord | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
   const { data: ncWords, isLoading, refetch } = useQuery({
     queryKey: ['nc-words'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('semantic_disambiguation_cache')
-        .select('palavra, confianca, contexto_hash')
+        .select('palavra, confianca, contexto_hash, song_id')
         .eq('tagset_codigo', 'NC')
         .order('palavra')
         .limit(50);
 
       if (error) throw error;
-      return data;
+      return data as NCWord[];
     }
   });
 
@@ -77,18 +89,33 @@ export function NCWordsPanel() {
               {ncWords.map((word, index) => (
                 <div 
                   key={index}
-                  className="flex items-center justify-between border rounded p-2 hover:bg-accent/50 transition-colors"
+                  onClick={() => {
+                    setSelectedWord(word);
+                    setModalOpen(true);
+                  }}
+                  className="flex items-center justify-between border rounded p-2 hover:bg-accent/70 transition-colors cursor-pointer group"
                 >
                   <span className="text-sm font-mono">{word.palavra}</span>
-                  <Badge variant="destructive" className="text-xs">
-                    {(word.confianca * 100).toFixed(0)}%
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="outline" className="text-xs group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                      <Edit className="h-3 w-3 mr-1" />
+                      Validar
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
       </CardContent>
+
+      {/* Modal de Validação */}
+      <NCWordValidationModal
+        word={selectedWord}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onSuccess={() => refetch()}
+      />
     </Card>
   );
 }
