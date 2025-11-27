@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb, HelpCircle } from "lucide-react";
 import { useCorpusData } from "@/hooks/useCorpusData";
+import { CorpusAnalysisResult } from "@/services/corpusDataService";
 import { CorpusDomain } from "@/services/corpusDataService";
 import { toast } from "sonner";
 import { useDomainsTour } from "@/hooks/useDomainsTour";
@@ -16,12 +17,18 @@ import { DomainComparison } from "./DomainComparison";
 
 interface TabDomainsProps {
   demo?: boolean;
+  preloadedData?: CorpusAnalysisResult;
 }
 
-export function TabDomains({ demo = false }: TabDomainsProps) {
-  const { gauchoData, isLoading: isLoadingCorpus } = useCorpusData({ 
-    loadGaucho: true, 
+export function TabDomains({ demo = false, preloadedData }: TabDomainsProps) {
+  const { gauchoData: fetchedData, isLoading: isFetching } = useCorpusData({ 
+    loadGaucho: !preloadedData, 
     loadNordestino: false,
+    limit: demo ? 1000 : undefined 
+  });
+
+  const gauchoData = preloadedData || fetchedData;
+  const isLoading = preloadedData ? false : isFetching;
     limit: demo ? 1000 : undefined 
   });
   

@@ -28,6 +28,9 @@ import { useStatisticsTour } from "@/hooks/useStatisticsTour";
 import { useAuthContext } from "@/contexts/AuthContext";
 
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { QUANDO_VERSO_ANALYSIS, NORDESTINO_REFERENCE_DATA } from '@/data/demo/quandoVersoData';
+import { CorpusAnalysisResult } from '@/services/corpusDataService';
+import { CorpusLoadingModal } from './CorpusLoadingModal';
 
 // Schema de validação com Zod
 const accessRequestSchema = z.object({
@@ -70,6 +73,14 @@ export function TabApresentacao() {
   const { user } = useAuthContext();
   const [showAccessForm, setShowAccessForm] = useState(false);
 
+  // Estado para carregamento do corpus demo
+  const [corpusLoaded, setCorpusLoaded] = useState(false);
+  const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [demoCorpusData, setDemoCorpusData] = useState<{
+    gaucho: CorpusAnalysisResult;
+    nordestino: CorpusAnalysisResult;
+  } | null>(null);
+
   // Form com validação Zod
   const form = useForm<AccessRequestFormData>({
     resolver: zodResolver(accessRequestSchema),
@@ -101,6 +112,20 @@ export function TabApresentacao() {
       console.error('Error submitting access request:', error);
       toast.error('Erro ao enviar solicitação. Tente novamente.');
     }
+  };
+
+  const handleLoadCorpus = () => {
+    setShowLoadingModal(true);
+  };
+
+  const handleLoadingComplete = () => {
+    setShowLoadingModal(false);
+    setDemoCorpusData({
+      gaucho: QUANDO_VERSO_ANALYSIS,
+      nordestino: NORDESTINO_REFERENCE_DATA
+    });
+    setCorpusLoaded(true);
+    toast.success('Corpus carregado! Explore as abas para ver a análise.');
   };
   const { startTour } = useApresentacaoTour({ autoStart: true });
   
@@ -401,6 +426,35 @@ export function TabApresentacao() {
               </AlertDescription>
             </Alert>
 
+            {/* Card de Carregamento do Corpus Demo */}
+            <Card className="border-2 border-dashed border-primary/30 bg-primary/5">
+              <CardContent className="flex flex-col items-center justify-center py-8 gap-4">
+                <div className="p-4 bg-primary/10 rounded-full">
+                  <Database className="w-8 h-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <h3 className="font-semibold text-lg mb-2">
+                    Carregue o Corpus de Demonstração
+                  </h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Clique para processar a música "Quando o Verso Vem pras Casa" 
+                    e visualizar análises comparativas com o corpus nordestino.
+                  </p>
+                </div>
+                <Button 
+                  size="lg" 
+                  onClick={handleLoadCorpus}
+                  disabled={corpusLoaded}
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  {corpusLoaded 
+                    ? '✓ Corpus Carregado' 
+                    : 'Clique aqui para carregar o corpus "Quando o Verso vem pras Casa"'
+                  }
+                </Button>
+              </CardContent>
+            </Card>
+
             {/* Letra da música + Player */}
             <div className="grid gap-6 lg:grid-cols-3">
               <div className="lg:col-span-2" data-tour="letra-musica">
@@ -471,17 +525,23 @@ E uma saudade redomona pelos cantos do galpão`}
           </TabsContent>
 
           <TabsContent value="dominios" className="mt-6">
-            <TabDomains demo={true} />
+            <TabDomains demo={!corpusLoaded} preloadedData={demoCorpusData?.gaucho} />
           </TabsContent>
 
           <TabsContent value="estatisticas" className="mt-6">
-            <TabStatistics demo={true} />
+            <TabStatistics demo={!corpusLoaded} preloadedData={demoCorpusData?.gaucho} />
           </TabsContent>
 
           <TabsContent value="nuvem" className="mt-6">
-            <TabGalaxy demo={true} />
+            <TabGalaxy demo={!corpusLoaded} />
           </TabsContent>
         </Tabs>
+
+        {/* Modal de Loading */}
+        <CorpusLoadingModal 
+          open={showLoadingModal} 
+          onComplete={handleLoadingComplete} 
+        />
       </CardContent>
     </Card>
   );

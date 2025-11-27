@@ -49,7 +49,7 @@ import {
 import { ACADEMIC_RS_COLORS } from "@/config/themeColors";
 import { KWICModal } from "@/components/KWICModal";
 import { useCorpusData } from "@/hooks/useCorpusData";
-import { CorpusKeyword } from "@/services/corpusDataService";
+import { CorpusKeyword, CorpusAnalysisResult } from "@/services/corpusDataService";
 import { toast } from "sonner";
 import { useStatisticsTour } from "@/hooks/useStatisticsTour";
 import { PlayCircle } from "lucide-react";
@@ -81,14 +81,18 @@ const PROSODY_COLORS = {
 
 interface TabStatisticsProps {
   demo?: boolean;
+  preloadedData?: CorpusAnalysisResult;
 }
 
-export function TabStatistics({ demo = false }: TabStatisticsProps) {
-  const { gauchoData, isLoading: isLoadingCorpus } = useCorpusData({ 
-    loadGaucho: true, 
+export function TabStatistics({ demo = false, preloadedData }: TabStatisticsProps) {
+  const { gauchoData: fetchedData, isLoading: isFetching } = useCorpusData({ 
+    loadGaucho: !preloadedData, 
     loadNordestino: false,
     limit: demo ? 1000 : undefined 
   });
+
+  const gauchoData = preloadedData || fetchedData;
+  const isLoadingCorpus = preloadedData ? false : isFetching;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortColumn, setSortColumn] = useState<SortColumn>('frequenciaNormalizada');
