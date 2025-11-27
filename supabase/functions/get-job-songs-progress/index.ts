@@ -82,7 +82,20 @@ Deno.serve(async (req) => {
     // Para cada música, contar palavras processadas no cache
     const songsProgress: SongProgress[] = await Promise.all(
       songs.map(async (song, index) => {
+        // Garantir que lyrics não seja null
         const lyrics = song.lyrics || '';
+        
+        // Se lyrics está vazio, retornar progresso zero
+        if (!lyrics.trim()) {
+          return {
+            id: song.id,
+            title: song.title,
+            totalWords: 0,
+            processedWords: 0,
+            status: 'pending' as const,
+          };
+        }
+
         const words = lyrics
           .toLowerCase()
           .replace(/[^\p{L}\p{N}\s]/gu, ' ')
@@ -96,6 +109,10 @@ Deno.serve(async (req) => {
           .from('semantic_disambiguation_cache')
           .select('*', { count: 'exact', head: true })
           .eq('song_id', song.id);
+
+        if (countError) {
+          log.error('Error counting cache for song', countError);
+        }
 
         const processedWords = countError ? 0 : (count || 0);
 
@@ -131,9 +148,15 @@ Deno.serve(async (req) => {
     );
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
     log.error('Error fetching songs progress', error as Error);
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
+      JSON.stringify({ 
+        error: errorMessage
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
