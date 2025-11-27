@@ -110,3 +110,6 @@ verify_jwt = false
 
 [functions.annotate-artist-songs]
 verify_jwt = false
+
+[functions.get-job-songs-progress]
+verify_jwt = false

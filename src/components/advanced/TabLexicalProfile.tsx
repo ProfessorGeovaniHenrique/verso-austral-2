@@ -27,6 +27,8 @@ import { getSemanticDomainsFromAnnotatedCorpus } from "@/services/semanticDomain
 import { toast } from "sonner";
 import { createLogger } from "@/lib/loggerFactory";
 import { useSemanticAnnotationJob } from "@/hooks/useSemanticAnnotationJob";
+import { useJobSongsProgress } from "@/hooks/useJobSongsProgress";
+import { SongsProgressList } from "@/components/visualization/SongsProgressList";
 
 const log = createLogger('TabLexicalProfile');
 
@@ -38,6 +40,7 @@ export function TabLexicalProfile({ analyzeRef }: TabLexicalProfileProps) {
   const subcorpusContext = useSubcorpus();
   const { job, isProcessing, progress, eta, wordsPerSecond, startJob, resumeJob, cancelJob, checkExistingJob, isResuming } = useSemanticAnnotationJob();
   const { stylisticSelection, setStylisticSelection, activeAnnotationJobId, setActiveAnnotationJobId } = useSubcorpus();
+  const { songs, isLoading: loadingSongs, completedCount, totalCount } = useJobSongsProgress(job?.id || null, isProcessing);
   const [existingJob, setExistingJob] = useState<any | null>(null);
   const [studyProfile, setStudyProfile] = useState<LexicalProfile | null>(null);
   const [referenceProfile, setReferenceProfile] = useState<LexicalProfile | null>(null);
@@ -338,6 +341,15 @@ export function TabLexicalProfile({ analyzeRef }: TabLexicalProfileProps) {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {(isProcessing || job?.status === 'pausado') && job && (
+        <SongsProgressList 
+          songs={songs}
+          completedCount={completedCount}
+          totalCount={totalCount}
+          isLoading={loadingSongs}
+        />
       )}
 
       {stylisticSelection?.isComparative && validation && validation.warnings.length > 0 && (
