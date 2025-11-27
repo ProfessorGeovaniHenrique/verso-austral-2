@@ -40,6 +40,12 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'ciencia': { codigo: 'CC.CIT', nome: 'Ciência e Tecnologia' },
   'comunicacao': { codigo: 'CC.COM', nome: 'Comunicação e Mídia' },
   
+  // Abstrações - EXPANDIDO
+  'filosofia': { codigo: 'AB.FIL', nome: 'Conceitos Filosóficos e Éticos' },
+  'etica': { codigo: 'AB.FIL.MOR', nome: 'Valores Morais' },
+  'politica_abstrata': { codigo: 'AB.SOC', nome: 'Conceitos Sociais e Políticos' },
+  'existencial': { codigo: 'AB.EXI', nome: 'Conceitos Existenciais e Metafísicos' },
+  
   // Objetos e Artefatos
   'vestimenta': { codigo: 'OA', nome: 'Objetos' },
   'ferramentas': { codigo: 'OA', nome: 'Objetos' },
