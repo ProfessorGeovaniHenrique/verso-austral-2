@@ -184,7 +184,7 @@ async function processChunk(
       .from('semantic_annotation_jobs')
       .update({ last_chunk_at: new Date().toISOString() })
       .eq('id', jobId)
-      .lte('last_chunk_at', new Date(Date.now() - 30000).toISOString()) // CORRIGIDO: lte = "último chunk há mais de 30s"
+      .lte('last_chunk_at', new Date(Date.now() - 5000).toISOString()) // AJUSTADO: 5s ao invés de 30s
       .select('id')
       .single();
 
