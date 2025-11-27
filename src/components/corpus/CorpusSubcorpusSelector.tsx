@@ -1,20 +1,10 @@
-import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Library, Music } from 'lucide-react';
 import { CorpusType, CORPUS_CONFIG } from '@/data/types/corpus-tools.types';
-import { loadFullTextCorpus } from '@/lib/fullTextParser';
-
-// Cache global em memória (persiste durante toda a sessão)
-const artistsCache = new Map<CorpusType, string[]>();
-
-// Função utilitária para limpar cache (útil para testes)
-export function clearArtistsCache() {
-  artistsCache.clear();
-  console.log('🗑️ Cache de artistas limpo');
-}
+import { useCorpusArtistsAndSongs } from '@/hooks/useCorpusArtistsAndSongs';
 
 interface CorpusSubcorpusSelectorProps {
   label: string;
@@ -37,41 +27,7 @@ export function CorpusSubcorpusSelector({
   onArtistChange,
   disabled = false
 }: CorpusSubcorpusSelectorProps) {
-  const [availableArtists, setAvailableArtists] = useState<string[]>([]);
-  const [isLoadingArtists, setIsLoadingArtists] = useState(false);
-  
-  useEffect(() => {
-    const loadArtists = async () => {
-      // Verificar cache primeiro
-      if (artistsCache.has(corpusBase)) {
-        console.log(`🚀 Cache HIT: ${corpusBase}`);
-        setAvailableArtists(artistsCache.get(corpusBase)!);
-        return;
-      }
-      
-      console.log(`📥 Cache MISS: ${corpusBase} - Carregando...`);
-      setIsLoadingArtists(true);
-      
-      try {
-        const corpus = await loadFullTextCorpus(corpusBase);
-        const uniqueArtists = [...new Set(corpus.musicas.map(m => m.metadata.artista))];
-        const sortedArtists = uniqueArtists.sort();
-        
-        // Salvar no cache
-        artistsCache.set(corpusBase, sortedArtists);
-        console.log(`✅ Cache SAVED: ${corpusBase} - ${sortedArtists.length} artistas`);
-        
-        setAvailableArtists(sortedArtists);
-      } catch (error) {
-        console.error('Erro ao carregar artistas:', error);
-        setAvailableArtists([]);
-      } finally {
-        setIsLoadingArtists(false);
-      }
-    };
-    
-    loadArtists();
-  }, [corpusBase]);
+  const { artists: availableArtists, isLoadingArtists } = useCorpusArtistsAndSongs(corpusBase);
   
   return (
     <Card className="border-primary/10">
