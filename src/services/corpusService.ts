@@ -1,22 +1,23 @@
 import type { CorpusType, CorpusWord } from '@/data/types/corpus-tools.types';
 import { parseTSVCorpus } from '@/lib/corpusParser';
-import { loadFullTextCorpus } from '@/lib/fullTextParser';
+import { loadCorpusFromCatalog } from '@/services/catalogCorpusService';
 
 export async function loadAndParseCorpus(
   corpusId: CorpusType,
   artist?: string
 ): Promise<{ parsedCorpus: CorpusWord[]; fullCorpus?: any; wordFreqMap?: Map<string, number> }> {
   if (artist) {
-    // Subcorpus por artista
-    const fullCorpus = await loadFullTextCorpus(corpusId);
-    const artistSongs = fullCorpus.musicas.filter(m => m.metadata.artista === artist);
+    // Subcorpus por artista - CARREGAR DIRETAMENTE DO BANCO DE DADOS
+    const fullCorpus = await loadCorpusFromCatalog(corpusId, {
+      artistNames: [artist]
+    });
     
-    if (artistSongs.length === 0) {
+    if (fullCorpus.musicas.length === 0) {
       throw new Error(`Nenhuma música encontrada para o artista ${artist}`);
     }
     
     const wordFreqMap = new Map<string, number>();
-    artistSongs.forEach(song => {
+    fullCorpus.musicas.forEach(song => {
       song.palavras.forEach(word => {
         const cleaned = word.toLowerCase();
         if (cleaned) {
@@ -40,7 +41,7 @@ export async function loadAndParseCorpus(
     
     return { parsedCorpus, fullCorpus, wordFreqMap };
   } else {
-    // Corpus completo
+    // Corpus completo - usar arquivos .tsv estáticos
     const path = getCorpusPath(corpusId);
     const response = await fetch(path);
     const text = await response.text();
