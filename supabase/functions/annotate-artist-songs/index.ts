@@ -330,6 +330,7 @@ async function processChunk(
       currentWordIndex
     });
 
+    // CRÍTICO: NÃO atualizar last_chunk_at aqui (será atualizado pelo próximo chunk no lockCheck)
     await supabase
       .from('semantic_annotation_jobs')
       .update({
@@ -340,7 +341,6 @@ async function processChunk(
         current_song_index: currentSongIndex,
         current_word_index: currentWordIndex,
         chunks_processed: chunksProcessed,
-        last_chunk_at: new Date().toISOString(),
         tempo_fim: isCompleted ? new Date().toISOString() : null,
       })
       .eq('id', jobId);
@@ -353,7 +353,7 @@ async function processChunk(
       chunksProcessed 
     });
 
-    // Se não terminou, auto-invocar para próximo chunk com retry
+    // Se não terminou, auto-invocar para próximo chunk com retry (ASSÍNCRONO)
     if (!isCompleted) {
       const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
@@ -406,6 +406,7 @@ async function processChunk(
           .eq('id', jobId);
       };
 
+      // Disparo assíncrono sem await (não bloqueia resposta HTTP)
       invokeNextChunk().catch(err => logger.error('invokeNextChunk error', err));
     }
 
