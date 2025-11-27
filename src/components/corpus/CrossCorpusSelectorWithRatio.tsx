@@ -5,10 +5,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Music, Library, Users, Percent, Info, BarChart3, Loader2 } from 'lucide-react';
+import { Music, Library, Users, Percent, Info, BarChart3, Loader2, FileMusic } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CorpusType } from '@/data/types/corpus-tools.types';
 import { estimateCorpusSize } from '@/services/proportionalSamplingService';
+import { useCorpusArtistsAndSongs } from '@/hooks/useCorpusArtistsAndSongs';
 import { toast } from 'sonner';
 
 export interface CrossCorpusSelection {
@@ -54,12 +55,22 @@ export function CrossCorpusSelectorWithRatio({
   const [studyCorpus, setStudyCorpus] = useState<CorpusType>(initialSelection?.study.corpusType || 'gaucho');
   const [studyMode, setStudyMode] = useState<'complete' | 'artist' | 'song'>(initialSelection?.study.mode || 'complete');
   const [studyArtist, setStudyArtist] = useState<string>(initialSelection?.study.artist || '');
+  const [studySong, setStudySong] = useState<string>(initialSelection?.study.songId || '');
   const [studyEstimatedSize, setStudyEstimatedSize] = useState(initialSelection?.study.estimatedSize || 0);
 
   const [referenceCorpus, setReferenceCorpus] = useState<CorpusType>(initialSelection?.reference.corpusType || 'nordestino');
   const [referenceMode, setReferenceMode] = useState<'complete' | 'proportional-sample'>(initialSelection?.reference.mode || 'proportional-sample');
   const [sizeRatio, setSizeRatio] = useState(initialSelection?.reference.sizeRatio || 5);
   const [customRatio, setCustomRatio] = useState('');
+
+  // Hook para carregar artistas e músicas dinamicamente
+  const { 
+    artists: dynamicArtists, 
+    songs: availableSongs, 
+    setSelectedArtist,
+    isLoadingArtists,
+    isLoadingSongs 
+  } = useCorpusArtistsAndSongs(studyCorpus);
   
   // Restaurar valores iniciais quando initialSelection mudar
   useEffect(() => {
@@ -76,13 +87,30 @@ export function CrossCorpusSelectorWithRatio({
 
   const isComparative = mode === 'cross-corpus';
 
+  // Sincronizar artista selecionado com hook
+  useEffect(() => {
+    setSelectedArtist(studyArtist || null);
+  }, [studyArtist, setSelectedArtist]);
+
+  // Reset song quando modo ou artista mudar
+  useEffect(() => {
+    if (studyMode !== 'song') {
+      setStudySong('');
+    }
+    if (studyMode === 'song' && !studyArtist) {
+      setStudySong('');
+    }
+  }, [studyMode, studyArtist]);
+
   useEffect(() => {
     updateEstimates();
-  }, [studyCorpus, studyMode, studyArtist, referenceCorpus, referenceMode, sizeRatio]);
+  }, [studyCorpus, studyMode, studyArtist, studySong, referenceCorpus, referenceMode, sizeRatio]);
 
   const updateEstimates = async () => {
     try {
-      const studySize = await estimateCorpusSize(studyCorpus, studyMode, studyArtist);
+      // Usar songId quando modo for 'song', senão usar artist
+      const identifier = studyMode === 'song' ? studySong : studyArtist;
+      const studySize = await estimateCorpusSize(studyCorpus, studyMode, identifier);
       setStudyEstimatedSize(studySize);
 
       const selection: CrossCorpusSelection = {
@@ -90,6 +118,7 @@ export function CrossCorpusSelectorWithRatio({
           corpusType: studyCorpus,
           mode: studyMode,
           artist: studyArtist || undefined,
+          songId: studySong || undefined,
           estimatedSize: studySize
         },
         reference: {
@@ -152,6 +181,15 @@ export function CrossCorpusSelectorWithRatio({
                   <Music className="h-3 w-3 mr-1" />
                   Artista
                 </Button>
+                <Button
+                  variant={studyMode === 'song' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStudyMode('song')}
+                  className="flex-1"
+                >
+                  <FileMusic className="h-3 w-3 mr-1" />
+                  Música
+                </Button>
               </div>
             </div>
 
@@ -168,17 +206,43 @@ export function CrossCorpusSelectorWithRatio({
               </Select>
             </div>
 
-            {studyMode === 'artist' && (
+            {(studyMode === 'artist' || studyMode === 'song') && (
               <div>
                 <Label className="text-sm text-muted-foreground mb-1">Artista</Label>
-                <Select value={studyArtist} onValueChange={setStudyArtist}>
+                <Select 
+                  value={studyArtist} 
+                  onValueChange={setStudyArtist}
+                  disabled={isLoadingArtists}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
+                    <SelectValue placeholder={isLoadingArtists ? "Carregando..." : "Selecione..."} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {availableArtists.map(artist => (
+                    {dynamicArtists.map(artist => (
                       <SelectItem key={artist} value={artist}>
                         {artist}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {studyMode === 'song' && studyArtist && (
+              <div>
+                <Label className="text-sm text-muted-foreground mb-1">Música</Label>
+                <Select 
+                  value={studySong} 
+                  onValueChange={setStudySong}
+                  disabled={isLoadingSongs}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={isLoadingSongs ? "Carregando..." : "Selecione a música..."} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {availableSongs.map(song => (
+                      <SelectItem key={song.id} value={song.id}>
+                        {song.title}
                       </SelectItem>
                     ))}
                   </SelectContent>

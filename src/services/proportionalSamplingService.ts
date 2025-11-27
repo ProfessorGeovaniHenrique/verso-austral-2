@@ -5,6 +5,7 @@
 
 import { CorpusCompleto, SongEntry } from '@/data/types/full-text-corpus.types';
 import { CorpusType } from '@/data/types/corpus-tools.types';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Selects a random proportional sample from reference corpus
@@ -51,8 +52,7 @@ export function sampleProportionalCorpus(
 }
 
 /**
- * Estimates corpus size without loading full corpus
- * Queries database for word counts
+ * Estimates corpus size by querying database for real word counts
  * 
  * @param corpusType - Type of corpus (gaucho, nordestino)
  * @param mode - Selection mode (complete, artist, song)
@@ -64,31 +64,80 @@ export async function estimateCorpusSize(
   mode: 'complete' | 'artist' | 'song',
   identifier?: string
 ): Promise<number> {
-  // Mock estimates for now - in production, this would query database
-  const mockEstimates = {
-    gaucho: {
-      complete: 1200000,
-      perArtist: 50000,
-      perSong: 200
-    },
-    nordestino: {
-      complete: 800000,
-      perArtist: 40000,
-      perSong: 180
+  try {
+    // Buscar corpus_id
+    const { data: corpus } = await supabase
+      .from('corpora')
+      .select('id')
+      .eq('normalized_name', corpusType)
+      .single();
+    
+    if (!corpus) return 0;
+    
+    if (mode === 'complete') {
+      // Contar total de palavras no corpus completo
+      const { data: songs } = await supabase
+        .from('songs')
+        .select('lyrics, artists!inner(corpus_id)')
+        .eq('artists.corpus_id', corpus.id)
+        .not('lyrics', 'is', null);
+      
+      if (!songs) return 0;
+      
+      return songs.reduce((sum, song) => {
+        const words = (song.lyrics || '')
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+          .split(/\s+/)
+          .filter(w => w.length > 0);
+        return sum + words.length;
+      }, 0);
     }
-  };
-
-  const estimates = mockEstimates[corpusType] || mockEstimates.gaucho;
-
-  switch (mode) {
-    case 'complete':
-      return estimates.complete;
-    case 'artist':
-      return estimates.perArtist;
-    case 'song':
-      return estimates.perSong;
-    default:
-      return estimates.complete;
+    
+    if (mode === 'artist' && identifier) {
+      // Contar palavras do artista específico
+      const { data: songs } = await supabase
+        .from('songs')
+        .select('lyrics, artists!inner(name, corpus_id)')
+        .eq('artists.corpus_id', corpus.id)
+        .eq('artists.name', identifier)
+        .not('lyrics', 'is', null);
+      
+      if (!songs) return 0;
+      
+      return songs.reduce((sum, song) => {
+        const words = (song.lyrics || '')
+          .toLowerCase()
+          .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+          .split(/\s+/)
+          .filter(w => w.length > 0);
+        return sum + words.length;
+      }, 0);
+    }
+    
+    if (mode === 'song' && identifier) {
+      // Contar palavras da música específica
+      const { data: song } = await supabase
+        .from('songs')
+        .select('lyrics')
+        .eq('id', identifier)
+        .single();
+      
+      if (!song) return 0;
+      
+      const words = (song.lyrics || '')
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 0);
+      
+      return words.length;
+    }
+    
+    return 0;
+  } catch (error) {
+    console.error('Error estimating corpus size:', error);
+    return 0;
   }
 }
 
