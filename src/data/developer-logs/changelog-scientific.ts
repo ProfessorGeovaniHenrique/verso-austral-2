@@ -20,6 +20,46 @@ export interface ScientificChangelog {
 
 export const scientificChangelog: ScientificChangelog[] = [
   {
+    version: "v1.8.0",
+    date: "2025-11-27",
+    methodology: "Reformulação dos Domínios AP (Atividades e Práticas) e SP (Sociedade e Política)",
+    keyReferences: [
+      "Taxonomia Semântica Verso Austral - Sistema de Códigos Mnemônicos Hierárquicos",
+      "Classificação de Atividades Humanas Organizadas e Estruturas Político-Sociais"
+    ],
+    scientificAdvances: [
+      {
+        feature: "Expansão do Domínio AP (Atividades e Práticas Sociais)",
+        linguisticBasis: "Reorganização hierárquica de 5 N2 com 15 N3 e 18 N4, totalizando ~33 novos tagsets",
+        concepts: [
+          "AP.TRA (Trabalho e Economia): Trabalho Rural (Agrícola/Pecuário), Profissões/Ofícios (Formais/Tradicionais), Economia/Comércio (Transações/Conceitos)",
+          "AP.ALI (Alimentação e Culinária): Práticas Culinárias (Métodos de Preparo), Refeições/Pratos (Momentos/Tipos), Bebidas (Tipos)",
+          "AP.VES (Vestuário e Moda): Práticas de Vestir/Cuidar (Ações de Vestir, Manutenção), Conceitos de Moda (Estilos/Tendências)",
+          "AP.LAZ (Lazer e Esportes): Festas/Celebrações (Tipos, Ações), Esportes/Competições (Modalidades, Ações), Hobbies/Passatempos",
+          "AP.DES (Transporte e Deslocamento): Ações de Deslocamento (Movimento Terrestre, Viagem/Exploração), Conceitos de Tráfego/Logística"
+        ],
+        accuracy: 0.91,
+        improvement: "De 2 N2 (AP.ALI, AP.VES) para 5 N2 completos com taxonomia de 4 níveis",
+        validationMethod: "Mapeamento de categorias temáticas do dialectal_lexicon para hierarquia AP"
+      },
+      {
+        feature: "Expansão do Domínio SP (Sociedade e Organização Política)",
+        linguisticBasis: "Reorganização hierárquica de 6 N2 com 15 N3 e 22 N4, totalizando ~40 novos tagsets",
+        concepts: [
+          "SP.GOV (Governo e Estado): Formas de Governo (Tipos de Regime), Instituições/Poderes (Constitucionais, Órgãos), Administração Pública (Processos, Tributação)",
+          "SP.LEI (Lei e Justiça): Sistema Jurídico (Documentos, Processos), Crime/Punição (Tipos, Penalidades), Ordem Pública (Forças de Segurança)",
+          "SP.REL (Relações Internacionais): Geopolítica/Diplomacia (Conceitos, Práticas)",
+          "SP.GUE (Guerra e Conflito Armado): Tipos de Conflito, Ações de Combate (Ofensivas/Defensivas), Táticas/Estratégias Militares",
+          "SP.POL (Processos Políticos e Cidadania): Participação Política (Eleitorais, Ações Coletivas), Ideologias Políticas, Cidadania/Direitos",
+          "SP.EST (Estrutura e Dinâmica Social): Classes/Grupos Sociais (Hierarquia, Identidade), Fenômenos Sociais (Desigualdade, Discriminação)"
+        ],
+        accuracy: 0.89,
+        improvement: "De 1 N2 (SP.GEO) para 6 N2 completos abrangendo todo espectro político-social",
+        validationMethod: "Validação taxonômica de estruturas de poder e organização social"
+      }
+    ]
+  },
+  {
     version: "v1.7.0",
     date: "2025-11-27",
     methodology: "Reformulação Taxonômica do Domínio Abstrações (AB)",

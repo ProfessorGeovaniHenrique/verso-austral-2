@@ -465,18 +465,28 @@ async function batchClassifyWithGemini(
 - SP (Sociedade): relações sociais, política
 
 **SUBDOMÍNIOS IMPORTANTES:**
-- AP.ALI (Alimentação): mate, churrasco, cuia
-- NA.FAU (Fauna): cavalo, gado, galo
-- NA.GEO (Geografia): coxilha, várzea, pampa
-- OA.FER (Ferramentas): arreio, espora, laço
-- SE.NOS (Nostalgia): saudade, querência
-- CC.ART (Arte e Expressão): poema, música, pintura, teatro
-- CC.ART.MUS (Música): melodia, canção, milonga, vanera
-- CC.ART.POE (Poesia): verso, estrofe, rima, soneto
-- CC.CIT (Ciência/Tecnologia): pesquisa, teoria, software
-- CC.EDU (Educação): escola, professor, estudar
-- CC.COM (Comunicação): conversa, jornal, mensagem
-- CC.REL (Religiosidade): Deus, fé, igreja, reza
+- SH.COG.EMO (Emoções): amor, ódio, saudade, tristeza, alegria
+- SH.COG.EST (Estados Mentais): sono, sonho, memória, lembrança
+- NA.AMB.PAI (Paisagens): pampa, coxilha, várzea, campo, planície
+- NA.FEN.MET (Meteorologia): chuva, vento, sol, seca, tempestade
+- CL.VIV.PEC (Animais de Criação): gado, ovelha, cavalo, boi
+- OA.EQU.MON (Equipamentos de Montaria): arreios, laço, rédeas
+- CC.ART.LIT.POE (Poesia): poema, verso, estrofe, rima, haicai
+- AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude, honra
+- AB.SOC (Social/Político): poder, direito, democracia, cidadania, paz
+- AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte
+- AB.LOG (Lógico/Matemático): lógica, razão, infinito, proporção
+- AP.TRA (Trabalho/Economia): plantar, colher, comprar, vender, médico, tropeiro
+- AP.ALI (Alimentação): cozinhar, churrasco, chimarrão, almoço
+- AP.VES (Vestuário): vestir, costurar, moda, estilo
+- AP.LAZ (Lazer/Esportes): festa, fandango, rodeio, futebol, pesca
+- AP.DES (Transporte): cavalgar, viajar, rota, destino
+- SP.GOV (Governo/Estado): democracia, ministério, imposto, eleição
+- SP.LEI (Lei/Justiça): lei, julgamento, crime, polícia, prisão
+- SP.REL (Relações Internacionais): fronteira, tratado, embaixada
+- SP.GUE (Guerra/Conflito): guerra, batalha, atacar, defender, estratégia
+- SP.POL (Processos Políticos): voto, protesto, liberalismo, cidadania
+- SP.EST (Estrutura Social): elite, classe, desigualdade, racismo
 - AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude, honra
 - AB.SOC (Social/Político): poder, direito, democracia, cidadania, paz
 - AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte

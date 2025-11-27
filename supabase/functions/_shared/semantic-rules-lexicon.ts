@@ -24,11 +24,11 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'clima': { codigo: 'NA', nome: 'Natureza' },
   'geografia_natural': { codigo: 'NA', nome: 'Natureza' },
   
-  // Atividades e Práticas
-  'lida_campeira': { codigo: 'AP', nome: 'Atividades' },
-  'gastronomia': { codigo: 'AP', nome: 'Atividades' },
-  'transporte': { codigo: 'AP', nome: 'Atividades' },
-  'trabalho_rural': { codigo: 'AP', nome: 'Atividades' },
+  // Atividades e Práticas - EXPANDIDO
+  'lida_campeira': { codigo: 'AP.TRA.RUR', nome: 'Trabalho Rural' },
+  'trabalho_rural': { codigo: 'AP.TRA.RUR', nome: 'Trabalho Rural' },
+  'gastronomia': { codigo: 'AP.ALI', nome: 'Alimentação e Culinária' },
+  'transporte': { codigo: 'AP.DES', nome: 'Transporte e Deslocamento' },
   
   // Cultura e Conhecimento - EXPANDIDO
   'musica_danca': { codigo: 'CC.ART.MUS', nome: 'Música' },
@@ -57,10 +57,11 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'construcoes': { codigo: 'EL', nome: 'Estruturas' },
   'locais': { codigo: 'EL', nome: 'Estruturas' },
   
-  // Sociedade
-  'social': { codigo: 'SP', nome: 'Sociedade' },
-  'familia': { codigo: 'SP', nome: 'Sociedade' },
-  'politica': { codigo: 'SP', nome: 'Sociedade' },
+  // Sociedade e Política - EXPANDIDO
+  'politica': { codigo: 'SP.POL', nome: 'Processos Políticos' },
+  'social': { codigo: 'SP.EST', nome: 'Estrutura Social' },
+  'governo': { codigo: 'SP.GOV', nome: 'Governo e Estado' },
+  'familia': { codigo: 'SP.EST', nome: 'Estrutura Social' },
 };
 
 /**
