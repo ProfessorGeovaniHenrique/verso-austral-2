@@ -82,13 +82,14 @@ const PROSODY_COLORS = {
 interface TabStatisticsProps {
   demo?: boolean;
   preloadedData?: CorpusAnalysisResult;
+  songId?: string;
 }
 
-export function TabStatistics({ demo = false, preloadedData }: TabStatisticsProps) {
+export function TabStatistics({ demo = false, preloadedData, songId }: TabStatisticsProps) {
   const { gauchoData: fetchedData, isLoading: isFetching } = useCorpusData({ 
-    loadGaucho: !preloadedData, 
+    loadGaucho: !preloadedData && !songId, 
     loadNordestino: false,
-    limit: demo ? 1000 : undefined 
+    limit: demo ? 1000 : undefined
   });
 
   const gauchoData = preloadedData || fetchedData;

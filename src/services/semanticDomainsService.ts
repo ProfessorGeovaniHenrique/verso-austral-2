@@ -12,6 +12,108 @@ import { DominioSemantico } from '@/data/types/corpus.types';
 const log = createLogger('semanticDomainsService');
 
 /**
+ * Busca domínios semânticos por song_id do cache
+ * Usado para demo de música específica
+ */
+export async function fetchSemanticDomainsFromCache(songId: string): Promise<DominioSemantico[]> {
+  try {
+    log.info('Fetching semantic domains from cache by songId', { songId });
+
+    const { data: cacheData, error } = await supabase
+      .from('semantic_disambiguation_cache')
+      .select(`
+        palavra,
+        tagset_codigo,
+        confianca,
+        semantic_tagset!inner(
+          codigo,
+          nome,
+          cor,
+          codigo_nivel_1,
+          nivel_profundidade
+        )
+      `)
+      .eq('song_id', songId);
+
+    if (error) {
+      log.error('Error fetching from cache', error);
+      return [];
+    }
+
+    if (!cacheData || cacheData.length === 0) {
+      log.warn('No cache data found for songId', { songId });
+      return [];
+    }
+
+    log.info('Cache data loaded', { count: cacheData.length });
+
+    // Agregar por domínio N1
+    const dominiosMap = new Map<string, {
+      palavras: string[];
+      ocorrencias: number;
+      avgConfianca: number;
+      totalConfianca: number;
+    }>();
+
+    for (const entry of cacheData) {
+      const tagset = entry.semantic_tagset as any;
+      const dominioN1 = tagset.codigo_nivel_1 || tagset.codigo;
+      const nomeN1 = tagset.nome;
+
+      if (!dominiosMap.has(dominioN1)) {
+        dominiosMap.set(dominioN1, {
+          palavras: [],
+          ocorrencias: 0,
+          avgConfianca: 0,
+          totalConfianca: 0
+        });
+      }
+
+      const dominio = dominiosMap.get(dominioN1)!;
+      if (!dominio.palavras.includes(entry.palavra)) {
+        dominio.palavras.push(entry.palavra);
+      }
+      dominio.ocorrencias++;
+      dominio.totalConfianca += entry.confianca || 0.5;
+    }
+
+    // Converter para DominioSemantico[]
+    const totalOcorrencias = Array.from(dominiosMap.values())
+      .reduce((sum, d) => sum + d.ocorrencias, 0);
+
+    const dominios: DominioSemantico[] = Array.from(dominiosMap.entries()).map(([codigo, data]) => {
+      const tagset = cacheData.find(c => (c.semantic_tagset as any).codigo_nivel_1 === codigo)?.semantic_tagset as any;
+      
+      return {
+        dominio: tagset?.nome || codigo,
+        ocorrencias: data.ocorrencias,
+        percentual: (data.ocorrencias / totalOcorrencias) * 100,
+        riquezaLexical: data.palavras.length,
+        avgLL: 0, // Não calculado para demo
+        cor: tagset?.cor || '#666666',
+        palavras: data.palavras,
+        palavrasComFrequencia: data.palavras.map(p => ({ palavra: p, ocorrencias: 1 })),
+        corTexto: '#ffffff',
+        frequenciaNormalizada: (data.ocorrencias / totalOcorrencias) * 100,
+        percentualTematico: (data.ocorrencias / totalOcorrencias) * 100,
+        comparacaoCorpus: 'equilibrado' as const,
+        diferencaCorpus: 0,
+        percentualCorpusNE: 0
+      };
+    });
+
+    dominios.sort((a, b) => b.ocorrencias - a.ocorrencias);
+
+    log.info('Domains aggregated', { count: dominios.length });
+    return dominios;
+
+  } catch (error) {
+    log.error('Error in fetchSemanticDomainsFromCache', error as Error);
+    return [];
+  }
+}
+
+/**
  * Busca domínios semânticos reais do corpus anotado
  * Se cache vazio, dispara processamento on-demand
  */

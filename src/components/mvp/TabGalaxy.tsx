@@ -21,13 +21,14 @@ import html2canvas from 'html2canvas';
 
 interface TabGalaxyProps {
   demo?: boolean;
+  songId?: string;
 }
 
 type ViewMode = 'domains' | 'keywords';
 
-export function TabGalaxy({ demo = false }: TabGalaxyProps) {
+export function TabGalaxy({ demo = false, songId }: TabGalaxyProps) {
   const { gauchoData, isLoading: isLoadingCorpus } = useCorpusData({ 
-    loadGaucho: true, 
+    loadGaucho: !songId, 
     loadNordestino: false,
     limit: demo ? 1000 : undefined 
   });

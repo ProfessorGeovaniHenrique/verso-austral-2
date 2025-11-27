@@ -19,13 +19,15 @@ const LOADING_MESSAGES: LoadingMessage[] = [
 
 interface CorpusLoadingModalProps {
   open: boolean;
+  songId: string;
   onComplete: () => void;
 }
 
-export function CorpusLoadingModal({ open, onComplete }: CorpusLoadingModalProps) {
+export function CorpusLoadingModal({ open, songId, onComplete }: CorpusLoadingModalProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     if (!open) {
@@ -33,53 +35,72 @@ export function CorpusLoadingModal({ open, onComplete }: CorpusLoadingModalProps
       setCurrentStep(0);
       setProgress(0);
       setIsComplete(false);
+      setIsProcessing(false);
       return;
     }
 
-    // Iniciar sequência de loading
-    let timeoutId: NodeJS.Timeout;
-    let progressInterval: NodeJS.Timeout;
+    if (isProcessing) return; // Evita múltiplas chamadas
 
-    const runSequence = async () => {
-      for (let i = 0; i < LOADING_MESSAGES.length; i++) {
-        setCurrentStep(i);
-        
-        // Animar progress bar
-        const stepProgress = ((i + 1) / LOADING_MESSAGES.length) * 100;
-        let currentProgress = (i / LOADING_MESSAGES.length) * 100;
-        
-        progressInterval = setInterval(() => {
-          currentProgress += 2;
-          if (currentProgress <= stepProgress) {
-            setProgress(currentProgress);
-          } else {
-            clearInterval(progressInterval);
+    // Iniciar processamento real
+    setIsProcessing(true);
+    
+    const processCorpus = async () => {
+      try {
+        // Iniciar processamento
+        setCurrentStep(0);
+        setProgress(10);
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-single-song-demo`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+            },
+            body: JSON.stringify({ songId, referenceCorpusSize: 25 })
           }
-        }, 30);
+        );
 
-        // Aguardar delay da mensagem
-        await new Promise(resolve => {
-          timeoutId = setTimeout(resolve, LOADING_MESSAGES[i].delay);
-        });
+        if (!response.ok) {
+          throw new Error('Erro ao processar corpus');
+        }
+
+        // Simular progresso enquanto processa
+        const progressIntervals = [
+          { step: 1, progress: 30, delay: 2000 },  // Anotando domínios
+          { step: 2, progress: 60, delay: 3000 },  // Alimentando base
+          { step: 3, progress: 85, delay: 2000 },  // Gerando gráficos
+          { step: 4, progress: 100, delay: 1000 }  // Pronto
+        ];
+
+        for (const { step, progress: p, delay } of progressIntervals) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          setCurrentStep(step);
+          setProgress(p);
+        }
+
+        setIsComplete(true);
+        setProgress(100);
+
+        // Fechar modal e completar
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
+
+      } catch (error) {
+        console.error('Error processing corpus:', error);
+        setCurrentStep(4);
+        setProgress(100);
+        setIsComplete(true);
+        setTimeout(() => {
+          onComplete();
+        }, 1000);
       }
-
-      // Marcar como completo
-      setIsComplete(true);
-      setProgress(100);
-
-      // Fechar modal após 1s
-      timeoutId = setTimeout(() => {
-        onComplete();
-      }, 1000);
     };
 
-    runSequence();
-
-    return () => {
-      clearTimeout(timeoutId);
-      clearInterval(progressInterval);
-    };
-  }, [open, onComplete]);
+    processCorpus();
+  }, [open, songId, onComplete, isProcessing]);
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>

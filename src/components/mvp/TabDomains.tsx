@@ -18,11 +18,12 @@ import { DomainComparison } from "./DomainComparison";
 interface TabDomainsProps {
   demo?: boolean;
   preloadedData?: CorpusAnalysisResult;
+  songId?: string;
 }
 
-export function TabDomains({ demo = false, preloadedData }: TabDomainsProps) {
+export function TabDomains({ demo = false, preloadedData, songId }: TabDomainsProps) {
   const { gauchoData: fetchedData, isLoading: isFetching } = useCorpusData({ 
-    loadGaucho: !preloadedData, 
+    loadGaucho: !preloadedData && !songId, 
     loadNordestino: false,
     limit: demo ? 1000 : undefined 
   });
