@@ -470,6 +470,13 @@ async function batchClassifyWithGemini(
 - NA.GEO (Geografia): coxilha, várzea, pampa
 - OA.FER (Ferramentas): arreio, espora, laço
 - SE.NOS (Nostalgia): saudade, querência
+- CC.ART (Arte e Expressão): poema, música, pintura, teatro
+- CC.ART.MUS (Música): melodia, canção, milonga, vanera
+- CC.ART.POE (Poesia): verso, estrofe, rima, soneto
+- CC.CIT (Ciência/Tecnologia): pesquisa, teoria, software
+- CC.EDU (Educação): escola, professor, estudar
+- CC.COM (Comunicação): conversa, jornal, mensagem
+- CC.REL (Religiosidade): Deus, fé, igreja, reza
 
 **PALAVRAS A CLASSIFICAR:**
 ${palavrasList}
@@ -582,7 +589,7 @@ async function classifyWithGemini(
 **13 DOMÍNIOS N1:**
 AB (Abstrações), AP (Atividades), CC (Cultura), EL (Estruturas), EQ (Qualidades), MG (Marcadores), NA (Natureza), NC (Não Classificado), OA (Objetos), SB (Saúde), SE (Sentimentos), SH (Ser Humano), SP (Sociedade)
 
-**SUBDOMÍNIOS:** AP.ALI (Alimentação), NA.FAU (Fauna), NA.GEO (Geografia), OA.FER (Ferramentas), SE.NOS (Nostalgia)
+**SUBDOMÍNIOS:** AP.ALI (Alimentação), NA.FAU (Fauna), NA.GEO (Geografia), OA.FER (Ferramentas), SE.NOS (Nostalgia), CC.ART (Arte), CC.ART.MUS (Música), CC.ART.POE (Poesia), CC.CIT (Ciência), CC.EDU (Educação), CC.COM (Comunicação), CC.REL (Religiosidade)
 
 **CONTEXTO:** "${sentencaCompleta}"
 Palavra: "${palavra}" | Lema: "${lema}" | POS: ${pos}
