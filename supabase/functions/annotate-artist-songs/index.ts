@@ -4,6 +4,7 @@ import { createEdgeLogger } from "../_shared/unified-logger.ts";
 import { classifySafeStopword, isContextDependent } from "../_shared/stopwords-classifier.ts";
 import { getLexiconRule } from "../_shared/semantic-rules-lexicon.ts";
 import { inheritDomainFromSynonyms } from "../_shared/synonym-propagation.ts";
+import { detectGauchoMWEs } from "../_shared/gaucho-mwe.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,6 +24,42 @@ interface AnnotateArtistRequest {
 const CHUNK_SIZE = 100; // FASE 4: Aumentado de 50 para 100 (batch processing suporta mais)
 const CHUNK_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutos
 const BATCH_SIZE = 15; // Máximo de palavras por batch Gemini
+
+/**
+ * Mapeamento de MWEs conhecidas para seus domínios semânticos
+ * Prioridade máxima: classificação instantânea (0ms)
+ */
+const MWE_SEMANTIC_DOMAINS: Record<string, { tagset: string; confianca: number; justificativa: string }> = {
+  'mate amargo': { tagset: 'AP.ALI', confianca: 0.99, justificativa: 'Bebida tradicional gaúcha - chimarrão amargo' },
+  'mate doce': { tagset: 'AP.ALI', confianca: 0.99, justificativa: 'Bebida gaúcha com açúcar' },
+  'mate chimarrão': { tagset: 'AP.ALI', confianca: 0.99, justificativa: 'Bebida tradicional gaúcha' },
+  'cavalo gateado': { tagset: 'NA.FAU', confianca: 0.99, justificativa: 'Cavalo de pelagem mesclada característica' },
+  'cavalo tordilho': { tagset: 'NA.FAU', confianca: 0.99, justificativa: 'Cavalo de pelagem cinza' },
+  'cavalo zaino': { tagset: 'NA.FAU', confianca: 0.99, justificativa: 'Cavalo de pelagem escura uniforme' },
+  'cavalo alazão': { tagset: 'NA.FAU', confianca: 0.99, justificativa: 'Cavalo de pelagem avermelhada' },
+  'cavalo pampa': { tagset: 'NA.FAU', confianca: 0.99, justificativa: 'Cavalo de pelagem com manchas' },
+  'bomba de prata': { tagset: 'OA', confianca: 0.99, justificativa: 'Utensílio de chimarrão em prata' },
+  'bota de couro': { tagset: 'OA', confianca: 0.98, justificativa: 'Calçado tradicional campeiro' },
+  'cuia de porongo': { tagset: 'OA', confianca: 0.99, justificativa: 'Recipiente tradicional do mate' },
+  'lida no campo': { tagset: 'AP.TRA', confianca: 0.98, justificativa: 'Trabalho rural gaúcho' },
+  'trabalho no campo': { tagset: 'AP.TRA', confianca: 0.98, justificativa: 'Atividade rural' },
+  'pago lindo': { tagset: 'SH', confianca: 0.97, justificativa: 'Gaúcho qualificado' },
+  'pago véio': { tagset: 'SH', confianca: 0.97, justificativa: 'Gaúcho experiente' },
+  'prenda linda': { tagset: 'SH', confianca: 0.98, justificativa: 'Mulher gaúcha qualificada' },
+  'prenda gaúcha': { tagset: 'SH', confianca: 0.98, justificativa: 'Mulher da cultura gaúcha' },
+  'churrasco de gado': { tagset: 'AP.ALI', confianca: 0.99, justificativa: 'Culinária tradicional gaúcha' },
+  'churrasco de costela': { tagset: 'AP.ALI', confianca: 0.99, justificativa: 'Prato típico gaúcho' },
+  'na querência': { tagset: 'NA.GEO', confianca: 0.97, justificativa: 'Local de origem/pertencimento' },
+  'no lombo': { tagset: 'AP.TRA', confianca: 0.96, justificativa: 'Montado no cavalo' },
+  'pelos pagos': { tagset: 'NA.GEO', confianca: 0.97, justificativa: 'Pela região de origem' },
+  'da campanha': { tagset: 'NA.GEO', confianca: 0.97, justificativa: 'Da região campeira' },
+  'pro galpão': { tagset: 'EL', confianca: 0.96, justificativa: 'Para construção rural tradicional' },
+  'de boa tradição': { tagset: 'CC', confianca: 0.96, justificativa: 'Expressão de herança cultural' },
+  'de velha tradição': { tagset: 'CC', confianca: 0.96, justificativa: 'Expressão de herança cultural antiga' },
+  'tropa velha': { tagset: 'NA.FAU', confianca: 0.97, justificativa: 'Gado/cavalos experientes' },
+  'tropa gorda': { tagset: 'NA.FAU', confianca: 0.97, justificativa: 'Gado bem nutrido' },
+  'tropa mansa': { tagset: 'NA.FAU', confianca: 0.97, justificativa: 'Gado domesticado' },
+};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -261,41 +298,72 @@ async function processChunk(
       songId: string;
       songIndex: number;
       wordIndex: number;
+      isMWE: boolean; // NOVO: indica se é multi-word expression
     }> = [];
 
-    // Coletar até CHUNK_SIZE palavras
+    // Coletar até CHUNK_SIZE palavras usando tokenizador com MWEs
     outer: for (let s = currentSongIndex; s < songs.length; s++) {
       const song = songs[s];
-      const words = tokenizeLyrics(song.lyrics);
+      const tokensWithMWE = tokenizeLyricsWithMWEs(song.lyrics);
 
-      for (let w = (s === currentSongIndex ? currentWordIndex : 0); w < words.length; w++) {
+      for (let w = (s === currentSongIndex ? currentWordIndex : 0); w < tokensWithMWE.length; w++) {
         if (chunkWords.length >= CHUNK_SIZE) {
           break outer;
         }
 
-        const palavra = words[w];
-        const contextoEsquerdo = words.slice(Math.max(0, w - 5), w).join(' ');
-        const contextoDireito = words.slice(w + 1, Math.min(words.length, w + 6)).join(' ');
+        const tokenData = tokensWithMWE[w];
+        const contextoEsquerdo = tokensWithMWE.slice(Math.max(0, w - 5), w).map(t => t.token).join(' ');
+        const contextoDireito = tokensWithMWE.slice(w + 1, Math.min(tokensWithMWE.length, w + 6)).map(t => t.token).join(' ');
 
         chunkWords.push({
-          palavra,
-          lema: palavra, // TODO: melhorar lematização
-          pos: 'UNKNOWN',
+          palavra: tokenData.token,
+          lema: tokenData.token, // TODO: melhorar lematização
+          pos: tokenData.pos || 'UNKNOWN',
           contextoEsquerdo,
           contextoDireito,
           songId: song.id,
           songIndex: s,
           wordIndex: w,
+          isMWE: tokenData.isMWE,
         });
       }
     }
 
     logger.info('Chunk coletado', { wordsCount: chunkWords.length });
 
-    // FASE 1+2: Classificar palavras usando stopwords + cache de dois níveis
+    // FASE 1+2: Classificar palavras usando MWEs + stopwords + cache de dois níveis
     const wordsNeedingGemini: typeof chunkWords = [];
 
     for (const wordData of chunkWords) {
+      // 🏆 PRIORIDADE MÁXIMA: MWEs conhecidas (0ms, 99% confiança)
+      if (wordData.isMWE) {
+        const mweClassification = MWE_SEMANTIC_DOMAINS[wordData.palavra.toLowerCase()];
+        if (mweClassification) {
+          const hash = await hashContext(wordData.contextoEsquerdo, wordData.contextoDireito);
+          await saveWithArtistSong(
+            supabase,
+            wordData.palavra,
+            hash,
+            mweClassification.tagset,
+            mweClassification.confianca,
+            'mwe_rule',
+            mweClassification.justificativa,
+            artist.id,
+            wordData.songId,
+            [],
+            false,
+            'gaucho'
+          );
+          cachedInChunk++; // Contabilizar como "cached" (zero cost)
+          processedInChunk++;
+          logger.info('MWE detectada e classificada', { 
+            mwe: wordData.palavra, 
+            tagset: mweClassification.tagset 
+          });
+          continue;
+        }
+      }
+      
       // FASE 1: Safe stopwords (0ms)
       const safeResult = classifySafeStopword(wordData.palavra);
       if (safeResult) {
@@ -680,12 +748,70 @@ async function processChunk(
 
 // ============= UTILITY FUNCTIONS =============
 
-function tokenizeLyrics(lyrics: string): string[] {
-  return lyrics
+/**
+ * Tokenizador simples (sem MWEs)
+ * Usado internamente por tokenizeLyricsWithMWEs
+ */
+function simpleTokenize(text: string): string[] {
+  return text
     .toLowerCase()
     .split(/\s+/)
     .map(w => w.replace(/[^\wáàâãéèêíïóôõöúçñ]/gi, ''))
     .filter(w => w.length > 1);
+}
+
+/**
+ * NOVO: Tokenizador com detecção de MWEs (Multi-Word Expressions)
+ * Prioriza expressões compostas antes da tokenização individual
+ * 
+ * @returns Array de tokens com flag isMWE e POS opcional
+ */
+function tokenizeLyricsWithMWEs(lyrics: string): Array<{
+  token: string;
+  isMWE: boolean;
+  pos?: string;
+}> {
+  const lyricsLower = lyrics.toLowerCase();
+  const mwes = detectGauchoMWEs(lyricsLower);
+  
+  const result: Array<{ token: string; isMWE: boolean; pos?: string }> = [];
+  let currentIndex = 0;
+  
+  // Processar MWEs em ordem de aparição
+  for (const mwe of mwes) {
+    // Tokenizar texto antes da MWE
+    if (mwe.startIndex > currentIndex) {
+      const beforeText = lyricsLower.substring(currentIndex, mwe.startIndex);
+      const beforeTokens = simpleTokenize(beforeText);
+      beforeTokens.forEach(t => result.push({ token: t, isMWE: false }));
+    }
+    
+    // Adicionar MWE como token único
+    result.push({
+      token: mwe.text,
+      isMWE: true,
+      pos: mwe.pos,
+    });
+    
+    currentIndex = mwe.endIndex;
+  }
+  
+  // Tokenizar texto restante após última MWE
+  if (currentIndex < lyricsLower.length) {
+    const afterText = lyricsLower.substring(currentIndex);
+    const afterTokens = simpleTokenize(afterText);
+    afterTokens.forEach(t => result.push({ token: t, isMWE: false }));
+  }
+  
+  return result.filter(t => t.token.length > 1);
+}
+
+/**
+ * LEGACY: Mantido para compatibilidade com outras funções
+ * Usa tokenizador simples sem MWEs
+ */
+function tokenizeLyrics(lyrics: string): string[] {
+  return simpleTokenize(lyrics);
 }
 
 async function hashContext(left: string, right: string): Promise<string> {
