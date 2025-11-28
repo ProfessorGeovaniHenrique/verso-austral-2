@@ -136,6 +136,26 @@ export function TabInstrumentosChamamé() {
           </Card>
         </motion.div>
 
+        {/* Referência do Vídeo */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+        >
+          <Card className="border-border/50 bg-muted/20">
+            <CardHeader>
+              <CardTitle className="text-base">Referência do Vídeo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground font-mono leading-relaxed">
+                PANCHI DUARTE OFICIAL. <strong>Cómo tocar Chamamé - Panchi Duarte</strong>. 
+                [S.l.]: YouTube, 15 jan. 2021. 1 vídeo (2:42 min). Disponível em: https://www.youtube.com/watch?v=_o4Yba41LTc. 
+                Acesso em: 28 nov. 2025.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
         {/* O Rasguear Chamamecero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -355,6 +375,26 @@ export function TabInstrumentosChamamé() {
                   allowFullScreen
                 />
               </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Referência do Vídeo */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.35 }}
+        >
+          <Card className="border-border/50 bg-muted/20">
+            <CardHeader>
+              <CardTitle className="text-base">Referência do Vídeo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground font-mono leading-relaxed">
+                JUNINHO KROTH. <strong>Quando o verso vem pras casas - Acordeon</strong>. 
+                [S.I.]: Youtube, 19 de jun. de 2020. 1 vídeo (0:42 seg). Disponível em: https://www.youtube.com/watch?v=-Dzt3pKFmMA. 
+                Acesso em: 28 nov. 2025.
+              </p>
             </CardContent>
           </Card>
         </motion.div>
