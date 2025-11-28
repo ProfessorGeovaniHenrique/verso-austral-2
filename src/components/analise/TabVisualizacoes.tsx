@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { useCorpusProcessing } from '@/hooks/useCorpusProcessing';
 import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CongratulatoryModal } from './CongratulatoryModal';
+import { useAnalysisTracking, useLevelTracking } from '@/hooks/useAnalysisTracking';
 
 type HierarchyLevel = 1 | 2 | 3 | 4;
 type ViewMode = 'domains' | 'keywords';
@@ -16,8 +18,15 @@ type ViewMode = 'domains' | 'keywords';
 export function TabVisualizacoes() {
   const { processamentoData } = useDashboardAnaliseContext();
   const { processCorpus, isProcessing } = useCorpusProcessing();
+  const { trackFeatureUsage } = useAnalysisTracking();
+  const { trackLevelView } = useLevelTracking();
+  
   const [selectedLevel, setSelectedLevel] = useState<HierarchyLevel>(1);
   const [viewMode, setViewMode] = useState<ViewMode>('domains');
+  const [showCongratulatoryModal, setShowCongratulatoryModal] = useState(false);
+  const [hasInteractedWithCloud, setHasInteractedWithCloud] = useState(() => {
+    return localStorage.getItem('cloud_first_interaction') === 'true';
+  });
   
   const cloudData = processamentoData.analysisResults?.cloudData || [];
   const keywords = processamentoData.analysisResults?.keywords || [];
@@ -48,6 +57,7 @@ export function TabVisualizacoes() {
 
   const handleLevelChange = async (level: HierarchyLevel) => {
     setSelectedLevel(level);
+    trackLevelView(level);
     toast.info(`Carregando domínios de Nível ${level}...`);
     
     try {
@@ -61,6 +71,23 @@ export function TabVisualizacoes() {
       console.error('Erro ao carregar nível:', error);
       toast.error('Erro ao carregar domínios de outro nível');
     }
+  };
+
+  const handleCloudInteraction = () => {
+    if (!hasInteractedWithCloud) {
+      setHasInteractedWithCloud(true);
+      localStorage.setItem('cloud_first_interaction', 'true');
+      trackFeatureUsage('cloud_explored');
+      
+      // Exibir modal de parabéns após 500ms
+      setTimeout(() => {
+        setShowCongratulatoryModal(true);
+      }, 500);
+    }
+  };
+
+  const handleNetworkInteraction = () => {
+    trackFeatureUsage('network_explored');
   };
 
   return (
@@ -157,7 +184,7 @@ export function TabVisualizacoes() {
                 const fontSize = Math.max(14, Math.min(64, 14 + (item.avgScore * 1.5)));
                 return (
                   <HoverCard key={idx} openDelay={200}>
-                    <HoverCardTrigger asChild>
+                  <HoverCardTrigger asChild>
                       <div
                         className="transition-transform hover:scale-110 cursor-pointer"
                         style={{
@@ -165,6 +192,7 @@ export function TabVisualizacoes() {
                           color: item.color,
                           fontWeight: 'bold',
                         }}
+                        onClick={handleCloudInteraction}
                       >
                         {item.nome}
                       </div>
@@ -210,7 +238,7 @@ export function TabVisualizacoes() {
                 
                 return (
                   <HoverCard key={idx} openDelay={200}>
-                    <HoverCardTrigger asChild>
+                  <HoverCardTrigger asChild>
                       <div
                         className="transition-transform hover:scale-110 cursor-pointer"
                         style={{
@@ -218,6 +246,7 @@ export function TabVisualizacoes() {
                           color: color,
                           fontWeight: 600,
                         }}
+                        onClick={handleCloudInteraction}
                       >
                         {keyword.palavra}
                       </div>
@@ -284,7 +313,10 @@ export function TabVisualizacoes() {
             {cloudData.slice(0, 8).map((item, idx) => (
               <HoverCard key={idx} openDelay={200}>
                 <HoverCardTrigger asChild>
-                  <div className="flex flex-col items-center gap-2 p-4 rounded-lg border hover:border-primary transition-colors cursor-pointer">
+                  <div
+                    className="flex flex-col items-center gap-2 p-4 rounded-lg border hover:border-primary transition-colors cursor-pointer"
+                    onClick={handleNetworkInteraction}
+                  >
                     <div
                       className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-sm"
                       style={{ backgroundColor: item.color }}
@@ -331,6 +363,12 @@ export function TabVisualizacoes() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Modal de Parabéns */}
+      <CongratulatoryModal 
+        isOpen={showCongratulatoryModal} 
+        onClose={() => setShowCongratulatoryModal(false)} 
+      />
     </div>
   );
 }

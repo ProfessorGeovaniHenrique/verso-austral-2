@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,8 @@ import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
 import { BarChart3, PieChart, TrendingUp, AlertCircle, ArrowUpDown, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { KWICModal } from '@/components/KWICModal';
-import { useKWICModal } from '@/hooks/useKWICModal';
+import { useKWICFromStudySong } from '@/hooks/useKWICFromStudySong';
+import { useAnalysisTracking } from '@/hooks/useAnalysisTracking';
 
 type SortColumn = 'palavra' | 'lema' | 'frequenciaBruta' | 'frequenciaNormalizada' | 'prosodia' | 'dominio' | 'll' | 'mi' | 'significancia' | null;
 type SortDirection = 'asc' | 'desc' | null;
@@ -32,6 +33,7 @@ interface EnrichedWord {
 
 export function TabEstatisticas() {
   const { processamentoData } = useDashboardAnaliseContext();
+  const { trackFeatureUsage } = useAnalysisTracking();
   const stats = processamentoData.analysisResults?.estatisticas;
   const dominios = processamentoData.analysisResults?.dominios || [];
   const keywords = processamentoData.analysisResults?.keywords || [];
@@ -42,7 +44,21 @@ export function TabEstatisticas() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
 
-  const { isOpen, selectedWord, kwicData, isLoading, openModal, closeModal } = useKWICModal();
+  const { isOpen, selectedWord, kwicData, isLoading, openModal, closeModal, loadSongData, isReady } = useKWICFromStudySong();
+
+  // Carregar letra da música de estudo quando processamento estiver completo
+  useEffect(() => {
+    if (processamentoData.isProcessed && processamentoData.studySong) {
+      loadSongData(processamentoData.studySong);
+    }
+  }, [processamentoData.isProcessed, processamentoData.studySong, loadSongData]);
+
+  // Track statistics explored
+  useEffect(() => {
+    if (processamentoData.isProcessed && stats) {
+      trackFeatureUsage('statistics_explored');
+    }
+  }, [processamentoData.isProcessed, stats, trackFeatureUsage]);
 
   if (!processamentoData.isProcessed || !stats) {
     return (
@@ -472,8 +488,12 @@ export function TabEstatisticas() {
                   <TableRow key={idx}>
                     <TableCell>
                       <button
-                        onClick={() => openModal(palavra.palavra)}
+                        onClick={() => {
+                          trackFeatureUsage('kwic_used');
+                          openModal(palavra.palavra);
+                        }}
                         className="font-medium hover:underline hover:text-primary transition-colors"
+                        disabled={!isReady}
                       >
                         {palavra.palavra}
                       </button>

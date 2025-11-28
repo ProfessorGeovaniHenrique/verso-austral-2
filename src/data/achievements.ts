@@ -133,6 +133,34 @@ export const ACHIEVEMENTS: Achievement[] = [
       count: 1,
     }
   },
+  {
+    id: 'cientista_pleno',
+    name: 'Cientista Pleno',
+    description: 'Explore a nuvem de domínios semânticos na análise científica',
+    icon: GraduationCap,
+    emoji: '🔬',
+    category: 'expert',
+    rarity: 'epic',
+    requirement: {
+      type: 'feature_usage',
+      features: ['cloud_explored'],
+      count: 1,
+    }
+  },
+  {
+    id: 'cientista_senior',
+    name: 'Cientista Sênior',
+    description: 'Domine todas as ferramentas de análise científica',
+    icon: Crown,
+    emoji: '🏅',
+    category: 'master',
+    rarity: 'legendary',
+    requirement: {
+      type: 'combo',
+      features: ['cloud_explored', 'network_explored', 'kwic_used', 'statistics_explored', 'all_levels_viewed'],
+      count: 1,
+    }
+  },
 
   // ===== ANALYST (4 conquistas - uso regular) =====
   {
