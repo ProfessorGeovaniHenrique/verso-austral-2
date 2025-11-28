@@ -47,6 +47,7 @@ interface ArtistCardProps {
   corpusColor?: string | null;
   onViewDetails: () => void;
   onEnrich: () => Promise<void>;
+  onReEnrich?: () => Promise<void>;
   onEnrichYouTube?: () => Promise<void>;
   onAnnotateSemantic?: () => Promise<void>;
   isAnnotatingSemantic?: boolean;
@@ -64,6 +65,7 @@ export function ArtistCard({
   corpusColor,
   onViewDetails,
   onEnrich,
+  onReEnrich,
   onEnrichYouTube,
   onAnnotateSemantic,
   isAnnotatingSemantic = false,
@@ -78,6 +80,16 @@ export function ArtistCard({
     setIsEnriching(true);
     try {
       await onEnrich();
+    } finally {
+      setIsEnriching(false);
+    }
+  };
+
+  const handleReEnrich = async () => {
+    if (!onReEnrich) return;
+    setIsEnriching(true);
+    try {
+      await onReEnrich();
     } finally {
       setIsEnriching(false);
     }
@@ -225,8 +237,8 @@ export function ArtistCard({
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onClick={handleEnrich}
-                disabled={isEnriching}
+                onClick={handleReEnrich}
+                disabled={isEnriching || !onReEnrich}
               >
                 {isEnriching ? (
                   <>

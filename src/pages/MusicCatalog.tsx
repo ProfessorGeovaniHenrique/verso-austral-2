@@ -1255,7 +1255,7 @@ export default function MusicCatalog() {
                     log.error('Error starting artist annotation', error as Error, { artistId: artist.id });
                   }
                 }}
-                onEnrich={async () => {
+                 onEnrich={async () => {
                   try {
                     // Query músicas pendentes do artista
                     const { data: pendingSongsData, error } = await supabase
@@ -1291,6 +1291,62 @@ export default function MusicCatalog() {
                       title: "Erro ao buscar músicas",
                       description: error instanceof Error ? error.message : 'Erro desconhecido',
                       variant: "destructive",
+                    });
+                  }
+                 }}
+                 onReEnrich={async () => {
+                  try {
+                    // Buscar TODAS as músicas do artista
+                    const { data: allSongs, error } = await supabase
+                      .from('songs')
+                      .select('id, title')
+                      .eq('artist_id', artist.id)
+                      .order('created_at', { ascending: false });
+
+                    if (error) throw error;
+
+                    if (!allSongs || allSongs.length === 0) {
+                      toast({
+                        title: "Sem músicas",
+                        description: `${artist.name} não possui músicas no catálogo.`,
+                      });
+                      return;
+                    }
+
+                    // Confirmar com o usuário
+                    const confirmed = window.confirm(
+                      `Deseja re-enriquecer ${allSongs.length} músicas de ${artist.name}?\n\n` +
+                      'Isso irá resetar o status e buscar novos metadados para todas as músicas.'
+                    );
+
+                    if (!confirmed) return;
+
+                    // Resetar status para 'pending'
+                    const songIds = allSongs.map(s => s.id);
+                    const { error: updateError } = await supabase
+                      .from('songs')
+                      .update({ status: 'pending' })
+                      .in('id', songIds);
+
+                    if (updateError) throw updateError;
+
+                    // Abrir modal de enriquecimento
+                    setSongsToEnrich(allSongs.map(s => ({
+                      ...s,
+                      artist: artist.name
+                    })));
+                    setIsEnrichmentModalOpen(true);
+
+                    toast({
+                      title: "🔄 Re-enriquecimento iniciado",
+                      description: `${allSongs.length} músicas resetadas e prontas para processamento.`,
+                    });
+                  } catch (error) {
+                    log.error('Failed to re-enrich artist', error as Error, { artistId: artist.id });
+                    toast({
+                      title: "Erro",
+                      description: "Falha ao preparar re-enriquecimento.",
+                      variant: "destructive"
                     });
                   }
                  }}
