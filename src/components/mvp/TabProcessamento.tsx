@@ -9,18 +9,25 @@ import { SongSearchInput } from './SongSearchInput';
 import { useProcessamentoTour } from '@/hooks/useProcessamentoTour';
 import { useCorpusArtistsAndSongs } from '@/hooks/useCorpusArtistsAndSongs';
 import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
+import { useCorpusProcessing } from '@/hooks/useCorpusProcessing';
+import { ProcessingProgressModal } from '@/components/analise/ProcessingProgressModal';
 import { REFERENCE_CORPORA } from '@/data/miniCorpusNordestino';
 import { HelpCircle, Users, FileMusic, Microscope, Loader2, InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export function TabProcessamento() {
+  const navigate = useNavigate();
+  const { trackFeatureUsage } = useAnalytics();
   const { processamentoData, updateProcessamentoData } = useDashboardAnaliseContext();
+  const { isProcessing, ceSteps, crSteps, processCorpus, reset } = useCorpusProcessing();
   
   const [studyMode, setStudyMode] = useState(processamentoData.studyMode);
   const [studyArtist, setStudyArtist] = useState(processamentoData.studyArtist);
   const [studySong, setStudySong] = useState(processamentoData.studySong);
   const [referenceCorpus, setReferenceCorpus] = useState(processamentoData.referenceCorpus);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   // Sincronizar estado com contexto ao mudar
   useEffect(() => {
@@ -68,34 +75,56 @@ export function TabProcessamento() {
   const handleProcess = async () => {
     if (!studySong) return;
 
-    setIsProcessing(true);
+    reset();
+    setShowModal(true);
     
     try {
-      // TODO: Implementar lógica de processamento
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const results = await processCorpus(studySong, referenceCorpus);
       
-      // Marcar como processado com timestamp
+      // Salvar resultados no contexto
       updateProcessamentoData({
         isProcessed: true,
         processedAt: new Date().toISOString(),
+        analysisResults: results
       });
       
-      toast.success('Processamento iniciado!', {
-        description: 'A análise semântica está em andamento.'
+      // Disparar conquista
+      trackFeatureUsage('corpus_processed');
+      
+      toast.success('Processamento concluído! 🎉', {
+        description: 'Navegando para os resultados...'
       });
+      
+      // Fechar modal e navegar
+      setTimeout(() => {
+        setShowModal(false);
+        navigate('/dashboard-analise?tab=dominios');
+      }, 1500);
     } catch (error) {
-      toast.error('Erro ao processar', {
-        description: 'Tente novamente.'
+      setShowModal(false);
+      toast.error('Erro ao processar corpus', {
+        description: error instanceof Error ? error.message : 'Tente novamente.'
       });
-    } finally {
-      setIsProcessing(false);
     }
   };
+
+  const selectedCorpusInfo = REFERENCE_CORPORA.find(c => c.id === referenceCorpus);
+  const selectedSongTitle = artistSongs.find(s => s.id === studySong)?.title;
 
   const canProcess = studyMode === 'song' && studyArtist && studySong && referenceCorpus;
 
   return (
-    <div className="space-y-4">
+    <>
+      <ProcessingProgressModal
+        open={showModal}
+        ceSteps={ceSteps}
+        crSteps={crSteps}
+        studySongTitle={selectedSongTitle}
+        studyArtist={studyArtist}
+        referenceCorpusName={selectedCorpusInfo?.name}
+      />
+      
+      <div className="space-y-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
           <div className="space-y-1">
@@ -298,5 +327,6 @@ export function TabProcessamento() {
         </CardContent>
       </Card>
     </div>
+    </>
   );
 }

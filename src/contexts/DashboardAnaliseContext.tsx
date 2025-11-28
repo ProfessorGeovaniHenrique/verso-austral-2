@@ -1,5 +1,57 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+interface DomainData {
+  dominio: string;
+  descricao: string;
+  cor: string;
+  palavras: string[];
+  ocorrencias: number;
+  avgLL: number;
+  avgMI: number;
+  riquezaLexical: number;
+  percentual: number;
+}
+
+interface KeywordData {
+  palavra: string;
+  frequencia: number;
+  ll: number;
+  mi: number;
+  significancia: string;
+  dominio: string;
+  cor: string;
+  prosody: string;
+}
+
+interface CloudData {
+  codigo: string;
+  nome: string;
+  size: number;
+  color: string;
+  wordCount: number;
+  avgScore: number;
+}
+
+interface AnalysisResults {
+  dominios: DomainData[];
+  keywords: KeywordData[];
+  cloudData: CloudData[];
+  estatisticas: {
+    totalPalavras: number;
+    palavrasUnicas: number;
+    dominiosIdentificados: number;
+    palavrasChaveSignificativas: number;
+    prosodiaDistribution: {
+      positivas: number;
+      negativas: number;
+      neutras: number;
+      percentualPositivo: number;
+      percentualNegativo: number;
+      percentualNeutro: number;
+    };
+  };
+}
+
 interface ProcessamentoData {
   studyMode: 'complete' | 'artist' | 'song';
   studyArtist: string;
@@ -7,6 +59,7 @@ interface ProcessamentoData {
   referenceCorpus: string;
   isProcessed: boolean;
   processedAt?: string;
+  analysisResults?: AnalysisResults;
 }
 
 interface DashboardAnaliseContextValue {

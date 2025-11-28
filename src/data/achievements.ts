@@ -119,6 +119,20 @@ export const ACHIEVEMENTS: Achievement[] = [
       count: 1,
     }
   },
+  {
+    id: 'cientista_junior',
+    name: 'Cientista Júnior',
+    description: 'Processe seu primeiro corpus para análise semântica',
+    icon: BarChart3,
+    emoji: '🔬',
+    category: 'explorer',
+    rarity: 'rare',
+    requirement: {
+      type: 'feature_usage',
+      features: ['corpus_processed'],
+      count: 1,
+    }
+  },
 
   // ===== ANALYST (4 conquistas - uso regular) =====
   {

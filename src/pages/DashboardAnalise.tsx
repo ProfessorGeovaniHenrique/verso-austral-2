@@ -1,24 +1,32 @@
 import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import { Activity, BarChart3, Network, Target, ArrowLeft } from "lucide-react";
 import { TabProcessamento } from "@/components/mvp/TabProcessamento";
-import { Link } from "react-router-dom";
+import { TabDominios } from "@/components/analise/TabDominios";
+import { TabEstatisticas } from "@/components/analise/TabEstatisticas";
+import { TabVisualizacoes } from "@/components/analise/TabVisualizacoes";
+import { Link, useSearchParams } from "react-router-dom";
 import { DashboardAnaliseProvider } from "@/contexts/DashboardAnaliseContext";
 
 export default function DashboardAnalise() {
+  const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('processamento');
 
-  // Persistir aba ativa no localStorage
+  // Verificar query param ?tab=dominios para navegação direta
   useEffect(() => {
-    const savedTab = localStorage.getItem('dashboard_analise_active_tab');
-    if (savedTab) {
-      setActiveTab(savedTab);
+    const tabParam = searchParams.get('tab');
+    if (tabParam && ['processamento', 'dominios', 'estatisticas', 'visualizacoes'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    } else {
+      const savedTab = localStorage.getItem('dashboard_analise_active_tab');
+      if (savedTab) {
+        setActiveTab(savedTab);
+      }
     }
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     localStorage.setItem('dashboard_analise_active_tab', activeTab);
@@ -77,51 +85,15 @@ export default function DashboardAnalise() {
           </TabsContent>
 
           <TabsContent value="dominios" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Domínios Semânticos</CardTitle>
-                <CardDescription>
-                  Explore os domínios semânticos identificados na letra
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Análise de domínios semânticos será implementada aqui...
-                </p>
-              </CardContent>
-            </Card>
+            <TabDominios />
           </TabsContent>
 
           <TabsContent value="estatisticas" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Estatísticas Linguísticas</CardTitle>
-                <CardDescription>
-                  Métricas quantitativas sobre o texto analisado
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Estatísticas detalhadas serão implementadas aqui...
-                </p>
-              </CardContent>
-            </Card>
+            <TabEstatisticas />
           </TabsContent>
 
           <TabsContent value="visualizacoes" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Visualizações Científicas</CardTitle>
-                <CardDescription>
-                  Representações visuais dos dados linguísticos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Visualizações interativas serão implementadas aqui...
-                </p>
-              </CardContent>
-            </Card>
+            <TabVisualizacoes />
           </TabsContent>
         </Tabs>
       </main>
