@@ -38,7 +38,7 @@ export function TabProcessamento() {
   // Filtrar apenas Luiz Marenco e a música específica (restrição do MVP)
   const filteredArtists = artists.filter(a => a === 'Luiz Marenco');
   const artistSongs = songs
-    .filter(s => s.title === 'Quando o verso vem pras casa')
+    .filter(s => s.title.toLowerCase() === 'quando o verso vem pras casa')
     .map(s => ({ id: s.id, title: s.title }));
 
   // Hook do tour guiado
