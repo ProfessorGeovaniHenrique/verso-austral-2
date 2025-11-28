@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -8,14 +8,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SongSearchInput } from './SongSearchInput';
 import { useProcessamentoTour } from '@/hooks/useProcessamentoTour';
 import { useCorpusArtistsAndSongs } from '@/hooks/useCorpusArtistsAndSongs';
+import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
 import { HelpCircle, Users, FileMusic, Microscope, Loader2, InfoIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function TabProcessamento() {
-  const [studyMode, setStudyMode] = useState<'complete' | 'artist' | 'song'>('artist');
-  const [studyArtist, setStudyArtist] = useState('');
-  const [studySong, setStudySong] = useState('');
+  const { processamentoData, updateProcessamentoData } = useDashboardAnaliseContext();
+  
+  const [studyMode, setStudyMode] = useState(processamentoData.studyMode);
+  const [studyArtist, setStudyArtist] = useState(processamentoData.studyArtist);
+  const [studySong, setStudySong] = useState(processamentoData.studySong);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Sincronizar estado com contexto ao mudar
+  useEffect(() => {
+    updateProcessamentoData({
+      studyMode,
+      studyArtist,
+      studySong,
+    });
+  }, [studyMode, studyArtist, studySong]);
 
   // Carregar artistas e músicas do catálogo (corpus gaucho)
   const { artists, songs, setSelectedArtist, isLoadingArtists, isLoadingSongs } = useCorpusArtistsAndSongs('gaucho');
@@ -44,6 +56,12 @@ export function TabProcessamento() {
     try {
       // TODO: Implementar lógica de processamento
       await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Marcar como processado com timestamp
+      updateProcessamentoData({
+        isProcessed: true,
+        processedAt: new Date().toISOString(),
+      });
       
       toast.success('Processamento iniciado!', {
         description: 'A análise semântica está em andamento.'

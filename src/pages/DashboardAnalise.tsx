@@ -2,26 +2,57 @@ import { MVPHeader } from "@/components/mvp/MVPHeader";
 import { MVPFooter } from "@/components/mvp/MVPFooter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useState } from "react";
-import { Activity, BarChart3, Network, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { Activity, BarChart3, Network, Target, ArrowLeft } from "lucide-react";
 import { TabProcessamento } from "@/components/mvp/TabProcessamento";
+import { Link } from "react-router-dom";
+import { DashboardAnaliseProvider } from "@/contexts/DashboardAnaliseContext";
 
 export default function DashboardAnalise() {
   const [activeTab, setActiveTab] = useState('processamento');
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <MVPHeader />
-      
-      <main className="container-academic py-4 md:py-8 mt-[180px]">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Análise Semântica Científica</h1>
-          <p className="text-muted-foreground">
-            Explore a análise linguística computacional de "Quando o verso vem pras casa"
-          </p>
-        </div>
+  // Persistir aba ativa no localStorage
+  useEffect(() => {
+    const savedTab = localStorage.getItem('dashboard_analise_active_tab');
+    if (savedTab) {
+      setActiveTab(savedTab);
+    }
+  }, []);
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+  useEffect(() => {
+    localStorage.setItem('dashboard_analise_active_tab', activeTab);
+  }, [activeTab]);
+
+  return (
+    <DashboardAnaliseProvider>
+      <div className="min-h-screen flex flex-col bg-background">
+        <MVPHeader />
+        
+        <main className="container-academic py-4 md:py-8 mt-[180px]">
+          {/* Botão de Retorno */}
+          <div className="mb-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Link to="/dashboard-mvp-definitivo">
+                <ArrowLeft className="h-4 w-4" />
+                Retornar à Página Principal
+              </Link>
+            </Button>
+          </div>
+
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold mb-2">Análise Semântica Científica</h1>
+            <p className="text-muted-foreground">
+              Explore a análise linguística computacional de "Quando o verso vem pras casa"
+            </p>
+          </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
             <TabsTrigger value="processamento" className="gap-2">
               <Activity className="h-4 w-4" />
@@ -97,5 +128,6 @@ export default function DashboardAnalise() {
       
       <MVPFooter />
     </div>
+    </DashboardAnaliseProvider>
   );
 }
