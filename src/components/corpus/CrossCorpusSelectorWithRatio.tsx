@@ -35,6 +35,7 @@ interface CrossCorpusSelectorWithRatioProps {
   ratioPresets?: number[];
   onSelectionChange: (selection: CrossCorpusSelection) => void;
   availableArtists?: string[];
+  allowedSongTitles?: string[]; // Filtro de títulos de músicas permitidos
   initialSelection?: CrossCorpusSelection | null;
   onAnalyze?: () => void;
   isAnalyzing?: boolean;
@@ -47,6 +48,7 @@ export function CrossCorpusSelectorWithRatio({
   ratioPresets = [1, 3, 5, 10],
   onSelectionChange,
   availableArtists = [],
+  allowedSongTitles = [], // Novo prop para filtrar músicas
   initialSelection = null,
   onAnalyze,
   isAnalyzing = false,
@@ -240,11 +242,20 @@ export function CrossCorpusSelectorWithRatio({
                     <SelectValue placeholder={isLoadingSongs ? "Carregando..." : "Selecione a música..."} />
                   </SelectTrigger>
                   <SelectContent className="max-h-[300px]">
-                    {availableSongs.map(song => (
-                      <SelectItem key={song.id} value={song.id}>
-                        {song.title}
-                      </SelectItem>
-                    ))}
+                    {availableSongs
+                      .filter(song => {
+                        // Se allowedSongTitles prop está definido, filtrar por ele
+                        if (allowedSongTitles.length > 0) {
+                          return allowedSongTitles.includes(song.title);
+                        }
+                        return true;
+                      })
+                      .map(song => (
+                        <SelectItem key={song.id} value={song.id}>
+                          {song.title}
+                        </SelectItem>
+                      ))
+                    }
                   </SelectContent>
                 </Select>
               </div>

@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useState } from "react";
 import { Activity, BarChart3, Network, Target } from "lucide-react";
+import { TabProcessamento } from "@/components/mvp/TabProcessamento";
 
 export default function DashboardAnalise() {
   const [activeTab, setActiveTab] = useState('processamento');
@@ -41,19 +42,7 @@ export default function DashboardAnalise() {
           </TabsList>
 
           <TabsContent value="processamento" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Processamento da Música</CardTitle>
-                <CardDescription>
-                  Acompanhe a análise semântica sendo processada
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  Conteúdo do processamento será implementado aqui...
-                </p>
-              </CardContent>
-            </Card>
+            <TabProcessamento />
           </TabsContent>
 
           <TabsContent value="dominios" className="space-y-4">
