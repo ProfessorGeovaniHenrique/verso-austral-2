@@ -4,11 +4,63 @@ import { Music, Users, Award, BookOpen } from "lucide-react";
 
 export function TabOrigensChamamé() {
   const timelineEvents = [
-    { year: "1821", event: "Primeira menção: 'Cielito del chamamé'" },
-    { year: "1857", event: "Juan Pedro Esnaola documenta o gênero" },
-    { year: "1931", event: "Samuel Aguayo registra 'Corrientes Poty'" },
-    { year: "1970", event: "Boom do Chamamé na Argentina" },
-    { year: "2020", event: "UNESCO: Patrimônio Cultural Imaterial" }
+    {
+      year: "1821",
+      event: "Primeira menção documentada",
+      description: "Registro do 'Cielito del chamamé' em documentos históricos"
+    },
+    {
+      year: "1857",
+      event: "Variações do nome",
+      description: "Juan Pedro Esnaola documenta várias grafias: Chamamé, Chamané, Chamami"
+    },
+    {
+      year: "1931",
+      event: "Legitimação do nome",
+      description: "Samuel Claro Aguayo grava 'Corrientes Poty' (Chamamé), desafiando a rejeição ao termo"
+    },
+    {
+      year: "1940/50",
+      event: "Nomenclaturas de Sosa Cordero",
+      description: "Versões musicalizadas dos 'Motivos Populares' do interior de Corrientes com influência da cultura afro",
+      examples: [
+        "Polka Candombe",
+        "Polka Candombe Correntina",
+        "Campera",
+        "Campiriña",
+        "Campera Correntina",
+        "Pregon Correntino",
+        "Plegaria Correntina",
+        "Balada Correntina",
+        "Leyenda Correntina",
+        "Serenata Correntina",
+        "Leyenda Popular Correntina"
+      ]
+    },
+    {
+      year: "1960",
+      event: "Canción Litoraleña",
+      description: "Surge nova nomenclatura para o gênero",
+      music: "Rio de los Pájaros",
+      author: "Aníbal Sampayo"
+    },
+    {
+      year: "1960/70",
+      event: "Canción Del Litoral e Litoraleña",
+      description: "Continuidade das nomenclaturas regionais",
+      music: "Acuarela del Rio",
+      author: "Abel Montes"
+    },
+    {
+      year: "1970",
+      event: "Consolidação do termo",
+      description: "O nome 'Chamamé' se torna definitivo e amplamente aceito na Argentina"
+    },
+    {
+      year: "2020",
+      event: "Reconhecimento Mundial UNESCO",
+      description: "Declarado Patrimônio Cultural Imaterial da Humanidade"
+    }
   ];
 
   return (
@@ -110,7 +162,34 @@ export function TabOrigensChamamé() {
                   
                   <div className="p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <span className="text-sm font-bold text-primary">{item.year}</span>
-                    <p className="text-foreground mt-1">{item.event}</p>
+                    <p className="text-foreground font-medium mt-1">{item.event}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
+                    
+                    {item.examples && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {item.examples.map((example, idx) => (
+                          <span
+                            key={idx}
+                            className="inline-flex items-center px-2 py-1 rounded-md bg-primary/10 text-xs text-primary font-medium"
+                          >
+                            {example}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {item.music && (
+                      <div className="mt-3 p-3 rounded-md bg-background/50 border border-border">
+                        <div className="text-sm">
+                          <span className="font-medium">♪ Música:</span> <span className="italic">"{item.music}"</span>
+                        </div>
+                        {item.author && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            Autor: {item.author}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               ))}
@@ -180,7 +259,7 @@ export function TabOrigensChamamé() {
       >
         <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Referência</h3>
         <p className="text-sm text-foreground">
-          BRITTES, Alejandro. <strong>A origem do Chamamé</strong>: Uma história para ser contada. 
+          BRITTES, Alejandro. <strong>A origem do Chamamé</strong>: Uma história para ser contada (pp. 152-153). 
           Simplíssimo, 2021.
         </p>
       </motion.div>
