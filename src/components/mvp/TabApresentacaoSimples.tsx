@@ -1,13 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
+import { TabOrigensChamamé } from "./TabOrigensChamamé";
 
 export function TabApresentacaoSimples() {
   return (
     <Tabs defaultValue="introducao" className="w-full">
-      <TabsList className="grid w-full grid-cols-2 mb-6">
+      <TabsList className="grid w-full grid-cols-3 mb-6">
         <TabsTrigger value="introducao">Introdução</TabsTrigger>
-        <TabsTrigger value="aprendizado">Aprendizado: Chamamé</TabsTrigger>
+        <TabsTrigger value="aprendizado">Aprendizado</TabsTrigger>
+        <TabsTrigger value="origens">Origens</TabsTrigger>
       </TabsList>
 
       <TabsContent value="introducao">
@@ -58,6 +60,10 @@ export function TabApresentacaoSimples() {
 
       <TabsContent value="aprendizado">
         <TabAprendizadoChamamé />
+      </TabsContent>
+
+      <TabsContent value="origens">
+        <TabOrigensChamamé />
       </TabsContent>
     </Tabs>
   );
