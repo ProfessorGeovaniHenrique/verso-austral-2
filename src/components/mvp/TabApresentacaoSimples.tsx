@@ -4,14 +4,16 @@ import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Music } from "lucide-react";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
+import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
 
 export function TabApresentacaoSimples() {
   return (
     <Tabs defaultValue="introducao" className="w-full">
-      <TabsList className="grid w-full grid-cols-3 mb-6">
+      <TabsList className="grid w-full grid-cols-4 mb-6">
         <TabsTrigger value="introducao">Introdução</TabsTrigger>
         <TabsTrigger value="aprendizado">Aprendizado</TabsTrigger>
         <TabsTrigger value="origens">Origens</TabsTrigger>
+        <TabsTrigger value="instrumentos">Instrumentos</TabsTrigger>
       </TabsList>
 
       <TabsContent value="introducao" className="space-y-6">
@@ -112,9 +114,13 @@ E uma saudade redomona pelos cantos do galpão`}
         <TabAprendizadoChamamé />
       </TabsContent>
 
-      <TabsContent value="origens">
-        <TabOrigensChamamé />
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="origens">
+          <TabOrigensChamamé />
+        </TabsContent>
+
+        <TabsContent value="instrumentos">
+          <TabInstrumentosChamamé />
+        </TabsContent>
+      </Tabs>
   );
 }
