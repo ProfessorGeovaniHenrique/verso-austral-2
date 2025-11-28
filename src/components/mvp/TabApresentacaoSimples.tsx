@@ -137,20 +137,34 @@ function TabApresentacaoSimplesContent() {
         {/* Letra da música + Player +ొssário */}
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
-            <Card 
-              className="card-academic h-full relative overflow-hidden shadow-2xl" 
-              style={{
-                borderWidth: '24px',
-                borderStyle: 'solid',
-                borderImage: `url(${guaraniBorder}) 24 repeat`,
-                borderImageSlice: '24',
-              }}
-            >
-              <CardHeader className="relative z-20">
+            <Card className="card-academic h-full relative overflow-hidden shadow-2xl border-0">
+              {/* Borda superior com padrão guarani em vermelho */}
+              <div 
+                className="absolute top-0 left-0 right-0 h-6 z-10"
+                style={{
+                  backgroundImage: `url(${guaraniBorder})`,
+                  backgroundRepeat: 'repeat-x',
+                  backgroundSize: 'auto 100%',
+                  filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)',
+                }}
+              />
+              
+              {/* Borda inferior com padrão guarani em vermelho */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-6 z-10"
+                style={{
+                  backgroundImage: `url(${guaraniBorder})`,
+                  backgroundRepeat: 'repeat-x',
+                  backgroundSize: 'auto 100%',
+                  filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)',
+                }}
+              />
+              
+              <CardHeader className="relative z-20 pt-8">
                 <CardTitle className="text-lg">Letra da Música</CardTitle>
                 <CardDescription>Luiz Marenco - Quando o verso vem pras casa</CardDescription>
               </CardHeader>
-              <CardContent className="relative z-20">
+              <CardContent className="relative z-20 pb-8">
                 <div className="whitespace-pre-line text-base text-foreground leading-relaxed font-medium">
                   {`A calma do tarumã, ganhou sombra mais copada
 Pela várzea espichada com o sol da tarde caindo
