@@ -44,6 +44,8 @@ interface ArtistDetailsSheetProps {
   onReEnrichSong?: (songId: string) => void;
   onMarkReviewed?: (songId: string) => void;
   onDeleteSong?: (songId: string) => void;
+  onAnnotateSong?: (songId: string) => void;
+  annotatingSongIds?: Set<string>;
   onBioEnriched?: (artistId: string) => void;
 }
 
@@ -58,6 +60,8 @@ export function ArtistDetailsSheet({
   onReEnrichSong,
   onMarkReviewed,
   onDeleteSong,
+  onAnnotateSong,
+  annotatingSongIds,
   onBioEnriched,
 }: ArtistDetailsSheetProps) {
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
@@ -289,10 +293,12 @@ export function ArtistDetailsSheet({
                     song={song}
                     variant="compact"
                     isEnriching={recentlyEnrichedIds.has(song.id)}
+                    isAnnotatingSemantic={annotatingSongIds?.has(song.id)}
                     onEdit={onEditSong}
                     onReEnrich={onReEnrichSong}
                     onMarkReviewed={onMarkReviewed}
                     onDelete={onDeleteSong}
+                    onAnnotateSemantic={onAnnotateSong}
                   />
                 ))}
               </ScrollArea>
@@ -322,10 +328,12 @@ export function ArtistDetailsSheet({
                           song={song}
                           variant="compact"
                           isEnriching={recentlyEnrichedIds.has(song.id)}
+                          isAnnotatingSemantic={annotatingSongIds?.has(song.id)}
                           onEdit={onEditSong}
                           onReEnrich={onReEnrichSong}
                           onMarkReviewed={onMarkReviewed}
                           onDelete={onDeleteSong}
+                          onAnnotateSemantic={onAnnotateSong}
                         />
                       ))}
                     </div>
@@ -351,10 +359,12 @@ export function ArtistDetailsSheet({
                           song={song}
                           variant="compact"
                           isEnriching={recentlyEnrichedIds.has(song.id)}
+                          isAnnotatingSemantic={annotatingSongIds?.has(song.id)}
                           onEdit={onEditSong}
                           onReEnrich={onReEnrichSong}
                           onMarkReviewed={onMarkReviewed}
                           onDelete={onDeleteSong}
+                          onAnnotateSemantic={onAnnotateSong}
                         />
                       ))}
                     </div>

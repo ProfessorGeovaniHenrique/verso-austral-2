@@ -1,5 +1,8 @@
 project_id = "kywmhuubbsvclkorxrse"
 
+[functions.annotate-single-song]
+verify_jwt = false
+
 [functions.extract-music-titles]
 verify_jwt = false
 timeout = 300

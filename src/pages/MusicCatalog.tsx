@@ -5,6 +5,7 @@ import { createLogger } from '@/lib/loggerFactory';
 const log = createLogger('MusicCatalog');
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useArtistSongs } from '@/hooks/useArtistSongs';
+import { useSemanticAnnotationCatalog } from '@/hooks/useSemanticAnnotationCatalog';
 import {
   EnrichedDataTable,
   SongCard,
@@ -66,6 +67,17 @@ interface LocalArtist {
 export default function MusicCatalog() {
   const { enrichBatch } = useEnrichment();
   const { enrichYouTubeUI, enrichYouTubeBatch } = useYouTubeEnrichment();
+  
+  // Hook de anotação semântica para o catálogo
+  const {
+    annotateSong,
+    annotateArtist,
+    checkSongCoverage,
+    isAnnotatingSong,
+    isAnnotatingArtist,
+    songProgress,
+    artistJob,
+  } = useSemanticAnnotationCatalog();
   
   // States de UI
   const [view, setView] = useState<'songs' | 'artists' | 'stats' | 'metrics' | 'validation'>('songs');
@@ -1206,6 +1218,7 @@ export default function MusicCatalog() {
                       totalSongs={(artist as any).totalSongs || 0}
                       pendingSongs={displayPendingSongs}
                       enrichedPercentage={displayEnrichedPercentage}
+                      isAnnotatingSemantic={isAnnotatingArtist(artist.id)}
                       onViewDetails={() => {
                         log.debug('Abrindo sheet do artista', { 
                           artistId: artist.id, 
@@ -1217,6 +1230,29 @@ export default function MusicCatalog() {
                         setSelectedArtistId(artist.id);
                         setIsSheetOpen(true);
                       }}
+                onAnnotateSemantic={async () => {
+                  try {
+                    // Verificar se há cobertura existente
+                    const { count: totalWords } = await supabase
+                      .from('semantic_disambiguation_cache')
+                      .select('*', { count: 'exact', head: true })
+                      .eq('artist_id', artist.id);
+                    
+                    if (totalWords && totalWords > 0) {
+                      // Já tem algumas palavras anotadas
+                      const confirmed = window.confirm(
+                        `${artist.name} já possui ${totalWords} palavras anotadas no cache.\n\n` +
+                        'Deseja continuar a anotação? (Isso irá processar apenas palavras ainda não classificadas)'
+                      );
+                      
+                      if (!confirmed) return;
+                    }
+                    
+                    await annotateArtist(artist.id, artist.name);
+                  } catch (error) {
+                    log.error('Error starting artist annotation', error as Error, { artistId: artist.id });
+                  }
+                }}
                 onEnrich={async () => {
                   try {
                     // Query músicas pendentes do artista
@@ -1573,6 +1609,24 @@ export default function MusicCatalog() {
         onReEnrichSong={handleReEnrichSong}
         onMarkReviewed={handleMarkReviewed}
         onDeleteSong={handleDeleteSong}
+        onAnnotateSong={async (songId: string) => {
+          const song = artistSongs.find(s => s.id === songId);
+          if (!song) return;
+          
+          // Verificar cobertura existente
+          const coverage = await checkSongCoverage(songId);
+          if (coverage && coverage.coverage >= 95) {
+            const confirmed = window.confirm(
+              `"${song.title}" já possui ${coverage.coverage.toFixed(1)}% de cobertura (${coverage.cachedWords}/${coverage.totalWords} palavras).\n\n` +
+              'Deseja reprocessar esta música?'
+            );
+            
+            if (!confirmed) return;
+          }
+          
+          await annotateSong(songId, song.title);
+        }}
+        annotatingSongIds={new Set(Array.from(songProgress.keys()))}
         onBioEnriched={handleBioEnriched}
       />
       </div>
