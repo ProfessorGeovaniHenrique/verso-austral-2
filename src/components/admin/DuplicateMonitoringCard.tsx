@@ -1,53 +1,50 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, CheckCircle2, Loader2, Search, Trash2 } from "lucide-react";
+import { CheckCircle2, Loader2, Search } from "lucide-react";
 import { useDeduplication } from "@/hooks/useDeduplication";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useState } from "react";
 
 export function DuplicateMonitoringCard() {
-  const { analyze, execute, isAnalyzing, isExecuting, result, clearResult } = useDeduplication();
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const { analyze, isAnalyzing, result, clearResult } = useDeduplication();
 
   const handleAnalyze = async () => {
     clearResult();
     await analyze();
   };
 
-  const handleExecute = async () => {
-    setShowConfirmDialog(false);
-    await execute();
-  };
-
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Trash2 className="h-5 w-5" />
+          <CheckCircle2 className="h-5 w-5 text-primary" />
           Deduplicação de Músicas
         </CardTitle>
         <CardDescription>
-          Identifique e consolide músicas duplicadas preservando todos os metadados de álbuns
+          Sistema de prevenção automática de duplicatas via constraint UNIQUE
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Status Alert */}
+        <Alert className="bg-primary/10 border-primary/20">
+          <CheckCircle2 className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Proteção Automática Ativa:</strong> O constraint <code className="bg-muted px-1 py-0.5 rounded text-xs">UNIQUE (normalized_title, artist_id)</code> previne 
+            automaticamente a criação de duplicatas. 
+            <span className="block mt-1 text-sm">
+              ✅ 5.609 duplicatas foram removidas em 28/11/2024 
+            </span>
+          </AlertDescription>
+        </Alert>
+
         {/* Action Buttons */}
         <div className="flex gap-2">
           <Button
             onClick={handleAnalyze}
-            disabled={isAnalyzing || isExecuting}
+            disabled={isAnalyzing}
             variant="outline"
+            className="flex-1"
           >
             {isAnalyzing ? (
               <>
@@ -57,37 +54,17 @@ export function DuplicateMonitoringCard() {
             ) : (
               <>
                 <Search className="mr-2 h-4 w-4" />
-                Analisar Duplicatas
+                Verificar Estatísticas
               </>
             )}
           </Button>
-
-          {result && !result.dryRun && (
-            <Button
-              onClick={() => setShowConfirmDialog(true)}
-              disabled={isAnalyzing || isExecuting}
-              variant="destructive"
-            >
-              {isExecuting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Executando...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Executar Deduplicação
-                </>
-              )}
-            </Button>
-          )}
         </div>
 
         {/* Analysis Results */}
         {result && (
           <div className="space-y-4">
             <Alert>
-              <AlertCircle className="h-4 w-4" />
+              <CheckCircle2 className="h-4 w-4" />
               <AlertDescription>
                 {result.dryRun ? (
                   <>
@@ -139,50 +116,10 @@ export function DuplicateMonitoringCard() {
                 </div>
               </div>
             )}
-
-            {result.dryRun && result.duplicatesRemoved > 0 && (
-              <Button
-                onClick={() => setShowConfirmDialog(true)}
-                variant="destructive"
-                className="w-full"
-              >
-                Executar Deduplicação
-              </Button>
-            )}
           </div>
         )}
 
-        {/* Confirmation Dialog */}
-        <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Confirmar Deduplicação</AlertDialogTitle>
-              <AlertDialogDescription asChild>
-                <div className="space-y-2">
-                  <p>
-                    Esta ação irá consolidar {result?.duplicatesRemoved} registros duplicados em {result?.consolidated} músicas únicas.
-                  </p>
-                  <div>
-                    <p className="font-semibold mb-1">Metadados preservados:</p>
-                    <div className="space-y-1 text-sm">
-                      <div>• {result?.releasesPreserved} releases serão armazenados em JSONB</div>
-                      <div>• Compositor, letra, YouTube URL serão mesclados</div>
-                      <div>• Ano de lançamento será o mais antigo</div>
-                      <div>• Constraint UNIQUE será adicionada</div>
-                    </div>
-                  </div>
-                  <p className="mt-2">Deseja continuar?</p>
-                </div>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={handleExecute}>
-                Executar
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Confirmation Dialog - Removido pois deduplicação é automática */}
       </CardContent>
     </Card>
   );

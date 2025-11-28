@@ -820,6 +820,36 @@ export type Database = {
         }
         Relationships: []
       }
+      deduplication_log: {
+        Row: {
+          details: Json | null
+          duplicates_removed: number | null
+          executed_at: string | null
+          id: string
+          primary_songs_kept: number | null
+          songs_after: number | null
+          songs_before: number | null
+        }
+        Insert: {
+          details?: Json | null
+          duplicates_removed?: number | null
+          executed_at?: string | null
+          id?: string
+          primary_songs_kept?: number | null
+          songs_after?: number | null
+          songs_before?: number | null
+        }
+        Update: {
+          details?: Json | null
+          duplicates_removed?: number | null
+          executed_at?: string | null
+          id?: string
+          primary_songs_kept?: number | null
+          songs_after?: number | null
+          songs_before?: number | null
+        }
+        Relationships: []
+      }
       dev_history_overrides: {
         Row: {
           active: boolean | null
@@ -2478,6 +2508,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      songs_backup: {
+        Row: {
+          artist_id: string | null
+          composer: string | null
+          confidence_score: number | null
+          corpus_id: string | null
+          created_at: string | null
+          enrichment_source: string | null
+          id: string | null
+          lyrics: string | null
+          normalized_title: string | null
+          raw_data: Json | null
+          release_year: string | null
+          releases: Json | null
+          status: string | null
+          title: string | null
+          total_releases: number | null
+          updated_at: string | null
+          upload_id: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          artist_id?: string | null
+          composer?: string | null
+          confidence_score?: number | null
+          corpus_id?: string | null
+          created_at?: string | null
+          enrichment_source?: string | null
+          id?: string | null
+          lyrics?: string | null
+          normalized_title?: string | null
+          raw_data?: Json | null
+          release_year?: string | null
+          releases?: Json | null
+          status?: string | null
+          title?: string | null
+          total_releases?: number | null
+          updated_at?: string | null
+          upload_id?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          artist_id?: string | null
+          composer?: string | null
+          confidence_score?: number | null
+          corpus_id?: string | null
+          created_at?: string | null
+          enrichment_source?: string | null
+          id?: string | null
+          lyrics?: string | null
+          normalized_title?: string | null
+          raw_data?: Json | null
+          release_year?: string | null
+          releases?: Json | null
+          status?: string | null
+          title?: string | null
+          total_releases?: number | null
+          updated_at?: string | null
+          upload_id?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: []
       }
       spacy_api_health: {
         Row: {
