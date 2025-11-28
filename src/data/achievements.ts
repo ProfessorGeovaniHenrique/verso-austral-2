@@ -105,6 +105,20 @@ export const ACHIEVEMENTS: Achievement[] = [
       count: 1,
     }
   },
+  {
+    id: 'sede_conhecimento',
+    name: 'Sede de Conhecimento',
+    description: 'Desbloqueie todas as 5 abas do módulo de aprendizagem',
+    icon: GraduationCap,
+    emoji: '🎓',
+    category: 'explorer',
+    rarity: 'rare',
+    requirement: {
+      type: 'feature_usage',
+      features: ['all_tabs_unlocked'],
+      count: 1,
+    }
+  },
 
   // ===== ANALYST (4 conquistas - uso regular) =====
   {

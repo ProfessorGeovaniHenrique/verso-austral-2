@@ -1,27 +1,93 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Music, BookOpen, BrainCircuit } from "lucide-react";
+import { Music, BookOpen, BrainCircuit, Lock, Check } from "lucide-react";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
 import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
 import { QuizModal } from "./QuizModal";
 import { QuizProvider, useQuizContext } from "@/contexts/QuizContext";
+import { useAnalytics } from "@/hooks/useAnalytics";
+
+const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'instrumentos', 'quiz'];
 
 function TabApresentacaoSimplesContent() {
   const { openQuiz, quizState } = useQuizContext();
+  const { trackFeatureUsage } = useAnalytics();
+  
+  const [unlockedTabs, setUnlockedTabs] = useState<string[]>(() => {
+    const saved = localStorage.getItem('mvp-unlocked-tabs');
+    return saved ? JSON.parse(saved) : ['introducao'];
+  });
+
+  const handleTabChange = (value: string) => {
+    const currentIndex = TAB_ORDER.indexOf(value);
+    const nextTab = TAB_ORDER[currentIndex + 1];
+    
+    if (nextTab && !unlockedTabs.includes(nextTab)) {
+      const newUnlocked = [...unlockedTabs, nextTab];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+      
+      // Se todas as 5 abas foram desbloqueadas, disparar conquista
+      if (newUnlocked.length === 5) {
+        trackFeatureUsage('all_tabs_unlocked');
+      }
+    }
+  };
+
+  const getTabIcon = (tabId: string) => {
+    if (!unlockedTabs.includes(tabId)) {
+      return <Lock className="h-3 w-3 mr-1" />;
+    }
+    return <Check className="h-3 w-3 mr-1" />;
+  };
 
   return (
     <>
-      <Tabs defaultValue="introducao" className="w-full">
+      <div className="text-sm text-muted-foreground mb-2 text-center">
+        {unlockedTabs.length}/5 abas desbloqueadas
+      </div>
+      
+      <Tabs defaultValue="introducao" onValueChange={handleTabChange} className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-6">
-          <TabsTrigger value="introducao">Introdução</TabsTrigger>
-          <TabsTrigger value="aprendizado">Chamamé</TabsTrigger>
-          <TabsTrigger value="origens">Origens</TabsTrigger>
-          <TabsTrigger value="instrumentos">Instrumentos</TabsTrigger>
-          <TabsTrigger value="quiz" className="bg-primary/10">
+          <TabsTrigger value="introducao">
+            {getTabIcon('introducao')}
+            Introdução
+          </TabsTrigger>
+          <TabsTrigger 
+            value="aprendizado" 
+            disabled={!unlockedTabs.includes('aprendizado')}
+            className={!unlockedTabs.includes('aprendizado') ? 'opacity-50' : ''}
+          >
+            {getTabIcon('aprendizado')}
+            Chamamé
+          </TabsTrigger>
+          <TabsTrigger 
+            value="origens" 
+            disabled={!unlockedTabs.includes('origens')}
+            className={!unlockedTabs.includes('origens') ? 'opacity-50' : ''}
+          >
+            {getTabIcon('origens')}
+            Origens
+          </TabsTrigger>
+          <TabsTrigger 
+            value="instrumentos" 
+            disabled={!unlockedTabs.includes('instrumentos')}
+            className={!unlockedTabs.includes('instrumentos') ? 'opacity-50' : ''}
+          >
+            {getTabIcon('instrumentos')}
+            Instrumentos
+          </TabsTrigger>
+          <TabsTrigger 
+            value="quiz" 
+            disabled={!unlockedTabs.includes('quiz')}
+            className={!unlockedTabs.includes('quiz') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}
+          >
             <BrainCircuit className="h-4 w-4 mr-2" />
+            {getTabIcon('quiz')}
             Quiz
           </TabsTrigger>
         </TabsList>
