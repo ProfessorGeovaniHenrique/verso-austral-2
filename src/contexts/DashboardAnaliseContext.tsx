@@ -31,6 +31,7 @@ interface CloudData {
   color: string;
   wordCount: number;
   avgScore: number;
+  descricao?: string;
 }
 
 interface AnalysisResults {

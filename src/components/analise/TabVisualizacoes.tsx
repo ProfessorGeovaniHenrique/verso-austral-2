@@ -237,7 +237,7 @@ export function TabVisualizacoes() {
               keywords.slice(0, 80).map((keyword, idx) => {
                 // Encontrar o domínio pai para obter a cor
                 const domain = cloudData.find(d => d.codigo === keyword.dominio);
-                const color = domain?.color || 'hsl(var(--primary))';
+                const color = domain?.color || keyword.cor || 'hsl(var(--primary))';
                 
                 // Tamanho baseado no LL (log-likelihood)
                 const llScore = keyword.ll || 0;

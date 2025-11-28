@@ -7,14 +7,19 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
-import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb, AlertCircle, Target } from 'lucide-react';
+import { Database, Download, FileText, TrendingUp, BarChart3, Lightbulb, AlertCircle, Target, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { DomainCardWithChildren } from './DomainCardWithChildren';
 
 export function TabDominios() {
   const { processamentoData } = useDashboardAnaliseContext();
   const dominios = processamentoData.analysisResults?.dominios || [];
   const keywords = processamentoData.analysisResults?.keywords || [];
+  const cloudData = processamentoData.analysisResults?.cloudData || [];
   const [searchTerm, setSearchTerm] = useState("");
+
+  // Extrair códigos disponíveis para busca de N2 filhos
+  const availableDomains = useMemo(() => cloudData.map(d => d.codigo), [cloudData]);
 
   if (!processamentoData.isProcessed || dominios.length === 0) {
     return (
@@ -132,7 +137,14 @@ export function TabDominios() {
         <div className="xl:col-span-2 space-y-4">
           <TooltipProvider delayDuration={300}>
             {dominiosFiltrados.map((dominio) => (
-              <Card key={dominio.dominio} className="card-academic overflow-hidden">
+              <DomainCardWithChildren
+                key={dominio.dominio}
+                codigo={dominio.codigo}
+                nome={dominio.dominio}
+                cor={dominio.cor}
+                availableDomains={availableDomains}
+              >
+              <Card className="card-academic overflow-hidden">
                 {/* Header do Card */}
                 <div 
                   className="h-2" 
@@ -306,6 +318,7 @@ export function TabDominios() {
                   </div>
                 </CardContent>
               </Card>
+              </DomainCardWithChildren>
             ))}
           </TooltipProvider>
         </div>
