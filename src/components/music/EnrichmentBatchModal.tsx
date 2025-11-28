@@ -24,6 +24,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EnrichmentState {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'cancelled';
@@ -141,6 +142,7 @@ export function EnrichmentBatchModal({
   });
 
   const [forceReenrich, setForceReenrich] = useState(false);
+  const [clearBeforeEnrich, setClearBeforeEnrich] = useState(false);
   const isPausedRef = useRef(false);
   const isCancelledRef = useRef(false);
 
@@ -212,6 +214,46 @@ export function EnrichmentBatchModal({
     dispatch({ type: 'START', total: songs.length });
     isPausedRef.current = false;
     isCancelledRef.current = false;
+
+    // If clearBeforeEnrich is enabled, clear metadata first
+    if (clearBeforeEnrich) {
+      try {
+        dispatch({ 
+          type: 'SONG_START',
+          songId: 'system-clear',
+          title: `🧹 Limpando metadados de ${songs.length} música(s)...`
+        });
+
+        const { data, error } = await supabase.functions.invoke('clear-song-metadata', {
+          body: { songIds: songs.map(s => s.id) }
+        });
+
+        if (error) {
+          dispatch({ 
+            type: 'SONG_ERROR',
+            songId: 'system-clear',
+            error: `❌ Erro ao limpar metadados: ${error.message}`
+          });
+          dispatch({ type: 'COMPLETE' });
+          return;
+        }
+
+        dispatch({ 
+          type: 'SONG_SUCCESS',
+          songId: 'system-clear',
+          message: `✅ Metadados limpos. Iniciando enriquecimento...`
+        });
+      } catch (error) {
+        console.error('Failed to clear metadata:', error);
+        dispatch({ 
+          type: 'SONG_ERROR',
+          songId: 'system-clear',
+          error: `❌ Erro ao limpar metadados: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+        });
+        dispatch({ type: 'COMPLETE' });
+        return;
+      }
+    }
 
     // Dynamic import of p-limit
     const pLimit = (await import('p-limit')).default;
@@ -316,22 +358,41 @@ export function EnrichmentBatchModal({
         <div className="space-y-4">
           {/* Force Re-enrich Option */}
           {state.status === 'idle' && (
-            <div className="flex items-center space-x-2 p-3 border rounded-md bg-muted/30">
-              <Checkbox 
-                id="force-reenrich"
-                checked={forceReenrich}
-                onCheckedChange={(checked) => setForceReenrich(checked as boolean)}
-              />
-              <Label 
-                htmlFor="force-reenrich" 
-                className="text-sm cursor-pointer leading-tight"
-              >
-                <div className="font-medium">Forçar re-enriquecimento</div>
-                <div className="text-xs text-muted-foreground">
-                  Buscar co-autores mesmo em músicas que já possuem compositor
-                </div>
-              </Label>
-            </div>
+            <>
+              <div className="flex items-center space-x-2 p-3 border rounded-md bg-muted/30">
+                <Checkbox 
+                  id="force-reenrich"
+                  checked={forceReenrich}
+                  onCheckedChange={(checked) => setForceReenrich(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="force-reenrich" 
+                  className="text-sm cursor-pointer leading-tight"
+                >
+                  <div className="font-medium">Forçar re-enriquecimento</div>
+                  <div className="text-xs text-muted-foreground">
+                    Buscar co-autores mesmo em músicas que já possuem compositor
+                  </div>
+                </Label>
+              </div>
+
+              <div className="flex items-center space-x-2 p-3 border border-destructive/30 rounded-md bg-destructive/5">
+                <Checkbox 
+                  id="clear-before"
+                  checked={clearBeforeEnrich}
+                  onCheckedChange={(checked) => setClearBeforeEnrich(checked as boolean)}
+                />
+                <Label 
+                  htmlFor="clear-before" 
+                  className="text-sm cursor-pointer leading-tight"
+                >
+                  <div className="font-medium text-destructive">🗑️ Limpar metadados antes</div>
+                  <div className="text-xs text-muted-foreground">
+                    Remove compositor, ano e confidence existentes para forçar busca completa (recomendado para re-enriquecimento)
+                  </div>
+                </Label>
+              </div>
+            </>
           )}
 
           {/* Progress Bar */}
