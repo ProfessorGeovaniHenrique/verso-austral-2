@@ -430,7 +430,7 @@ async function checkSemanticCache(supabase: any, palavra: string, contextoHash: 
 }
 
 /**
- * Regras contextuais (fallback linguístico)
+ * Regras contextuais (fallback linguístico) com classificação N2
  * NOTA: Stopwords context-dependent (que, como, onde) NÃO passam por aqui - vão direto pro Gemini
  */
 function applyContextualRules(palavra: string, lema?: string, pos?: string): SemanticDomainResult | null {
@@ -441,29 +441,60 @@ function applyContextualRules(palavra: string, lema?: string, pos?: string): Sem
     return null;
   }
   
-  // Regra 1: Sentimentos conhecidos
-  const sentimentos = ['saudade', 'amor', 'paixão', 'dor', 'alegria', 'tristeza', 'verso', 'sonho'];
-  if (sentimentos.includes(lemaNorm)) {
+  // Regra 1: Sentimentos específicos (N2)
+  const sentimentosMap: Record<string, { codigo: string; justificativa: string }> = {
+    'saudade': { codigo: 'SE.SA', justificativa: 'Saudade específica (sentimento nostálgico)' },
+    'amor': { codigo: 'SE.AM', justificativa: 'Sentimento de amor/afeto' },
+    'paixão': { codigo: 'SE.AM', justificativa: 'Sentimento de amor/paixão' },
+    'alegria': { codigo: 'SE.PO', justificativa: 'Sentimento positivo' },
+    'felicidade': { codigo: 'SE.PO', justificativa: 'Sentimento positivo' },
+    'dor': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
+    'tristeza': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
+    'medo': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
+    'raiva': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
+    'verso': { codigo: 'CC.ART', justificativa: 'Arte poética' },
+    'sonho': { codigo: 'AB.EXI', justificativa: 'Conceito existencial' },
+  };
+  if (lemaNorm in sentimentosMap) {
+    const mapping = sentimentosMap[lemaNorm];
     return {
-      tagset_codigo: 'SE',
+      tagset_codigo: mapping.codigo,
       confianca: 0.98,
       fonte: 'rule_based',
-      justificativa: 'Sentimento universal identificado por regra linguística',
+      justificativa: mapping.justificativa,
     };
   }
 
-  // Regra 2: Natureza conhecida
-  const natureza = ['sol', 'lua', 'estrela', 'céu', 'campo', 'rio', 'vento', 'chuva', 'pampa', 'coxilha', 'várzea'];
-  if (natureza.includes(lemaNorm)) {
+  // Regra 2: Natureza específica (N2)
+  const naturezaMap: Record<string, { codigo: string; justificativa: string }> = {
+    'sol': { codigo: 'NA.CLI', justificativa: 'Elemento climático' },
+    'lua': { codigo: 'NA.CLI', justificativa: 'Elemento celestial' },
+    'estrela': { codigo: 'NA.CLI', justificativa: 'Elemento celestial' },
+    'céu': { codigo: 'NA.CLI', justificativa: 'Elemento climático' },
+    'chuva': { codigo: 'NA.CLI', justificativa: 'Fenômeno climático' },
+    'vento': { codigo: 'NA.CLI', justificativa: 'Fenômeno climático' },
+    'campo': { codigo: 'NA.GEO', justificativa: 'Geografia/paisagem' },
+    'rio': { codigo: 'NA.GEO', justificativa: 'Geografia/hidrografia' },
+    'pampa': { codigo: 'NA.GEO', justificativa: 'Geografia regional' },
+    'coxilha': { codigo: 'NA.GEO', justificativa: 'Geografia regional gaúcha' },
+    'várzea': { codigo: 'NA.GEO', justificativa: 'Geografia/topografia' },
+    'árvore': { codigo: 'NA.FLO', justificativa: 'Flora' },
+    'flor': { codigo: 'NA.FLO', justificativa: 'Flora' },
+    'cavalo': { codigo: 'NA.FAU', justificativa: 'Fauna doméstica' },
+    'gado': { codigo: 'NA.FAU', justificativa: 'Fauna doméstica' },
+    'pássaro': { codigo: 'NA.FAU', justificativa: 'Fauna' },
+  };
+  if (lemaNorm in naturezaMap) {
+    const mapping = naturezaMap[lemaNorm];
     return {
-      tagset_codigo: 'NA',
+      tagset_codigo: mapping.codigo,
       confianca: 0.98,
       fonte: 'rule_based',
-      justificativa: 'Elemento natural identificado por regra linguística',
+      justificativa: mapping.justificativa,
     };
   }
 
-  // Regra 3: Palavras funcionais (POS-based) - apenas se não bloqueadas
+  // Regra 3: Palavras funcionais (mantém MG N1)
   if (pos && ['ADP', 'DET', 'CONJ', 'SCONJ', 'PRON'].includes(pos)) {
     return {
       tagset_codigo: 'MG',
@@ -473,13 +504,69 @@ function applyContextualRules(palavra: string, lema?: string, pos?: string): Sem
     };
   }
 
-  // Regra 4: Verbos → Atividades e Práticas
+  // Regra 4: Verbos → Ações e Processos (N2 quando possível)
   if (pos === 'VERB') {
+    // Verbos de movimento
+    const movimentoVerbs = ['andar', 'correr', 'pular', 'caminhar', 'voar', 'nadar'];
+    if (movimentoVerbs.includes(lemaNorm)) {
+      return {
+        tagset_codigo: 'AC.MD',
+        confianca: 0.95,
+        fonte: 'rule_based',
+        justificativa: 'Verbo de movimento',
+      };
+    }
+    
+    // Verbos de manipulação
+    const manipulacaoVerbs = ['pegar', 'segurar', 'empurrar', 'puxar', 'abrir', 'fechar'];
+    if (manipulacaoVerbs.includes(lemaNorm)) {
+      return {
+        tagset_codigo: 'AC.MI',
+        confianca: 0.95,
+        fonte: 'rule_based',
+        justificativa: 'Verbo de manipulação',
+      };
+    }
+    
+    // Verbos de transformação
+    const transformacaoVerbs = ['construir', 'quebrar', 'criar', 'destruir', 'cortar', 'limpar'];
+    if (transformacaoVerbs.includes(lemaNorm)) {
+      return {
+        tagset_codigo: 'AC.TR',
+        confianca: 0.95,
+        fonte: 'rule_based',
+        justificativa: 'Verbo de transformação',
+      };
+    }
+    
+    // Verbos de percepção
+    const percepcaoVerbs = ['olhar', 'ver', 'escutar', 'ouvir', 'cheirar', 'sentir'];
+    if (percepcaoVerbs.includes(lemaNorm)) {
+      return {
+        tagset_codigo: 'AC.PS',
+        confianca: 0.95,
+        fonte: 'rule_based',
+        justificativa: 'Verbo de percepção sensorial',
+      };
+    }
+    
+    // Verbos de expressão
+    const expressaoVerbs = ['falar', 'dizer', 'cantar', 'gritar', 'sussurrar'];
+    if (expressaoVerbs.includes(lemaNorm)) {
+      return {
+        tagset_codigo: 'AC.EC',
+        confianca: 0.95,
+        fonte: 'rule_based',
+        justificativa: 'Verbo de expressão/comunicação',
+      };
+    }
+    
+    // Fallback para AC genérico
     return {
-      tagset_codigo: 'AP',
-      confianca: 0.90,
+      tagset_codigo: 'AC',
+      confianca: 0.85,
       fonte: 'rule_based',
-      justificativa: 'Verbo mapeado para Atividades e Práticas',
+      justificativa: 'Verbo mapeado para Ações e Processos (genérico)',
     };
   }
 
@@ -516,6 +603,13 @@ async function batchClassifyWithGemini(
 
   const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra abaixo em um dos 14 domínios semânticos.
 
+**INSTRUÇÕES CRÍTICAS:**
+1. **PRIORIZE códigos N2 (subcategorias) sempre que o contexto permitir**
+2. Use códigos N1 APENAS quando a classificação for ambígua ou não houver N2 apropriado
+3. Exemplo: "cavalgar" → AP.DES (Transporte), NÃO "AP" genérico
+4. Exemplo: "saudade" → SE.SA (Saudade específica), NÃO "SE" genérico
+5. Exemplo: "chimarrão" → AP.ALI (Alimentação), NÃO "AP" genérico
+
 **14 DOMÍNIOS SEMÂNTICOS N1:**
 - AB (Abstrações): ideias abstratas, conceitos filosóficos, valores morais
 - AC (Ações e Processos): verbos de ação física concreta (andar, pegar, construir, olhar, falar)
@@ -532,33 +626,38 @@ async function batchClassifyWithGemini(
 - SH (Indivíduo): pessoa, corpo humano, características humanas, identidade
 - SP (Sociedade e Organização Política): governo, lei, relações sociais, política
 
-**SUBDOMÍNIOS IMPORTANTES N2:**
-- AC.MD (Movimento): andar, correr, pular, sentar, virar
-- AC.MI (Manipulação): pegar, segurar, empurrar, amarrar, abrir
-- AC.TR (Transformação): construir, quebrar, cortar, limpar, escrever
-- AC.PS (Percepção): olhar, ver, escutar, cheirar, provar
-- AC.EC (Expressão): falar, cantar, gritar, acenar, abraçar
+**SUBDOMÍNIOS IMPORTANTES N2 (USE ESTES PREFERENCIALMENTE):**
+- AC.MD (Movimento): andar, correr, pular, sentar, virar, cavalgar
+- AC.MI (Manipulação): pegar, segurar, empurrar, amarrar, abrir, fechar
+- AC.TR (Transformação): construir, quebrar, cortar, limpar, escrever, criar
+- AC.PS (Percepção): olhar, ver, escutar, cheirar, provar, sentir
+- AC.EC (Expressão): falar, cantar, gritar, acenar, abraçar, sussurrar
 - AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude, honra
 - AB.SOC (Social/Político): poder, direito, democracia, cidadania, paz
-- AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte
+- AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte, sonho
 - AB.LOG (Lógico/Matemático): lógica, razão, infinito, proporção
 - AP.TRA (Trabalho/Economia): plantar, colher, comprar, vender, médico, tropeiro
 - AP.ALI (Alimentação/Culinária): cozinhar, churrasco, chimarrão, mate, cuia
 - AP.VES (Vestuário/Moda): vestir, costurar, bombacha, bota, poncho
 - AP.LAZ (Lazer/Esportes): festa, fandango, rodeio, futebol, dança
 - AP.DES (Transporte/Deslocamento): cavalgar, viajar, rota, destino
-- CC.ART (Arte/Expressão): poesia, música, pintura, dança, literatura
+- CC.ART (Arte/Expressão): poesia, música, pintura, dança, literatura, verso
 - CC.EDU (Educação/Aprendizado): estudar, escola, professor, ensinar
 - CC.REL (Religiosidade/Espiritualidade): Deus, fé, alma, reza, igreja
 - CC.COM (Comunicação/Mídia): jornal, mensagem, conversa, notícia
+- NA.FAU (Fauna): cavalo, gado, pássaro, peixe, animal
+- NA.FLO (Flora): árvore, flor, planta, erva, mato
+- NA.GEO (Geografia): campo, pampa, coxilha, rio, várzea, cerro
+- NA.CLI (Clima): sol, lua, chuva, vento, estrela, céu
 - SB.DOE (Doenças/Condições): gripe, diabetes, febre, dor, ferida
 - SB.TRA (Tratamentos/Cuidados): remédio, cirurgia, hospital, médico, vacina
 - SB.BEM (Bem-Estar/Estilo de Vida): dieta, exercício, higiene, descanso
 - SB.MEN (Saúde Mental): depressão, ansiedade, memória, personalidade
 - SB.05 (Saúde Animal - Veterinária): veterinário, castração animal, doenças animais
-  - SB.05.01 (Doenças Animais): cinomose, raiva, febre aftosa, parvovirose
-  - SB.05.02 (Tratamentos Veterinários): vermífugo, castração, vacinação animal
-  - SB.05.03 (Sistema de Saúde Animal): veterinário, clínica veterinária, zootecnista
+- SE.SA (Saudade): saudade, nostalgia, lembranças
+- SE.AM (Amor): amor, paixão, carinho, afeto
+- SE.PO (Positivos): alegria, felicidade, esperança
+- SE.NE (Negativos): tristeza, dor, medo, raiva
 - SP.GOV (Governo/Estado): democracia, ministério, imposto, eleição
 - SP.LEI (Lei/Justiça): lei, julgamento, crime, polícia, prisão
 - SP.GUE (Guerra/Conflito): guerra, batalha, atacar, defender
@@ -571,10 +670,10 @@ Use SB ou SB.05 para termos veterinários relacionados à saúde de animais (vet
 **PALAVRAS A CLASSIFICAR:**
 ${palavrasList}
 
-**RETORNE JSON ARRAY (ordem idêntica):**
+**RETORNE JSON ARRAY (ordem idêntica) COM CÓDIGOS N2 SEMPRE QUE POSSÍVEL:**
 [
-  {"palavra": "palavra1", "tagset_codigo": "XX", "confianca": 0.95, "justificativa": "razão"},
-  {"palavra": "palavra2", "tagset_codigo": "YY", "confianca": 0.90, "justificativa": "razão"},
+  {"palavra": "palavra1", "tagset_codigo": "XX.YY", "confianca": 0.95, "justificativa": "razão"},
+  {"palavra": "palavra2", "tagset_codigo": "ZZ.WW", "confianca": 0.90, "justificativa": "razão"},
   ...
 ]`;
 
@@ -676,16 +775,22 @@ async function classifyWithGemini(
 
   const prompt = `Você é um especialista em análise semântica de texto. Classifique a palavra em destaque.
 
-**13 DOMÍNIOS N1:**
-AB (Abstrações), AP (Atividades), CC (Cultura), EL (Estruturas), EQ (Qualidades), MG (Marcadores), NA (Natureza), NC (Não Classificado), OA (Objetos), SB (Saúde), SE (Sentimentos), SH (Ser Humano), SP (Sociedade)
+**INSTRUÇÕES CRÍTICAS:**
+1. **PRIORIZE códigos N2 (subcategorias) sempre que o contexto permitir**
+2. Use códigos N1 APENAS quando a classificação for ambígua ou não houver N2 apropriado
+3. Exemplos: "cavalgar" → AP.DES, "saudade" → SE.SA, "chimarrão" → AP.ALI
 
-**SUBDOMÍNIOS:** AP.ALI (Alimentação), NA.FAU (Fauna), NA.GEO (Geografia), OA.FER (Ferramentas), SE.NOS (Nostalgia), CC.ART (Arte), CC.ART.MUS (Música), CC.ART.POE (Poesia), CC.CIT (Ciência), CC.EDU (Educação), CC.COM (Comunicação), CC.REL (Religiosidade), AB.FIL (Filosofia/Ética), AB.SOC (Social/Político), AB.EXI (Existencial/Metafísico), AB.LOG (Lógico/Matemático)
+**13 DOMÍNIOS N1:**
+AB (Abstrações), AC (Ações/Processos), AP (Atividades), CC (Cultura), EL (Estruturas), EQ (Qualidades), MG (Marcadores), NA (Natureza), NC (Não Classificado), OA (Objetos), SB (Saúde), SE (Sentimentos), SH (Ser Humano), SP (Sociedade)
+
+**SUBDOMÍNIOS N2 IMPORTANTES (USE ESTES):** 
+AC.MD (Movimento), AC.MI (Manipulação), AC.TR (Transformação), AC.PS (Percepção), AC.EC (Expressão), AP.ALI (Alimentação), AP.DES (Transporte), AP.TRA (Trabalho), AP.LAZ (Lazer), NA.FAU (Fauna), NA.FLO (Flora), NA.GEO (Geografia), NA.CLI (Clima), SE.SA (Saudade), SE.AM (Amor), SE.PO (Positivos), SE.NE (Negativos), CC.ART (Arte), CC.EDU (Educação), CC.REL (Religiosidade), CC.COM (Comunicação), AB.FIL (Filosofia/Ética), AB.SOC (Social/Político), AB.EXI (Existencial), SB.DOE (Doenças), SB.TRA (Tratamentos), SP.GOV (Governo), SP.LEI (Lei/Justiça)
 
 **CONTEXTO:** "${sentencaCompleta}"
 Palavra: "${palavra}" | Lema: "${lema}" | POS: ${pos}
 
-**RETORNE JSON:**
-{"tagset_codigo": "XX", "confianca": 0.95, "justificativa": "razão"}`;
+**RETORNE JSON COM CÓDIGO N2 SEMPRE QUE POSSÍVEL:**
+{"tagset_codigo": "XX.YY", "confianca": 0.95, "justificativa": "razão"}`;
 
   try {
     const timer = logger.startTimer();

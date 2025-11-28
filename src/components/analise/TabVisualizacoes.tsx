@@ -172,9 +172,16 @@ export function TabVisualizacoes() {
                 Visualize domínios semânticos em diferentes níveis de granularidade
               </CardDescription>
             </div>
-            <Badge variant="outline" className="text-sm">
-              Nível {selectedLevel}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-sm">
+                Nível {selectedLevel}
+              </Badge>
+              {cloudData.length > 0 && (
+                <Badge variant="secondary" className="text-sm">
+                  {cloudData.length} domínios disponíveis
+                </Badge>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -194,6 +201,15 @@ export function TabVisualizacoes() {
           <p className="text-xs text-muted-foreground mt-3 text-center">
             N1: Categorias Gerais • N2: Subcategorias • N3: Especificações • N4: Detalhamento
           </p>
+          {selectedLevel > 1 && cloudData.length === 0 && (
+            <Alert className="mt-3">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Nenhum domínio N{selectedLevel} disponível. A maioria das palavras está classificada em N1. 
+                Reprocesse o corpus para obter classificações mais específicas.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
       )}

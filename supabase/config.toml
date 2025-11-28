@@ -129,5 +129,8 @@ verify_jwt = false
 [functions.deduplicate-songs]
 verify_jwt = false
 
+[functions.enrich-semantic-level]
+verify_jwt = false
+
 [functions.send-invite-magic-link]
 verify_jwt = true
