@@ -49,7 +49,7 @@ serve(async (req) => {
     log.info('Starting deduplication', { dryRun, corpusIds });
 
     // 1. Fetch ALL songs with pagination (Supabase has 1000 row default limit)
-    const BATCH_SIZE = 10000;
+    const BATCH_SIZE = 1000; // Supabase max limit per query
     let allSongs: Song[] = [];
     let offset = 0;
     let hasMore = true;
