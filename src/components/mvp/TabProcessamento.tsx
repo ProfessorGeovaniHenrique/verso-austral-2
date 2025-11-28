@@ -35,6 +35,20 @@ export function TabProcessamento() {
   // Carregar artistas e músicas do catálogo (corpus gaucho)
   const { artists, songs, setSelectedArtist, isLoadingArtists, isLoadingSongs } = useCorpusArtistsAndSongs('gaucho');
 
+  // Sincronizar selectedArtist do hook com studyArtist do contexto na montagem
+  useEffect(() => {
+    if (studyArtist && studyArtist !== '') {
+      setSelectedArtist(studyArtist);
+    }
+  }, []); // Apenas na montagem do componente
+
+  // Sincronizar quando studyArtist mudar (para garantir consistência)
+  useEffect(() => {
+    if (studyArtist !== '' && studyArtist) {
+      setSelectedArtist(studyArtist);
+    }
+  }, [studyArtist, setSelectedArtist]);
+
   // Filtrar apenas Luiz Marenco e a música específica (restrição do MVP)
   const filteredArtists = artists.filter(a => a === 'Luiz Marenco');
   const artistSongs = songs
