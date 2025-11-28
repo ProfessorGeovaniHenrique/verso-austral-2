@@ -112,6 +112,18 @@ export function TabOrigensChamamé() {
         </Card>
       </motion.div>
 
+      {/* Referência do Vídeo */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.15 }}
+        className="px-2"
+      >
+        <p className="text-xs text-muted-foreground italic">
+          Fonte: BRITTES, Alejandro. <span className="font-medium">A origem do Chamamé</span>: Uma história para ser contada. Simplíssimo, 2021.
+        </p>
+      </motion.div>
+
       {/* Características Musicais */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
