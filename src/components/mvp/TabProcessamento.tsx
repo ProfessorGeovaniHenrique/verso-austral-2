@@ -12,7 +12,7 @@ import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
 import { useCorpusProcessing } from '@/hooks/useCorpusProcessing';
 import { ProcessingProgressModal } from '@/components/analise/ProcessingProgressModal';
 import { REFERENCE_CORPORA } from '@/data/miniCorpusNordestino';
-import { HelpCircle, Users, FileMusic, Microscope, Loader2, InfoIcon } from 'lucide-react';
+import { HelpCircle, Users, FileMusic, Microscope, Loader2, InfoIcon, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useAnalytics } from '@/hooks/useAnalytics';
@@ -20,7 +20,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 export function TabProcessamento() {
   const navigate = useNavigate();
   const { trackFeatureUsage } = useAnalytics();
-  const { processamentoData, updateProcessamentoData } = useDashboardAnaliseContext();
+  const { processamentoData, updateProcessamentoData, clearProcessamentoData } = useDashboardAnaliseContext();
   const { isProcessing, ceSteps, crSteps, processCorpus, reset } = useCorpusProcessing();
   
   const [studyMode, setStudyMode] = useState(processamentoData.studyMode);
@@ -133,10 +133,27 @@ export function TabProcessamento() {
               Siga os passos para selecionar a música e processar a análise semântica
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={startTour}>
-            <HelpCircle className="h-4 w-4 mr-2" />
-            Ver Tutorial
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                clearProcessamentoData();
+                setStudyArtist('');
+                setStudySong('');
+                toast.info('Cache limpo!', {
+                  description: 'Reprocesse para obter dados atualizados.'
+                });
+              }}
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Limpar Cache
+            </Button>
+            <Button variant="outline" size="sm" onClick={startTour}>
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Ver Tutorial
+            </Button>
+          </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
