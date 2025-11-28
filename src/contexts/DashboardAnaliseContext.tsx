@@ -68,7 +68,9 @@ interface DashboardAnaliseContextValue {
   clearProcessamentoData: () => void;
 }
 
+const CACHE_VERSION = '2.0'; // Incrementar após mudanças no formato de dados
 const STORAGE_KEY = 'dashboard_analise_processamento';
+const VERSION_KEY = 'dashboard_analise_version';
 
 const initialData: ProcessamentoData = {
   studyMode: 'artist',
@@ -82,9 +84,19 @@ const DashboardAnaliseContext = createContext<DashboardAnaliseContextValue | nul
 
 export function DashboardAnaliseProvider({ children }: { children: ReactNode }) {
   const [processamentoData, setProcessamentoData] = useState<ProcessamentoData>(() => {
-    // Carregar dados do localStorage na inicialização
+    // Carregar dados do localStorage na inicialização com verificação de versão
     try {
+      const savedVersion = localStorage.getItem(VERSION_KEY);
       const saved = localStorage.getItem(STORAGE_KEY);
+      
+      // Se versão diferente, invalidar cache antigo
+      if (savedVersion !== CACHE_VERSION) {
+        console.log('Cache version mismatch. Clearing old data.');
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.setItem(VERSION_KEY, CACHE_VERSION);
+        return initialData;
+      }
+      
       return saved ? JSON.parse(saved) : initialData;
     } catch (error) {
       console.error('Error loading processamento data from localStorage:', error);
