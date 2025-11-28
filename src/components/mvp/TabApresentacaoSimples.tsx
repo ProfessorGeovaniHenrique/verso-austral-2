@@ -15,7 +15,7 @@ import { TransitionModal } from "./TransitionModal";
 import { PageTransition } from "./PageTransition";
 import { useNavigate } from "react-router-dom";
 import guaraniBorder from "@/assets/guarani-border.jpg";
-const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'instrumentos', 'quiz'];
+const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'quiz-intermediario', 'instrumentos', 'quiz-final'];
 function TabApresentacaoSimplesContent() {
   const navigate = useNavigate();
   const {
@@ -41,8 +41,8 @@ function TabApresentacaoSimplesContent() {
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
 
-      // Se todas as 5 abas foram desbloqueadas, disparar conquista
-      if (newUnlocked.length === 5) {
+      // Se todas as 6 abas foram desbloqueadas, disparar conquista
+      if (newUnlocked.length === 6) {
         trackFeatureUsage('all_tabs_unlocked');
       }
     }
@@ -79,9 +79,23 @@ function TabApresentacaoSimplesContent() {
       origensTab.click();
     }
   };
+  const unlockQuizIntermediario = () => {
+    if (!unlockedTabs.includes('quiz-intermediario')) {
+      const newUnlocked = [...unlockedTabs, 'quiz-intermediario'];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+    }
+
+    // Navegar para o Quiz Intermediário
+    const quizTab = document.querySelector('[value="quiz-intermediario"]') as HTMLButtonElement;
+    if (quizTab) {
+      quizTab.click();
+    }
+  };
+
   const unlockFinalTabs = () => {
-    if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('quiz')) {
-      const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'quiz'])];
+    if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('quiz-final')) {
+      const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'quiz-final'])];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
 
@@ -111,11 +125,11 @@ function TabApresentacaoSimplesContent() {
   };
   return <>
       <div className="text-sm text-muted-foreground mb-2 text-center">
-        {unlockedTabs.length}/5 abas desbloqueadas
+        {unlockedTabs.length}/6 abas desbloqueadas
       </div>
       
       <Tabs defaultValue="introducao" onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-5 mb-6">
+        <TabsList className="grid w-full grid-cols-6 mb-6">
           <TabsTrigger value="introducao">
             {getTabIcon('introducao')}
             Introdução
@@ -128,14 +142,19 @@ function TabApresentacaoSimplesContent() {
             {getTabIcon('origens')}
             Origens
           </TabsTrigger>
+          <TabsTrigger value="quiz-intermediario" disabled={!unlockedTabs.includes('quiz-intermediario')} className={!unlockedTabs.includes('quiz-intermediario') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}>
+            <BrainCircuit className="h-4 w-4 mr-2" />
+            {getTabIcon('quiz-intermediario')}
+            Quiz 1
+          </TabsTrigger>
           <TabsTrigger value="instrumentos" disabled={!unlockedTabs.includes('instrumentos')} className={!unlockedTabs.includes('instrumentos') ? 'opacity-50' : ''}>
             {getTabIcon('instrumentos')}
             Instrumentos
           </TabsTrigger>
-          <TabsTrigger value="quiz" disabled={!unlockedTabs.includes('quiz')} className={!unlockedTabs.includes('quiz') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}>
+          <TabsTrigger value="quiz-final" disabled={!unlockedTabs.includes('quiz-final')} className={!unlockedTabs.includes('quiz-final') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}>
             <BrainCircuit className="h-4 w-4 mr-2" />
-            {getTabIcon('quiz')}
-            Quiz
+            {getTabIcon('quiz-final')}
+            Quiz Final
           </TabsTrigger>
         </TabsList>
 
@@ -323,30 +342,66 @@ E uma saudade redomona pelos cantos do galpão`}
               </TabsContent>
 
               <TabsContent value="origens">
-                <TabOrigensChamamé onUnlockFinal={unlockFinalTabs} showUnlockButton={!unlockedTabs.includes('instrumentos')} />
+                <TabOrigensChamamé onUnlockFinal={unlockQuizIntermediario} showUnlockButton={!unlockedTabs.includes('quiz-intermediario')} />
               </TabsContent>
 
-        <TabsContent value="instrumentos">
-          <TabInstrumentosChamamé />
-        </TabsContent>
-
-        <TabsContent value="quiz" className="space-y-6">
+        <TabsContent value="quiz-intermediario" className="space-y-6">
           <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardHeader>
               <CardTitle className="text-2xl flex items-center gap-2">
                 <BrainCircuit className="h-6 w-6 text-primary" />
-                Quiz de Consolidação
+                Quiz Intermediário
               </CardTitle>
               <CardDescription>
-                Teste seus conhecimentos sobre o Chamamé, origens culturais e instrumentos
+                Teste seus conhecimentos sobre Chamamé, suas origens e características culturais
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="prose prose-sm max-w-none">
                 <p className="text-muted-foreground leading-relaxed">
-                  Este quiz foi criado para consolidar as aprendizagens das abas anteriores. 
-                  Você receberá <strong>5 perguntas aleatórias</strong> com níveis de dificuldade variados 
-                  (fácil, médio e difícil), selecionadas de um banco de 30 perguntas que cobrem todo o conteúdo estudado.
+                  Este quiz consolida o aprendizado das três primeiras abas. 
+                  Você receberá <strong>5 perguntas aleatórias</strong> selecionadas das categorias 
+                  <strong> Introdução, Chamamé e Origens</strong>.
+                </p>
+                <div className="bg-muted/50 p-4 rounded-lg mt-4">
+                  <h4 className="font-semibold mb-2">💡 Tipos de Perguntas:</h4>
+                  <ul className="space-y-1 text-sm">
+                    <li><strong>Objetivas:</strong> Escolha a resposta correta</li>
+                    <li><strong>Múltipla escolha:</strong> Selecione todas as opções corretas</li>
+                    <li><strong>Ligue pontos:</strong> Relacione termos com suas definições</li>
+                  </ul>
+                </div>
+              </div>
+
+              <Button onClick={() => openQuiz('intermediario')} size="lg" className="w-full">
+                <BrainCircuit className="h-5 w-5 mr-2" />
+                {quizState?.isComplete ? 'Refazer Quiz' : 'Iniciar Quiz'}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="instrumentos">
+          <TabInstrumentosChamamé onUnlockFinal={unlockFinalTabs} showUnlockButton={!unlockedTabs.includes('quiz-final')} />
+        </TabsContent>
+
+        <TabsContent value="quiz-final" className="space-y-6">
+          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+            <CardHeader>
+              <CardTitle className="text-2xl flex items-center gap-2">
+                <BrainCircuit className="h-6 w-6 text-primary" />
+                Quiz Final - Instrumentos
+              </CardTitle>
+              <CardDescription>
+                Teste seus conhecimentos sobre os instrumentos do Chamamé
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="prose prose-sm max-w-none">
+                <p className="text-muted-foreground leading-relaxed">
+                  Este quiz final foca especificamente nos <strong>instrumentos do Chamamé</strong>. 
+                  Você receberá <strong>5 perguntas</strong> sobre a guitarra, acordeom, e outros instrumentos 
+                  característicos deste gênero musical.
                 </p>
                 <div className="bg-muted/50 p-4 rounded-lg mt-4">
                   <h4 className="font-semibold mb-2">💡 Tipos de Perguntas:</h4>
@@ -357,12 +412,12 @@ E uma saudade redomona pelos cantos do galpão`}
                   </ul>
                 </div>
                 <p className="text-sm text-muted-foreground mt-4">
-                  <strong>Dica:</strong> Você pode voltar às abas anteriores para revisar o conteúdo 
+                  <strong>Dica:</strong> Você pode voltar à aba Instrumentos para revisar o conteúdo 
                   antes ou durante o quiz. Seu progresso será salvo!
                 </p>
               </div>
 
-              <Button onClick={openQuiz} size="lg" className="w-full mt-6">
+              <Button onClick={() => openQuiz('final')} size="lg" className="w-full mt-6">
                 <BrainCircuit className="h-5 w-5 mr-2" />
                 {quizState && !quizState.isComplete ? "🔄 Retomar Quiz" : "🎯 Iniciar Quiz"}
               </Button>
