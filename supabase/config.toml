@@ -122,3 +122,6 @@ verify_jwt = false
 
 [functions.reprocess-unclassified]
 verify_jwt = false
+
+[functions.deduplicate-songs]
+verify_jwt = false
