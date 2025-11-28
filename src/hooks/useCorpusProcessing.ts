@@ -11,16 +11,15 @@ interface PipelineStep {
 }
 
 const CE_INITIAL_STEPS: PipelineStep[] = [
-  { id: 'tokenization', label: 'Tokenização', icon: FileText, status: 'pending', progress: 0 },
-  { id: 'classification', label: 'Classificação Semântica', icon: Target, status: 'pending', progress: 0 },
+  { id: 'loading', label: 'Carregando Música de Estudo', icon: Download, status: 'pending', progress: 0 },
+  { id: 'annotation', label: 'Anotação Semântica (CE)', icon: Target, status: 'pending', progress: 0 },
   { id: 'frequencies', label: 'Cálculo de Frequências', icon: BarChart3, status: 'pending', progress: 0 },
-  { id: 'aggregation', label: 'Agregação por Domínio', icon: Layers, status: 'pending', progress: 0 },
 ];
 
 const CR_INITIAL_STEPS: PipelineStep[] = [
-  { id: 'loading', label: 'Carregamento', icon: Download, status: 'pending', progress: 0 },
-  { id: 'processing', label: 'Processamento', icon: Cog, status: 'pending', progress: 0 },
-  { id: 'comparison', label: 'Estatísticas Comparativas', icon: GitCompare, status: 'pending', progress: 0 },
+  { id: 'loading', label: 'Carregando 25 Músicas Nordestinas', icon: Download, status: 'pending', progress: 0 },
+  { id: 'annotation', label: 'Anotação Semântica (CR)', icon: Target, status: 'pending', progress: 0 },
+  { id: 'comparison', label: 'Cálculo de Log-Likelihood', icon: GitCompare, status: 'pending', progress: 0 },
 ];
 
 export function useCorpusProcessing() {
@@ -45,44 +44,36 @@ export function useCorpusProcessing() {
     setError(null);
     
     try {
-      // Simular progresso do CE
-      setCeSteps(prev => updateStepStatus(prev, 'tokenization', 'processing', 0));
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setCeSteps(prev => updateStepStatus(prev, 'tokenization', 'completed', 100));
-      setCeSteps(prev => updateStepStatus(prev, 'classification', 'processing', 0));
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      setCeSteps(prev => updateStepStatus(prev, 'classification', 'completed', 100));
-      setCeSteps(prev => updateStepStatus(prev, 'frequencies', 'processing', 0));
-      await new Promise(resolve => setTimeout(resolve, 600));
-      
-      setCeSteps(prev => updateStepStatus(prev, 'frequencies', 'completed', 100));
-      setCeSteps(prev => updateStepStatus(prev, 'aggregation', 'processing', 0));
-
-      // Iniciar processamento do CR em paralelo
+      // Progresso CE - Loading
+      setCeSteps(prev => updateStepStatus(prev, 'loading', 'processing', 0));
       setCrSteps(prev => updateStepStatus(prev, 'loading', 'processing', 0));
-      await new Promise(resolve => setTimeout(resolve, 400));
       
-      setCrSteps(prev => updateStepStatus(prev, 'loading', 'completed', 100));
-      setCrSteps(prev => updateStepStatus(prev, 'processing', 'processing', 0));
-      
-      // Chamar edge function real
+      // Chamar edge function real com parâmetros corretos
       const { data, error: functionError } = await supabase.functions.invoke('process-corpus-analysis', {
         body: {
-          corpusType: 'gaucho',
-          limit: 100,
-          enrichedOnly: true
+          songId: studySongId,           // ✅ Passar o ID da música selecionada
+          referenceCorpusType,            // ✅ Passar o tipo do corpus de referência
+          corpusType: 'gaucho'
         }
       });
 
       if (functionError) throw functionError;
       
-      setCeSteps(prev => updateStepStatus(prev, 'aggregation', 'completed', 100));
-      setCrSteps(prev => updateStepStatus(prev, 'processing', 'completed', 100));
-      setCrSteps(prev => updateStepStatus(prev, 'comparison', 'processing', 0));
-      await new Promise(resolve => setTimeout(resolve, 500));
+      setCeSteps(prev => updateStepStatus(prev, 'loading', 'completed', 100));
+      setCrSteps(prev => updateStepStatus(prev, 'loading', 'completed', 100));
       
+      // Anotação semântica
+      setCeSteps(prev => updateStepStatus(prev, 'annotation', 'processing', 50));
+      setCrSteps(prev => updateStepStatus(prev, 'annotation', 'processing', 50));
+      
+      setCeSteps(prev => updateStepStatus(prev, 'annotation', 'completed', 100));
+      setCrSteps(prev => updateStepStatus(prev, 'annotation', 'completed', 100));
+      
+      // Cálculo de frequências e comparação
+      setCeSteps(prev => updateStepStatus(prev, 'frequencies', 'processing', 50));
+      setCrSteps(prev => updateStepStatus(prev, 'comparison', 'processing', 50));
+      
+      setCeSteps(prev => updateStepStatus(prev, 'frequencies', 'completed', 100));
       setCrSteps(prev => updateStepStatus(prev, 'comparison', 'completed', 100));
 
       return data;
