@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { QuizQuestion, QuizState, QuizAnswer } from "@/types/quiz.types";
 import { quizQuestions } from "@/data/quizQuestions";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 const STORAGE_KEY = "verso-austral-quiz-state";
 
@@ -33,6 +34,7 @@ interface QuizContextValue {
   resetQuiz: () => void;
   closeQuiz: () => void;
   openQuiz: () => void;
+  goToPreviousQuestion: () => void;
 }
 
 const QuizContext = createContext<QuizContextValue | null>(null);
@@ -40,6 +42,7 @@ const QuizContext = createContext<QuizContextValue | null>(null);
 export function QuizProvider({ children }: { children: ReactNode }) {
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const { trackFeatureUsage } = useAnalytics();
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -101,14 +104,24 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     const isComplete = nextIndex >= quizState.questions.length;
     const newScore = quizState.score + (isCorrect ? 1 : 0);
 
-    setQuizState({
+    const newState = {
       ...quizState,
       currentQuestionIndex: nextIndex,
       answers: newAnswers,
       isComplete,
       score: newScore,
-    });
-  }, [quizState]);
+    };
+
+    setQuizState(newState);
+
+    // Track achievement if quiz completed with 70%+ approval
+    if (isComplete) {
+      const percentage = (newScore / quizState.questions.length) * 100;
+      if (percentage >= 70) {
+        trackFeatureUsage('quiz_passed');
+      }
+    }
+  }, [quizState, trackFeatureUsage]);
 
   const resetQuiz = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
@@ -128,6 +141,21 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     }
   }, [quizState, startQuiz]);
 
+  const goToPreviousQuestion = useCallback(() => {
+    if (!quizState || quizState.currentQuestionIndex === 0) return;
+
+    const previousAnswer = quizState.answers[quizState.answers.length - 1];
+    const newAnswers = quizState.answers.slice(0, -1);
+    const newScore = quizState.score - (previousAnswer.isCorrect ? 1 : 0);
+
+    setQuizState({
+      ...quizState,
+      currentQuestionIndex: quizState.currentQuestionIndex - 1,
+      answers: newAnswers,
+      score: newScore,
+    });
+  }, [quizState]);
+
   return (
     <QuizContext.Provider value={{
       quizState,
@@ -137,6 +165,7 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       resetQuiz,
       closeQuiz,
       openQuiz,
+      goToPreviousQuestion,
     }}>
       {children}
     </QuizContext.Provider>

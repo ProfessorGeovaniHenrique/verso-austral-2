@@ -1,6 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { QuizQuestion } from "@/types/quiz.types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 interface MatchingQuestionProps {
   question: QuizQuestion;
@@ -10,6 +10,17 @@ interface MatchingQuestionProps {
 
 export function MatchingQuestion({ question, selectedMatches, onMatchChange }: MatchingQuestionProps) {
   const [matches, setMatches] = useState<Record<string, string>>({});
+
+  // Shuffle right options using Fisher-Yates algorithm
+  const shuffledRightOptions = useMemo(() => {
+    const options = question.matchingPairs?.map(pair => pair.right) || [];
+    const shuffled = [...options];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, [question.id]);
 
   useEffect(() => {
     const matchesObj: Record<string, string> = {};
@@ -30,7 +41,6 @@ export function MatchingQuestion({ question, selectedMatches, onMatchChange }: M
     onMatchChange(matchArray);
   };
 
-  const rightOptions = question.matchingPairs?.map(pair => pair.right) || [];
   const usedRightOptions = new Set(Object.values(matches));
 
   return (
@@ -49,7 +59,7 @@ export function MatchingQuestion({ question, selectedMatches, onMatchChange }: M
                 <SelectValue placeholder="Selecione..." />
               </SelectTrigger>
               <SelectContent>
-                {rightOptions.map((option, optIndex) => (
+                {shuffledRightOptions.map((option, optIndex) => (
                   <SelectItem
                     key={optIndex}
                     value={option}

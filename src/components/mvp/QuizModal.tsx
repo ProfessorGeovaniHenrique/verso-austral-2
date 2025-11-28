@@ -7,12 +7,23 @@ import { ObjectiveQuestion } from "./quiz/ObjectiveQuestion";
 import { CheckboxQuestion } from "./quiz/CheckboxQuestion";
 import { MatchingQuestion } from "./quiz/MatchingQuestion";
 import { QuizResults } from "./quiz/QuizResults";
-import { useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ChevronRight, ChevronLeft } from "lucide-react";
 
 export function QuizModal() {
-  const { quizState, isOpen, submitAnswer, resetQuiz, closeQuiz } = useQuizContext();
+  const { quizState, isOpen, submitAnswer, resetQuiz, closeQuiz, goToPreviousQuestion } = useQuizContext();
   const [currentAnswer, setCurrentAnswer] = useState<string[]>([]);
+
+  // Restore previous answer when going back
+  useEffect(() => {
+    if (!quizState) return;
+    
+    const previousAnswerIndex = quizState.currentQuestionIndex - 1;
+    if (previousAnswerIndex >= 0 && quizState.answers[previousAnswerIndex]) {
+      const previousAnswer = quizState.answers[previousAnswerIndex];
+      setCurrentAnswer(previousAnswer.userAnswers);
+    }
+  }, [quizState?.currentQuestionIndex]);
 
   if (!quizState) return null;
 
@@ -27,6 +38,10 @@ export function QuizModal() {
   const handleRestart = () => {
     resetQuiz();
     setCurrentAnswer([]);
+  };
+
+  const handlePrevious = () => {
+    goToPreviousQuestion();
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -110,7 +125,16 @@ export function QuizModal() {
                   />
                 )}
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-between pt-4">
+                  <Button 
+                    onClick={handlePrevious} 
+                    disabled={quizState.currentQuestionIndex === 0}
+                    variant="outline"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-2" />
+                    Voltar
+                  </Button>
+                  
                   <Button onClick={handleNext} disabled={!isAnswerValid()}>
                     {quizState.currentQuestionIndex === quizState.questions.length - 1 ? (
                       "Finalizar Quiz"

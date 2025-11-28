@@ -11,26 +11,51 @@ interface QuizResultsProps {
 
 export function QuizResults({ quizState, onRestart, onClose }: QuizResultsProps) {
   const percentage = Math.round((quizState.score / quizState.questions.length) * 100);
+  const isPassed = percentage >= 70;
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/20 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl">
-            Resultado Final: {quizState.score}/{quizState.questions.length}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center space-y-4">
-            <div className="text-5xl font-bold text-primary">{percentage}%</div>
-            <p className="text-muted-foreground">
-              {percentage >= 80 && "Excelente! Você dominou o conteúdo! 🎉"}
-              {percentage >= 60 && percentage < 80 && "Bom trabalho! Revise alguns pontos. 👍"}
-              {percentage < 60 && "Continue estudando! Revise as abas anteriores. 📚"}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {isPassed ? (
+        <Card className="border-green-500/30 bg-green-500/10">
+          <CardHeader>
+            <CardTitle className="text-center text-2xl flex items-center justify-center gap-2">
+              🏆 Aprovado!
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center space-y-4">
+              <div className="text-5xl font-bold text-green-600">{percentage}%</div>
+              <p className="text-foreground font-medium">
+                Parabéns! Você dominou o conteúdo sobre o Chamamé! 🎉
+              </p>
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-4 mt-4">
+                <p className="text-sm text-amber-700 dark:text-amber-300 font-medium flex items-center justify-center gap-2">
+                  🎸 <span>Conquista desbloqueada: <strong>Chamamecero</strong></span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-red-500/30 bg-red-500/10">
+          <CardHeader>
+            <CardTitle className="text-center text-2xl">
+              Resultado Final: {quizState.score}/{quizState.questions.length}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center space-y-4">
+              <div className="text-5xl font-bold text-red-600">{percentage}%</div>
+              <p className="text-foreground font-medium">
+                Você precisa de <strong>70% ou mais</strong> para aprovação. 📚
+              </p>
+              <p className="text-muted-foreground text-sm">
+                Continue estudando! Revise as abas anteriores e tente novamente.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="space-y-4">
         <h3 className="font-semibold text-lg">Revisão das Respostas</h3>
@@ -74,11 +99,15 @@ export function QuizResults({ quizState, onRestart, onClose }: QuizResultsProps)
       </div>
 
       <div className="flex gap-3">
-        <Button onClick={onRestart} className="flex-1" variant="outline">
+        <Button 
+          onClick={onRestart} 
+          className="flex-1" 
+          variant={isPassed ? "outline" : "default"}
+        >
           <RotateCcw className="h-4 w-4 mr-2" />
-          Tentar Novamente
+          {isPassed ? "Tentar Novamente" : "Tentar Novamente"}
         </Button>
-        <Button onClick={onClose} className="flex-1">
+        <Button onClick={onClose} className="flex-1" variant={isPassed ? "default" : "outline"}>
           Voltar ao Conteúdo
         </Button>
       </div>

@@ -1,4 +1,4 @@
-import { Trophy, Compass, BarChart3, GraduationCap, Crown } from "lucide-react";
+import { Trophy, Compass, BarChart3, GraduationCap, Crown, Guitar } from "lucide-react";
 
 export type AchievementRarity = 'common' | 'rare' | 'epic' | 'legendary';
 export type AchievementCategory = 'explorer' | 'analyst' | 'expert' | 'master';
@@ -88,6 +88,20 @@ export const ACHIEVEMENTS: Achievement[] = [
     requirement: {
       type: 'feature_usage',
       features: ['dispersion'],
+      count: 1,
+    }
+  },
+  {
+    id: 'chamamecero',
+    name: 'Chamamecero',
+    description: 'Complete o quiz cultural com aprovação (70%+)',
+    icon: Guitar,
+    emoji: '🎸',
+    category: 'explorer',
+    rarity: 'rare',
+    requirement: {
+      type: 'feature_usage',
+      features: ['quiz_passed'],
       count: 1,
     }
   },

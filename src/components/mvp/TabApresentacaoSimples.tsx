@@ -10,7 +10,7 @@ import { QuizModal } from "./QuizModal";
 import { QuizProvider, useQuizContext } from "@/contexts/QuizContext";
 
 function TabApresentacaoSimplesContent() {
-  const { openQuiz } = useQuizContext();
+  const { openQuiz, quizState } = useQuizContext();
 
   return (
     <>
@@ -207,7 +207,7 @@ E uma saudade redomona pelos cantos do galpão`}
 
               <Button onClick={openQuiz} size="lg" className="w-full mt-6">
                 <BrainCircuit className="h-5 w-5 mr-2" />
-                Iniciar Quiz
+                {quizState && !quizState.isComplete ? "🔄 Retomar Quiz" : "🎯 Iniciar Quiz"}
               </Button>
             </CardContent>
           </Card>
