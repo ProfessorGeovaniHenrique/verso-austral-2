@@ -25,6 +25,25 @@ export function TabDominios() {
   // Extrair códigos disponíveis para busca de N2 filhos
   const availableDomains = useMemo(() => cloudData.map(d => d.codigo), [cloudData]);
 
+  // ✅ Hooks devem vir ANTES de qualquer early return
+  const dominiosFiltrados = useMemo(() => {
+    if (!dominios) return [];
+    return dominios.filter(d => 
+      d.dominio.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [dominios, searchTerm]);
+
+  const insights = useMemo(() => {
+    if (!dominios || dominios.length === 0) return null;
+    
+    const dominante = dominios.reduce((max, d) => d.percentual > max.percentual ? d : max);
+    const totalOcorrencias = dominios.reduce((sum, d) => sum + d.ocorrencias, 0);
+    const totalPalavras = dominios.reduce((sum, d) => sum + d.palavras.length, 0);
+    const densidadeLexical = totalOcorrencias / totalPalavras;
+    
+    return { dominante, densidadeLexical };
+  }, [dominios]);
+
   if (!processamentoData.isProcessed || dominios.length === 0) {
     return (
       <Card>
@@ -64,24 +83,6 @@ export function TabDominios() {
     const normalizedPalavra = normalizeText(palavra);
     return keywords.find(k => normalizeText(k.palavra) === normalizedPalavra);
   };
-
-  const dominiosFiltrados = useMemo(() => {
-    if (!dominios) return [];
-    return dominios.filter(d => 
-      d.dominio.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [dominios, searchTerm]);
-
-  const insights = useMemo(() => {
-    if (!dominios || dominios.length === 0) return null;
-    
-    const dominante = dominios.reduce((max, d) => d.percentual > max.percentual ? d : max);
-    const totalOcorrencias = dominios.reduce((sum, d) => sum + d.ocorrencias, 0);
-    const totalPalavras = dominios.reduce((sum, d) => sum + d.palavras.length, 0);
-    const densidadeLexical = totalOcorrencias / totalPalavras;
-    
-    return { dominante, densidadeLexical };
-  }, [dominios]);
 
   const handleToggleMarcadoresGramaticais = async (checked: boolean) => {
     setIsRecalculating(true);
