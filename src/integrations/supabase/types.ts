@@ -1519,9 +1519,17 @@ export type Database = {
           aplicado: boolean | null
           contexto: string | null
           criado_em: string | null
+          forma_padrao: string | null
           id: string
+          is_mwe: boolean | null
+          is_spelling_deviation: boolean | null
           justificativa: string | null
+          lema_corrigido: string | null
+          lema_original: string | null
+          mwe_text: string | null
           palavra: string
+          pos_corrigido: string | null
+          pos_original: string | null
           prosody_corrigida: number | null
           prosody_original: number | null
           sugestao_novo_ds: string | null
@@ -1533,9 +1541,17 @@ export type Database = {
           aplicado?: boolean | null
           contexto?: string | null
           criado_em?: string | null
+          forma_padrao?: string | null
           id?: string
+          is_mwe?: boolean | null
+          is_spelling_deviation?: boolean | null
           justificativa?: string | null
+          lema_corrigido?: string | null
+          lema_original?: string | null
+          mwe_text?: string | null
           palavra: string
+          pos_corrigido?: string | null
+          pos_original?: string | null
           prosody_corrigida?: number | null
           prosody_original?: number | null
           sugestao_novo_ds?: string | null
@@ -1547,9 +1563,17 @@ export type Database = {
           aplicado?: boolean | null
           contexto?: string | null
           criado_em?: string | null
+          forma_padrao?: string | null
           id?: string
+          is_mwe?: boolean | null
+          is_spelling_deviation?: boolean | null
           justificativa?: string | null
+          lema_corrigido?: string | null
+          lema_original?: string | null
+          mwe_text?: string | null
           palavra?: string
+          pos_corrigido?: string | null
+          pos_original?: string | null
           prosody_corrigida?: number | null
           prosody_original?: number | null
           sugestao_novo_ds?: string | null
@@ -1940,13 +1964,17 @@ export type Database = {
           confianca: number | null
           contexto_hash: string
           fonte: string | null
+          forma_padrao: string | null
           hits_count: number | null
           id: string
           insignias_culturais: string[] | null
+          is_mwe: boolean | null
           is_polysemous: boolean | null
+          is_spelling_deviation: boolean | null
           justificativa: string | null
           last_hit_at: string | null
           lema: string | null
+          mwe_text: string | null
           palavra: string
           pos: string | null
           song_id: string | null
@@ -1959,13 +1987,17 @@ export type Database = {
           confianca?: number | null
           contexto_hash: string
           fonte?: string | null
+          forma_padrao?: string | null
           hits_count?: number | null
           id?: string
           insignias_culturais?: string[] | null
+          is_mwe?: boolean | null
           is_polysemous?: boolean | null
+          is_spelling_deviation?: boolean | null
           justificativa?: string | null
           last_hit_at?: string | null
           lema?: string | null
+          mwe_text?: string | null
           palavra: string
           pos?: string | null
           song_id?: string | null
@@ -1978,13 +2010,17 @@ export type Database = {
           confianca?: number | null
           contexto_hash?: string
           fonte?: string | null
+          forma_padrao?: string | null
           hits_count?: number | null
           id?: string
           insignias_culturais?: string[] | null
+          is_mwe?: boolean | null
           is_polysemous?: boolean | null
+          is_spelling_deviation?: boolean | null
           justificativa?: string | null
           last_hit_at?: string | null
           lema?: string | null
+          mwe_text?: string | null
           palavra?: string
           pos?: string | null
           song_id?: string | null

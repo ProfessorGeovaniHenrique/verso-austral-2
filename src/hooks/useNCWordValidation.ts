@@ -10,6 +10,13 @@ interface NCWordValidationData {
   aplicar_a_todas: boolean;
   contexto_hash?: string;
   song_id?: string;
+  // Campos de validação linguística expandida
+  pos?: string;
+  lema?: string;
+  is_mwe?: boolean;
+  mwe_text?: string;
+  is_spelling_deviation?: boolean;
+  forma_padrao?: string;
 }
 
 export function useNCWordValidation() {
@@ -27,7 +34,14 @@ export function useNCWordValidation() {
           tagset_codigo: data.tagset_codigo_novo,
           fonte: 'human_validation',
           confianca: 1.0,
-          justificativa: data.justificativa || null
+          justificativa: data.justificativa || null,
+          // Campos de validação linguística expandida
+          pos: data.pos || null,
+          lema: data.lema || null,
+          is_mwe: data.is_mwe || false,
+          mwe_text: data.mwe_text || null,
+          is_spelling_deviation: data.is_spelling_deviation || false,
+          forma_padrao: data.forma_padrao || null
         });
 
       if (data.aplicar_a_todas) {
@@ -53,7 +67,14 @@ export function useNCWordValidation() {
           tagset_corrigido: data.tagset_codigo_novo,
           justificativa: data.justificativa,
           user_id: user.id,
-          contexto: data.aplicar_a_todas ? 'Aplicado a todas as ocorrências' : 'Ocorrência específica'
+          contexto: data.aplicar_a_todas ? 'Aplicado a todas as ocorrências' : 'Ocorrência específica',
+          // Auditoria de validação linguística
+          pos_corrigido: data.pos || null,
+          lema_corrigido: data.lema || null,
+          is_mwe: data.is_mwe || false,
+          mwe_text: data.mwe_text || null,
+          is_spelling_deviation: data.is_spelling_deviation || false,
+          forma_padrao: data.forma_padrao || null
         });
 
       if (validationError) {

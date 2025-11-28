@@ -5,7 +5,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { HierarchicalTagsetSelector } from './HierarchicalTagsetSelector';
+import { POSSelector } from './POSSelector';
 import { useNCWordValidation } from '@/hooks/useNCWordValidation';
 import { extractKWICContext, KWICResult } from '@/lib/kwicUtils';
 import { useQuery } from '@tanstack/react-query';
@@ -30,6 +32,14 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
   const [selectedTagset, setSelectedTagset] = useState<{ codigo: string; nome: string } | null>(null);
   const [justificativa, setJustificativa] = useState('');
   const [aplicarATodas, setAplicarATodas] = useState(true);
+  
+  // Novos estados de validação linguística
+  const [selectedPOS, setSelectedPOS] = useState<string | null>(null);
+  const [lema, setLema] = useState('');
+  const [isMWE, setIsMWE] = useState(false);
+  const [mweText, setMweText] = useState('');
+  const [isSpellingDeviation, setIsSpellingDeviation] = useState(false);
+  const [formaPadrao, setFormaPadrao] = useState('');
 
   const { submitValidation, isSubmitting } = useNCWordValidation();
 
@@ -67,7 +77,14 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
       justificativa: justificativa.trim() || undefined,
       aplicar_a_todas: aplicarATodas,
       contexto_hash: word.contexto_hash,
-      song_id: word.song_id
+      song_id: word.song_id,
+      // Dados de validação linguística expandida
+      pos: selectedPOS || undefined,
+      lema: lema.trim() || undefined,
+      is_mwe: isMWE,
+      mwe_text: isMWE ? mweText.trim() || undefined : undefined,
+      is_spelling_deviation: isSpellingDeviation,
+      forma_padrao: isSpellingDeviation ? formaPadrao.trim() || undefined : undefined
     }, {
       onSuccess: () => {
         onOpenChange(false);
@@ -76,6 +93,12 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
         setSelectedTagset(null);
         setJustificativa('');
         setAplicarATodas(true);
+        setSelectedPOS(null);
+        setLema('');
+        setIsMWE(false);
+        setMweText('');
+        setIsSpellingDeviation(false);
+        setFormaPadrao('');
       }
     });
   };
@@ -86,6 +109,12 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
       setSelectedTagset(null);
       setJustificativa('');
       setAplicarATodas(true);
+      setSelectedPOS(null);
+      setLema('');
+      setIsMWE(false);
+      setMweText('');
+      setIsSpellingDeviation(false);
+      setFormaPadrao('');
     }
   };
 
@@ -139,6 +168,94 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
             <Badge variant="destructive" className="text-xs">
               NC (Não Classificado)
             </Badge>
+          </div>
+
+          {/* Classificação Morfológica */}
+          <div className="space-y-3 border rounded-lg p-4 bg-card">
+            <Label className="text-base font-semibold">🏷️ Classificação Morfológica</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <POSSelector
+                value={selectedPOS}
+                onChange={setSelectedPOS}
+                disabled={isSubmitting}
+              />
+              <div className="space-y-2">
+                <Label htmlFor="lema" className="text-sm font-medium">
+                  Lema (forma canônica)
+                </Label>
+                <Input
+                  id="lema"
+                  placeholder="Ex: velho, amar, bonito..."
+                  value={lema}
+                  onChange={(e) => setLema(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Desvio de Escrita */}
+          <div className="space-y-3 border rounded-lg p-4 bg-card">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="spelling-deviation"
+                checked={isSpellingDeviation}
+                onCheckedChange={(checked) => setIsSpellingDeviation(checked === true)}
+                disabled={isSubmitting}
+              />
+              <Label
+                htmlFor="spelling-deviation"
+                className="text-base font-semibold cursor-pointer"
+              >
+                ✍️ Esta palavra tem desvio ortográfico
+              </Label>
+            </div>
+            {isSpellingDeviation && (
+              <div className="space-y-2 ml-6">
+                <Label htmlFor="forma-padrao" className="text-sm font-medium">
+                  Forma padrão (ortografia correta)
+                </Label>
+                <Input
+                  id="forma-padrao"
+                  placeholder='Ex: "velho" para "véio", "campo" para "campo"'
+                  value={formaPadrao}
+                  onChange={(e) => setFormaPadrao(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Multi-Word Expression */}
+          <div className="space-y-3 border rounded-lg p-4 bg-card">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is-mwe"
+                checked={isMWE}
+                onCheckedChange={(checked) => setIsMWE(checked === true)}
+                disabled={isSubmitting}
+              />
+              <Label
+                htmlFor="is-mwe"
+                className="text-base font-semibold cursor-pointer"
+              >
+                🔗 Faz parte de expressão composta (MWE)
+              </Label>
+            </div>
+            {isMWE && (
+              <div className="space-y-2 ml-6">
+                <Label htmlFor="mwe-text" className="text-sm font-medium">
+                  Expressão completa
+                </Label>
+                <Input
+                  id="mwe-text"
+                  placeholder='Ex: "mate amargo", "cavalo gateado", "lida no campo"'
+                  value={mweText}
+                  onChange={(e) => setMweText(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              </div>
+            )}
           </div>
 
           {/* Seletor Hierárquico */}
