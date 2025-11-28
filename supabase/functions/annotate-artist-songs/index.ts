@@ -1003,9 +1003,11 @@ async function batchClassifyWithGemini(
     return info;
   }).join('\n');
 
-  const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra abaixo em um dos 14 domínios semânticos.
+  const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra no CÓDIGO MAIS ESPECÍFICO disponível (N2, N3, N4 quando aplicável, senão N1).
 
-**14 DOMÍNIOS SEMÂNTICOS N1:**
+**INSTRUÇÃO CRÍTICA:** Sempre retorne o código MAIS ESPECÍFICO possível. Se a palavra se encaixa em um subdomínio N2/N3/N4, USE ESSE CÓDIGO, não apenas N1.
+
+**14 DOMÍNIOS SEMÂNTICOS N1 (use apenas se não há subdomínio específico):**
 - AB (Abstrações): ideias abstratas, conceitos filosóficos, valores morais
 - AC (Ações e Processos): verbos de ação física concreta (andar, pegar, construir, olhar, falar)
 - AP (Atividades e Práticas Sociais): trabalho, alimentação, vestuário, lazer, transporte
@@ -1021,33 +1023,63 @@ async function batchClassifyWithGemini(
 - SH (Indivíduo): pessoa, corpo humano, características humanas, identidade (gaúcho, prenda)
 - SP (Sociedade e Organização Política): governo, lei, relações sociais, política
 
-**SUBDOMÍNIOS IMPORTANTES (Contexto Gaúcho):**
-- AC.MD (Movimento): cavalgar, galopar, trotar, caminhar, montar
-- AC.MI (Manipulação): laçar, domar, encilhar, arrear
-- AP.TRA (Trabalho/Lida): campear, tropear, marcar, castrar, tosquiar
+**SUBDOMÍNIOS ESPECÍFICOS N2/N3/N4 (PRIORIZE ESTES quando aplicável):**
+
+**Ações e Processos (AC):**
+- AC.MD (Movimento): andar, cavalgar, galopar, trotar, caminhar, correr, voar
+- AC.MD.LOC (Locomoção Humana): andar, correr, pular, dançar
+- AC.MD.MON (Montaria): cavalgar, montar, galopar, trotar
+- AC.MI (Manipulação de Objetos): pegar, segurar, laçar, domar, arrear
+- AC.MI.PEG (Pegar/Segurar): pegar, agarrar, segurar, soltar
+- AC.MI.FOR (Força Aplicada): laçar, domar, puxar, empurrar
+
+**Atividades e Práticas (AP):**
+- AP.TRA (Trabalho): campear, tropear, tosquiar, marcar
+- AP.TRA.RUR (Trabalho Rural): campear, tropear, marcar, castrar, tosquiar
 - AP.ALI (Alimentação): mate, chimarrão, churrasco, carreteiro, charque
+- AP.ALI.BEB (Bebidas): mate, chimarrão, vinho, cachaça
+- AP.ALI.COM (Comidas): churrasco, carreteiro, charque, arroz
 - AP.VES (Vestuário): bombacha, bota, poncho, lenço, chapéu
 - AP.LAZ (Lazer): fandango, rodeio, vanerão, trova, payada
-- NA.FAU (Fauna): cavalo, gado, ovelha, potro, égua, gateado, tordilho
-- NA.GEO (Geografia): coxilha, várzea, pampa, campanha, fronteira
-- OA (Objetos Campeiros): arreio, espora, laço, rebenque, facão, boleadeira
-- EL (Estruturas Gaúchas): galpão, rancho, estância, mangueira, curral
-- SB.05 (Saúde Animal): veterinário, vermífugo, castração, cinomose, raiva, febre aftosa
-  - SB.05.01 (Doenças Animais): cinomose, raiva, febre aftosa, parvovirose
-  - SB.05.02 (Tratamentos Veterinários): vermífugo, castração, vacinação animal
-  - SB.05.03 (Sistema de Saúde Animal): veterinário, clínica veterinária, zootecnista
-- SE (Sentimentos): saudade, querência, paixão, dor, alegria
+- AP.TRA.COM (Comércio): vender, comprar, trocar, negociar
 
-**IMPORTANTE - SAÚDE ANIMAL:**
-Use SB ou SB.05 para termos veterinários relacionados à saúde de animais (veterinário, vermífugo, castração de animais, doenças como cinomose, raiva, febre aftosa).
+**Natureza e Paisagem (NA):**
+- NA.FAU (Fauna): cavalo, gado, ovelha, potro, égua, gateado, tordilho, cachorro
+- NA.GEO (Geografia): coxilha, várzea, pampa, campanha, fronteira, planície
+- NA.FLO (Flora): árvore, erva, capim, mato, flor
+- NA.CLI (Clima): chuva, sol, vento, frio, calor
+
+**Objetos e Artefatos (OA):**
+- OA.FER (Ferramentas): arreio, espora, laço, facão, machado, martelo
+- OA.ARM (Armas): revólver, faca, espada, pistola
+- OA.UTD (Utensílios Domésticos): cuia, bomba, panela, prato
+
+**Saúde (SB):**
+- SB.05 (Saúde Animal): veterinário, vermífugo, doença animal
+- SB.05.01 (Doenças Animais): cinomose, raiva, febre aftosa
+- SB.05.02 (Tratamentos Veterinários): vermífugo, castração, vacina animal
+- SB.05.02.01 (Medicamentos Veterinários): vermífugo, antibiótico animal
+
+**Estruturas (EL):**
+- EL.RUR (Estruturas Rurais): galpão, rancho, estância, mangueira, curral, cercado
+
+**Sentimentos (SE):**
+- SE (Sentimentos): saudade, amor, paixão, dor, alegria, tristeza, querência
+
+**EXEMPLOS DE CLASSIFICAÇÃO CORRETA:**
+- "chimarrão" → AP.ALI.BEB (não apenas AP ou AP.ALI)
+- "galpão" → EL.RUR (não apenas EL)
+- "cavalo" → NA.FAU (não apenas NA)
+- "vermífugo" → SB.05.02.01 (não apenas SB ou SB.05)
+- "laçar" → AC.MI.FOR (não apenas AC ou AC.MI)
 
 **PALAVRAS A CLASSIFICAR:**
 ${palavrasList}
 
-**RETORNE JSON ARRAY (ordem idêntica):**
+**RETORNE JSON ARRAY com o código MAIS ESPECÍFICO disponível (ordem idêntica):**
 [
-  {"palavra": "palavra1", "tagset_codigo": "XX", "confianca": 0.95, "justificativa": "razão"},
-  {"palavra": "palavra2", "tagset_codigo": "YY", "confianca": 0.90, "justificativa": "razão"},
+  {"palavra": "palavra1", "tagset_codigo": "XX.YY.ZZ", "confianca": 0.95, "justificativa": "razão específica"},
+  {"palavra": "palavra2", "tagset_codigo": "AA.BB", "confianca": 0.90, "justificativa": "razão"},
   ...
 ]`;
 

@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CongratulatoryModal } from './CongratulatoryModal';
 import { useAnalysisTracking, useLevelTracking } from '@/hooks/useAnalysisTracking';
+import { DomainDetailsDialog } from './DomainDetailsDialog';
 
 type HierarchyLevel = 1 | 2 | 3 | 4;
 type ViewMode = 'domains' | 'keywords';
@@ -27,9 +28,17 @@ export function TabVisualizacoes() {
   const [hasInteractedWithCloud, setHasInteractedWithCloud] = useState(() => {
     return localStorage.getItem('cloud_first_interaction') === 'true';
   });
+  const [selectedDomain, setSelectedDomain] = useState<{
+    name: string;
+    code: string;
+    color: string;
+    keywords: Array<{ palavra: string; frequencia: number; ll: number; significancia: string }>;
+    stats: { totalOcorrencias: number; riquezaLexical: number; percentualCorpus: number; nivel: number };
+  } | null>(null);
   
   const cloudData = processamentoData.analysisResults?.cloudData || [];
   const keywords = processamentoData.analysisResults?.keywords || [];
+  const dominios = processamentoData.analysisResults?.dominios || [];
 
   if (!processamentoData.isProcessed || cloudData.length === 0) {
     return (
@@ -95,6 +104,31 @@ export function TabVisualizacoes() {
 
   const handleNetworkInteraction = () => {
     trackFeatureUsage('network_explored');
+  };
+
+  const handleDomainClick = (domainCode: string) => {
+    // Encontrar domínio completo nos dados
+    const domain = dominios.find(d => d.codigo === domainCode);
+    if (!domain) return;
+    
+    // Filtrar keywords deste domínio
+    const domainKeywords = keywords
+      .filter(k => k.dominio === domain.dominio || k.dominio === domainCode)
+      .sort((a, b) => b.frequencia - a.frequencia)
+      .slice(0, 30);
+    
+    setSelectedDomain({
+      name: domain.dominio,
+      code: domain.codigo,
+      color: domain.cor,
+      keywords: domainKeywords,
+      stats: {
+        totalOcorrencias: domain.ocorrencias,
+        riquezaLexical: domain.riquezaLexical,
+        percentualCorpus: domain.percentual,
+        nivel: selectedLevel
+      }
+    });
   };
 
   return (
@@ -199,7 +233,10 @@ export function TabVisualizacoes() {
                           color: item.color,
                           fontWeight: 'bold',
                         }}
-                        onClick={handleCloudInteraction}
+                        onClick={() => {
+                          handleCloudInteraction();
+                          handleDomainClick(item.codigo);
+                        }}
                       >
                         {item.nome}
                       </div>
@@ -376,6 +413,19 @@ export function TabVisualizacoes() {
         isOpen={showCongratulatoryModal} 
         onClose={() => setShowCongratulatoryModal(false)} 
       />
+
+      {/* Dialog de Detalhes do Domínio */}
+      {selectedDomain && (
+        <DomainDetailsDialog
+          open={!!selectedDomain}
+          onOpenChange={(open) => !open && setSelectedDomain(null)}
+          domainName={selectedDomain.name}
+          domainCode={selectedDomain.code}
+          domainColor={selectedDomain.color}
+          keywords={selectedDomain.keywords}
+          stats={selectedDomain.stats}
+        />
+      )}
     </div>
   );
 }

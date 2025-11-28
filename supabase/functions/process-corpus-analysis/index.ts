@@ -327,20 +327,22 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     // PARTE 3: CALCULAR ESTATÍSTICAS REAIS
     // ==========================================
 
-    // 3.1 Buscar tagsets para mapeamento (nível dinâmico)
+    // 3.1 Buscar tagsets para mapeamento (nível dinâmico E todos os níveis superiores)
+    // Precisamos carregar TODOS os tagsets até o nível solicitado para fazer o mapeamento correto
     const { data: tagsets } = await supabase
       .from('semantic_tagset')
-      .select('codigo, nome, tagset_pai, nivel_profundidade')
+      .select('codigo, nome, descricao, tagset_pai, nivel_profundidade')
       .eq('status', 'ativo')
-      .eq('nivel_profundidade', nivel);
+      .lte('nivel_profundidade', nivel); // Todos até o nível solicitado
     
-    log.info('Tagsets loaded', { nivel, count: tagsets?.length || 0 });
+    log.info('Tagsets loaded (all levels)', { nivel, count: tagsets?.length || 0 });
 
     const tagsetMap = new Map();
     (tagsets || []).forEach((t: any) => {
       const baseCode = t.codigo.split('.')[0]; // Extrair código N1 para cores
       tagsetMap.set(t.codigo, { 
-        nome: t.nome, 
+        nome: t.nome,
+        descricao: t.descricao || '',
         cor: DOMAIN_COLORS[baseCode] || '#6B7280', // Usar cor do N1 pai
         nivel: t.nivel_profundidade,
         pai: t.tagset_pai
@@ -350,9 +352,15 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     // 3.2 Agregar frequências por domínio - CE
     // Extrair código do nível solicitado de tagset_codigo
     const extractLevelCode = (fullCode: string, targetLevel: number): string => {
-      if (!fullCode) return 'NC';
+      if (!fullCode || fullCode === 'NC') return 'NC';
       const parts = fullCode.split('.');
-      if (parts.length < targetLevel) return 'NC';
+      
+      // Se o código tem menos partes que o nível solicitado, usar o que tem disponível
+      // Ex: Se pedimos N3 mas só temos "AP.AL" (N2), retornar "AP.AL"
+      if (parts.length < targetLevel) {
+        return fullCode; // Retornar o código completo disponível
+      }
+      
       return parts.slice(0, targetLevel).join('.');
     };
     
@@ -447,14 +455,18 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     }).sort((a, b) => b.percentual - a.percentual);
 
     // 3.7 Cloud data
-    const cloudData = dominios.slice(0, 15).map(d => ({
-      codigo: d.codigo, // ✅ Código completo do nível
-      nome: d.dominio,
-      size: 50 + d.percentual * 2,
-      color: d.cor,
-      wordCount: d.riquezaLexical,
-      avgScore: d.percentual // ✅ Usar percentual ao invés de avgLL para tamanho
-    }));
+    const cloudData = dominios.slice(0, 15).map(d => {
+      const tagsetInfo = tagsetMap.get(d.codigo);
+      return {
+        codigo: d.codigo, // ✅ Código completo do nível
+        nome: d.dominio,
+        descricao: tagsetInfo?.descricao || '', // ✅ Adicionar descrição
+        size: 50 + d.percentual * 2,
+        color: d.cor,
+        wordCount: d.riquezaLexical,
+        avgScore: d.percentual // ✅ Usar percentual ao invés de avgLL para tamanho
+      };
+    });
 
     // 3.8 Prosódia
     const positivas = keywords.filter(k => k.prosody === 'Positiva').length;
