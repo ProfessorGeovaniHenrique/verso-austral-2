@@ -216,7 +216,7 @@ const handler = async (req: Request): Promise<Response> => {
       type: 'recovery',
       email: recipientEmail,
       options: {
-        redirectTo: `${SITE_URL}/auth`,
+        redirectTo: `${SITE_URL}/reset-password`,
       },
     });
 
@@ -232,9 +232,8 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const resetUrl = resetData.properties?.action_link || resetData.properties?.hashed_token 
-      ? `${SITE_URL}/auth/reset-password?token=${resetData.properties.hashed_token}` 
-      : `${SITE_URL}/auth`;
+    // Use the action_link from Supabase (already has correct format with #access_token)
+    const resetUrl = resetData.properties?.action_link || `${SITE_URL}/reset-password`;
 
     // Detectar modo de desenvolvimento (Resend não verificado)
     let isDevelopmentMode = false;
