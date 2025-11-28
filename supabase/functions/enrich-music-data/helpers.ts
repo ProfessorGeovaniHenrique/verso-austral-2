@@ -178,7 +178,8 @@ export async function searchYouTube(
 export async function searchWithAI(
   titulo: string,
   artista: string,
-  geminiApiKey: string
+  lovableApiKey: string,
+  geminiApiKey?: string
 ): Promise<{ compositor: string; ano: string; fonte?: string }> {
   const searchPrompt = `Você é um especialista em metadados musicais brasileiros.
 
@@ -202,48 +203,83 @@ Retorne APENAS um objeto JSON válido:
   "fonte": "Base de Conhecimento Digital"
 }`;
 
-  try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`,
-      {
+  // 1️⃣ PRIMEIRA TENTATIVA: Lovable AI com Gemini Pro
+  if (lovableApiKey) {
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: searchPrompt }] }],
-          generationConfig: {
-            temperature: 0.2,
-            maxOutputTokens: 300,
-            responseMimeType: "application/json"
-          }
+          model: 'google/gemini-2.5-pro',
+          messages: [{ role: 'user', content: searchPrompt }],
+          temperature: 0.2,
+          max_tokens: 300,
         }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawText = data.choices?.[0]?.message?.content;
+        
+        if (rawText) {
+          const parsedData = JSON.parse(rawText);
+          console.log('[searchWithAI] ✅ Lovable AI (Gemini Pro) success');
+          return {
+            compositor: parsedData.compositor || 'Não Identificado',
+            ano: validateYear(parsedData.ano),
+            fonte: parsedData.fonte || 'Base de Conhecimento Digital'
+          };
+        }
       }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Gemini Pro Web Search] Error:', response.status, errorText);
-      return { compositor: 'Não Identificado', ano: '0000' };
+      
+      console.warn('[searchWithAI] Lovable AI failed, trying Google API fallback');
+    } catch (error) {
+      console.warn('[searchWithAI] Lovable AI error:', error);
     }
-
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!rawText) {
-      console.warn('[Gemini Pro Web Search] No content returned');
-      return { compositor: 'Não Identificado', ano: '0000' };
-    }
-
-    const parsedData = JSON.parse(rawText);
-    return {
-      compositor: parsedData.compositor || 'Não Identificado',
-      ano: validateYear(parsedData.ano),
-      fonte: parsedData.fonte || 'Base de Conhecimento Digital'
-    };
-
-  } catch (error) {
-    console.error('[Gemini Pro Web Search] Error:', error);
-    return { compositor: 'Não Identificado', ano: '0000' };
   }
+
+  // 2️⃣ FALLBACK: Google API Direta
+  if (geminiApiKey) {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: searchPrompt }] }],
+            generationConfig: {
+              temperature: 0.2,
+              maxOutputTokens: 300,
+              responseMimeType: "application/json"
+            }
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (rawText) {
+          const parsedData = JSON.parse(rawText);
+          console.log('[searchWithAI] ✅ Google API (Gemini Pro) fallback success');
+          return {
+            compositor: parsedData.compositor || 'Não Identificado',
+            ano: validateYear(parsedData.ano),
+            fonte: parsedData.fonte || 'Base de Conhecimento Digital'
+          };
+        }
+      }
+    } catch (error) {
+      console.error('[searchWithAI] Google API fallback failed:', error);
+    }
+  }
+
+  return { compositor: 'Não Identificado', ano: '0000' };
 }
 
 export function validateYear(year: any): string {

@@ -237,10 +237,10 @@ export async function handleLegacyMode(body: any, log: EdgeLogger) {
         result.compositor_encontrado === 'Não Identificado' ||
         result.ano_lancamento === '0000';
 
-      if (needsWebSearch && GEMINI_API_KEY) {
+      if (needsWebSearch && (LOVABLE_API_KEY || GEMINI_API_KEY)) {
       try {
         const webData = await webSearchLimiter.schedule(() =>
-          searchWithAI(music.titulo, music.artista || '', GEMINI_API_KEY)
+          searchWithAI(music.titulo, music.artista || '', LOVABLE_API_KEY!, GEMINI_API_KEY)
         );
 
         if (webData.compositor && webData.compositor !== 'Não Identificado') {
@@ -411,10 +411,10 @@ async function enrichSingleSong(
 
     // 3. Web search fallback (skip if mode is youtube-only)
     const needsWebSearch = enrichmentMode !== 'youtube-only' && (!enrichedData.composer || !enrichedData.releaseYear);
-    if (needsWebSearch && GEMINI_API_KEY) {
+    if (needsWebSearch && (LOVABLE_API_KEY || GEMINI_API_KEY)) {
       try {
         const webData = await webSearchLimiter.schedule(() =>
-          searchWithAI(song.title, artistName, GEMINI_API_KEY)
+          searchWithAI(song.title, artistName, LOVABLE_API_KEY!, GEMINI_API_KEY)
         );
 
         if (!enrichedData.composer && webData.compositor !== 'Não Identificado') {
@@ -621,7 +621,7 @@ Retorne APENAS a letra ou "LETRA_NAO_DISPONIVEL".`;
   }
 }
 
-// AI enrichment with Gemini → Lovable AI fallback
+// AI enrichment with Lovable AI (Gemini Pro) → Google API fallback
 async function enrichWithAI(
   titulo: string,
   artista: string | undefined,
@@ -670,7 +670,53 @@ Saída Obrigatória (JSON):
 }
 Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
 
-  // Try Gemini 2.5 Pro first
+  // 1️⃣ PRIMEIRA TENTATIVA: Lovable AI com Gemini Pro
+  if (lovableApiKey) {
+    try {
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${lovableApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-pro',
+          messages: [{ role: 'user', content: systemPrompt }],
+          temperature: 0.1,
+          max_tokens: 200,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const rawText = data.choices?.[0]?.message?.content;
+        
+        if (rawText) {
+          const metadata = JSON.parse(rawText);
+          console.log('[enrichWithAI] ✅ Lovable AI (Gemini Pro) success');
+          return {
+            artista: artista,
+            composer: metadata.composer !== 'null' ? metadata.composer : undefined,
+            compositor: metadata.composer !== 'null' ? metadata.composer : undefined,
+            releaseYear: metadata.release_year !== 'null' ? metadata.release_year : undefined,
+            ano: metadata.release_year !== 'null' ? metadata.release_year : undefined,
+            observacoes: '',
+            source: 'lovable_ai_gemini_pro'
+          };
+        }
+      }
+      
+      if (response.status === 429 || response.status === 402) {
+        console.warn('[enrichWithAI] Lovable AI rate limited/credits, trying Google API');
+      } else {
+        console.warn('[enrichWithAI] Lovable AI failed, trying Google API fallback');
+      }
+    } catch (error) {
+      console.warn('[enrichWithAI] Lovable AI error:', error);
+    }
+  }
+
+  // 2️⃣ FALLBACK: Google API Direta com Gemini Pro
   if (geminiApiKey) {
     try {
       const geminiTimer = performance.now();
@@ -700,6 +746,7 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
         
         if (rawText) {
           const metadata = JSON.parse(rawText);
+          console.log('[enrichWithAI] ✅ Google API (Gemini Pro) fallback success');
           return {
             artista: artista,
             composer: metadata.composer !== 'null' ? metadata.composer : undefined,
@@ -707,17 +754,14 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
             releaseYear: metadata.release_year !== 'null' ? metadata.release_year : undefined,
             ano: metadata.release_year !== 'null' ? metadata.release_year : undefined,
             observacoes: '',
-            source: 'gemini_pro'
+            source: 'google_api_gemini_pro'
           };
         }
       }
     } catch (geminiError) {
-      // Error logged at caller level
+      console.error('[enrichWithAI] Google API fallback failed:', geminiError);
     }
   }
-
-  // No fallback - Gemini Pro only
-  // If Gemini Pro fails, return empty data rather than using less accurate models
 
   return {
     compositor: 'Não Identificado',
