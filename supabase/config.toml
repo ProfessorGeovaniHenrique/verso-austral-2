@@ -134,3 +134,6 @@ verify_jwt = false
 
 [functions.send-invite-magic-link]
 verify_jwt = true
+
+[functions.admin-reset-user-password]
+verify_jwt = true
