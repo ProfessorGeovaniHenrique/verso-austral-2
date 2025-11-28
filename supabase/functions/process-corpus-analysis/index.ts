@@ -229,7 +229,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     // 1.4 Buscar classificações REAIS do CE
     const { data: ceClassifications, error: ceError } = await supabase
       .from('semantic_disambiguation_cache')
-      .select('palavra, tagset_codigo, confianca, prosody')
+      .select('palavra, tagset_codigo, confianca')
       .eq('song_id', songId);
 
     if (ceError) {
@@ -278,7 +278,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     // 2.3 Buscar classificações REAIS do CR
     const { data: crClassifications, error: crError } = await supabase
       .from('semantic_disambiguation_cache')
-      .select('palavra, tagset_codigo, confianca, prosody, song_id')
+      .select('palavra, tagset_codigo, confianca, song_id')
       .in('song_id', MINI_CORPUS_IDS);
 
     if (crError) {
@@ -343,8 +343,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
           significancia: llInfo.significance,
           dominio: tagsetInfo?.nome || 'Não Classificado',
           cor: tagsetInfo?.cor || '#6B7280',
-          prosody: classification?.prosody === 1 ? 'Positiva' : 
-                   classification?.prosody === -1 ? 'Negativa' : 'Neutra',
+          prosody: 'Neutra', // Prosódia não implementada ainda
           confianca: classification?.confianca || 0
         };
       })
