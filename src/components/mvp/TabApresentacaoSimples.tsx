@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Music, BookOpen, BrainCircuit, Lock, Check, Guitar } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Music, BookOpen, BrainCircuit, Lock, Check, Guitar, User } from "lucide-react";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
 import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
@@ -187,8 +187,35 @@ function TabApresentacaoSimplesContent() {
               }} />
               
               <CardHeader className="relative z-20 pt-8">
-                <CardTitle className="text-lg">Letra da Música</CardTitle>
-                <CardDescription>Luiz Marenco e Gujo Teixeira - Quando o verso vem pras casa</CardDescription>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">Letra da Música</CardTitle>
+                    <CardDescription>Luiz Marenco e Gujo Teixeira - Quando o verso vem pras casa</CardDescription>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-2">
+                        <User className="h-4 w-4" />
+                        Biografia
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[80vh]">
+                      <DialogHeader>
+                        <DialogTitle>Biografia - Luiz Marenco</DialogTitle>
+                        <DialogDescription>
+                          Conheça a trajetória do artista
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="w-full h-[60vh] overflow-auto">
+                        <iframe
+                          src="https://luizmarenco.com.br/biografia"
+                          className="w-full h-full border-0"
+                          title="Biografia Luiz Marenco"
+                        />
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
               </CardHeader>
               <CardContent className="relative z-20 pb-8">
                 <div className="whitespace-pre-line text-base text-foreground leading-relaxed font-medium">
