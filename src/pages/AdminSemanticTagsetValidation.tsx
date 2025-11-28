@@ -30,6 +30,7 @@ import { TagsetMergeAnalysisDashboard } from '@/components/admin/TagsetMergeAnal
 import { POSAnnotatorTest } from '@/components/admin/POSAnnotatorTest';
 import { SpacyHealthDashboard } from '@/components/admin/SpacyHealthDashboard';
 import { GeminiPOSMonitoring } from '@/components/admin/GeminiPOSMonitoring';
+import { GeminiPOSAnnotator } from '@/components/admin/GeminiPOSAnnotator';
 import { Tagset } from '@/hooks/useTagsets';
 
 interface SemanticTagset {
@@ -469,7 +470,7 @@ export default function AdminSemanticTagsetValidation() {
 
         {/* Tabs para alternar entre Validação, Validados, Rejeitados, Hierarquia e Teste POS */}
         <Tabs defaultValue="validation" className="mt-6">
-          <TabsList className="grid w-full max-w-4xl grid-cols-5">
+          <TabsList className="grid w-full max-w-5xl grid-cols-6">
             <TabsTrigger value="validation" className="flex items-center gap-2">
               <Filter className="h-4 w-4" />
               Validação
@@ -491,7 +492,11 @@ export default function AdminSemanticTagsetValidation() {
               Mesclagem
             </TabsTrigger>
             <TabsTrigger value="pos-test" className="flex items-center gap-2">
-              🧪 Teste POS
+              🧪 Layer 1
+            </TabsTrigger>
+            <TabsTrigger value="gemini-pos" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              Layer 3
             </TabsTrigger>
           </TabsList>
 
@@ -802,6 +807,10 @@ export default function AdminSemanticTagsetValidation() {
                 <GeminiPOSMonitoring />
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="gemini-pos" className="space-y-4">
+            <GeminiPOSAnnotator />
           </TabsContent>
         </Tabs>
       </div>
