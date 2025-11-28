@@ -32,7 +32,7 @@ export function useNCWordValidation() {
         .from('semantic_disambiguation_cache')
         .update({
           tagset_codigo: data.tagset_codigo_novo,
-          fonte: 'human_validation',
+          fonte: 'manual',
           confianca: 1.0,
           justificativa: data.justificativa || null,
           // Campos de validação linguística expandida

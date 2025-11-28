@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { HierarchicalTagsetSelector } from './HierarchicalTagsetSelector';
 import { POSSelector } from './POSSelector';
+import { BlauNunesSuggestionPanel } from './BlauNunesSuggestionPanel';
 import { useNCWordValidation } from '@/hooks/useNCWordValidation';
 import { extractKWICContext, KWICResult } from '@/lib/kwicUtils';
 import { useQuery } from '@tanstack/react-query';
@@ -162,12 +163,34 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
             )}
           </div>
 
-          {/* Status Atual */}
-          <div className="flex items-center gap-2">
-            <Label className="text-base font-semibold">🏷️ Classificação Atual:</Label>
-            <Badge variant="destructive" className="text-xs">
-              NC (Não Classificado)
-            </Badge>
+          {/* Status Atual + Assistente Blau Nunes */}
+          <div className="space-y-3 border rounded-lg p-4 bg-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-semibold">🏷️ Classificação Atual:</Label>
+                <Badge variant="destructive" className="text-xs">
+                  NC (Não Classificado)
+                </Badge>
+              </div>
+            </div>
+            
+            {/* Assistente Blau Nunes */}
+            <BlauNunesSuggestionPanel
+              palavra={word?.palavra || ''}
+              kwicResults={kwicResults}
+              selectedPOS={selectedPOS}
+              isSpellingDeviation={isSpellingDeviation}
+              formaPadrao={formaPadrao}
+              isMWE={isMWE}
+              mweText={mweText}
+              onSuggestionApply={(suggestion) => {
+                setSelectedTagset({ codigo: suggestion.tagsetCode, nome: suggestion.tagsetNome });
+                setSelectedPOS(suggestion.pos);
+                setLema(suggestion.lema);
+                setJustificativa(suggestion.justificativa);
+              }}
+              disabled={isSubmitting}
+            />
           </div>
 
           {/* Classificação Morfológica */}
