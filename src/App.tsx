@@ -19,6 +19,7 @@ import AdminPrototypeGallery from "./pages/AdminPrototypeGallery";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import DashboardMVP from "./pages/DashboardMVP";
 import DashboardMVPDefinitivo from "./pages/DashboardMVPDefinitivo";
+import DashboardAnalise from "./pages/DashboardAnalise";
 import Onboarding from "./pages/Onboarding";
 import AdvancedMode from "./pages/AdvancedMode";
 import DevOpsMetrics from "./pages/DevOpsMetrics";
@@ -77,6 +78,7 @@ const RouterContent = () => {
         <Route path="/dashboard-mvp" element={<DashboardMVP />} />
         <Route path="/dashboard-mvp-definitivo" element={<DashboardMVPDefinitivo />} />
         <Route path="/dashboard-expandido" element={<DashboardExpandido />} />
+        <Route path="/dashboard-analise" element={<DashboardAnalise />} />
         <Route path="/onboarding" element={<Onboarding />} />
         
         {/* Admin Routes with AdminLayout for consistent navigation */}

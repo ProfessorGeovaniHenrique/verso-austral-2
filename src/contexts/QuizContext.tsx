@@ -29,12 +29,15 @@ function selectBalancedQuestions(allQuestions: QuizQuestion[]): QuizQuestion[] {
 interface QuizContextValue {
   quizState: QuizState | null;
   isOpen: boolean;
+  hasPassedQuiz: boolean;
   startQuiz: () => void;
   submitAnswer: (userAnswers: string[]) => void;
   resetQuiz: () => void;
   closeQuiz: () => void;
   openQuiz: () => void;
   goToPreviousQuestion: () => void;
+  onQuizClose?: (passed: boolean) => void;
+  setOnQuizClose: (callback: ((passed: boolean) => void) | undefined) => void;
 }
 
 const QuizContext = createContext<QuizContextValue | null>(null);
@@ -42,6 +45,8 @@ const QuizContext = createContext<QuizContextValue | null>(null);
 export function QuizProvider({ children }: { children: ReactNode }) {
   const [quizState, setQuizState] = useState<QuizState | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const [hasPassedQuiz, setHasPassedQuiz] = useState(false);
+  const [onQuizCloseCallback, setOnQuizCloseCallback] = useState<((passed: boolean) => void) | undefined>();
   const { trackFeatureUsage } = useAnalytics();
 
   // Load state from localStorage on mount
@@ -117,8 +122,10 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     // Track achievement if quiz completed with 70%+ approval
     if (isComplete) {
       const percentage = (newScore / quizState.questions.length) * 100;
-      if (percentage >= 70) {
+      const passed = percentage >= 70;
+      if (passed) {
         trackFeatureUsage('quiz_passed');
+        setHasPassedQuiz(true);
       }
     }
   }, [quizState, trackFeatureUsage]);
@@ -131,7 +138,14 @@ export function QuizProvider({ children }: { children: ReactNode }) {
 
   const closeQuiz = useCallback(() => {
     setIsOpen(false);
-  }, []);
+    
+    // Trigger callback if quiz is complete and passed
+    if (quizState?.isComplete && onQuizCloseCallback) {
+      const percentage = (quizState.score / quizState.questions.length) * 100;
+      const passed = percentage >= 70;
+      onQuizCloseCallback(passed);
+    }
+  }, [quizState, onQuizCloseCallback]);
 
   const openQuiz = useCallback(() => {
     if (quizState) {
@@ -156,16 +170,23 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     });
   }, [quizState]);
 
+  const setOnQuizClose = useCallback((callback: ((passed: boolean) => void) | undefined) => {
+    setOnQuizCloseCallback(() => callback);
+  }, []);
+
   return (
     <QuizContext.Provider value={{
       quizState,
       isOpen,
+      hasPassedQuiz,
       startQuiz,
       submitAnswer,
       resetQuiz,
       closeQuiz,
       openQuiz,
       goToPreviousQuestion,
+      onQuizClose: onQuizCloseCallback,
+      setOnQuizClose,
     }}>
       {children}
     </QuizContext.Provider>

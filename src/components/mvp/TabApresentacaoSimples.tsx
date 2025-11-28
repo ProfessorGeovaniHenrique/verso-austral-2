@@ -11,13 +11,19 @@ import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
 import { QuizModal } from "./QuizModal";
 import { QuizProvider, useQuizContext } from "@/contexts/QuizContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { TransitionModal } from "./TransitionModal";
+import { PageTransition } from "./PageTransition";
+import { useNavigate } from "react-router-dom";
 import guaraniBorder from "@/assets/guarani-border.jpg";
 
 const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'instrumentos', 'quiz'];
 
 function TabApresentacaoSimplesContent() {
-  const { openQuiz, quizState } = useQuizContext();
+  const navigate = useNavigate();
+  const { openQuiz, quizState, setOnQuizClose } = useQuizContext();
   const { trackFeatureUsage } = useAnalytics();
+  const [showTransitionModal, setShowTransitionModal] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const [unlockedTabs, setUnlockedTabs] = useState<string[]>(() => {
     const saved = localStorage.getItem('mvp-unlocked-tabs');
@@ -88,6 +94,26 @@ function TabApresentacaoSimplesContent() {
     
     // Mostrar modal de parabéns
     setShowCongratulations(true);
+  };
+
+  // Setup quiz close callback
+  useEffect(() => {
+    setOnQuizClose((passed: boolean) => {
+      if (passed) {
+        setShowTransitionModal(true);
+      }
+    });
+
+    return () => setOnQuizClose(undefined);
+  }, [setOnQuizClose]);
+
+  const handleExploreAnalysis = () => {
+    setShowTransitionModal(false);
+    setIsTransitioning(true);
+  };
+
+  const handleTransitionComplete = () => {
+    navigate('/dashboard-analise');
   };
 
   return (
@@ -411,6 +437,15 @@ E uma saudade redomona pelos cantos do galpão`}
       </Dialog>
 
       <QuizModal />
+      <TransitionModal 
+        isOpen={showTransitionModal}
+        onClose={() => setShowTransitionModal(false)}
+        onExploreAnalysis={handleExploreAnalysis}
+      />
+      <PageTransition 
+        isTransitioning={isTransitioning}
+        onComplete={handleTransitionComplete}
+      />
     </>
   );
 }
@@ -422,3 +457,4 @@ export function TabApresentacaoSimples() {
     </QuizProvider>
   );
 }
+

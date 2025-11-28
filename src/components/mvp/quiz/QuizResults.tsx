@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QuizState } from "@/types/quiz.types";
-import { CheckCircle2, XCircle, RotateCcw } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Microscope } from "lucide-react";
 
 interface QuizResultsProps {
   quizState: QuizState;
@@ -111,6 +111,27 @@ export function QuizResults({ quizState, onRestart, onClose }: QuizResultsProps)
           Voltar ao Conteúdo
         </Button>
       </div>
+
+      {/* CTA Teaser - Apenas se aprovado */}
+      {isPassed && (
+        <Card className="border-primary/30 bg-primary/5 mt-4">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-full">
+                <Microscope className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-primary">
+                  🔬 Acesso Desbloqueado!
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Descubra os segredos científicos desta canção
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
