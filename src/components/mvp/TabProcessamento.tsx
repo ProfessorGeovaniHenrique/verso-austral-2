@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { SongSearchInput } from './SongSearchInput';
 import { useProcessamentoTour } from '@/hooks/useProcessamentoTour';
 import { useCorpusArtistsAndSongs } from '@/hooks/useCorpusArtistsAndSongs';
@@ -27,6 +28,9 @@ export function TabProcessamento() {
   const [studyArtist, setStudyArtist] = useState(processamentoData.studyArtist);
   const [studySong, setStudySong] = useState(processamentoData.studySong);
   const [referenceCorpus, setReferenceCorpus] = useState(processamentoData.referenceCorpus);
+  const [ignorarMarcadores, setIgnorarMarcadores] = useState(
+    processamentoData.ignorarMarcadoresGramaticais ?? true
+  );
   const [showModal, setShowModal] = useState(false);
 
   // Sincronizar estado com contexto ao mudar
@@ -36,8 +40,9 @@ export function TabProcessamento() {
       studyArtist,
       studySong,
       referenceCorpus,
+      ignorarMarcadoresGramaticais: ignorarMarcadores,
     });
-  }, [studyMode, studyArtist, studySong, referenceCorpus]);
+  }, [studyMode, studyArtist, studySong, referenceCorpus, ignorarMarcadores]);
 
   // Carregar artistas e músicas do catálogo (corpus gaucho)
   const { artists, songs, setSelectedArtist, isLoadingArtists, isLoadingSongs } = useCorpusArtistsAndSongs('gaucho');
@@ -290,11 +295,43 @@ export function TabProcessamento() {
             </div>
           )}
 
-          {/* PASSO 5: Processar Corpus */}
+          {/* PASSO 5: Filtrar Marcadores Gramaticais */}
+          {studyMode === 'song' && studySong && referenceCorpus && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Badge variant="outline" className="rounded-full w-6 h-6 flex items-center justify-center p-0">
+                  5
+                </Badge>
+                Filtrar Marcadores Gramaticais
+              </Label>
+              <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Excluir Marcadores Gramaticais (MG)</p>
+                  <p className="text-xs text-muted-foreground">
+                    {ignorarMarcadores 
+                      ? 'Artigos, preposições e conectivos NÃO serão incluídos nas estatísticas'
+                      : 'Todos os domínios semânticos serão incluídos nas estatísticas'}
+                  </p>
+                </div>
+                <Switch
+                  checked={ignorarMarcadores}
+                  onCheckedChange={(checked) => {
+                    setIgnorarMarcadores(checked);
+                    updateProcessamentoData({ ignorarMarcadoresGramaticais: checked });
+                  }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                💡 Recomendado: manter ativado para análises temáticas focadas
+              </p>
+            </div>
+          )}
+
+          {/* PASSO 6: Processar Corpus */}
           <div className="pt-4 border-t space-y-3">
             <Label className="text-sm font-medium flex items-center gap-2">
               <Badge variant="outline" className="rounded-full w-6 h-6 flex items-center justify-center p-0">
-                5
+                6
               </Badge>
               Iniciar Processamento
             </Label>

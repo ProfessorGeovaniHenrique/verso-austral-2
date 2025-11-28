@@ -71,7 +71,7 @@ interface DashboardAnaliseContextValue {
   clearProcessamentoData: () => void;
 }
 
-const CACHE_VERSION = '2.0'; // Incrementar após mudanças no formato de dados
+const CACHE_VERSION = '2.1'; // Incrementar após mudanças no formato de dados
 const STORAGE_KEY = 'dashboard_analise_processamento';
 const VERSION_KEY = 'dashboard_analise_version';
 
@@ -81,7 +81,7 @@ const initialData: ProcessamentoData = {
   studySong: '',
   referenceCorpus: 'mini-nordestino',
   isProcessed: false,
-  ignorarMarcadoresGramaticais: false,
+  ignorarMarcadoresGramaticais: true, // Filtrar MG por padrão
 };
 
 const DashboardAnaliseContext = createContext<DashboardAnaliseContextValue | null>(null);
