@@ -91,11 +91,32 @@ export function TabOrigensChamamé() {
         </Card>
       </motion.div>
 
-      {/* Características Musicais */}
+      {/* Vídeo Embed */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
+      >
+        <Card className="border-border/50 bg-card/50 backdrop-blur overflow-hidden">
+          <CardContent className="p-0">
+            <div className="relative w-full pt-[56.25%]">
+              <iframe
+                className="absolute top-0 left-0 w-full h-full"
+                src="https://www.youtube.com/embed/ZeBV4mDrn6U"
+                title="Vídeo sobre Chamamé"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Características Musicais */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
       >
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardContent className="p-6 md:p-8">
@@ -135,7 +156,7 @@ export function TabOrigensChamamé() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
       >
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardContent className="p-6 md:p-8">
@@ -202,7 +223,7 @@ export function TabOrigensChamamé() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.7 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
       >
         <Card className="border-border/50 bg-card/50 backdrop-blur">
           <CardContent className="p-6 md:p-8">
@@ -225,7 +246,7 @@ export function TabOrigensChamamé() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.8 }}
+        transition={{ duration: 0.5, delay: 0.9 }}
       >
         <Card className="border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 backdrop-blur">
           <CardContent className="p-6 md:p-8">
@@ -254,7 +275,7 @@ export function TabOrigensChamamé() {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.5, delay: 0.9 }}
+        transition={{ duration: 0.5, delay: 1.0 }}
         className="pt-6 border-t border-border/50"
       >
         <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Referência</h3>
