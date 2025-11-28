@@ -16,7 +16,7 @@ type HierarchyLevel = 1 | 2 | 3 | 4;
 type ViewMode = 'domains' | 'keywords';
 
 export function TabVisualizacoes() {
-  const { processamentoData } = useDashboardAnaliseContext();
+  const { processamentoData, updateProcessamentoData } = useDashboardAnaliseContext();
   const { processCorpus, isProcessing } = useCorpusProcessing();
   const { trackFeatureUsage } = useAnalysisTracking();
   const { trackLevelView } = useLevelTracking();
@@ -61,11 +61,18 @@ export function TabVisualizacoes() {
     toast.info(`Carregando domínios de Nível ${level}...`);
     
     try {
-      await processCorpus(
+      const results = await processCorpus(
         processamentoData.studySong,
         processamentoData.referenceCorpus,
         level
       );
+      
+      if (results) {
+        updateProcessamentoData({
+          analysisResults: results
+        });
+      }
+      
       toast.success(`Domínios de Nível ${level} carregados com sucesso`);
     } catch (error) {
       console.error('Erro ao carregar nível:', error);
