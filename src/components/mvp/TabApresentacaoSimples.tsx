@@ -4,10 +4,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Music, BookOpen, BrainCircuit, Lock, Check, Guitar, User } from "lucide-react";
+import { Music, BookOpen, BrainCircuit, Lock, Check, Guitar, User, RotateCcw } from "lucide-react";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
 import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
+import { TabVoltandoAoVerso } from "./TabVoltandoAoVerso";
 import { QuizModal } from "./QuizModal";
 import { QuizProvider, useQuizContext } from "@/contexts/QuizContext";
 import { useAnalytics } from "@/hooks/useAnalytics";
@@ -15,7 +16,7 @@ import { TransitionModal } from "./TransitionModal";
 import { PageTransition } from "./PageTransition";
 import { useNavigate } from "react-router-dom";
 import guaraniBorder from "@/assets/guarani-border.jpg";
-const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'quiz-intermediario', 'instrumentos', 'quiz-final'];
+const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'quiz-intermediario', 'instrumentos', 'voltando-ao-verso', 'quiz-final'];
 function TabApresentacaoSimplesContent() {
   const navigate = useNavigate();
   const {
@@ -41,8 +42,8 @@ function TabApresentacaoSimplesContent() {
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
 
-      // Se todas as 6 abas foram desbloqueadas, disparar conquista
-      if (newUnlocked.length === 6) {
+      // Se todas as 7 abas foram desbloqueadas, disparar conquista
+      if (newUnlocked.length === 7) {
         trackFeatureUsage('all_tabs_unlocked');
       }
     }
@@ -94,17 +95,36 @@ function TabApresentacaoSimplesContent() {
   };
 
   const unlockFinalTabs = () => {
-    if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('quiz-final')) {
-      const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'quiz-final'])];
+    if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('voltando-ao-verso')) {
+      const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'voltando-ao-verso'])];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+    }
+
+    // Navegar para Instrumentos
+    const instrumentosTab = document.querySelector('[value="instrumentos"]') as HTMLButtonElement;
+    if (instrumentosTab) {
+      instrumentosTab.click();
+    }
+  };
+
+  const unlockQuizFinal = () => {
+    if (!unlockedTabs.includes('quiz-final')) {
+      const newUnlocked = [...unlockedTabs, 'quiz-final'];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
 
-      // Disparar conquista "Sede de Conhecimento"
-      trackFeatureUsage('all_tabs_unlocked');
+      // Se todas as 7 abas foram desbloqueadas, disparar conquista
+      if (newUnlocked.length === 7) {
+        trackFeatureUsage('all_tabs_unlocked');
+      }
     }
 
-    // Mostrar modal de parabéns
-    setShowCongratulations(true);
+    // Navegar para Quiz Final
+    const quizTab = document.querySelector('[value="quiz-final"]') as HTMLButtonElement;
+    if (quizTab) {
+      quizTab.click();
+    }
   };
 
   // Setup quiz close callback
@@ -125,11 +145,11 @@ function TabApresentacaoSimplesContent() {
   };
   return <>
       <div className="text-sm text-muted-foreground mb-2 text-center">
-        {unlockedTabs.length}/6 abas desbloqueadas
+        {unlockedTabs.length}/7 abas desbloqueadas
       </div>
       
       <Tabs defaultValue="introducao" onValueChange={handleTabChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-6 mb-6">
+        <TabsList className="grid w-full grid-cols-7 mb-6">
           <TabsTrigger value="introducao">
             {getTabIcon('introducao')}
             Introdução
@@ -150,6 +170,11 @@ function TabApresentacaoSimplesContent() {
           <TabsTrigger value="instrumentos" disabled={!unlockedTabs.includes('instrumentos')} className={!unlockedTabs.includes('instrumentos') ? 'opacity-50' : ''}>
             {getTabIcon('instrumentos')}
             Instrumentos
+          </TabsTrigger>
+          <TabsTrigger value="voltando-ao-verso" disabled={!unlockedTabs.includes('voltando-ao-verso')} className={!unlockedTabs.includes('voltando-ao-verso') ? 'opacity-50' : ''}>
+            <RotateCcw className="h-4 w-4 mr-2" />
+            {getTabIcon('voltando-ao-verso')}
+            Voltando ao Verso
           </TabsTrigger>
           <TabsTrigger value="quiz-final" disabled={!unlockedTabs.includes('quiz-final')} className={!unlockedTabs.includes('quiz-final') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}>
             <BrainCircuit className="h-4 w-4 mr-2" />
@@ -382,7 +407,11 @@ E uma saudade redomona pelos cantos do galpão`}
         </TabsContent>
 
         <TabsContent value="instrumentos">
-          <TabInstrumentosChamamé onUnlockFinal={unlockFinalTabs} showUnlockButton={!unlockedTabs.includes('quiz-final')} />
+          <TabInstrumentosChamamé onUnlockFinal={unlockFinalTabs} showUnlockButton={!unlockedTabs.includes('voltando-ao-verso')} />
+        </TabsContent>
+
+        <TabsContent value="voltando-ao-verso">
+          <TabVoltandoAoVerso onUnlockFinal={unlockQuizFinal} showUnlockButton={!unlockedTabs.includes('quiz-final')} />
         </TabsContent>
 
         <TabsContent value="quiz-final" className="space-y-6">

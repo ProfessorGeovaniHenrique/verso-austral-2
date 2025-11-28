@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Music, BrainCircuit } from "lucide-react";
+import { Music, BrainCircuit, RotateCcw } from "lucide-react";
 
 interface TabInstrumentosChamaméProps {
   onUnlockFinal?: () => void;
@@ -453,7 +453,7 @@ export function TabInstrumentosChamamé({ onUnlockFinal, showUnlockButton }: Tab
           </Card>
         </motion.div>
 
-        {/* Botão de Desbloqueio do Quiz Final */}
+        {/* Botão de Desbloqueio - Voltando ao Verso */}
         {showUnlockButton && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -462,8 +462,8 @@ export function TabInstrumentosChamamé({ onUnlockFinal, showUnlockButton }: Tab
             className="flex justify-center my-8"
           >
             <Button onClick={onUnlockFinal} size="lg" className="gap-2">
-              <BrainCircuit className="h-5 w-5" />
-              Fazer Quiz Final - Instrumentos
+              <RotateCcw className="h-5 w-5" />
+              Voltando ao Verso
             </Button>
           </motion.div>
         )}
