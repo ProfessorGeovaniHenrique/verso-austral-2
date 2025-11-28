@@ -6,6 +6,7 @@ import { SemanticDomainChart } from '@/components/admin/SemanticDomainChart';
 import { AnnotationJobsTable } from '@/components/admin/AnnotationJobsTable';
 import { NCWordsPanel } from '@/components/admin/NCWordsPanel';
 import { BatchSeedingControl } from '@/components/admin/BatchSeedingControl';
+import { DuplicateMonitoringCard } from '@/components/admin/DuplicateMonitoringCard';
 
 export default function AdminSemanticPipeline() {
   const { data: stats, isLoading, refetch } = useSemanticPipelineStats();
@@ -169,6 +170,9 @@ export default function AdminSemanticPipeline() {
         semanticLexiconCount={stats.semanticLexicon.totalEntries}
         status={stats.semanticLexicon.status}
       />
+
+      {/* Duplicate Monitoring */}
+      <DuplicateMonitoringCard />
 
       {/* NC Words Panel */}
       <NCWordsPanel />

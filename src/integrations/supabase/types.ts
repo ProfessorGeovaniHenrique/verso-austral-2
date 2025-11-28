@@ -2307,8 +2307,10 @@ export type Database = {
           normalized_title: string | null
           raw_data: Json | null
           release_year: string | null
+          releases: Json | null
           status: string | null
           title: string
+          total_releases: number | null
           updated_at: string | null
           upload_id: string | null
           youtube_url: string | null
@@ -2325,8 +2327,10 @@ export type Database = {
           normalized_title?: string | null
           raw_data?: Json | null
           release_year?: string | null
+          releases?: Json | null
           status?: string | null
           title: string
+          total_releases?: number | null
           updated_at?: string | null
           upload_id?: string | null
           youtube_url?: string | null
@@ -2343,8 +2347,10 @@ export type Database = {
           normalized_title?: string | null
           raw_data?: Json | null
           release_year?: string | null
+          releases?: Json | null
           status?: string | null
           title?: string
+          total_releases?: number | null
           updated_at?: string | null
           upload_id?: string | null
           youtube_url?: string | null
