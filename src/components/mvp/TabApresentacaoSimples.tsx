@@ -15,83 +15,80 @@ import { TransitionModal } from "./TransitionModal";
 import { PageTransition } from "./PageTransition";
 import { useNavigate } from "react-router-dom";
 import guaraniBorder from "@/assets/guarani-border.jpg";
-
 const TAB_ORDER = ['introducao', 'aprendizado', 'origens', 'instrumentos', 'quiz'];
-
 function TabApresentacaoSimplesContent() {
   const navigate = useNavigate();
-  const { openQuiz, quizState, setOnQuizClose } = useQuizContext();
-  const { trackFeatureUsage } = useAnalytics();
+  const {
+    openQuiz,
+    quizState,
+    setOnQuizClose
+  } = useQuizContext();
+  const {
+    trackFeatureUsage
+  } = useAnalytics();
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  
   const [unlockedTabs, setUnlockedTabs] = useState<string[]>(() => {
     const saved = localStorage.getItem('mvp-unlocked-tabs');
     return saved ? JSON.parse(saved) : ['introducao'];
   });
   const [showCongratulations, setShowCongratulations] = useState(false);
-
   const handleTabChange = (value: string) => {
     const currentIndex = TAB_ORDER.indexOf(value);
     const nextTab = TAB_ORDER[currentIndex + 1];
-    
     if (nextTab && !unlockedTabs.includes(nextTab)) {
       const newUnlocked = [...unlockedTabs, nextTab];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
-      
+
       // Se todas as 5 abas foram desbloqueadas, disparar conquista
       if (newUnlocked.length === 5) {
         trackFeatureUsage('all_tabs_unlocked');
       }
     }
   };
-
   const getTabIcon = (tabId: string) => {
     if (!unlockedTabs.includes(tabId)) {
       return <Lock className="h-3 w-3 mr-1" />;
     }
     return <Check className="h-3 w-3 mr-1" />;
   };
-
   const unlockAndNavigateToChamamé = () => {
     if (!unlockedTabs.includes('aprendizado')) {
       const newUnlocked = [...unlockedTabs, 'aprendizado'];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
     }
-    
+
     // Navegar para a aba Chamamé
     const chamaméTab = document.querySelector('[value="aprendizado"]') as HTMLButtonElement;
     if (chamaméTab) {
       chamaméTab.click();
     }
   };
-
   const unlockOrigensTab = () => {
     if (!unlockedTabs.includes('origens')) {
       const newUnlocked = [...unlockedTabs, 'origens'];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
     }
-    
+
     // Navegar para a aba Origens
     const origensTab = document.querySelector('[value="origens"]') as HTMLButtonElement;
     if (origensTab) {
       origensTab.click();
     }
   };
-
   const unlockFinalTabs = () => {
     if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('quiz')) {
       const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'quiz'])];
       setUnlockedTabs(newUnlocked);
       localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
-      
+
       // Disparar conquista "Sede de Conhecimento"
       trackFeatureUsage('all_tabs_unlocked');
     }
-    
+
     // Mostrar modal de parabéns
     setShowCongratulations(true);
   };
@@ -103,21 +100,16 @@ function TabApresentacaoSimplesContent() {
         setShowTransitionModal(true);
       }
     });
-
     return () => setOnQuizClose(undefined);
   }, [setOnQuizClose]);
-
   const handleExploreAnalysis = () => {
     setShowTransitionModal(false);
     setIsTransitioning(true);
   };
-
   const handleTransitionComplete = () => {
     navigate('/dashboard-analise');
   };
-
-  return (
-    <>
+  return <>
       <div className="text-sm text-muted-foreground mb-2 text-center">
         {unlockedTabs.length}/5 abas desbloqueadas
       </div>
@@ -128,35 +120,19 @@ function TabApresentacaoSimplesContent() {
             {getTabIcon('introducao')}
             Introdução
           </TabsTrigger>
-          <TabsTrigger 
-            value="aprendizado" 
-            disabled={!unlockedTabs.includes('aprendizado')}
-            className={!unlockedTabs.includes('aprendizado') ? 'opacity-50' : ''}
-          >
+          <TabsTrigger value="aprendizado" disabled={!unlockedTabs.includes('aprendizado')} className={!unlockedTabs.includes('aprendizado') ? 'opacity-50' : ''}>
             {getTabIcon('aprendizado')}
             Chamamé
           </TabsTrigger>
-          <TabsTrigger 
-            value="origens" 
-            disabled={!unlockedTabs.includes('origens')}
-            className={!unlockedTabs.includes('origens') ? 'opacity-50' : ''}
-          >
+          <TabsTrigger value="origens" disabled={!unlockedTabs.includes('origens')} className={!unlockedTabs.includes('origens') ? 'opacity-50' : ''}>
             {getTabIcon('origens')}
             Origens
           </TabsTrigger>
-          <TabsTrigger 
-            value="instrumentos" 
-            disabled={!unlockedTabs.includes('instrumentos')}
-            className={!unlockedTabs.includes('instrumentos') ? 'opacity-50' : ''}
-          >
+          <TabsTrigger value="instrumentos" disabled={!unlockedTabs.includes('instrumentos')} className={!unlockedTabs.includes('instrumentos') ? 'opacity-50' : ''}>
             {getTabIcon('instrumentos')}
             Instrumentos
           </TabsTrigger>
-          <TabsTrigger 
-            value="quiz" 
-            disabled={!unlockedTabs.includes('quiz')}
-            className={!unlockedTabs.includes('quiz') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}
-          >
+          <TabsTrigger value="quiz" disabled={!unlockedTabs.includes('quiz')} className={!unlockedTabs.includes('quiz') ? 'bg-primary/10 opacity-50' : 'bg-primary/10'}>
             <BrainCircuit className="h-4 w-4 mr-2" />
             {getTabIcon('quiz')}
             Quiz
@@ -195,30 +171,24 @@ function TabApresentacaoSimplesContent() {
           <div className="lg:col-span-2">
             <Card className="card-academic h-full relative overflow-hidden shadow-2xl border-0">
               {/* Borda superior com padrão guarani em vermelho */}
-              <div 
-                className="absolute top-0 left-0 right-0 h-6 z-10"
-                style={{
-                  backgroundImage: `url(${guaraniBorder})`,
-                  backgroundRepeat: 'repeat-x',
-                  backgroundSize: 'auto 100%',
-                  filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)',
-                }}
-              />
+              <div className="absolute top-0 left-0 right-0 h-6 z-10" style={{
+                backgroundImage: `url(${guaraniBorder})`,
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: 'auto 100%',
+                filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)'
+              }} />
               
               {/* Borda inferior com padrão guarani em vermelho */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-6 z-10"
-                style={{
-                  backgroundImage: `url(${guaraniBorder})`,
-                  backgroundRepeat: 'repeat-x',
-                  backgroundSize: 'auto 100%',
-                  filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)',
-                }}
-              />
+              <div className="absolute bottom-0 left-0 right-0 h-6 z-10" style={{
+                backgroundImage: `url(${guaraniBorder})`,
+                backgroundRepeat: 'repeat-x',
+                backgroundSize: 'auto 100%',
+                filter: 'hue-rotate(-40deg) saturate(2) brightness(0.8)'
+              }} />
               
               <CardHeader className="relative z-20 pt-8">
                 <CardTitle className="text-lg">Letra da Música</CardTitle>
-                <CardDescription>Luiz Marenco - Quando o verso vem pras casa</CardDescription>
+                <CardDescription>Luiz Marenco e Gujo Teixeira - Quando o verso vem pras casa</CardDescription>
               </CardHeader>
               <CardContent className="relative z-20 pb-8">
                 <div className="whitespace-pre-line text-base text-foreground leading-relaxed font-medium">
@@ -264,16 +234,7 @@ E uma saudade redomona pelos cantos do galpão`}
               </CardHeader>
               <CardContent>
                 <div className="aspect-video rounded-lg overflow-hidden border border-border shadow-sm">
-                  <iframe 
-                    width="100%" 
-                    height="100%" 
-                    src="https://www.youtube.com/embed/uaRc4k-Rxpo" 
-                    title="Quando o verso vem pras casa - Luiz Marenco" 
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                    allowFullScreen 
-                    className="w-full h-full"
-                  />
+                  <iframe width="100%" height="100%" src="https://www.youtube.com/embed/uaRc4k-Rxpo" title="Quando o verso vem pras casa - Luiz Marenco" frameBorder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen className="w-full h-full" />
                 </div>
               </CardContent>
             </Card>
@@ -322,32 +283,20 @@ E uma saudade redomona pelos cantos do galpão`}
         </div>
 
         {/* Botão para desbloquear Chamamé */}
-        {!unlockedTabs.includes('aprendizado') && (
-          <div className="mt-8 flex justify-center">
-            <Button 
-              onClick={unlockAndNavigateToChamamé} 
-              size="lg" 
-              className="text-lg px-8 py-6"
-            >
+        {!unlockedTabs.includes('aprendizado') && <div className="mt-8 flex justify-center">
+            <Button onClick={unlockAndNavigateToChamamé} size="lg" className="text-lg px-8 py-6">
               <Music className="h-5 w-5 mr-2" />
               Conhecer o Chamamé
             </Button>
-          </div>
-        )}
+          </div>}
               </TabsContent>
 
               <TabsContent value="aprendizado">
-                <TabAprendizadoChamamé 
-                  onUnlockNext={unlockOrigensTab}
-                  showUnlockButton={!unlockedTabs.includes('origens')}
-                />
+                <TabAprendizadoChamamé onUnlockNext={unlockOrigensTab} showUnlockButton={!unlockedTabs.includes('origens')} />
               </TabsContent>
 
               <TabsContent value="origens">
-                <TabOrigensChamamé 
-                  onUnlockFinal={unlockFinalTabs}
-                  showUnlockButton={!unlockedTabs.includes('instrumentos')}
-                />
+                <TabOrigensChamamé onUnlockFinal={unlockFinalTabs} showUnlockButton={!unlockedTabs.includes('instrumentos')} />
               </TabsContent>
 
         <TabsContent value="instrumentos">
@@ -417,18 +366,14 @@ E uma saudade redomona pelos cantos do galpão`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="sm:justify-center">
-            <Button 
-              onClick={() => {
-                setShowCongratulations(false);
-                // Navegar para aba Instrumentos
-                const instrumentosTab = document.querySelector('[value="instrumentos"]') as HTMLButtonElement;
-                if (instrumentosTab) {
-                  instrumentosTab.click();
-                }
-              }}
-              size="lg"
-              className="gap-2"
-            >
+            <Button onClick={() => {
+            setShowCongratulations(false);
+            // Navegar para aba Instrumentos
+            const instrumentosTab = document.querySelector('[value="instrumentos"]') as HTMLButtonElement;
+            if (instrumentosTab) {
+              instrumentosTab.click();
+            }
+          }} size="lg" className="gap-2">
               <Guitar className="h-5 w-5" />
               Ver Instrumentos
             </Button>
@@ -437,24 +382,12 @@ E uma saudade redomona pelos cantos do galpão`}
       </Dialog>
 
       <QuizModal />
-      <TransitionModal 
-        isOpen={showTransitionModal}
-        onClose={() => setShowTransitionModal(false)}
-        onExploreAnalysis={handleExploreAnalysis}
-      />
-      <PageTransition 
-        isTransitioning={isTransitioning}
-        onComplete={handleTransitionComplete}
-      />
-    </>
-  );
+      <TransitionModal isOpen={showTransitionModal} onClose={() => setShowTransitionModal(false)} onExploreAnalysis={handleExploreAnalysis} />
+      <PageTransition isTransitioning={isTransitioning} onComplete={handleTransitionComplete} />
+    </>;
 }
-
 export function TabApresentacaoSimples() {
-  return (
-    <QuizProvider>
+  return <QuizProvider>
       <TabApresentacaoSimplesContent />
-    </QuizProvider>
-  );
+    </QuizProvider>;
 }
-
