@@ -237,10 +237,10 @@ export async function handleLegacyMode(body: any, log: EdgeLogger) {
         result.compositor_encontrado === 'Não Identificado' ||
         result.ano_lancamento === '0000';
 
-      if (needsWebSearch && LOVABLE_API_KEY) {
+      if (needsWebSearch && GEMINI_API_KEY) {
       try {
         const webData = await webSearchLimiter.schedule(() =>
-          searchWithAI(music.titulo, music.artista || '', LOVABLE_API_KEY)
+          searchWithAI(music.titulo, music.artista || '', GEMINI_API_KEY)
         );
 
         if (webData.compositor && webData.compositor !== 'Não Identificado') {
@@ -411,10 +411,10 @@ async function enrichSingleSong(
 
     // 3. Web search fallback (skip if mode is youtube-only)
     const needsWebSearch = enrichmentMode !== 'youtube-only' && (!enrichedData.composer || !enrichedData.releaseYear);
-    if (needsWebSearch && LOVABLE_API_KEY) {
+    if (needsWebSearch && GEMINI_API_KEY) {
       try {
         const webData = await webSearchLimiter.schedule(() =>
-          searchWithAI(song.title, artistName, LOVABLE_API_KEY)
+          searchWithAI(song.title, artistName, GEMINI_API_KEY)
         );
 
         if (!enrichedData.composer && webData.compositor !== 'Não Identificado') {
@@ -716,60 +716,8 @@ Não adicione markdown \`\`\`json ou explicações. Apenas o objeto JSON cru.`;
     }
   }
 
-  // Fallback to Lovable AI
-  if (lovableApiKey) {
-    try {
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${lovableApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
-          messages: [{ role: 'user', content: systemPrompt }],
-          tools: [
-            {
-              type: 'function',
-              function: {
-                name: 'enrich_music_info',
-                description: 'Return structured music metadata',
-                parameters: {
-                  type: 'object',
-                  properties: {
-                    composer: { type: 'string' },
-                    release_year: { type: 'string' },
-                    confidence: { type: 'string' }
-                  },
-                  required: ['composer', 'release_year']
-                }
-              }
-            }
-          ],
-          tool_choice: { type: 'function', function: { name: 'enrich_music_info' } }
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-        if (toolCall?.function?.arguments) {
-          const metadata = JSON.parse(toolCall.function.arguments);
-          return {
-            artista: artista,
-            composer: metadata.composer !== 'null' ? metadata.composer : undefined,
-            compositor: metadata.composer !== 'null' ? metadata.composer : undefined,
-            releaseYear: metadata.release_year !== 'null' ? metadata.release_year : undefined,
-            ano: metadata.release_year !== 'null' ? metadata.release_year : undefined,
-            observacoes: '',
-            source: 'lovable_ai'
-          };
-        }
-      }
-    } catch (lovableError) {
-      // Error logged at caller level
-    }
-  }
+  // No fallback - Gemini Pro only
+  // If Gemini Pro fails, return empty data rather than using less accurate models
 
   return {
     compositor: 'Não Identificado',

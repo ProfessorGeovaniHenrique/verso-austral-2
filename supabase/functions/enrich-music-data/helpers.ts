@@ -178,21 +178,24 @@ export async function searchYouTube(
 export async function searchWithAI(
   titulo: string,
   artista: string,
-  apiKey: string
+  geminiApiKey: string
 ): Promise<{ compositor: string; ano: string; fonte?: string }> {
-  const searchPrompt = `Pesquise em seu conhecimento informações precisas sobre a música "${titulo}" do artista "${artista}".
+  const searchPrompt = `Você é um especialista em metadados musicais brasileiros.
 
-Preciso encontrar:
-1. O compositor (ou compositores) ORIGINAL(is) da música
-2. O ano de lançamento ORIGINAL da música
+Música: "${titulo}"
+Artista: "${artista}"
 
-IMPORTANTE:
-- Se for um cover/regravação, quero os dados da versão ORIGINAL
-- Retorne APENAS informações verificáveis que você conhece
+Sua tarefa:
+1. Identifique o COMPOSITOR ORIGINAL (não o intérprete)
+2. Identifique o ANO DE LANÇAMENTO ORIGINAL (não de regravações)
+
+REGRAS CRÍTICAS:
+- Se for cover/regravação, retorne dados da versão ORIGINAL
+- Retorne APENAS informações verificáveis e precisas
 - Se não tiver certeza, retorne "Não Identificado" para compositor e "0000" para ano
-- Foque em música brasileira, especialmente forró, piseiro, sertanejo
+- Priorize música brasileira (forró, piseiro, sertanejo, gaúcha)
 
-Retorne APENAS um JSON válido com esta estrutura exata:
+Retorne APENAS um objeto JSON válido:
 {
   "compositor": "Nome do Compositor",
   "ano": "YYYY",
@@ -200,58 +203,45 @@ Retorne APENAS um JSON válido com esta estrutura exata:
 }`;
 
   try {
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um pesquisador musical especialista em música brasileira. Retorne APENAS JSON válido, sem texto adicional.'
-          },
-          {
-            role: 'user',
-            content: searchPrompt
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: searchPrompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 300,
+            responseMimeType: "application/json"
           }
-        ],
-        temperature: 0.3,
-        max_tokens: 500
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Web Search AI] Error:', response.status, errorText);
+      console.error('[Gemini Pro Web Search] Error:', response.status, errorText);
       return { compositor: 'Não Identificado', ano: '0000' };
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    if (!content) {
-      console.warn('[Web Search AI] No content returned');
+    if (!rawText) {
+      console.warn('[Gemini Pro Web Search] No content returned');
       return { compositor: 'Não Identificado', ano: '0000' };
     }
 
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsedData = JSON.parse(jsonMatch[0]);
-      return {
-        compositor: parsedData.compositor || 'Não Identificado',
-        ano: validateYear(parsedData.ano),
-        fonte: parsedData.fonte
-      };
-    }
-
-    console.warn('[Web Search AI] Could not extract JSON from response');
-    return { compositor: 'Não Identificado', ano: '0000' };
+    const parsedData = JSON.parse(rawText);
+    return {
+      compositor: parsedData.compositor || 'Não Identificado',
+      ano: validateYear(parsedData.ano),
+      fonte: parsedData.fonte || 'Base de Conhecimento Digital'
+    };
 
   } catch (error) {
-    console.error('[Web Search AI] Error:', error);
+    console.error('[Gemini Pro Web Search] Error:', error);
     return { compositor: 'Não Identificado', ano: '0000' };
   }
 }
