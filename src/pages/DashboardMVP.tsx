@@ -49,8 +49,6 @@ export default function DashboardMVP() {
           <MVPHeader 
             activeTab={activeTab} 
             onTabChange={setActiveTab}
-            isAuthenticated={!!user}
-            isLoading={loading}
             hasToolsAccess={hasToolsAccess()}
             hasTestsAccess={hasTestsAccess()}
           />

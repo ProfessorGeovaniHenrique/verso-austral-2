@@ -49,21 +49,21 @@ type TabType = 'apresentacao' | 'tools' | 'validation';
 interface MVPHeaderProps {
   activeTab?: TabType;
   onTabChange?: (tab: TabType) => void;
-  isAuthenticated?: boolean;
-  isLoading?: boolean;
   hasToolsAccess?: boolean;
   hasTestsAccess?: boolean;
 }
 export function MVPHeader({
   activeTab,
   onTabChange,
-  isAuthenticated = false,
-  isLoading = false,
   hasToolsAccess = false,
   hasTestsAccess = false,
 }: MVPHeaderProps) {
   const { mode, toggleTheme } = useTheme();
-  const { user, role, signOut, isAdmin } = useAuthContext();
+  const { user, role, loading, signOut, isAdmin } = useAuthContext();
+  
+  // Derivar estado de autenticação do context (fonte única de verdade)
+  const isAuthenticated = !!user;
+  const isLoading = loading;
   const navigate = useNavigate();
   const isActiveRoute = useIsActiveRoute();
   const showNavigation = activeTab !== undefined && onTabChange !== undefined;

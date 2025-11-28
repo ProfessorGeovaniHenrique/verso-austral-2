@@ -14,8 +14,6 @@ export default function DashboardMVPDefinitivo() {
       <SubcorpusProvider>
         <div className="min-h-screen flex flex-col bg-background">
           <MVPHeader 
-            isAuthenticated={!!user}
-            isLoading={loading}
             hasToolsAccess={hasToolsAccess()}
             hasTestsAccess={hasTestsAccess()}
           />
