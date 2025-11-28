@@ -3021,6 +3021,10 @@ export type Database = {
         Returns: undefined
       }
       increment_youtube_quota: { Args: never; Returns: number }
+      mark_invite_as_used: {
+        Args: { p_invite_id: string; p_user_id: string }
+        Returns: boolean
+      }
       normalize_text: { Args: { "": string }; Returns: string }
       truncate_gutenberg_table: { Args: never; Returns: undefined }
       unaccent: { Args: { "": string }; Returns: string }

@@ -53,51 +53,53 @@ export default function AuthCallback() {
           return;
         }
 
-        // Create account using magic link
+        // Create account with auto-confirmation (requires auth.auto_confirm_email = true)
         setMessage("Criando sua conta...");
         
-        const { data: authData, error: authError } = await supabase.auth.signInWithOtp({
+        // Generate a secure temporary password
+        const tempPassword = crypto.randomUUID();
+        
+        const { data: authData, error: authError } = await supabase.auth.signUp({
           email: invite.recipient_email,
+          password: tempPassword,
           options: {
-            shouldCreateUser: true,
             data: {
               invite_code: inviteCode,
               full_name: invite.recipient_name || invite.recipient_email.split('@')[0],
             },
+            emailRedirectTo: `${window.location.origin}/onboarding`,
           },
         });
 
         if (authError) {
           console.error("Auth error:", authError);
           setStatus("error");
-          setMessage("Erro ao criar conta. Tente novamente.");
+          setMessage(authError.message || "Erro ao criar conta. Tente novamente.");
           setTimeout(() => navigate("/auth"), 3000);
           return;
         }
 
-        // Wait for session
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!session) {
-          // OTP was sent to email, redirect to check email
-          setStatus("success");
-          setMessage(`Email de verificação enviado para ${invite.recipient_email}. Verifique sua caixa de entrada.`);
-          setTimeout(() => navigate("/auth"), 5000);
+        if (!authData.user) {
+          setStatus("error");
+          setMessage("Erro ao criar usuário.");
+          setTimeout(() => navigate("/auth"), 3000);
           return;
         }
 
-        // Mark invite as used
-        const { error: updateError } = await supabase
-          .from("invite_keys")
-          .update({ 
-            used_by: session.user.id,
-            used_at: new Date().toISOString(),
-            is_active: false 
-          })
-          .eq("id", invite.id);
+        // Mark invite as used using SECURITY DEFINER function
+        const { data: markResult, error: markError } = await supabase
+          .rpc('mark_invite_as_used', {
+            p_invite_id: invite.id,
+            p_user_id: authData.user.id
+          });
 
-        if (updateError) {
-          console.error("Error updating invite:", updateError);
+        if (markError) {
+          console.error("Error marking invite as used:", markError);
+          // Continue anyway, user was created successfully
+        }
+
+        if (!markResult) {
+          console.warn("Invite may have already been used");
         }
 
         setStatus("success");
