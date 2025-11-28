@@ -61,6 +61,7 @@ const questions: Question[] = [
 export function TabVoltandoAoVerso({ onUnlockFinal, showUnlockButton }: TabVoltandoAoVersoProps) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [revealed, setRevealed] = useState<Record<string, boolean>>({});
+  const [hintsRevealed, setHintsRevealed] = useState<Record<string, boolean>>({});
 
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -68,6 +69,10 @@ export function TabVoltandoAoVerso({ onUnlockFinal, showUnlockButton }: TabVolta
 
   const handleReveal = (questionId: string) => {
     setRevealed(prev => ({ ...prev, [questionId]: true }));
+  };
+
+  const handleRevealHint = (questionId: string) => {
+    setHintsRevealed(prev => ({ ...prev, [questionId]: true }));
   };
 
   const answeredCount = Object.keys(answers).filter(key => answers[key]?.trim()).length;
@@ -182,9 +187,22 @@ export function TabVoltandoAoVerso({ onUnlockFinal, showUnlockButton }: TabVolta
             <CardContent className="space-y-4">
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
                 <p className="text-sm text-foreground/90 font-medium">{q.question}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  💡 {q.context}
-                </p>
+                
+                {!hintsRevealed[q.id] ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mt-2 text-xs text-muted-foreground hover:text-primary"
+                    onClick={() => handleRevealHint(q.id)}
+                  >
+                    <Lightbulb className="h-3 w-3 mr-1" />
+                    Preciso de uma dica
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-2 animate-in fade-in">
+                    💡 {q.context}
+                  </p>
+                )}
               </div>
 
               {!revealed[q.id] && (
