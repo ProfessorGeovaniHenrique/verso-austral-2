@@ -1,7 +1,13 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Music, MapPin, Users, Guitar } from "lucide-react";
 
-export function TabAprendizadoChamamé() {
+interface TabAprendizadoChamaméProps {
+  onUnlockNext?: () => void;
+  showUnlockButton?: boolean;
+}
+
+export function TabAprendizadoChamamé({ onUnlockNext, showUnlockButton }: TabAprendizadoChamaméProps) {
   return (
     <div className="space-y-6">
       {/* Introdução */}
@@ -186,6 +192,16 @@ export function TabAprendizadoChamamé() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Botão de Desbloqueio */}
+      {showUnlockButton && (
+        <div className="flex justify-center my-8">
+          <Button onClick={onUnlockNext} size="lg" className="gap-2">
+            <MapPin className="h-5 w-5" />
+            Conheça as origens do Chamamé
+          </Button>
+        </div>
+      )}
 
       {/* Referência ABNT */}
       <Card className="border-border/50 bg-muted/20">

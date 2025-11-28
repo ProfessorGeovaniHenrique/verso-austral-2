@@ -1,8 +1,14 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Music, Users, Award, BookOpen } from "lucide-react";
+import { Music, Users, Award, BookOpen, Guitar } from "lucide-react";
 
-export function TabOrigensChamamé() {
+interface TabOrigensChamaméProps {
+  onUnlockFinal?: () => void;
+  showUnlockButton?: boolean;
+}
+
+export function TabOrigensChamamé({ onUnlockFinal, showUnlockButton }: TabOrigensChamaméProps) {
   const timelineEvents = [
     {
       year: "1821",
@@ -288,6 +294,21 @@ export function TabOrigensChamamé() {
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Botão de Desbloqueio */}
+      {showUnlockButton && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 1.0 }}
+          className="flex justify-center my-8"
+        >
+          <Button onClick={onUnlockFinal} size="lg" className="gap-2">
+            <Guitar className="h-5 w-5" />
+            Quero saber mais sobre os instrumentos
+          </Button>
+        </motion.div>
+      )}
 
       {/* Referência ABNT */}
       <motion.div

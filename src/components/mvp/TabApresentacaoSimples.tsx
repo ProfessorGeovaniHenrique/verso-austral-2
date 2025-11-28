@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Music, BookOpen, BrainCircuit, Lock, Check } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Music, BookOpen, BrainCircuit, Lock, Check, Guitar } from "lucide-react";
 import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
 import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
@@ -22,6 +23,7 @@ function TabApresentacaoSimplesContent() {
     const saved = localStorage.getItem('mvp-unlocked-tabs');
     return saved ? JSON.parse(saved) : ['introducao'];
   });
+  const [showCongratulations, setShowCongratulations] = useState(false);
 
   const handleTabChange = (value: string) => {
     const currentIndex = TAB_ORDER.indexOf(value);
@@ -58,6 +60,34 @@ function TabApresentacaoSimplesContent() {
     if (chamaméTab) {
       chamaméTab.click();
     }
+  };
+
+  const unlockOrigensTab = () => {
+    if (!unlockedTabs.includes('origens')) {
+      const newUnlocked = [...unlockedTabs, 'origens'];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+    }
+    
+    // Navegar para a aba Origens
+    const origensTab = document.querySelector('[value="origens"]') as HTMLButtonElement;
+    if (origensTab) {
+      origensTab.click();
+    }
+  };
+
+  const unlockFinalTabs = () => {
+    if (!unlockedTabs.includes('instrumentos') || !unlockedTabs.includes('quiz')) {
+      const newUnlocked = [...new Set([...unlockedTabs, 'instrumentos', 'quiz'])];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+      
+      // Disparar conquista "Sede de Conhecimento"
+      trackFeatureUsage('all_tabs_unlocked');
+    }
+    
+    // Mostrar modal de parabéns
+    setShowCongratulations(true);
   };
 
   return (
@@ -278,15 +308,21 @@ E uma saudade redomona pelos cantos do galpão`}
             </Button>
           </div>
         )}
-      </TabsContent>
+              </TabsContent>
 
-      <TabsContent value="aprendizado">
-        <TabAprendizadoChamamé />
-      </TabsContent>
+              <TabsContent value="aprendizado">
+                <TabAprendizadoChamamé 
+                  onUnlockNext={unlockOrigensTab}
+                  showUnlockButton={!unlockedTabs.includes('origens')}
+                />
+              </TabsContent>
 
-        <TabsContent value="origens">
-          <TabOrigensChamamé />
-        </TabsContent>
+              <TabsContent value="origens">
+                <TabOrigensChamamé 
+                  onUnlockFinal={unlockFinalTabs}
+                  showUnlockButton={!unlockedTabs.includes('instrumentos')}
+                />
+              </TabsContent>
 
         <TabsContent value="instrumentos">
           <TabInstrumentosChamamé />
@@ -342,6 +378,37 @@ E uma saudade redomona pelos cantos do galpão`}
           </Alert>
         </TabsContent>
       </Tabs>
+
+      {/* Modal de Parabéns */}
+      <Dialog open={showCongratulations} onOpenChange={setShowCongratulations}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              🎉 Parabéns!
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              Após conhecer os instrumentos, você está pronto para nosso Quiz!
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="sm:justify-center">
+            <Button 
+              onClick={() => {
+                setShowCongratulations(false);
+                // Navegar para aba Instrumentos
+                const instrumentosTab = document.querySelector('[value="instrumentos"]') as HTMLButtonElement;
+                if (instrumentosTab) {
+                  instrumentosTab.click();
+                }
+              }}
+              size="lg"
+              className="gap-2"
+            >
+              <Guitar className="h-5 w-5" />
+              Ver Instrumentos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <QuizModal />
     </>
