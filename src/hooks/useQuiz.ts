@@ -48,7 +48,7 @@ export function useQuiz() {
     }
   }, [quizState]);
 
-  const startQuiz = useCallback(() => {
+  const startQuiz = useCallback((quizType: 'intermediario' | 'final' = 'intermediario') => {
     const selectedQuestions = selectBalancedQuestions(quizQuestions);
     setQuizState({
       questions: selectedQuestions,

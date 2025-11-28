@@ -2,9 +2,15 @@ import { motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Music } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Music, BrainCircuit } from "lucide-react";
 
-export function TabInstrumentosChamamé() {
+interface TabInstrumentosChamaméProps {
+  onUnlockFinal?: () => void;
+  showUnlockButton?: boolean;
+}
+
+export function TabInstrumentosChamamé({ onUnlockFinal, showUnlockButton }: TabInstrumentosChamaméProps) {
   return (
     <Tabs defaultValue="violao" className="w-full">
       <TabsList className="grid w-full grid-cols-2 mb-6">
@@ -446,6 +452,21 @@ export function TabInstrumentosChamamé() {
             </CardContent>
           </Card>
         </motion.div>
+
+        {/* Botão de Desbloqueio do Quiz Final */}
+        {showUnlockButton && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="flex justify-center my-8"
+          >
+            <Button onClick={onUnlockFinal} size="lg" className="gap-2">
+              <BrainCircuit className="h-5 w-5" />
+              Fazer Quiz Final - Instrumentos
+            </Button>
+          </motion.div>
+        )}
       </TabsContent>
     </Tabs>
   );

@@ -5,7 +5,11 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 
 const STORAGE_KEY = "verso-austral-quiz-state";
 
-function selectBalancedQuestions(allQuestions: QuizQuestion[]): QuizQuestion[] {
+function selectBalancedQuestions(allQuestions: QuizQuestion[], categories?: string[]): QuizQuestion[] {
+  // Filtrar por categorias se especificado
+  const filteredQuestions = categories 
+    ? allQuestions.filter(q => categories.includes(q.category))
+    : allQuestions;
   const shuffle = <T,>(array: T[]): T[] => {
     const shuffled = [...array];
     for (let i = shuffled.length - 1; i > 0; i--) {
@@ -15,9 +19,9 @@ function selectBalancedQuestions(allQuestions: QuizQuestion[]): QuizQuestion[] {
     return shuffled;
   };
 
-  const easy = allQuestions.filter(q => q.difficulty === 'easy');
-  const medium = allQuestions.filter(q => q.difficulty === 'medium');
-  const hard = allQuestions.filter(q => q.difficulty === 'hard');
+  const easy = filteredQuestions.filter(q => q.difficulty === 'easy');
+  const medium = filteredQuestions.filter(q => q.difficulty === 'medium');
+  const hard = filteredQuestions.filter(q => q.difficulty === 'hard');
 
   return [
     ...shuffle(easy).slice(0, 2),
@@ -30,11 +34,11 @@ interface QuizContextValue {
   quizState: QuizState | null;
   isOpen: boolean;
   hasPassedQuiz: boolean;
-  startQuiz: () => void;
+  startQuiz: (quizType: 'intermediario' | 'final') => void;
   submitAnswer: (userAnswers: string[]) => void;
   resetQuiz: () => void;
   closeQuiz: () => void;
-  openQuiz: () => void;
+  openQuiz: (quizType: 'intermediario' | 'final') => void;
   goToPreviousQuestion: () => void;
   onQuizClose?: (passed: boolean) => void;
   setOnQuizClose: (callback: ((passed: boolean) => void) | undefined) => void;
@@ -68,8 +72,12 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     }
   }, [quizState]);
 
-  const startQuiz = useCallback(() => {
-    const selectedQuestions = selectBalancedQuestions(quizQuestions);
+  const startQuiz = useCallback((quizType: 'intermediario' | 'final') => {
+    const categories = quizType === 'intermediario' 
+      ? ['introducao', 'aprendizado', 'origens']
+      : ['instrumentos'];
+    
+    const selectedQuestions = selectBalancedQuestions(quizQuestions, categories);
     setQuizState({
       questions: selectedQuestions,
       currentQuestionIndex: 0,
@@ -147,11 +155,11 @@ export function QuizProvider({ children }: { children: ReactNode }) {
     }
   }, [quizState, onQuizCloseCallback]);
 
-  const openQuiz = useCallback(() => {
+  const openQuiz = useCallback((quizType: 'intermediario' | 'final') => {
     if (quizState) {
       setIsOpen(true);
     } else {
-      startQuiz();
+      startQuiz(quizType);
     }
   }, [quizState, startQuiz]);
 

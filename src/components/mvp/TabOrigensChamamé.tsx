@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { Music, Users, Award, BookOpen, Guitar } from "lucide-react";
+import { Music, Users, Award, BookOpen, Guitar, BrainCircuit } from "lucide-react";
 
 interface TabOrigensChamaméProps {
   onUnlockFinal?: () => void;
@@ -304,8 +304,8 @@ export function TabOrigensChamamé({ onUnlockFinal, showUnlockButton }: TabOrige
           className="flex justify-center my-8"
         >
           <Button onClick={onUnlockFinal} size="lg" className="gap-2">
-            <Guitar className="h-5 w-5" />
-            Quero saber mais sobre os instrumentos
+            <BrainCircuit className="h-5 w-5" />
+            Fazer Quiz Intermediário
           </Button>
         </motion.div>
       )}
