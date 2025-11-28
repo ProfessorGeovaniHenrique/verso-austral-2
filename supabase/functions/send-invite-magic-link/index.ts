@@ -67,7 +67,7 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Generate invite key
+    // Generate invite key for tracking
     const { data: keyCode, error: keyError } = await supabase.rpc("generate_invite_key");
     
     if (keyError || !keyCode) {
@@ -78,11 +78,56 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    // Generate unique magic link token
-    const magicToken = crypto.randomUUID();
+    // Generate random secure password (user will reset it)
+    const randomPassword = crypto.randomUUID() + crypto.randomUUID();
 
-    // Insert invite with recipient info
-    const { error: insertError } = await supabase
+    // 1. Create user with admin API
+    console.log(`Creating user: ${recipientEmail}`);
+    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
+      email: recipientEmail,
+      password: randomPassword,
+      email_confirm: true, // Auto-confirm email
+      user_metadata: {
+        full_name: recipientName,
+        invited_by: user.id,
+      },
+    });
+
+    if (createError) {
+      console.error("Error creating user:", createError);
+      return new Response(JSON.stringify({ 
+        error: "Failed to create user", 
+        details: createError.message 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!newUser.user) {
+      return new Response(JSON.stringify({ error: "User creation failed - no user returned" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`User created successfully: ${newUser.user.id}`);
+
+    // 2. Assign role to user
+    const { error: roleError } = await supabase
+      .from("user_roles")
+      .insert({
+        user_id: newUser.user.id,
+        role: role,
+      });
+
+    if (roleError) {
+      console.error("Error assigning role:", roleError);
+      // Continue anyway - user is created, role can be assigned manually
+    }
+
+    // 3. Update invite_keys to mark as used
+    const { error: updateInviteError } = await supabase
       .from("invite_keys")
       .insert({
         key_code: keyCode,
@@ -90,20 +135,42 @@ const handler = async (req: Request): Promise<Response> => {
         created_by: user.id,
         recipient_email: recipientEmail,
         recipient_name: recipientName,
-        magic_link_token: magicToken,
-        notes: `Magic link enviado para ${recipientEmail}`,
+        used_by: newUser.user.id,
+        used_at: new Date().toISOString(),
+        is_active: false,
+        notes: `Usuário criado automaticamente e email de reset enviado para ${recipientEmail}`,
       });
 
-    if (insertError) {
-      console.error("Error inserting invite:", insertError);
-      return new Response(JSON.stringify({ error: "Failed to create invite" }), {
+    if (updateInviteError) {
+      console.error("Error updating invite:", updateInviteError);
+      // Continue anyway
+    }
+
+    // 4. Generate password reset link
+    console.log("Generating password reset link...");
+    const { data: resetData, error: resetLinkError } = await supabase.auth.admin.generateLink({
+      type: 'recovery',
+      email: recipientEmail,
+      options: {
+        redirectTo: `${SITE_URL}/auth`,
+      },
+    });
+
+    if (resetLinkError || !resetData) {
+      console.error("Error generating reset link:", resetLinkError);
+      return new Response(JSON.stringify({ 
+        error: "User created but failed to generate reset link",
+        userId: newUser.user.id,
+        details: resetLinkError?.message 
+      }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Construct magic link URL
-    const magicLinkUrl = `${SITE_URL}/auth/callback?token=${magicToken}&invite_code=${keyCode}`;
+    const resetUrl = resetData.properties?.action_link || resetData.properties?.hashed_token 
+      ? `${SITE_URL}/auth/reset-password?token=${resetData.properties.hashed_token}` 
+      : `${SITE_URL}/auth`;
 
     // Detectar modo de desenvolvimento (Resend não verificado)
     let isDevelopmentMode = false;
@@ -142,17 +209,17 @@ const handler = async (req: Request): Promise<Response> => {
             
             <p>Olá, <strong>${recipientName}</strong>!</p>
             
-            <p>Você foi convidado para participar da plataforma <strong>Verso Austral</strong> como <strong>${role === "evaluator" ? "Avaliador" : "Usuário"}</strong>.</p>
+            <p>Sua conta foi criada na plataforma <strong>Verso Austral</strong> como <strong>${role === "evaluator" ? "Avaliador" : "Usuário"}</strong>.</p>
             
-            <p>Para acessar a plataforma, basta clicar no botão abaixo. Você será automaticamente autenticado e direcionado para começar:</p>
+            <p>Para definir sua senha e acessar a plataforma, clique no botão abaixo:</p>
             
             <center>
-              <a href="${magicLinkUrl}" class="button">✨ Acessar Verso Austral</a>
+              <a href="${resetUrl}" class="button">🔐 Definir Minha Senha</a>
             </center>
             
             <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-              <strong>Código do Convite:</strong> <span class="code">${keyCode}</span><br>
-              <small style="color: #6b7280;">Guarde este código caso precise acessar manualmente.</small>
+              <strong>Email da conta:</strong> <span class="code">${recipientEmail}</span><br>
+              <small style="color: #6b7280;">Use este email para fazer login após definir sua senha.</small>
             </p>
             
             ${isDevMode ? `
@@ -165,7 +232,7 @@ const handler = async (req: Request): Promise<Response> => {
             ` : ''}
             
             <p style="margin-top: 20px; color: #6b7280; font-size: 14px;">
-              <strong>Nota:</strong> Este link é de uso único e expira em 7 dias. Se você não solicitou este convite, pode ignorar este email.
+              <strong>Nota:</strong> Este link expira em 24 horas. Se você não solicitou esta conta, pode ignorar este email.
             </p>
           </div>
           <div class="footer">
@@ -190,7 +257,7 @@ const handler = async (req: Request): Promise<Response> => {
         from: RESEND_FROM_EMAIL,
         to: [recipientEmail],
         reply_to: RESEND_REPLY_TO || undefined,
-        subject: `🎵 Convite para Verso Austral - ${role === "evaluator" ? "Avaliador" : "Usuário"}`,
+        subject: `🎵 Sua conta no Verso Austral - ${role === "evaluator" ? "Avaliador" : "Usuário"}`,
         html: generateEmailHTML(false),
       }),
     });
@@ -215,7 +282,7 @@ const handler = async (req: Request): Promise<Response> => {
             from: RESEND_FROM_EMAIL,
             to: [emailTo],
             reply_to: RESEND_REPLY_TO || undefined,
-            subject: `[DEV] 🎵 Convite para ${recipientName} - Verso Austral`,
+            subject: `[DEV] 🎵 Conta criada para ${recipientName} - Verso Austral`,
             html: generateEmailHTML(true),
           }),
         });
@@ -242,20 +309,15 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailResult = await emailResponse.json();
 
-    // Update sent timestamp
-    await supabase
-      .from("invite_keys")
-      .update({ magic_link_sent_at: new Date().toISOString() })
-      .eq("magic_link_token", magicToken);
-
-    console.log(`Magic link sent successfully to ${emailTo}${isDevelopmentMode ? ` (intended for ${recipientEmail})` : ''}`);
+    console.log(`Password reset email sent successfully to ${emailTo}${isDevelopmentMode ? ` (intended for ${recipientEmail})` : ''}`);
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: isDevelopmentMode 
-          ? `Convite enviado para ${emailTo} (modo desenvolvimento - destinatário: ${recipientEmail})`
-          : `Convite enviado para ${recipientEmail}`,
+          ? `Conta criada e email enviado para ${emailTo} (modo desenvolvimento - destinatário: ${recipientEmail})`
+          : `Conta criada com sucesso. Email de definição de senha enviado para ${recipientEmail}`,
+        userId: newUser.user.id,
         keyCode: keyCode,
         emailId: emailResult.id,
         developmentMode: isDevelopmentMode
