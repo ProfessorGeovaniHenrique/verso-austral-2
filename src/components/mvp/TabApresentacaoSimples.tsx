@@ -17,7 +17,7 @@ function TabApresentacaoSimplesContent() {
       <Tabs defaultValue="introducao" className="w-full">
         <TabsList className="grid w-full grid-cols-5 mb-6">
           <TabsTrigger value="introducao">Introdução</TabsTrigger>
-          <TabsTrigger value="aprendizado">Aprendizado</TabsTrigger>
+          <TabsTrigger value="aprendizado">Chamamé</TabsTrigger>
           <TabsTrigger value="origens">Origens</TabsTrigger>
           <TabsTrigger value="instrumentos">Instrumentos</TabsTrigger>
           <TabsTrigger value="quiz" className="bg-primary/10">
