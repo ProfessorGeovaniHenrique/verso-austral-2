@@ -235,6 +235,14 @@ const handler = async (req: Request): Promise<Response> => {
     // Use the action_link from Supabase (already has correct format with #access_token)
     const resetUrl = resetData.properties?.action_link || `${SITE_URL}/reset-password`;
 
+    // 🔍 DIAGNOSTIC LOGGING - Password Reset Link Generation
+    console.log('[send-invite-magic-link] ==================== LINK DIAGNOSTICS ====================');
+    console.log('[send-invite-magic-link] SITE_URL:', SITE_URL);
+    console.log('[send-invite-magic-link] resetData.properties:', JSON.stringify(resetData.properties, null, 2));
+    console.log('[send-invite-magic-link] action_link:', resetData.properties?.action_link);
+    console.log('[send-invite-magic-link] resetUrl final:', resetUrl);
+    console.log('[send-invite-magic-link] ============================================================');
+
     // Detectar modo de desenvolvimento (Resend não verificado)
     let isDevelopmentMode = false;
     let emailTo = recipientEmail;
