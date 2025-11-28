@@ -111,8 +111,6 @@ ${palavrasList}
           { role: 'system', content: 'Você é um classificador semântico preciso. Retorne APENAS JSON array válido.' },
           { role: 'user', content: prompt },
         ],
-        temperature: 0.2,
-        max_tokens: 1500,
       }),
     });
 
@@ -123,16 +121,35 @@ ${palavrasList}
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || '';
+    let content = data.choices?.[0]?.message?.content || '';
 
-    // Parse JSON array da resposta
-    const jsonMatch = content.match(/\[[\s\S]*\]/);
-    if (!jsonMatch) {
-      console.error('[enrich-semantic-level] Resposta sem JSON válido:', content);
-      throw new Error('Invalid enrichment response format');
+    console.log('[enrich-semantic-level] Resposta bruta do Gemini:', content.substring(0, 500));
+
+    // Limpar markdown code blocks se existirem
+    content = content.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+
+    // Parse JSON array da resposta com múltiplas estratégias
+    let results: EnrichmentResult[];
+    
+    // Estratégia 1: Regex para capturar array JSON
+    const jsonMatch = content.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (jsonMatch) {
+      try {
+        results = JSON.parse(jsonMatch[0]);
+      } catch (parseError) {
+        console.error('[enrich-semantic-level] Erro ao parsear JSON extraído:', parseError);
+        throw new Error('Failed to parse extracted JSON array');
+      }
+    } else {
+      // Estratégia 2: Tentar parsear o conteúdo completo (caso seja só JSON)
+      try {
+        const parsed = JSON.parse(content.trim());
+        results = Array.isArray(parsed) ? parsed : [parsed];
+      } catch (parseError) {
+        console.error('[enrich-semantic-level] Resposta sem JSON válido. Conteúdo completo:', content);
+        throw new Error('Invalid enrichment response format');
+      }
     }
-
-    const results: EnrichmentResult[] = JSON.parse(jsonMatch[0]);
 
     // Atualizar cache com códigos N2 enriquecidos
     let updatedCount = 0;
