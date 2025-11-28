@@ -81,8 +81,11 @@ const handler = async (req: Request): Promise<Response> => {
     // Generate random secure password (user will reset it)
     const randomPassword = crypto.randomUUID() + crypto.randomUUID();
 
-    // 1. Create user with admin API
+    // 1. Create user with admin API or get existing user
     console.log(`Creating user: ${recipientEmail}`);
+    let userId: string;
+    let isNewUser = true;
+    
     const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
       email: recipientEmail,
       password: randomPassword,
@@ -94,36 +97,95 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     if (createError) {
-      console.error("Error creating user:", createError);
-      return new Response(JSON.stringify({ 
-        error: "Failed to create user", 
-        details: createError.message 
-      }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      // If user already exists, get their ID
+      if (createError.message.includes("already") || createError.code === "email_exists") {
+        console.log("User already exists, fetching existing user...");
+        isNewUser = false;
+        
+        const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
+        
+        if (listError) {
+          console.error("Error listing users:", listError);
+          return new Response(JSON.stringify({ 
+            error: "User exists but failed to fetch details", 
+            details: listError.message 
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const existingUser = existingUsers.users.find(u => u.email === recipientEmail);
+        
+        if (!existingUser) {
+          return new Response(JSON.stringify({ 
+            error: "User exists but could not be found",
+          }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        
+        userId = existingUser.id;
+        console.log(`Found existing user: ${userId}`);
+      } else {
+        console.error("Error creating user:", createError);
+        return new Response(JSON.stringify({ 
+          error: "Failed to create user", 
+          details: createError.message 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } else {
+      if (!newUser.user) {
+        return new Response(JSON.stringify({ error: "User creation failed - no user returned" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      userId = newUser.user.id;
+      console.log(`User created successfully: ${userId}`);
     }
 
-    if (!newUser.user) {
-      return new Response(JSON.stringify({ error: "User creation failed - no user returned" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // 2. Assign role to user (if new user or role doesn't exist)
+    if (isNewUser) {
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: userId,
+          role: role,
+        });
 
-    console.log(`User created successfully: ${newUser.user.id}`);
+      if (roleError) {
+        console.error("Error assigning role:", roleError);
+        // Continue anyway - user is created, role can be assigned manually
+      }
+    } else {
+      // Check if user already has this role
+      const { data: existingRole } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId)
+        .eq("role", role)
+        .single();
+      
+      if (!existingRole) {
+        console.log("Adding role to existing user...");
+        const { error: roleError } = await supabase
+          .from("user_roles")
+          .insert({
+            user_id: userId,
+            role: role,
+          });
 
-    // 2. Assign role to user
-    const { error: roleError } = await supabase
-      .from("user_roles")
-      .insert({
-        user_id: newUser.user.id,
-        role: role,
-      });
-
-    if (roleError) {
-      console.error("Error assigning role:", roleError);
-      // Continue anyway - user is created, role can be assigned manually
+        if (roleError) {
+          console.error("Error assigning role to existing user:", roleError);
+        }
+      } else {
+        console.log("User already has this role");
+      }
     }
 
     // 3. Update invite_keys to mark as used
@@ -135,10 +197,12 @@ const handler = async (req: Request): Promise<Response> => {
         created_by: user.id,
         recipient_email: recipientEmail,
         recipient_name: recipientName,
-        used_by: newUser.user.id,
+        used_by: userId,
         used_at: new Date().toISOString(),
         is_active: false,
-        notes: `Usuário criado automaticamente e email de reset enviado para ${recipientEmail}`,
+        notes: isNewUser 
+          ? `Usuário criado automaticamente e email de reset enviado para ${recipientEmail}`
+          : `Usuário já existia. Email de reset enviado para ${recipientEmail}`,
       });
 
     if (updateInviteError) {
@@ -159,8 +223,8 @@ const handler = async (req: Request): Promise<Response> => {
     if (resetLinkError || !resetData) {
       console.error("Error generating reset link:", resetLinkError);
       return new Response(JSON.stringify({ 
-        error: "User created but failed to generate reset link",
-        userId: newUser.user.id,
+        error: isNewUser ? "User created but failed to generate reset link" : "Failed to generate reset link",
+        userId: userId,
         details: resetLinkError?.message 
       }), {
         status: 500,
@@ -315,12 +379,13 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         message: isDevelopmentMode 
-          ? `Conta criada e email enviado para ${emailTo} (modo desenvolvimento - destinatário: ${recipientEmail})`
-          : `Conta criada com sucesso. Email de definição de senha enviado para ${recipientEmail}`,
-        userId: newUser.user.id,
+          ? `${isNewUser ? 'Conta criada' : 'Usuário existente'} e email enviado para ${emailTo} (modo desenvolvimento - destinatário: ${recipientEmail})`
+          : `${isNewUser ? 'Conta criada com sucesso' : 'Email de redefinição de senha enviado'}. Email enviado para ${recipientEmail}`,
+        userId: userId,
         keyCode: keyCode,
         emailId: emailResult.id,
-        developmentMode: isDevelopmentMode
+        developmentMode: isDevelopmentMode,
+        isNewUser: isNewUser
       }),
       {
         status: 200,
