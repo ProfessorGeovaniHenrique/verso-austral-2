@@ -534,7 +534,7 @@ export default function AdminUsers() {
       </Dialog>
 
       {/* Dialog de Reset de Senha */}
-      <Dialog open={resetPasswordDialogOpen} onOpenChange={setResetPasswordDialogOpen}>
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={closeResetPasswordDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Resetar Senha do Usuário</DialogTitle>
@@ -544,24 +544,31 @@ export default function AdminUsers() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="new-password">
+              <Label htmlFor="admin-reset-password">
                 Nova Senha (mínimo 6 caracteres)
               </Label>
               <Input
-                id="new-password"
+                id="admin-reset-password"
                 type="text"
                 placeholder="Digite a nova senha..."
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                disabled={resettingPassword}
+                autoComplete="off"
+                autoFocus
+                minLength={6}
               />
+              {newPassword && newPassword.length < 6 && (
+                <p className="text-sm text-destructive">
+                  A senha deve ter no mínimo 6 caracteres
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeResetPasswordDialog} disabled={resettingPassword}>
               Cancelar
             </Button>
-            <Button onClick={resetPassword} disabled={resettingPassword || !newPassword} className="btn-versoaustral-secondary">
+            <Button onClick={resetPassword} disabled={resettingPassword || newPassword.length < 6} className="btn-versoaustral-secondary">
               {resettingPassword ? "Resetando..." : "Resetar Senha"}
             </Button>
           </DialogFooter>
