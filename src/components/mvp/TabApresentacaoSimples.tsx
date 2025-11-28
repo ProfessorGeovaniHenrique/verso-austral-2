@@ -45,6 +45,20 @@ function TabApresentacaoSimplesContent() {
     return <Check className="h-3 w-3 mr-1" />;
   };
 
+  const unlockAndNavigateToChamamé = () => {
+    if (!unlockedTabs.includes('aprendizado')) {
+      const newUnlocked = [...unlockedTabs, 'aprendizado'];
+      setUnlockedTabs(newUnlocked);
+      localStorage.setItem('mvp-unlocked-tabs', JSON.stringify(newUnlocked));
+    }
+    
+    // Navegar para a aba Chamamé
+    const chamaméTab = document.querySelector('[value="aprendizado"]') as HTMLButtonElement;
+    if (chamaméTab) {
+      chamaméTab.click();
+    }
+  };
+
   return (
     <>
       <div className="text-sm text-muted-foreground mb-2 text-center">
@@ -109,11 +123,13 @@ function TabApresentacaoSimplesContent() {
 
         <Alert className="bg-primary/5 border-primary/20">
           <Music className="h-4 w-4" />
-          <AlertTitle>O que você verá nas abas seguintes</AlertTitle>
-          <AlertDescription className="space-y-2 mt-2">
-            <p><strong>Domínios:</strong> Distribuição temática comparativa entre o corpus gaúcho e corpus de referência nordestino</p>
-            <p><strong>Estatísticas:</strong> Métricas de keyness (Log-Likelihood e Mutual Information) revelando palavras-chave características</p>
-            <p><strong>Nuvem:</strong> Visualização semântica interativa dos domínios predominantes</p>
+          <AlertTitle>Prepare-se para a Jornada</AlertTitle>
+          <AlertDescription className="mt-2">
+            <p className="text-muted-foreground leading-relaxed">
+              Você embarcará numa viagem pelo ritmo musical <strong>Chamamé</strong>, explorando suas origens, 
+              instrumentos e a riqueza cultural do Rio Grande do Sul. Ouça a canção abaixo e, quando estiver 
+              pronto, inicie sua jornada de descoberta.
+            </p>
           </AlertDescription>
         </Alert>
 
@@ -225,6 +241,20 @@ E uma saudade redomona pelos cantos do galpão`}
             </Card>
           </div>
         </div>
+
+        {/* Botão para desbloquear Chamamé */}
+        {!unlockedTabs.includes('aprendizado') && (
+          <div className="mt-8 flex justify-center">
+            <Button 
+              onClick={unlockAndNavigateToChamamé} 
+              size="lg" 
+              className="text-lg px-8 py-6"
+            >
+              <Music className="h-5 w-5 mr-2" />
+              Conhecer o Chamamé
+            </Button>
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="aprendizado">
