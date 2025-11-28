@@ -32,7 +32,7 @@ export function TransitionModal({ isOpen, onClose, onExploreAnalysis }: Transiti
               🔬 Na próxima etapa você vai:
             </p>
             <ul className="text-xs text-muted-foreground space-y-1">
-              <li>• Ver a música analisada por inteligência artificial</li>
+              <li>• Ver a música analisada por ferramentas de linguística computacional</li>
               <li>• Descobrir os domínios semânticos do texto</li>
               <li>• Explorar estatísticas e visualizações científicas</li>
             </ul>
