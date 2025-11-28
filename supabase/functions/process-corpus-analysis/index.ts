@@ -254,23 +254,24 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     const annotatedSongIds = new Set(crCacheCounts?.map((c: any) => c.song_id) || []);
     const songsToAnnotate = MINI_CORPUS_IDS.filter(id => !annotatedSongIds.has(id));
 
-    // 2.2 Anotar músicas não processadas
+    // 2.2 Disparar anotação de músicas não processadas em background (fire-and-forget)
     if (songsToAnnotate.length > 0) {
-      log.info('CR songs to annotate', { count: songsToAnnotate.length });
+      log.info('Triggering CR annotation in background', { 
+        count: songsToAnnotate.length,
+        already_annotated: annotatedSongIds.size 
+      });
       
-      // Anotar em paralelo (máximo 5 simultâneas)
-      for (let i = 0; i < songsToAnnotate.length; i += 5) {
-        const batch = songsToAnnotate.slice(i, i + 5);
-        
-        await Promise.all(batch.map(id => 
-          supabase.functions.invoke('annotate-single-song', {
-            body: { songId: id, forceReprocess: false }
-          })
-        ));
-      }
+      // Fire-and-forget: dispara anotação MAS não espera completar
+      // Processa apenas primeiros 5 para não sobrecarregar
+      const batch = songsToAnnotate.slice(0, 5);
       
-      // Aguardar todas as anotações (2min timeout)
-      await waitForMultipleAnnotations(supabase, songsToAnnotate, 120000, log);
+      Promise.all(batch.map(id => 
+        supabase.functions.invoke('annotate-single-song', {
+          body: { songId: id, forceReprocess: false }
+        })
+      )).catch(e => log.warn('Background CR annotation error (non-blocking)', e));
+      
+      log.info('CR annotation triggered in background, continuing with available data');
     } else {
       log.info('All CR songs already annotated');
     }
@@ -286,7 +287,23 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
       throw crError;
     }
 
-    log.info('CR classifications loaded', { count: crClassifications?.length || 0 });
+    // Log detalhado sobre CR disponível
+    const uniqueCRSongs = new Set(crClassifications?.map(c => c.song_id) || []).size;
+    log.info('CR classifications loaded', { 
+      total_words: crClassifications?.length || 0,
+      unique_songs: uniqueCRSongs,
+      expected_songs: MINI_CORPUS_IDS.length,
+      coverage_percent: parseFloat(((uniqueCRSongs / MINI_CORPUS_IDS.length) * 100).toFixed(1))
+    });
+
+    // Tratamento para CR insuficiente (menos de 100 palavras)
+    if (!crClassifications || crClassifications.length < 100) {
+      log.warn('CR has insufficient data, proceeding with CE-only analysis', {
+        cr_words: crClassifications?.length || 0,
+        minimum_required: 100
+      });
+      // Continuará com análise usando apenas CE ou CR disponível
+    }
 
     // ==========================================
     // PARTE 3: CALCULAR ESTATÍSTICAS REAIS
