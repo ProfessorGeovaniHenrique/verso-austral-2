@@ -39,7 +39,7 @@ export function useCorpusProcessing() {
     );
   };
 
-  const processCorpus = async (studySongId: string, referenceCorpusType: string) => {
+  const processCorpus = async (studySongId: string, referenceCorpusType: string, nivel: number = 1) => {
     setIsProcessing(true);
     setError(null);
     
@@ -53,7 +53,8 @@ export function useCorpusProcessing() {
         body: {
           songId: studySongId,           // ✅ Passar o ID da música selecionada
           referenceCorpusType,            // ✅ Passar o tipo do corpus de referência
-          corpusType: 'gaucho'
+          corpusType: 'gaucho',
+          nivel                          // ✅ Passar o nível hierárquico (1, 2, 3 ou 4)
         }
       });
 

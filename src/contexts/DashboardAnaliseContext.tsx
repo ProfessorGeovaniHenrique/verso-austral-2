@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 
 interface DomainData {
   dominio: string;
+  codigo: string; // Código completo do domínio (ex: "NA", "NA.01", "NA.01.02")
   descricao: string;
   cor: string;
   palavras: string[];

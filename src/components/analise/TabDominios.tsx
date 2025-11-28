@@ -145,10 +145,13 @@ export function TabDominios() {
                         className="w-12 h-12 rounded-lg flex items-center justify-center text-white text-xl font-bold"
                         style={{ backgroundColor: dominio.cor }}
                       >
-                        {dominio.dominio.charAt(0)}
+                        {dominio.codigo || dominio.dominio.charAt(0)}
                       </div>
                       <div className="flex-1">
-                        <CardTitle className="text-xl font-bold">{dominio.dominio}</CardTitle>
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-xl font-bold">{dominio.dominio}</CardTitle>
+                          <Badge variant="secondary" className="text-xs">{dominio.codigo}</Badge>
+                        </div>
                         {dominio.descricao && (
                           <CardDescription className="mt-1">{dominio.descricao}</CardDescription>
                         )}

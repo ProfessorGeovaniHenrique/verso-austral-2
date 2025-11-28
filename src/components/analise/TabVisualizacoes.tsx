@@ -1,12 +1,20 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { useDashboardAnaliseContext } from '@/contexts/DashboardAnaliseContext';
-import { Network, Cloud, AlertCircle } from 'lucide-react';
+import { Network, Cloud, AlertCircle, Layers } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { useCorpusProcessing } from '@/hooks/useCorpusProcessing';
+import { toast } from 'sonner';
+
+type HierarchyLevel = 1 | 2 | 3 | 4;
 
 export function TabVisualizacoes() {
   const { processamentoData } = useDashboardAnaliseContext();
+  const { processCorpus, isProcessing } = useCorpusProcessing();
+  const [selectedLevel, setSelectedLevel] = useState<HierarchyLevel>(1);
   const cloudData = processamentoData.analysisResults?.cloudData || [];
 
   if (!processamentoData.isProcessed || cloudData.length === 0) {
@@ -33,14 +41,69 @@ export function TabVisualizacoes() {
     );
   }
 
+  const handleLevelChange = async (level: HierarchyLevel) => {
+    setSelectedLevel(level);
+    toast.info(`Carregando domínios de Nível ${level}...`);
+    
+    try {
+      await processCorpus(
+        processamentoData.studySong,
+        processamentoData.referenceCorpus,
+        level
+      );
+      toast.success(`Domínios de Nível ${level} carregados com sucesso`);
+    } catch (error) {
+      console.error('Erro ao carregar nível:', error);
+      toast.error('Erro ao carregar domínios de outro nível');
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Seletor de Nível Hierárquico */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Layers className="h-5 w-5" />
+                Nível Hierárquico
+              </CardTitle>
+              <CardDescription>
+                Visualize domínios semânticos em diferentes níveis de granularidade
+              </CardDescription>
+            </div>
+            <Badge variant="outline" className="text-sm">
+              Nível {selectedLevel}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-2">
+            {([1, 2, 3, 4] as HierarchyLevel[]).map((level) => (
+              <Button
+                key={level}
+                variant={selectedLevel === level ? 'default' : 'outline'}
+                onClick={() => handleLevelChange(level)}
+                disabled={isProcessing}
+                className="flex-1"
+              >
+                N{level}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground mt-3 text-center">
+            N1: Categorias Gerais • N2: Subcategorias • N3: Especificações • N4: Detalhamento
+          </p>
+        </CardContent>
+      </Card>
+
       {/* Nuvem de Domínios */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Cloud className="h-5 w-5" />
-            Nuvem de Domínios Semânticos
+            Nuvem de Domínios Semânticos (N{selectedLevel})
           </CardTitle>
           <CardDescription>
             Tamanho proporcional ao peso textual de cada domínio
@@ -83,6 +146,10 @@ export function TabVisualizacoes() {
                           <span className="text-muted-foreground">Palavras:</span>
                           <p className="font-semibold">{item.wordCount}</p>
                         </div>
+                        <div className="col-span-2">
+                          <span className="text-muted-foreground">Nível:</span>
+                          <p className="font-semibold">N{selectedLevel}</p>
+                        </div>
                       </div>
                     </div>
                   </HoverCardContent>
@@ -93,12 +160,12 @@ export function TabVisualizacoes() {
         </CardContent>
       </Card>
 
-      {/* Rede Semântica (Placeholder) */}
+      {/* Rede Semântica */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Network className="h-4 w-4" />
-            Rede Semântica
+            Rede Semântica (N{selectedLevel})
           </CardTitle>
           <CardDescription>
             Conexões entre domínios semânticos
@@ -145,8 +212,8 @@ export function TabVisualizacoes() {
                         <p className="font-semibold">{item.wordCount}</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Riqueza:</span>
-                        <p className="font-semibold">{item.wordCount} lemas</p>
+                        <span className="text-muted-foreground">Nível:</span>
+                        <p className="font-semibold">N{selectedLevel}</p>
                       </div>
                     </div>
                   </div>

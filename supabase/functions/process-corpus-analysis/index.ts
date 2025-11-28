@@ -185,9 +185,9 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
   }
 
   try {
-    const { songId, referenceCorpusType } = await req.json();
+    const { songId, referenceCorpusType, nivel = 1 } = await req.json();
 
-    log.info('Processing corpus analysis', { songId, referenceCorpusType });
+    log.info('Processing corpus analysis', { songId, referenceCorpusType, nivel });
 
     if (!songId) {
       throw new Error('songId é obrigatório');
@@ -327,27 +327,40 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     // PARTE 3: CALCULAR ESTATÍSTICAS REAIS
     // ==========================================
 
-    // 3.1 Buscar tagsets para mapeamento
+    // 3.1 Buscar tagsets para mapeamento (nível dinâmico)
     const { data: tagsets } = await supabase
       .from('semantic_tagset')
-      .select('codigo, nome')
+      .select('codigo, nome, tagset_pai, nivel_profundidade')
       .eq('status', 'ativo')
-      .eq('nivel_profundidade', 1);
+      .eq('nivel_profundidade', nivel);
+    
+    log.info('Tagsets loaded', { nivel, count: tagsets?.length || 0 });
 
     const tagsetMap = new Map();
     (tagsets || []).forEach((t: any) => {
+      const baseCode = t.codigo.split('.')[0]; // Extrair código N1 para cores
       tagsetMap.set(t.codigo, { 
         nome: t.nome, 
-        cor: DOMAIN_COLORS[t.codigo] || '#6B7280' // Cor dinâmica baseada no código
+        cor: DOMAIN_COLORS[baseCode] || '#6B7280', // Usar cor do N1 pai
+        nivel: t.nivel_profundidade,
+        pai: t.tagset_pai
       });
     });
 
     // 3.2 Agregar frequências por domínio - CE
+    // Extrair código do nível solicitado de tagset_codigo
+    const extractLevelCode = (fullCode: string, targetLevel: number): string => {
+      if (!fullCode) return 'NC';
+      const parts = fullCode.split('.');
+      if (parts.length < targetLevel) return 'NC';
+      return parts.slice(0, targetLevel).join('.');
+    };
+    
     const ceFreqByDomain = new Map<string, number>();
     const ceWordFreq = new Map<string, number>();
     
     (ceClassifications || []).forEach((c: any) => {
-      const domain = c.tagset_codigo || 'NC';
+      const domain = extractLevelCode(c.tagset_codigo, nivel);
       ceFreqByDomain.set(domain, (ceFreqByDomain.get(domain) || 0) + 1);
       ceWordFreq.set(c.palavra, (ceWordFreq.get(c.palavra) || 0) + 1);
     });
@@ -356,7 +369,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     const crFreqByDomain = new Map<string, number>();
     
     (crClassifications || []).forEach((c: any) => {
-      const domain = c.tagset_codigo || 'NC';
+      const domain = extractLevelCode(c.tagset_codigo, nivel);
       crFreqByDomain.set(domain, (crFreqByDomain.get(domain) || 0) + 1);
     });
 
@@ -369,7 +382,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     const keywords = Array.from(ceWordFreq.entries())
       .map(([palavra, freq]) => {
         const classification = (ceClassifications || []).find((c: any) => c.palavra === palavra);
-        const domain = classification?.tagset_codigo || 'NC';
+        const domain = extractLevelCode(classification?.tagset_codigo, nivel);
         const tagsetInfo = tagsetMap.get(domain);
         const llInfo = llScores.get(domain) || { ll: 0, mi: 0, significance: 'Baixa' };
 
@@ -392,7 +405,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
     const dominioMap = new Map();
     
     (ceClassifications || []).forEach((c: any) => {
-      const domain = c.tagset_codigo || 'NC';
+      const domain = extractLevelCode(c.tagset_codigo, nivel);
       if (!dominioMap.has(domain)) {
         dominioMap.set(domain, {
           palavras: new Set(),
@@ -421,6 +434,7 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
 
       return {
         dominio: tagsetInfo?.nome || 'Não Classificado',
+        codigo: codigo, // ✅ Código completo do domínio (ex: "NA", "NA.01", etc)
         descricao: `Domínio semântico ${codigo}`,
         cor: tagsetInfo?.cor || '#6B7280',
         palavras: Array.from(data.palavras),
@@ -434,12 +448,12 @@ serve(withInstrumentation('process-corpus-analysis', async (req) => {
 
     // 3.7 Cloud data
     const cloudData = dominios.slice(0, 15).map(d => ({
-      codigo: d.dominio.substring(0, 3).toUpperCase(),
+      codigo: d.codigo, // ✅ Código completo do nível
       nome: d.dominio,
       size: 50 + d.percentual * 2,
       color: d.cor,
       wordCount: d.riquezaLexical,
-      avgScore: d.avgLL
+      avgScore: d.percentual // ✅ Usar percentual ao invés de avgLL para tamanho
     }));
 
     // 3.8 Prosódia
