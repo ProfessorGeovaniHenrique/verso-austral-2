@@ -22,7 +22,8 @@ function TabApresentacaoSimplesContent() {
   const {
     openQuiz,
     quizState,
-    setOnQuizClose
+    setOnQuizClose,
+    hasPassedQuiz
   } = useQuizContext();
   const {
     trackFeatureUsage
@@ -34,6 +35,10 @@ function TabApresentacaoSimplesContent() {
     return saved ? JSON.parse(saved) : ['introducao'];
   });
   const [showCongratulations, setShowCongratulations] = useState(false);
+  const [hasVisitedAnalysis, setHasVisitedAnalysis] = useState(() => {
+    const saved = localStorage.getItem('has-visited-analysis');
+    return saved === 'true';
+  });
   const handleTabChange = (value: string) => {
     const currentIndex = TAB_ORDER.indexOf(value);
     const nextTab = TAB_ORDER[currentIndex + 1];
@@ -141,11 +146,30 @@ function TabApresentacaoSimplesContent() {
     setIsTransitioning(true);
   };
   const handleTransitionComplete = () => {
+    localStorage.setItem('has-visited-analysis', 'true');
+    setHasVisitedAnalysis(true);
+    navigate('/dashboard-analise');
+  };
+
+  const handleGoToAnalysis = () => {
     navigate('/dashboard-analise');
   };
   return <>
-      <div className="text-sm text-muted-foreground mb-2 text-center">
-        {unlockedTabs.length}/7 abas desbloqueadas
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-sm text-muted-foreground text-center flex-1">
+          {unlockedTabs.length}/7 abas desbloqueadas
+        </div>
+        
+        <Button
+          onClick={handleGoToAnalysis}
+          disabled={!hasPassedQuiz || !hasVisitedAnalysis}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <BrainCircuit className="h-4 w-4" />
+          Ir à Página de Análise
+        </Button>
       </div>
       
       <Tabs defaultValue="introducao" onValueChange={handleTabChange} className="w-full">
