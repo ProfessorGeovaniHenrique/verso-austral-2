@@ -7,10 +7,10 @@ import { TabAprendizadoChamamé } from "./TabAprendizadoChamamé";
 import { TabOrigensChamamé } from "./TabOrigensChamamé";
 import { TabInstrumentosChamamé } from "./TabInstrumentosChamamé";
 import { QuizModal } from "./QuizModal";
-import { useQuiz } from "@/hooks/useQuiz";
+import { QuizProvider, useQuizContext } from "@/contexts/QuizContext";
 
-export function TabApresentacaoSimples() {
-  const { openQuiz } = useQuiz();
+function TabApresentacaoSimplesContent() {
+  const { openQuiz } = useQuizContext();
 
   return (
     <>
@@ -226,5 +226,13 @@ E uma saudade redomona pelos cantos do galpão`}
 
       <QuizModal />
     </>
+  );
+}
+
+export function TabApresentacaoSimples() {
+  return (
+    <QuizProvider>
+      <TabApresentacaoSimplesContent />
+    </QuizProvider>
   );
 }

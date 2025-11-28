@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useQuiz } from "@/hooks/useQuiz";
+import { useQuizContext } from "@/contexts/QuizContext";
 import { ObjectiveQuestion } from "./quiz/ObjectiveQuestion";
 import { CheckboxQuestion } from "./quiz/CheckboxQuestion";
 import { MatchingQuestion } from "./quiz/MatchingQuestion";
@@ -11,7 +11,7 @@ import { useState } from "react";
 import { ChevronRight } from "lucide-react";
 
 export function QuizModal() {
-  const { quizState, isOpen, submitAnswer, resetQuiz, closeQuiz } = useQuiz();
+  const { quizState, isOpen, submitAnswer, resetQuiz, closeQuiz } = useQuizContext();
   const [currentAnswer, setCurrentAnswer] = useState<string[]>([]);
 
   if (!quizState) return null;
