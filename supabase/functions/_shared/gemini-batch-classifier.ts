@@ -21,6 +21,28 @@ interface ClassificationResult {
   confianca: number;
 }
 
+/**
+ * Remove markdown code blocks from Gemini response
+ * Handles: ```json ... ```, ``` ... ```, or raw JSON
+ */
+function cleanJsonResponse(content: string): string {
+  let cleaned = content.trim();
+  
+  // Remove ```json ou ``` do início
+  if (cleaned.startsWith('```json')) {
+    cleaned = cleaned.slice(7);
+  } else if (cleaned.startsWith('```')) {
+    cleaned = cleaned.slice(3);
+  }
+  
+  // Remove ``` do final
+  if (cleaned.endsWith('```')) {
+    cleaned = cleaned.slice(0, -3);
+  }
+  
+  return cleaned.trim();
+}
+
 export async function classifyBatchWithGemini(
   words: WordToClassify[],
   logger: any
@@ -64,7 +86,9 @@ export async function classifyBatchWithGemini(
 
     // Parse JSON response
     console.log('[gemini-batch] Parsing content:', content.substring(0, 300));
-    const parsed = JSON.parse(content);
+    const cleanedContent = cleanJsonResponse(content);
+    console.log('[gemini-batch] Cleaned content:', cleanedContent.substring(0, 200));
+    const parsed = JSON.parse(cleanedContent);
     
     console.log('[gemini-batch] Successfully classified', parsed.classifications?.length || 0, 'words');
     return parsed.classifications || [];
