@@ -26,6 +26,19 @@ interface BatchSeedRequest {
   job_id?: string;
 }
 
+interface BatchSeedingJob {
+  id: string;
+  status: string;
+  source: string;
+  total_candidates: number;
+  processed_words: number;
+  current_offset: number;
+  morfologico_count: number;
+  heranca_count: number;
+  gemini_count: number;
+  failed_count: number;
+}
+
 const CHUNK_SIZE = 50; // Palavras por chunk
 const GEMINI_BATCH_SIZE = 15; // Palavras por chamada Gemini
 const DELAY_BETWEEN_BATCHES = 2000; // 2s entre batches Gemini
@@ -63,19 +76,155 @@ serve(async (req) => {
       });
     }
 
-    // MODO SEED: Processa chunk e auto-invoca para próximo
-    if (mode === 'seed' || mode === 'continue') {
+    // MODO SEED: Cria job e processa primeiro chunk
+    if (mode === 'seed') {
       const startTime = Date.now();
-      console.log(`⚙️ [batch-seed] PROCESSING - Offset: ${offset}, Limit: ${limit}`);
+      console.log(`⚙️ [batch-seed] SEED - Criando job...`);
+      
+      // Criar job no banco
+      const { data: job, error: jobError } = await supabase
+        .from('batch_seeding_jobs')
+        .insert({
+          status: 'processando',
+          source,
+          current_offset: 0,
+          total_candidates: 0,
+          processed_words: 0
+        })
+        .select()
+        .single();
+      
+      if (jobError || !job) {
+        console.error('❌ [batch-seed] Erro ao criar job:', jobError);
+        throw new Error('Failed to create job');
+      }
+      
+      console.log(`✅ [batch-seed] Job criado: ${job.id}`);
+      
+      const candidates = await getCandidateWords(supabase, limit, offset, source);
+      console.log(`📥 [batch-seed] Candidatos obtidos: ${candidates.length}`);
+      
+      if (candidates.length === 0) {
+        console.log(`🏁 [batch-seed] COMPLETE - Nenhum candidato`);
+        await supabase
+          .from('batch_seeding_jobs')
+          .update({
+            status: 'concluido',
+            tempo_fim: new Date().toISOString()
+          })
+          .eq('id', job.id);
+        
+        clearMemoryCache();
+        return new Response(JSON.stringify({
+          mode: 'complete',
+          job_id: job.id,
+          message: 'No candidates to process',
+          processing_time_ms: Date.now() - startTime
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      // Processar primeiro chunk
+      console.log(`🔄 [batch-seed] Processando primeiro chunk...`);
+      const results = await processWordsChunk(candidates, supabase);
+      
+      const morfologico = results.filter(r => r.fonte === 'morfologico').length;
+      const heranca = results.filter(r => r.fonte === 'heranca').length;
+      const gemini = results.filter(r => r.fonte === 'gemini').length;
+      const failed = results.filter(r => !r.success).length;
+      
+      // Atualizar job com progresso
+      await supabase
+        .from('batch_seeding_jobs')
+        .update({
+          processed_words: candidates.length,
+          current_offset: offset + candidates.length,
+          morfologico_count: morfologico,
+          heranca_count: heranca,
+          gemini_count: gemini,
+          failed_count: failed,
+          last_chunk_at: new Date().toISOString()
+        })
+        .eq('id', job.id);
+      
+      console.log(`✅ [batch-seed] Primeiro chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, Falhas=${failed}`);
+      
+      // Auto-invocar para próximo chunk
+      const nextOffset = offset + candidates.length;
+      const hasMore = candidates.length === limit;
+      
+      if (hasMore) {
+        console.log(`🔁 [batch-seed] Auto-invocando próximo chunk: offset=${nextOffset}`);
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/batch-seed-semantic-lexicon`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`
+          },
+          body: JSON.stringify({
+            mode: 'continue',
+            limit,
+            offset: nextOffset,
+            source,
+            job_id: job.id
+          })
+        }).catch(err => console.error('❌ [batch-seed] Auto-invoke failed:', err));
+      } else {
+        console.log(`🎉 [batch-seed] Único chunk processado, finalizando...`);
+        await supabase
+          .from('batch_seeding_jobs')
+          .update({
+            status: 'concluido',
+            tempo_fim: new Date().toISOString()
+          })
+          .eq('id', job.id);
+      }
+      
+      return new Response(JSON.stringify({
+        mode: 'processing',
+        job_id: job.id,
+        chunk_processed: candidates.length,
+        current_offset: offset,
+        next_offset: nextOffset,
+        has_more: hasMore,
+        results: { morfologico, heranca, gemini, failed },
+        processing_time_ms: Date.now() - startTime
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // MODO CONTINUE: Processa chunk e auto-invoca para próximo
+    if (mode === 'continue') {
+      const startTime = Date.now();
+      const job_id = body.job_id;
+      
+      if (!job_id) {
+        throw new Error('job_id required for continue mode');
+      }
+      
+      console.log(`⚙️ [batch-seed] CONTINUE - Job: ${job_id}, Offset: ${offset}, Limit: ${limit}`);
       
       const candidates = await getCandidateWords(supabase, limit, offset, source);
       console.log(`📥 [batch-seed] Candidatos obtidos: ${candidates.length}`);
       
       if (candidates.length === 0) {
         console.log(`🏁 [batch-seed] COMPLETE - Nenhum candidato restante`);
-        clearMemoryCache(); // Limpa cache ao finalizar
+        
+        // Marcar job como concluído
+        await supabase
+          .from('batch_seeding_jobs')
+          .update({
+            status: 'concluido',
+            tempo_fim: new Date().toISOString()
+          })
+          .eq('id', job_id);
+        
+        clearMemoryCache();
         return new Response(JSON.stringify({
           mode: 'complete',
+          job_id,
           message: 'All candidates processed',
           total_processed: offset,
           processing_time_ms: Date.now() - startTime
@@ -93,6 +242,29 @@ serve(async (req) => {
       const gemini = results.filter(r => r.fonte === 'gemini').length;
       const failed = results.filter(r => !r.success).length;
       
+      // Buscar dados atuais do job para somar
+      const { data: currentJob } = await supabase
+        .from('batch_seeding_jobs')
+        .select('*')
+        .eq('id', job_id)
+        .single();
+      
+      if (currentJob) {
+        // Atualizar job com progresso acumulado
+        await supabase
+          .from('batch_seeding_jobs')
+          .update({
+            processed_words: currentJob.processed_words + candidates.length,
+            current_offset: offset + candidates.length,
+            morfologico_count: currentJob.morfologico_count + morfologico,
+            heranca_count: currentJob.heranca_count + heranca,
+            gemini_count: currentJob.gemini_count + gemini,
+            failed_count: currentJob.failed_count + failed,
+            last_chunk_at: new Date().toISOString()
+          })
+          .eq('id', job_id);
+      }
+      
       console.log(`✅ [batch-seed] Chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, Falhas=${failed}`);
 
       // Auto-invocar para próximo chunk
@@ -101,7 +273,6 @@ serve(async (req) => {
 
       if (hasMore) {
         console.log(`🔁 [batch-seed] Auto-invocando próximo chunk: offset=${nextOffset}`);
-        // Fire-and-forget: invoca próximo chunk
         fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/batch-seed-semantic-lexicon`, {
           method: 'POST',
           headers: {
@@ -112,25 +283,29 @@ serve(async (req) => {
             mode: 'continue',
             limit,
             offset: nextOffset,
-            source
+            source,
+            job_id
           })
         }).catch(err => console.error('❌ [batch-seed] Auto-invoke failed:', err));
       } else {
-        console.log(`🎉 [batch-seed] Último chunk processado!`);
+        console.log(`🎉 [batch-seed] Último chunk processado, finalizando...`);
+        await supabase
+          .from('batch_seeding_jobs')
+          .update({
+            status: 'concluido',
+            tempo_fim: new Date().toISOString()
+          })
+          .eq('id', job_id);
       }
 
       return new Response(JSON.stringify({
         mode: 'processing',
+        job_id,
         chunk_processed: candidates.length,
         current_offset: offset,
         next_offset: nextOffset,
         has_more: hasMore,
-        results: {
-          morfologico,
-          heranca,
-          gemini,
-          failed
-        },
+        results: { morfologico, heranca, gemini, failed },
         processing_time_ms: Date.now() - startTime
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -145,6 +320,21 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ [batch-seed] ERRO FATAL:', error);
     console.error('❌ [batch-seed] Stack:', error instanceof Error ? error.stack : 'No stack');
+    
+    // Se temos job_id, marcar como erro
+    const body: BatchSeedRequest = await req.json().catch(() => ({}));
+    if (body.job_id) {
+      const supabase = createSupabaseClient();
+      await supabase
+        .from('batch_seeding_jobs')
+        .update({
+          status: 'erro',
+          erro_mensagem: error instanceof Error ? error.message : 'Unknown error',
+          tempo_fim: new Date().toISOString()
+        })
+        .eq('id', body.job_id);
+    }
+    
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined

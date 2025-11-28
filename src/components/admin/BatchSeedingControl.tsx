@@ -2,10 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Play, Trash2, Database, Activity } from 'lucide-react';
-import { useBatchSeedingExecution } from '@/hooks/useBatchSeedingExecution';
+import { Play, Database, Activity } from 'lucide-react';
+import { useBatchSeedingJob } from '@/hooks/useBatchSeedingJob';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface BatchSeedingControlProps {
   semanticLexiconCount: number;
@@ -13,7 +12,14 @@ interface BatchSeedingControlProps {
 }
 
 export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedingControlProps) {
-  const { isExecuting, logs, progress, executeBatchSeeding, clearLogs } = useBatchSeedingExecution();
+  const { activeJob, isLoading, progress, startJob, isProcessing } = useBatchSeedingJob();
+  
+  const handleExecute = async () => {
+    const { error } = await startJob('all');
+    if (error) {
+      console.error('Error starting batch seeding:', error);
+    }
+  };
 
   const getStatusConfig = () => {
     switch (status) {
@@ -69,14 +75,35 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
           </div>
         </div>
 
-        {isExecuting && (
-          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-            <Activity className="h-4 w-4 animate-pulse text-primary" />
-            <div className="flex-1">
-              <p className="text-sm font-medium">Processamento em andamento</p>
-              <p className="text-xs text-muted-foreground">
-                Aplicando regras morfológicas e classificação Gemini batch
-              </p>
+        {activeJob && isProcessing && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+              <Activity className="h-4 w-4 animate-pulse text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">Processamento em andamento</p>
+                <p className="text-xs text-muted-foreground">
+                  {activeJob.processed_words} palavras processadas
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-2 text-xs">
+              <div className="p-2 bg-blue-500/10 rounded text-center">
+                <p className="font-medium text-blue-600">Morfológico</p>
+                <p className="text-lg font-bold">{activeJob.morfologico_count}</p>
+              </div>
+              <div className="p-2 bg-green-500/10 rounded text-center">
+                <p className="font-medium text-green-600">Herança</p>
+                <p className="text-lg font-bold">{activeJob.heranca_count}</p>
+              </div>
+              <div className="p-2 bg-purple-500/10 rounded text-center">
+                <p className="font-medium text-purple-600">Gemini</p>
+                <p className="text-lg font-bold">{activeJob.gemini_count}</p>
+              </div>
+              <div className="p-2 bg-red-500/10 rounded text-center">
+                <p className="font-medium text-red-600">Falhas</p>
+                <p className="text-lg font-bold">{activeJob.failed_count}</p>
+              </div>
             </div>
           </div>
         )}
@@ -89,45 +116,14 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
           <Progress value={progress} className="h-2" />
         </div>
 
-        {logs.length > 0 && (
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium">Logs de Execução</p>
-              <Button variant="ghost" size="sm" onClick={clearLogs}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <ScrollArea className="h-[200px] rounded border p-3">
-              <div className="space-y-1">
-                {logs.map((log, index) => (
-                  <div key={index} className="text-xs font-mono">
-                    <span className="text-muted-foreground">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                    {' '}
-                    <span className={
-                      log.type === 'error' ? 'text-destructive' :
-                      log.type === 'success' ? 'text-green-600' :
-                      log.type === 'warning' ? 'text-yellow-600' :
-                      'text-foreground'
-                    }>
-                      {log.message}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
-
         <AlertDialog>
           <AlertDialogTrigger asChild>
             <Button 
               className="w-full" 
-              disabled={isExecuting}
+              disabled={isLoading || isProcessing}
             >
               <Play className="h-4 w-4 mr-2" />
-              {isExecuting ? 'Executando Batch Seeding...' : 'Executar Batch Seeding'}
+              {isProcessing ? 'Executando Batch Seeding...' : 'Executar Batch Seeding'}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -141,6 +137,10 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
                 <p className="font-medium">
                   Tempo estimado: 15-20 minutos
                 </p>
+                <p className="text-muted-foreground">
+                  O processamento continua mesmo se você sair da página. 
+                  Você receberá uma notificação quando concluir.
+                </p>
                 <p className="text-destructive">
                   ⚠️ Esta operação consome créditos de API do Gemini
                 </p>
@@ -148,7 +148,7 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={executeBatchSeeding}>
+              <AlertDialogAction onClick={handleExecute}>
                 Confirmar Execução
               </AlertDialogAction>
             </AlertDialogFooter>

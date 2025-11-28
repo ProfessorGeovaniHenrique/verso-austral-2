@@ -583,6 +583,63 @@ export type Database = {
           },
         ]
       }
+      batch_seeding_jobs: {
+        Row: {
+          created_at: string | null
+          current_offset: number | null
+          erro_mensagem: string | null
+          failed_count: number | null
+          gemini_count: number | null
+          heranca_count: number | null
+          id: string
+          last_chunk_at: string | null
+          morfologico_count: number | null
+          processed_words: number | null
+          source: string
+          status: string
+          tempo_fim: string | null
+          tempo_inicio: string | null
+          total_candidates: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_offset?: number | null
+          erro_mensagem?: string | null
+          failed_count?: number | null
+          gemini_count?: number | null
+          heranca_count?: number | null
+          id?: string
+          last_chunk_at?: string | null
+          morfologico_count?: number | null
+          processed_words?: number | null
+          source?: string
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          total_candidates?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          current_offset?: number | null
+          erro_mensagem?: string | null
+          failed_count?: number | null
+          gemini_count?: number | null
+          heranca_count?: number | null
+          id?: string
+          last_chunk_at?: string | null
+          morfologico_count?: number | null
+          processed_words?: number | null
+          source?: string
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          total_candidates?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       code_scan_history: {
         Row: {
           comparison_baseline: string | null

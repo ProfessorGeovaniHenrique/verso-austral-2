@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CorpusProvider } from "@/contexts/CorpusContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { BatchSeedingNotificationListener } from "@/components/BatchSeedingNotificationListener";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import ForgotPassword from "./pages/ForgotPassword";
@@ -397,6 +398,7 @@ const AppContent = () => {
     <>
       <Toaster />
       <Sonner />
+      <BatchSeedingNotificationListener />
       <BrowserRouter>
         <RouterContent />
       </BrowserRouter>
