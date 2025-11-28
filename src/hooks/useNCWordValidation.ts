@@ -21,7 +21,7 @@ export function useNCWordValidation() {
       if (!user) throw new Error('Usuário não autenticado');
 
       // 1. Atualizar semantic_disambiguation_cache
-      const updateQuery = supabase
+      let updateQuery = supabase
         .from('semantic_disambiguation_cache')
         .update({
           tagset_codigo: data.tagset_codigo_novo,
@@ -32,10 +32,10 @@ export function useNCWordValidation() {
 
       if (data.aplicar_a_todas) {
         // Aplicar a todas as ocorrências da palavra com tagset NC
-        updateQuery.eq('palavra', data.palavra).eq('tagset_codigo', 'NC');
+        updateQuery = updateQuery.eq('palavra', data.palavra).eq('tagset_codigo', 'NC');
       } else {
         // Aplicar apenas à ocorrência específica (mesma palavra + mesmo contexto)
-        updateQuery
+        updateQuery = updateQuery
           .eq('palavra', data.palavra)
           .eq('contexto_hash', data.contexto_hash || '')
           .eq('tagset_codigo', 'NC');
