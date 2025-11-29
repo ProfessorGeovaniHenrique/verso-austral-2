@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle, Download, Filter, RefreshCw, Trash2, Loader2, Folder, Youtube } from 'lucide-react';
+import { LayoutGrid, LayoutList, Search, Sparkles, AlertCircle, Download, Filter, RefreshCw, Trash2, Loader2, Folder, Youtube, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { 
   Select,
@@ -951,6 +951,18 @@ export default function MusicCatalog() {
           </div>
 
           <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-destructive" />
+            <span className="text-sm font-medium">Dados Suspeitos:</span>
+            <Button
+              variant={showSuspiciousOnly ? 'destructive' : 'outline'}
+              size="sm"
+              onClick={() => setShowSuspiciousOnly(!showSuspiciousOnly)}
+            >
+              {showSuspiciousOnly ? 'Mostrando Suspeitos' : 'Mostrar Suspeitos'}
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
             <Folder className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm font-medium">Filtrar por corpus:</span>
             <Select
@@ -981,7 +993,7 @@ export default function MusicCatalog() {
         </div>
 
       {/* FASE 4: Alert de Filtros Ativos */}
-      {(statusFilter !== 'all' || selectedCorpusFilter !== 'all') && (
+      {(statusFilter !== 'all' || selectedCorpusFilter !== 'all' || showSuspiciousOnly) && (
         <Alert className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
           <Filter className="h-4 w-4 text-blue-500" />
           <AlertTitle>Filtros Ativos</AlertTitle>
@@ -993,6 +1005,7 @@ export default function MusicCatalog() {
                 {selectedCorpusFilter !== 'all' && (
                   <strong> Corpus: {selectedCorpusFilter === 'null' ? 'Sem classificação' : corpora.find(c => c.id === selectedCorpusFilter)?.name}</strong>
                 )}
+                {showSuspiciousOnly && <strong> Dados Suspeitos: Apenas compositores problemáticos</strong>}
               </span>
               <Button 
                 variant="outline" 
@@ -1000,6 +1013,7 @@ export default function MusicCatalog() {
                 onClick={() => {
                   setStatusFilter('all');
                   setSelectedCorpusFilter('all');
+                  setShowSuspiciousOnly(false);
                 }}
                 className="w-full sm:w-auto"
               >

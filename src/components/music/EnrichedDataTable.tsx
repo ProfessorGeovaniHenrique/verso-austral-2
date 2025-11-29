@@ -111,12 +111,6 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport, o
       sortable: true,
     },
     {
-      key: 'composer',
-      label: 'Compositor',
-      sortable: true,
-      render: (value) => value || <span className="text-muted-foreground">-</span>,
-    },
-    {
       key: 'year',
       label: 'Ano',
       sortable: true,
@@ -235,6 +229,7 @@ export function EnrichedDataTable({ songs, onView, onEdit, onDelete, onExport, o
         data={songs}
         searchPlaceholder="Buscar por título, artista ou compositor..."
         getRowId={(row) => row.id}
+        showComposerColumn={true}
       />
     </div>
   );
