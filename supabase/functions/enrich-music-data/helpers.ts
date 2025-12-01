@@ -124,7 +124,6 @@ Retorne APENAS um objeto JSON válido:
           { role: 'user', content: prompt }
         ],
         response_format: { type: 'json_object' },
-        temperature: 0.2,
         max_completion_tokens: 300
       })
     });
@@ -543,12 +542,7 @@ Retorne JSON sem explicações ou markdown.`;
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           tools: [{
-            google_search_retrieval: {
-              dynamic_retrieval_config: {
-                mode: "MODE_DYNAMIC",
-                dynamic_threshold: 0.6
-              }
-            }
+            googleSearch: {}
           }],
           generationConfig: {
             temperature: 0.1,

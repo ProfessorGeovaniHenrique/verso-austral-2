@@ -486,6 +486,7 @@ export default function MusicCatalog() {
           description: result.message
         });
         await reload();
+        await reloadArtistSongs?.();
       } else {
         toast({
           title: "Erro",
@@ -1690,6 +1691,8 @@ export default function MusicCatalog() {
             }
           }
           
+          await reloadArtistSongs?.();
+          await reload();
           setIsEnrichmentModalOpen(false);
           setSongsToEnrich([]);
         }}
