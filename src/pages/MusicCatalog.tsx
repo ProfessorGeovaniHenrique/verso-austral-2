@@ -1423,7 +1423,7 @@ export default function MusicCatalog() {
                           });
                           
                           // 🔥 CORREÇÃO CRÍTICA: Capturar resultados do batch
-                          const results = await enrichYouTubeBatch(songIds, undefined, (progress) => {
+                          const results = await enrichYouTubeBatch(songIds, undefined, undefined, (progress) => {
                             log.debug(`YouTube Batch progress`, { current: progress.current, total: progress.total, percentage: Math.round((progress.current / progress.total) * 100) });
                           });
                           

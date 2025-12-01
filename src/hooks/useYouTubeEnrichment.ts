@@ -53,6 +53,7 @@ export function useYouTubeEnrichment() {
   const enrichYouTubeBatch = async (
     songIds: string[], 
     limit?: number,
+    cancelRef?: React.MutableRefObject<boolean>,
     onProgress?: (progress: BatchProgress) => void
   ) => {
     const idsToProcess = limit ? songIds.slice(0, limit) : songIds;
@@ -71,6 +72,13 @@ export function useYouTubeEnrichment() {
     };
 
     for (let i = 0; i < idsToProcess.length; i++) {
+      // Check for cancellation
+      if (cancelRef?.current) {
+        console.log(`[useYouTubeEnrichment] Batch cancelled at ${i}/${idsToProcess.length}`);
+        setBatchProgress(null);
+        return results;
+      }
+
       const songId = idsToProcess[i];
       
       const progress = {

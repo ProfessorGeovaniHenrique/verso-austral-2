@@ -2,7 +2,7 @@
  * Modal para enriquecimento de YouTube com controle de quantidade
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Youtube, AlertCircle, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { Youtube, AlertCircle, CheckCircle2, XCircle, Loader2, X } from 'lucide-react';
 import { useYouTubeEnrichment } from '@/hooks/useYouTubeEnrichment';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,6 +36,7 @@ export function YouTubeEnrichmentModal({
   const { enrichYouTubeBatch, batchProgress } = useYouTubeEnrichment();
   const [limit, setLimit] = useState(50);
   const [isProcessing, setIsProcessing] = useState(false);
+  const isCancelledRef = useRef(false);
   const [quotaInfo, setQuotaInfo] = useState<{
     used: number;
     remaining: number;
@@ -52,6 +53,7 @@ export function YouTubeEnrichmentModal({
       loadQuotaInfo();
       setResults(null);
       setIsProcessing(false);
+      isCancelledRef.current = false;
     }
   }, [open]);
 
@@ -78,10 +80,17 @@ export function YouTubeEnrichmentModal({
     
     setIsProcessing(true);
     setResults(null);
+    isCancelledRef.current = false;
     
     try {
       const songIds = pendingSongs.map(s => s.id);
-      const batchResults = await enrichYouTubeBatch(songIds, limit);
+      const batchResults = await enrichYouTubeBatch(songIds, limit, isCancelledRef);
+      
+      // Se foi cancelado, não processar resultados
+      if (isCancelledRef.current) {
+        setIsProcessing(false);
+        return;
+      }
       
       setResults(batchResults);
       
@@ -99,6 +108,11 @@ export function YouTubeEnrichmentModal({
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  const handleCancel = () => {
+    isCancelledRef.current = true;
+    setIsProcessing(false);
   };
 
   const canProcess = pendingSongs.length > 0 && limit > 0 && limit <= pendingSongs.length;
@@ -214,10 +228,16 @@ export function YouTubeEnrichmentModal({
           )}
           
           {isProcessing && (
-            <Button disabled>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Processando...
-            </Button>
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                <X className="h-4 w-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button disabled>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processando...
+              </Button>
+            </>
           )}
           
           {results && (

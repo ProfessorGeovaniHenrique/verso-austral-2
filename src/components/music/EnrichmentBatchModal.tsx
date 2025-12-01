@@ -147,12 +147,22 @@ export function EnrichmentBatchModal({
   const isPausedRef = useRef(false);
   const isCancelledRef = useRef(false);
 
-  // Restore state from localStorage on mount
+  // Restore state from localStorage on mount with stale check
   useEffect(() => {
     const savedState = localStorage.getItem('enrichment-progress');
     if (savedState) {
       try {
         const parsed = JSON.parse(savedState);
+        const age = Date.now() - (parsed.startTime || 0);
+        const ONE_HOUR = 3600000;
+        
+        // Auto-clear stale state (older than 1 hour)
+        if (age > ONE_HOUR) {
+          console.log('[EnrichmentBatchModal] Clearing stale enrichment state (>1 hour old)');
+          localStorage.removeItem('enrichment-progress');
+          return;
+        }
+        
         if (parsed.status === 'running' || parsed.status === 'paused') {
           dispatch({ type: 'RESTORE', state: parsed });
         }
@@ -375,6 +385,25 @@ export function EnrichmentBatchModal({
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Stale State Alert */}
+          {state.status !== 'idle' && state.status !== 'completed' && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                <span className="text-sm">Estado de enriquecimento anterior detectado</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleRestart}
+                  className="h-7"
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Limpar Progresso
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Force Re-enrich Option */}
           {state.status === 'idle' && (
             <>
