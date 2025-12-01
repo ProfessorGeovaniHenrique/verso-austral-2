@@ -1897,6 +1897,60 @@ export type Database = {
           },
         ]
       }
+      quiz_questions: {
+        Row: {
+          category: string
+          correct_answers: Json
+          created_at: string | null
+          created_by: string | null
+          difficulty: string
+          explanation: string | null
+          id: string
+          is_active: boolean | null
+          last_ai_refinement: string | null
+          matching_pairs: Json | null
+          options: Json | null
+          question: string
+          question_id: string
+          type: string
+          updated_at: string | null
+        }
+        Insert: {
+          category: string
+          correct_answers: Json
+          created_at?: string | null
+          created_by?: string | null
+          difficulty: string
+          explanation?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_ai_refinement?: string | null
+          matching_pairs?: Json | null
+          options?: Json | null
+          question: string
+          question_id: string
+          type: string
+          updated_at?: string | null
+        }
+        Update: {
+          category?: string
+          correct_answers?: Json
+          created_at?: string | null
+          created_by?: string | null
+          difficulty?: string
+          explanation?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_ai_refinement?: string | null
+          matching_pairs?: Json | null
+          options?: Json | null
+          question?: string
+          question_id?: string
+          type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       semantic_annotation_jobs: {
         Row: {
           artist_id: string

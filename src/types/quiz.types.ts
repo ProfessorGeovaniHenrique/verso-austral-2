@@ -12,6 +12,9 @@ export interface QuizQuestion {
   correctAnswers: string[];
   matchingPairs?: { left: string; right: string }[];
   explanation?: string;
+  isActive?: boolean;
+  lastAiRefinement?: string;
+  dbId?: string;
 }
 
 export interface QuizAnswer {

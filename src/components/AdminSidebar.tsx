@@ -1,7 +1,7 @@
 import { 
   Key, Users, BarChart3, Database,
   BookOpen, Telescope, History, CircuitBoard, Activity, Upload,
-  Music, Library, Tags, Gauge, LayoutDashboard
+  Music, Library, Tags, Gauge, LayoutDashboard, HelpCircle
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
@@ -25,6 +25,7 @@ interface NavItem {
 const adminItems: NavItem[] = [
   { title: "Gerenciar Convites", url: "/admin/dashboard", icon: Key },
   { title: "Gerenciar Usuários", url: "/admin/users", icon: Users },
+  { title: "Quiz", url: "/admin/quiz", icon: HelpCircle },
   { title: "Métricas do Sistema", url: "/admin/metrics", icon: BarChart3 },
   { title: "Configuração de Léxico", url: "/admin/lexicon-setup", icon: Database },
 ];

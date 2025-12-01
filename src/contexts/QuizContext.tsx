@@ -2,8 +2,11 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { QuizQuestion, QuizState, QuizAnswer } from "@/types/quiz.types";
 import { quizQuestions } from "@/data/quizQuestions";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "verso-austral-quiz-state";
+const QUESTIONS_CACHE_KEY = "quiz-questions-cache";
+const CACHE_DURATION = 1000 * 60 * 10; // 10 minutos
 
 function selectBalancedQuestions(allQuestions: QuizQuestion[], categories?: string[]): QuizQuestion[] {
   // Filtrar por categorias se especificado
@@ -48,12 +51,62 @@ const QuizContext = createContext<QuizContextValue | null>(null);
 
 export function QuizProvider({ children }: { children: ReactNode }) {
   const [quizState, setQuizState] = useState<QuizState | null>(null);
+  const [dbQuestions, setDbQuestions] = useState<QuizQuestion[]>([]);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [hasPassedQuiz, setHasPassedQuiz] = useState(false);
   const [onQuizCloseCallback, setOnQuizCloseCallback] = useState<((passed: boolean) => void) | undefined>();
   const { trackFeatureUsage } = useAnalytics();
 
-  // Load state from localStorage on mount
+  useEffect(() => {
+    const loadQuestionsFromDB = async () => {
+      try {
+        const cached = localStorage.getItem(QUESTIONS_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setDbQuestions(data);
+            setQuestionsLoaded(true);
+            return;
+          }
+        }
+
+        const { data, error } = await supabase
+          .from('quiz_questions')
+          .select('*')
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const transformed = data.map(q => ({
+            id: q.question_id,
+            type: q.type as any,
+            difficulty: q.difficulty as any,
+            category: q.category as any,
+            question: q.question,
+            options: q.options as string[] | undefined,
+            correctAnswers: q.correct_answers as string[],
+            matchingPairs: q.matching_pairs as any,
+            explanation: q.explanation,
+          }));
+
+          setDbQuestions(transformed);
+          localStorage.setItem(QUESTIONS_CACHE_KEY, JSON.stringify({ data: transformed, timestamp: Date.now() }));
+        } else {
+          setDbQuestions(quizQuestions);
+        }
+      } catch (error) {
+        console.error('Erro ao carregar perguntas:', error);
+        setDbQuestions(quizQuestions);
+      } finally {
+        setQuestionsLoaded(true);
+      }
+    };
+
+    loadQuestionsFromDB();
+  }, []);
+
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -73,11 +126,13 @@ export function QuizProvider({ children }: { children: ReactNode }) {
   }, [quizState]);
 
   const startQuiz = useCallback((quizType: 'intermediario' | 'final') => {
+    if (!questionsLoaded) return;
+    
     const categories = quizType === 'intermediario' 
       ? ['introducao', 'aprendizado', 'origens']
       : ['instrumentos'];
     
-    const selectedQuestions = selectBalancedQuestions(quizQuestions, categories);
+    const selectedQuestions = selectBalancedQuestions(dbQuestions.length > 0 ? dbQuestions : quizQuestions, categories);
     setQuizState({
       questions: selectedQuestions,
       currentQuestionIndex: 0,
@@ -86,7 +141,8 @@ export function QuizProvider({ children }: { children: ReactNode }) {
       score: 0,
     });
     setIsOpen(true);
-  }, []);
+    trackFeatureUsage(quizType === 'intermediario' ? 'quiz_intermediario' : 'quiz_final');
+  }, [trackFeatureUsage, dbQuestions, questionsLoaded]);
 
   const submitAnswer = useCallback((userAnswers: string[]) => {
     if (!quizState) return;

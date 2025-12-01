@@ -32,6 +32,7 @@ import AdminGauchoValidation from "./pages/AdminGauchoValidation";
 import AdminDictionaryValidation from "./pages/AdminDictionaryValidation";
 import AdminDictionaryImport from "./pages/AdminDictionaryImport";
 import AdminUsers from "./pages/AdminUsers";
+import AdminQuizCuration from "./pages/AdminQuizCuration";
 import AdminAnalytics from "./pages/AdminAnalytics";
 import AdminAccessRequests from "./pages/AdminAccessRequests";
 import AdminEdgeFunctions from "./pages/AdminEdgeFunctions";
@@ -171,11 +172,19 @@ const RouterContent = () => {
               </ProtectedRoute>
             } 
           />
-          <Route
-            path="/admin/users"
+          <Route 
+            path="/admin/users" 
             element={
               <ProtectedRoute requiredRole="admin">
                 <AdminUsers />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/quiz" 
+            element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminQuizCuration />
               </ProtectedRoute>
             } 
           />
