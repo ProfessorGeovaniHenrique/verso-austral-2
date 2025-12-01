@@ -8,6 +8,33 @@ interface YouTubeSearchResult {
   videoId: string;
 }
 
+// Helper function to extract JSON from text responses
+function extractJsonFromText(text: string): object | null {
+  if (!text) return null;
+
+  // Try to find JSON inside code blocks (```json or ```)
+  const codeBlockMatch = text.match(/```json?\s*([\s\S]*?)\s*```/);
+  if (codeBlockMatch) {
+    try {
+      return JSON.parse(codeBlockMatch[1]);
+    } catch (e) {
+      console.error('[extractJsonFromText] Failed to parse JSON from code block:', e);
+    }
+  }
+  
+  // Try to find JSON directly in text
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+      console.error('[extractJsonFromText] Failed to parse JSON from text:', e);
+    }
+  }
+  
+  return null;
+}
+
 // Rate Limiter para controlar chamadas de API
 export class RateLimiter {
   private queue: Array<() => Promise<any>> = [];
@@ -123,7 +150,6 @@ Retorne APENAS um objeto JSON válido:
           { role: 'system', content: 'Você é um especialista em música brasileira que retorna apenas JSON válido.' },
           { role: 'user', content: prompt }
         ],
-        response_format: { type: 'json_object' },
         max_completion_tokens: 300
       })
     });
@@ -142,21 +168,30 @@ Retorne APENAS um objeto JSON válido:
 
     if (!rawText) {
       console.warn('[GPT5] ⚠️ No content in response');
+      console.log('[GPT5] 📄 Full response data:', JSON.stringify(data, null, 2));
       return null;
     }
 
-    console.log('[GPT5] 📝 Raw JSON Text:', rawText.substring(0, 200));
+    console.log('[GPT5] 📝 Raw Response Text (first 500 chars):', rawText.substring(0, 500));
 
+    // Try to parse as direct JSON first
     let parsed;
     try {
       parsed = JSON.parse(rawText);
+      console.log('[GPT5] ✅ Direct JSON parse successful');
     } catch (parseError) {
-      console.error('[GPT5] ❌ JSON Parse Error:', parseError);
-      console.error('[GPT5] 📄 Failed to parse:', rawText);
-      return null;
+      console.log('[GPT5] ⚠️ Direct JSON parse failed, trying extractJsonFromText...');
+      parsed = extractJsonFromText(rawText);
+      
+      if (!parsed) {
+        console.error('[GPT5] ❌ All JSON parsing attempts failed');
+        console.error('[GPT5] 📄 Failed raw text:', rawText);
+        return null;
+      }
+      console.log('[GPT5] ✅ JSON extracted from text successfully');
     }
 
-    console.log('[GPT5] ✅ Parsed Data:', JSON.stringify(parsed, null, 2));
+    console.log('[GPT5] ✅ Final Parsed Data:', JSON.stringify(parsed, null, 2));
 
     return {
       compositor: parsed.compositor || undefined,
@@ -546,8 +581,7 @@ Retorne JSON sem explicações ou markdown.`;
           }],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 500,
-            responseMimeType: "application/json"
+            maxOutputTokens: 500
           }
         }),
       }
@@ -578,23 +612,30 @@ Retorne JSON sem explicações ou markdown.`;
     
     if (!rawText) {
       console.warn('[GoogleGrounding] ⚠️ No text content in response');
+      console.log('[GoogleGrounding] 📄 Full response data:', JSON.stringify(data, null, 2));
       return { confidence: 'low' };
     }
 
-    // 🔍 LOG DETALHADO: Texto Raw Retornado
-    console.log('[GoogleGrounding] 📝 Raw JSON Text:', rawText.substring(0, 300));
+    console.log('[GoogleGrounding] 📝 Raw Response Text (first 500 chars):', rawText.substring(0, 500));
 
+    // Try to parse as direct JSON first
     let parsed;
     try {
       parsed = JSON.parse(rawText);
+      console.log('[GoogleGrounding] ✅ Direct JSON parse successful');
     } catch (parseError) {
-      console.error('[GoogleGrounding] ❌ JSON Parse Error:', parseError);
-      console.error('[GoogleGrounding] 📄 Failed to parse:', rawText);
-      return { confidence: 'low' };
+      console.log('[GoogleGrounding] ⚠️ Direct JSON parse failed, trying extractJsonFromText...');
+      parsed = extractJsonFromText(rawText);
+      
+      if (!parsed) {
+        console.error('[GoogleGrounding] ❌ All JSON parsing attempts failed');
+        console.error('[GoogleGrounding] 📄 Failed raw text:', rawText);
+        return { confidence: 'low' };
+      }
+      console.log('[GoogleGrounding] ✅ JSON extracted from text successfully');
     }
     
-    // 🔍 LOG DETALHADO: Dados Parseados
-    console.log('[GoogleGrounding] ✅ Parsed Data:', JSON.stringify(parsed, null, 2));
+    console.log('[GoogleGrounding] ✅ Final Parsed Data:', JSON.stringify(parsed, null, 2));
     
     // Extrair fontes do grounding metadata (se disponível)
     const groundingMetadata = data.candidates?.[0]?.groundingMetadata;

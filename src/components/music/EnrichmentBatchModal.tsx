@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
+import { EnrichmentLiveLog } from './EnrichmentLiveLog';
 
 interface EnrichmentState {
   status: 'idle' | 'running' | 'paused' | 'completed' | 'cancelled';
@@ -492,9 +493,18 @@ export function EnrichmentBatchModal({
             </Alert>
           )}
 
+          {/* Live Log for Current Song */}
+          {state.status === 'running' && state.logs.length > 0 && (
+            <EnrichmentLiveLog
+              songId={state.logs[state.logs.length - 1].songId}
+              songTitle={state.logs[state.logs.length - 1].title}
+              isProcessing={state.logs[state.logs.length - 1].status === 'processing'}
+            />
+          )}
+
           {/* Logs */}
           <div className="space-y-2">
-            <div className="text-sm font-medium">Log de Processamento</div>
+            <div className="text-sm font-medium">Resumo de Processamento</div>
             <ScrollArea className="h-[200px] border rounded-md p-4">
               <div className="space-y-2">
                 {state.logs.length === 0 && (
