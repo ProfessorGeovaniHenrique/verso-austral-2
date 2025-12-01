@@ -99,7 +99,8 @@ export function useSemanticPipelineStats() {
         progress: job.total_words > 0 ? (job.processed_words / job.total_words) * 100 : 0
       }));
 
-      // POS stats (estimativa baseada em coverage esperada)
+      // 5. POS stats - estimativa baseada em cobertura esperada
+      // Nota: campos pos_detalhada, pos_source ainda não persistidos no schema
       const totalWords = cacheData.length;
       const posStats = {
         totalAnnotated: Math.floor(totalWords * 0.75),
