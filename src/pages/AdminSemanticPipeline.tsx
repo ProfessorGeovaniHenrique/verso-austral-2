@@ -1,15 +1,19 @@
+import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Database, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Activity, Database, AlertTriangle, TrendingUp, TestTube } from 'lucide-react';
 import { useSemanticPipelineStats } from '@/hooks/useSemanticPipelineStats';
 import { SemanticDomainChart } from '@/components/admin/SemanticDomainChart';
 import { AnnotationJobsTable } from '@/components/admin/AnnotationJobsTable';
 import { NCWordsPanel } from '@/components/admin/NCWordsPanel';
 import { BatchSeedingControl } from '@/components/admin/BatchSeedingControl';
 import { DuplicateMonitoringCard } from '@/components/admin/DuplicateMonitoringCard';
+import { PipelineTestInterface } from '@/components/admin/PipelineTestInterface';
 
 export default function AdminSemanticPipeline() {
   const { data: stats, isLoading, refetch } = useSemanticPipelineStats();
+  const [activeTab, setActiveTab] = useState('dashboard');
 
   if (isLoading) {
     return (
@@ -60,6 +64,21 @@ export default function AdminSemanticPipeline() {
           {systemStatus.label}
         </Badge>
       </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="dashboard">
+            <Database className="w-4 h-4 mr-2" />
+            Dashboard
+          </TabsTrigger>
+          <TabsTrigger value="test">
+            <TestTube className="w-4 h-4 mr-2" />
+            Teste de Pipeline
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="dashboard" className="space-y-6 mt-6">
 
       {/* Main Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -227,6 +246,12 @@ export default function AdminSemanticPipeline() {
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="test" className="mt-6">
+          <PipelineTestInterface />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

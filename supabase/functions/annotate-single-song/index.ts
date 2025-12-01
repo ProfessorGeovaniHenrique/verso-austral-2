@@ -4,6 +4,7 @@ import { createEdgeLogger } from "../_shared/unified-logger.ts";
 import { classifySafeStopword, isContextDependent } from "../_shared/stopwords-classifier.ts";
 import { getLexiconRule } from "../_shared/semantic-rules-lexicon.ts";
 import { inheritDomainFromSynonyms } from "../_shared/synonym-propagation.ts";
+import { enrichTokensWithPOS, calculatePOSCoverage } from "../_shared/pos-enrichment.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -26,6 +27,9 @@ interface AnnotateSingleSongResponse {
     cachedWords: number;
     newWords: number;
     processingTimeMs: number;
+    posEnrichedWords: number;
+    posBasedClassifications: number;
+    posCoverage: number;
   };
   error?: string;
 }
@@ -116,6 +120,9 @@ serve(async (req) => {
             cachedWords: cachedCount || 0,
             newWords: 0,
             processingTimeMs: Date.now() - startTime,
+            posEnrichedWords: 0,
+            posBasedClassifications: 0,
+            posCoverage: 0,
           }
         };
 
@@ -125,23 +132,45 @@ serve(async (req) => {
       }
     }
 
+    // FASE 0: Enriquecimento POS (nova pipeline de 4 camadas)
+    const tokensToEnrich = words.map(w => ({ palavra: w, contextoEsquerdo: '', contextoDireito: '' }));
+    const enrichedTokens = await enrichTokensWithPOS(tokensToEnrich);
+    const posCoverage = calculatePOSCoverage(enrichedTokens);
+    
+    logger.info('POS enrichment complete', {
+      totalTokens: enrichedTokens.length,
+      coveredTokens: posCoverage.covered,
+      coverageRate: (posCoverage.coverageRate * 100).toFixed(1) + '%',
+      sourceDistribution: posCoverage.sourceDistribution
+    });
+
     // Processar palavras
     let processedWords = 0;
     let cachedWords = 0;
     let newWords = 0;
+    let posBasedClassifications = 0;
 
     const wordsToProcess: Array<{
       palavra: string;
       contextoEsquerdo: string;
       contextoDireito: string;
+      posTag?: string;
+      posSource?: string;
     }> = [];
 
     for (let i = 0; i < words.length; i++) {
       const palavra = words[i];
       const contextoEsquerdo = words.slice(Math.max(0, i - 5), i).join(' ');
       const contextoDireito = words.slice(i + 1, Math.min(words.length, i + 6)).join(' ');
-
-      wordsToProcess.push({ palavra, contextoEsquerdo, contextoDireito });
+      
+      const enrichedToken = enrichedTokens[i];
+      wordsToProcess.push({ 
+        palavra, 
+        contextoEsquerdo, 
+        contextoDireito,
+        posTag: enrichedToken?.pos,
+        posSource: enrichedToken?.source
+      });
     }
 
     logger.info('Starting classification', { totalWords: wordsToProcess.length });
@@ -252,6 +281,28 @@ serve(async (req) => {
         continue;
       }
 
+      // NOVA CAMADA: Regras baseadas em POS
+      if (wordData.posTag) {
+        const posResult = applyPOSBasedRules(wordData.posTag, wordData.palavra);
+        if (posResult) {
+          await saveToCache(
+            supabase,
+            wordData.palavra,
+            hash,
+            posResult.tagset_codigo,
+            posResult.confianca,
+            'pos_rule',
+            `POS: ${wordData.posTag} (${wordData.posSource}) → ${posResult.justificativa}`,
+            artist.id,
+            songId
+          );
+          newWords++;
+          processedWords++;
+          posBasedClassifications++;
+          continue;
+        }
+      }
+
       // Regras contextuais
       if (!isContextDependent(wordData.palavra)) {
         const ruleResult = applyContextualRules(wordData.palavra);
@@ -280,6 +331,7 @@ serve(async (req) => {
     logger.info('Pre-processing complete', {
       total: wordsToProcess.length,
       cached: cachedWords,
+      posBasedClassifications,
       needingGemini: wordsNeedingGemini.length,
     });
 
@@ -325,6 +377,9 @@ serve(async (req) => {
       processedWords,
       cachedWords,
       newWords,
+      posEnrichedWords: posCoverage.covered,
+      posBasedClassifications,
+      posCoverage: (posCoverage.coverageRate * 100).toFixed(1) + '%',
       processingTimeMs,
       wordsPerSecond: (processedWords / (processingTimeMs / 1000)).toFixed(2),
     });
@@ -340,6 +395,9 @@ serve(async (req) => {
         cachedWords,
         newWords,
         processingTimeMs,
+        posEnrichedWords: posCoverage.covered,
+        posBasedClassifications,
+        posCoverage: posCoverage.coverageRate,
       }
     };
 
@@ -414,6 +472,49 @@ async function checkContextCache(supabase: any, palavra: string, contextoHash: s
 
   if (error || !data) return null;
   return data;
+}
+
+/**
+ * NOVA FUNÇÃO: Aplica regras baseadas em POS tags
+ */
+function applyPOSBasedRules(posTag: string, palavra: string) {
+  // Verbos → AC (Ações e Processos)
+  if (posTag === 'VERB') {
+    return {
+      tagset_codigo: 'AC',
+      confianca: 0.92,
+      justificativa: 'Verbo identificado via POS → Ações e Processos'
+    };
+  }
+
+  // Adjetivos → EQ (Estados e Qualidades)
+  if (posTag === 'ADJ') {
+    return {
+      tagset_codigo: 'EQ',
+      confianca: 0.90,
+      justificativa: 'Adjetivo identificado via POS → Estados e Qualidades'
+    };
+  }
+
+  // Marcadores gramaticais → MG
+  if (['ADP', 'DET', 'CONJ', 'SCONJ', 'PRON'].includes(posTag)) {
+    return {
+      tagset_codigo: 'MG',
+      confianca: 0.98,
+      justificativa: `${posTag} identificado via POS → Marcador Gramatical`
+    };
+  }
+
+  // Nomes próprios → SH (Indivíduo)
+  if (posTag === 'PROPN') {
+    return {
+      tagset_codigo: 'SH',
+      confianca: 0.88,
+      justificativa: 'Nome próprio identificado via POS → Indivíduo'
+    };
+  }
+
+  return null;
 }
 
 function applyContextualRules(palavra: string) {
@@ -505,39 +606,34 @@ ${palavrasList}
     },
     body: JSON.stringify({
       model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'Você é um classificador semântico. Retorne APENAS JSON array.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 1500,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' }
     }),
   });
 
   if (!response.ok) {
-    logger.error('Lovable AI error', { status: response.status });
-    throw new Error(`Lovable AI error: ${response.status}`);
+    throw new Error(`Gemini API error: ${response.status}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
-
-  const jsonMatch = content.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    logger.error('No JSON in response', { content });
-    return new Map();
+  const content = data.choices[0].message.content;
+  
+  let classifications;
+  try {
+    const parsed = JSON.parse(content);
+    classifications = parsed.classifications || parsed;
+  } catch {
+    classifications = [];
   }
 
-  const results = JSON.parse(jsonMatch[0]);
   const resultMap = new Map();
-
-  for (const r of results) {
-    if (r.palavra && r.tagset_codigo && typeof r.confianca === 'number') {
-      resultMap.set(r.palavra.toLowerCase(), {
-        tagset_codigo: r.tagset_codigo,
-        confianca: r.confianca,
-        fonte: 'gemini_flash',
-        justificativa: r.justificativa || 'Batch',
+  for (const item of classifications) {
+    if (item.palavra && item.tagset_codigo) {
+      resultMap.set(item.palavra.toLowerCase(), {
+        tagset_codigo: item.tagset_codigo,
+        confianca: item.confianca || 0.85,
+        fonte: 'gemini',
+        justificativa: item.justificativa || 'Gemini classification'
       });
     }
   }
@@ -555,8 +651,8 @@ async function saveToCache(
   justificativa: string,
   artistId: string,
   songId: string,
-  tagsetsAlternativos: string[] = [],
-  isPolysemous: boolean = false
+  tagsetsAlternativos?: string[],
+  isPolysemous?: boolean
 ) {
   const { error } = await supabase
     .from('semantic_disambiguation_cache')
@@ -569,13 +665,11 @@ async function saveToCache(
       justificativa,
       artist_id: artistId,
       song_id: songId,
-      tagsets_alternativos: tagsetsAlternativos,
-      is_polysemous: isPolysemous,
-    })
-    .select()
-    .single();
+      tagsets_alternativos: tagsetsAlternativos || null,
+      is_polysemous: isPolysemous || false,
+    });
 
   if (error && error.code !== '23505') {
-    throw new Error(`Erro ao salvar no cache: ${error.message || JSON.stringify(error)}`);
+    throw error;
   }
 }
