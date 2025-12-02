@@ -2,6 +2,9 @@
  * Edge Function: reclassify-mg-words
  * Reclassifica palavras MG (Marcadores Gramaticais) de N1 para níveis mais específicos (N2-N4)
  * usando Gemini ou GPT-5 com prompt especializado na hierarquia MG
+ * 
+ * IMPORTANTE: Inclui validação server-side para garantir que os códigos retornados
+ * pela IA existem no banco de dados (evita FK violations)
  */
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -34,6 +37,45 @@ interface ReclassificationResult {
   confianca: number;
   justificativa: string;
 }
+
+// Mapeamento de correções para códigos comuns que a IA pode inventar
+const CODE_CORRECTIONS: Record<string, string> = {
+  // Preposições - a IA pode usar códigos antigos/incorretos
+  'MG.CON.REL.LOC': 'MG.CON.REL.LUG',
+  'MG.CON.PRE.ESS': 'MG.CON.REL.LUG',
+  'MG.CON.PRE.LOC': 'MG.CON.REL.LUG',
+  'MG.CON.PRE.LUG': 'MG.CON.REL.LUG',
+  'MG.CON.PRE.TEM': 'MG.CON.REL.TEM',
+  'MG.CON.PRE.CAU': 'MG.CON.REL.CAU',
+  'MG.CON.PRE.FIN': 'MG.CON.REL.FIN',
+  'MG.CON.PRE.INS': 'MG.CON.REL.INS',
+  'MG.CON.PRE.MOD': 'MG.CON.REL.MOD',
+  
+  // Artigos - formato antigo
+  'MG.DET.ART.DEF': 'MG.ESP.DEF.ART',
+  'MG.DET.ART.IND': 'MG.ESP.DEF.IND',
+  'MG.ART.DEF': 'MG.ESP.DEF.ART',
+  'MG.ART.IND': 'MG.ESP.DEF.IND',
+  
+  // Pronomes - formato antigo
+  'MG.PRO.PES.RET': 'MG.DEI.PES.RET',
+  'MG.PRO.PES.OBL': 'MG.DEI.PES.OBL',
+  'MG.PRO.PES': 'MG.DEI.PES',
+  'MG.PRO.DEM': 'MG.DEI.ESP.PRO',
+  'MG.PRO.POS': 'MG.DEI.POS',
+  
+  // Advérbios - formato antigo
+  'MG.ADV.NEG': 'MG.MOD.CIR.NEG',
+  'MG.ADV.LUG': 'MG.MOD.CIR.LUG',
+  'MG.ADV.TEM': 'MG.MOD.CIR.TEM',
+  'MG.ADV.INT': 'MG.MOD.CIR.INT',
+  'MG.ADV.MOD': 'MG.MOD.CIR',
+  
+  // Quantificadores
+  'MG.QUA.IMP': 'MG.ESP.QUA.IMP',
+  'MG.QUA.CAR': 'MG.ESP.QUA.CAR',
+  'MG.QUA.ORD': 'MG.ESP.QUA.ORD',
+};
 
 // Hierarquia REAL de MG do banco de dados semantic_tagset
 const MG_HIERARCHY = `
@@ -197,6 +239,73 @@ function extractJsonFromText(text: string): any {
   }
 }
 
+/**
+ * Valida e corrige o código retornado pela IA
+ * - Primeiro tenta correções conhecidas
+ * - Depois faz fallback para níveis superiores se necessário
+ */
+function validateAndFixCode(
+  result: ReclassificationResult, 
+  validCodes: Set<string>
+): ReclassificationResult {
+  let code = result.tagset_codigo;
+  
+  // 1. Verificar se já é válido
+  if (validCodes.has(code)) {
+    return result;
+  }
+  
+  // 2. Tentar correção conhecida
+  if (CODE_CORRECTIONS[code]) {
+    const correctedCode = CODE_CORRECTIONS[code];
+    if (validCodes.has(correctedCode)) {
+      console.log(`[reclassify-mg-words] Corrected: ${code} -> ${correctedCode}`);
+      
+      // Recalcular níveis baseado no código corrigido
+      const parts = correctedCode.split('.');
+      return {
+        ...result,
+        tagset_codigo: correctedCode,
+        tagset_n1: parts[0] || 'MG',
+        tagset_n2: parts.length >= 2 ? parts.slice(0, 2).join('.') : null,
+        tagset_n3: parts.length >= 3 ? parts.slice(0, 3).join('.') : null,
+        tagset_n4: parts.length >= 4 ? correctedCode : null,
+      };
+    }
+  }
+  
+  // 3. Fallback para N3
+  if (result.tagset_n3 && validCodes.has(result.tagset_n3)) {
+    console.log(`[reclassify-mg-words] Fallback N4->N3: ${code} -> ${result.tagset_n3}`);
+    return {
+      ...result,
+      tagset_codigo: result.tagset_n3,
+      tagset_n4: null,
+    };
+  }
+  
+  // 4. Fallback para N2
+  if (result.tagset_n2 && validCodes.has(result.tagset_n2)) {
+    console.log(`[reclassify-mg-words] Fallback N4->N2: ${code} -> ${result.tagset_n2}`);
+    return {
+      ...result,
+      tagset_codigo: result.tagset_n2,
+      tagset_n3: null,
+      tagset_n4: null,
+    };
+  }
+  
+  // 5. Último recurso: manter MG (N1)
+  console.warn(`[reclassify-mg-words] Invalid code, fallback to MG: ${code}`);
+  return {
+    ...result,
+    tagset_codigo: 'MG',
+    tagset_n2: null,
+    tagset_n3: null,
+    tagset_n4: null,
+  };
+}
+
 async function reclassifyWithGemini(words: WordToReclassify[]): Promise<ReclassificationResult[]> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -288,7 +397,27 @@ serve(async (req) => {
 
     console.log(`[reclassify-mg-words] Processing ${words.length} words with ${model}`);
 
-    // Reclassify using selected model
+    // Initialize Supabase client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // STEP 1: Fetch all valid MG codes from database
+    const { data: validTagsets, error: tagsetError } = await supabase
+      .from('semantic_tagset')
+      .select('codigo')
+      .like('codigo', 'MG%');
+
+    if (tagsetError) {
+      console.error('[reclassify-mg-words] Error fetching tagsets:', tagsetError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to fetch valid tagsets' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const validCodes = new Set(validTagsets?.map(t => t.codigo) || []);
+    console.log(`[reclassify-mg-words] Loaded ${validCodes.size} valid MG codes from database`);
+
+    // STEP 2: Reclassify using selected model
     let results: ReclassificationResult[];
     const sourceLabel = model === 'gpt5' ? 'gpt5_mg_refinement' : 'gemini_flash_mg_refinement';
     
@@ -305,12 +434,11 @@ serve(async (req) => {
         : await reclassifyWithGPT5(words);
     }
 
-    console.log(`[reclassify-mg-words] Got ${results.length} classifications`);
+    console.log(`[reclassify-mg-words] Got ${results.length} classifications from AI`);
 
-    // Update semantic_disambiguation_cache
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
+    // STEP 3: Validate and fix each result
     let updated = 0;
+    let corrected = 0;
     let errors: string[] = [];
 
     for (const result of results) {
@@ -321,15 +449,24 @@ serve(async (req) => {
         continue;
       }
 
+      // Validate and fix the code
+      const originalCode = result.tagset_codigo;
+      const validatedResult = validateAndFixCode(result, validCodes);
+      
+      if (validatedResult.tagset_codigo !== originalCode) {
+        corrected++;
+      }
+
+      // Update the database with validated code
       const { error } = await supabase
         .from('semantic_disambiguation_cache')
         .update({
-          tagset_codigo: result.tagset_codigo,
-          tagset_n1: result.tagset_n1,
-          tagset_n2: result.tagset_n2,
-          tagset_n3: result.tagset_n3,
-          tagset_n4: result.tagset_n4,
-          confianca: result.confianca,
+          tagset_codigo: validatedResult.tagset_codigo,
+          tagset_n1: validatedResult.tagset_n1,
+          tagset_n2: validatedResult.tagset_n2,
+          tagset_n3: validatedResult.tagset_n3,
+          tagset_n4: validatedResult.tagset_n4,
+          confianca: validatedResult.confianca,
           fonte: sourceLabel,
           cached_at: new Date().toISOString(),
         })
@@ -337,24 +474,33 @@ serve(async (req) => {
 
       if (error) {
         errors.push(`Update failed for ${result.palavra}: ${error.message}`);
+        console.error(`[reclassify-mg-words] DB update error for "${result.palavra}":`, error);
       } else {
         updated++;
       }
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[reclassify-mg-words] Completed: ${updated}/${words.length} updated in ${duration}ms`);
+    console.log(`[reclassify-mg-words] Completed: ${updated}/${words.length} updated (${corrected} corrected) in ${duration}ms`);
 
     return new Response(
       JSON.stringify({
         success: true,
         processed: words.length,
         updated,
+        corrected,
         errors: errors.length > 0 ? errors : undefined,
         model: model,
         source: sourceLabel,
         duration,
-        results,
+        results: results.map(r => {
+          const validated = validateAndFixCode(r, validCodes);
+          return {
+            ...r,
+            tagset_codigo_validated: validated.tagset_codigo,
+            was_corrected: r.tagset_codigo !== validated.tagset_codigo,
+          };
+        }),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
