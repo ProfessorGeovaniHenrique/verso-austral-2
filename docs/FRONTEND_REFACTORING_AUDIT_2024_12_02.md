@@ -82,7 +82,19 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
 - **Net Reduction**: ~24% less code, but with SINGLE SOURCE OF TRUTH
 - All menu items now defined in one place (`src/config/navigationConfig.ts`)
 
-### Sprint F2 (Large Page Componentization) - ⏳ Pending
+### Sprint F2 (Large Page Componentization) - ✅ Partial Complete
+- [x] Refactor AdminUsers.tsx (605 → 280 lines, -54%)
+  - [x] Extract UserStatsCards.tsx (54 lines)
+  - [x] Extract UserDialogs.tsx (175 lines)
+  - [x] Extract UserTable.tsx (108 lines)
+  - [x] Remove duplicate search input (PageToolbar vs Card)
+  - [x] Remove duplicate "Criar Convite" button
+- [ ] MusicCatalog.tsx (1830 lines) - DEFERRED (high complexity, needs dedicated sprint)
+
+**Results AdminUsers.tsx:**
+- **Before**: 605 lines in 1 file
+- **After**: 280 lines main + 337 lines components = 617 total
+- **Benefit**: 4 focused components, better maintainability, reusable dialogs
 ### Sprint F3 (Console.logs Cleanup) - ⏳ Pending
 ### Sprint F4 (Loading States) - ⏳ Pending
 ### Sprint F5 (Layout Consistency) - ⏳ Pending

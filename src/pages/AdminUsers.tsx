@@ -1,62 +1,23 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { createLogger } from '@/lib/loggerFactory';
-
-const log = createLogger('AdminUsers');
 import { useAuthContext } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { AdminBreadcrumb } from "@/components/AdminBreadcrumb";
 import { PageToolbar } from "@/components/PageToolbar";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Users, Shield, Edit, Trash2, Search, UserPlus, KeyRound } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { UserPlus } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+
+// Extracted components
+import { UserStatsCards } from "@/components/admin/users/UserStatsCards";
+import { UserTable } from "@/components/admin/users/UserTable";
+import { EditRoleDialog, ResetPasswordDialog, DeleteRoleDialog } from "@/components/admin/users/UserDialogs";
+
+const log = createLogger('AdminUsers');
 
 type AppRole = Database["public"]["Enums"]["app_role"];
 
@@ -100,7 +61,6 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     try {
       const { data, error } = await supabase.rpc("get_users_with_roles");
-      
       if (error) throw error;
       setUsers(data || []);
     } catch (error: any) {
@@ -117,15 +77,9 @@ export default function AdminUsers() {
     setEditDialogOpen(true);
   };
 
-  const closeEditDialog = () => {
-    setEditDialogOpen(false);
-    setEditingUser(null);
-  };
-
   const saveRole = async () => {
     if (!editingUser) return;
     
-    // Validação: não permitir remover própria role de admin
     if (editingUser.id === currentUser?.id && editingUser.role === "admin") {
       toast.error("Você não pode modificar sua própria role de admin");
       return;
@@ -134,27 +88,21 @@ export default function AdminUsers() {
     setSaving(true);
     try {
       if (editingUser.role === null) {
-        // Inserir nova role
         const { error } = await supabase
           .from("user_roles")
-          .insert({
-            user_id: editingUser.id,
-            role: selectedRole,
-          });
-        
+          .insert({ user_id: editingUser.id, role: selectedRole });
         if (error) throw error;
       } else {
-        // Atualizar role existente
         const { error } = await supabase
           .from("user_roles")
           .update({ role: selectedRole })
           .eq("user_id", editingUser.id);
-        
         if (error) throw error;
       }
 
       toast.success("Role atualizada com sucesso!");
-      closeEditDialog();
+      setEditDialogOpen(false);
+      setEditingUser(null);
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar role");
@@ -165,19 +113,12 @@ export default function AdminUsers() {
   };
 
   const openDeleteAlert = (user: UserWithRole) => {
-    // Validação: não permitir remover própria role de admin
     if (user.id === currentUser?.id && user.role === "admin") {
       toast.error("Você não pode remover sua própria role de admin");
       return;
     }
-
     setDeletingUser(user);
     setDeleteAlertOpen(true);
-  };
-
-  const closeDeleteAlert = () => {
-    setDeleteAlertOpen(false);
-    setDeletingUser(null);
   };
 
   const deleteRole = async () => {
@@ -189,11 +130,11 @@ export default function AdminUsers() {
         .from("user_roles")
         .delete()
         .eq("user_id", deletingUser.id);
-      
       if (error) throw error;
 
       toast.success("Role removida com sucesso!");
-      closeDeleteAlert();
+      setDeleteAlertOpen(false);
+      setDeletingUser(null);
       fetchUsers();
     } catch (error: any) {
       toast.error(error.message || "Erro ao remover role");
@@ -207,12 +148,6 @@ export default function AdminUsers() {
     setResettingPasswordUser(user);
     setNewPassword("");
     setResetPasswordDialogOpen(true);
-  };
-
-  const closeResetPasswordDialog = () => {
-    setResetPasswordDialogOpen(false);
-    setResettingPasswordUser(null);
-    setNewPassword("");
   };
 
   const resetPassword = async () => {
@@ -250,7 +185,9 @@ export default function AdminUsers() {
       }
 
       toast.success(`Senha de ${resettingPasswordUser.email} redefinida com sucesso!`);
-      closeResetPasswordDialog();
+      setResetPasswordDialogOpen(false);
+      setResettingPasswordUser(null);
+      setNewPassword("");
     } catch (error: any) {
       toast.error(error.message || "Erro ao redefinir senha");
       log.error('Erro ao redefinir senha', error, { userId: resettingPasswordUser?.id });
@@ -259,10 +196,10 @@ export default function AdminUsers() {
     }
   };
 
-  const getFilteredUsers = () => {
+  // Computed values
+  const filteredUsers = (() => {
     let filtered = users;
 
-    // Filtro por tab
     switch (filterTab) {
       case "admins":
         filtered = filtered.filter((u) => u.role === "admin");
@@ -275,7 +212,6 @@ export default function AdminUsers() {
         break;
     }
 
-    // Filtro por busca
     if (searchTerm) {
       filtered = filtered.filter((u) =>
         u.email.toLowerCase().includes(searchTerm.toLowerCase())
@@ -283,9 +219,8 @@ export default function AdminUsers() {
     }
 
     return filtered;
-  };
+  })();
 
-  const filteredUsers = getFilteredUsers();
   const totalUsers = users.length;
   const admins = users.filter((u) => u.role === "admin").length;
   const evaluators = users.filter((u) => u.role === "evaluator").length;
@@ -309,11 +244,11 @@ export default function AdminUsers() {
           </Button>
         }
       />
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6">
-      <div className="container mx-auto max-w-7xl space-y-6">
-        <AdminBreadcrumb currentPage="Gerenciar Usuários" />
-        
-        <div className="flex items-center justify-between">
+      
+      <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-6">
+        <div className="container mx-auto max-w-7xl space-y-6">
+          <AdminBreadcrumb currentPage="Gerenciar Usuários" />
+          
           <div>
             <h1 className="text-3xl font-bold font-heading text-primary">
               Gerenciamento de Usuários
@@ -322,68 +257,24 @@ export default function AdminUsers() {
               Visualize e gerencie as roles de todos os usuários cadastrados
             </p>
           </div>
-          <Button
-            onClick={() => navigate("/admin/dashboard")}
-            className="flex items-center gap-2"
-          >
-            <UserPlus className="h-4 w-4" />
-            Criar Convite
-          </Button>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalUsers}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Admins</CardTitle>
-              <Shield className="h-4 w-4 text-red-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{admins}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avaliadores</CardTitle>
-              <Shield className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{evaluators}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Sem Role</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{noRole}</div>
-            </CardContent>
-          </Card>
-        </div>
+          <UserStatsCards 
+            totalUsers={totalUsers} 
+            admins={admins} 
+            evaluators={evaluators} 
+            noRole={noRole} 
+          />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Lista de Usuários</CardTitle>
-            <CardDescription>
-              Gerencie as roles de acesso dos usuários
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Tabs value={filterTab} onValueChange={setFilterTab} className="flex-1">
+          <Card>
+            <CardHeader>
+              <CardTitle>Lista de Usuários</CardTitle>
+              <CardDescription>
+                Gerencie as roles de acesso dos usuários
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Tabs value={filterTab} onValueChange={setFilterTab}>
                   <TabsList>
                     <TabsTrigger value="all">Todos ({totalUsers})</TabsTrigger>
                     <TabsTrigger value="admins">Admins ({admins})</TabsTrigger>
@@ -391,215 +282,64 @@ export default function AdminUsers() {
                     <TabsTrigger value="no-role">Sem Role ({noRole})</TabsTrigger>
                   </TabsList>
                 </Tabs>
-                
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar por email..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-8"
+
+                {loading ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Carregando...
+                  </p>
+                ) : filteredUsers.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nenhum usuário encontrado
+                  </p>
+                ) : (
+                  <UserTable
+                    users={filteredUsers}
+                    currentUserId={currentUser?.id}
+                    onEdit={openEditDialog}
+                    onResetPassword={openResetPasswordDialog}
+                    onDelete={openDeleteAlert}
                   />
-                </div>
+                )}
               </div>
+            </CardContent>
+          </Card>
+        </div>
 
-              {loading ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Carregando...
-                </p>
-              ) : filteredUsers.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Nenhum usuário encontrado
-                </p>
-              ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Data de Criação</TableHead>
-                        <TableHead>Último Acesso</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredUsers.map((user) => (
-                        <TableRow key={user.id}>
-                          <TableCell className="font-medium">
-                            {user.email}
-                            {user.id === currentUser?.id && (
-                              <Badge variant="outline" className="ml-2 text-xs">
-                                Você
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {user.role === "admin" ? (
-                              <Badge className="bg-red-500/10 text-red-500 hover:bg-red-500/20">
-                                Admin
-                              </Badge>
-                            ) : user.role === "evaluator" ? (
-                              <Badge className="bg-blue-500/10 text-blue-500 hover:bg-blue-500/20">
-                                Avaliador
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary">
-                                Usuário
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {format(new Date(user.created_at), "dd/MM/yyyy HH:mm", {
-                              locale: ptBR,
-                            })}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {user.last_sign_in_at
-                              ? format(new Date(user.last_sign_in_at), "dd/MM/yyyy HH:mm", {
-                                  locale: ptBR,
-                                })
-                              : "Nunca"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openEditDialog(user)}
-                                title="Editar role"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => openResetPasswordDialog(user)}
-                                title="Resetar senha"
-                              >
-                                <KeyRound className="h-4 w-4 text-amber-500" />
-                              </Button>
-                              {user.role && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => openDeleteAlert(user)}
-                                  title="Remover role"
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Dialogs */}
+        <EditRoleDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          user={editingUser}
+          selectedRole={selectedRole}
+          onRoleChange={setSelectedRole}
+          onSave={saveRole}
+          saving={saving}
+        />
+
+        <ResetPasswordDialog
+          open={resetPasswordDialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setResetPasswordDialogOpen(false);
+              setResettingPasswordUser(null);
+              setNewPassword("");
+            }
+          }}
+          user={resettingPasswordUser}
+          password={newPassword}
+          onPasswordChange={setNewPassword}
+          onReset={resetPassword}
+          resetting={resettingPassword}
+        />
+
+        <DeleteRoleDialog
+          open={deleteAlertOpen}
+          onOpenChange={setDeleteAlertOpen}
+          user={deletingUser}
+          onDelete={deleteRole}
+          deleting={deleting}
+        />
       </div>
-
-      {/* Dialog de Edição */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Editar Role do Usuário</DialogTitle>
-            <DialogDescription>
-              Defina a role de acesso para {editingUser?.email}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <Select value={selectedRole} onValueChange={(value) => setSelectedRole(value as AppRole)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="evaluator">Avaliador</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeEditDialog} disabled={saving}>
-              Cancelar
-            </Button>
-            <Button onClick={saveRole} disabled={saving} className="btn-versoaustral-secondary">
-              {saving ? "Salvando..." : "Salvar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog de Reset de Senha */}
-      <Dialog open={resetPasswordDialogOpen} onOpenChange={closeResetPasswordDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Resetar Senha do Usuário</DialogTitle>
-            <DialogDescription>
-              Defina uma nova senha temporária para {resettingPasswordUser?.email}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="admin-reset-password">
-                Nova Senha (mínimo 6 caracteres)
-              </Label>
-              <Input
-                id="admin-reset-password"
-                type="text"
-                placeholder="Digite a nova senha..."
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                autoComplete="off"
-                autoFocus
-                minLength={6}
-              />
-              {newPassword && newPassword.length < 6 && (
-                <p className="text-sm text-destructive">
-                  A senha deve ter no mínimo 6 caracteres
-                </p>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={closeResetPasswordDialog} disabled={resettingPassword}>
-              Cancelar
-            </Button>
-            <Button onClick={resetPassword} disabled={resettingPassword || newPassword.length < 6} className="btn-versoaustral-secondary">
-              {resettingPassword ? "Resetando..." : "Resetar Senha"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Alert de Remoção */}
-      <AlertDialog open={deleteAlertOpen} onOpenChange={setDeleteAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar Remoção</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja remover a role de{" "}
-              <strong>{deletingUser?.email}</strong>? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={closeDeleteAlert} disabled={deleting}>
-              Cancelar
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={deleteRole}
-              disabled={deleting}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {deleting ? "Removendo..." : "Remover"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
     </>
   );
 }
