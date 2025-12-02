@@ -12,6 +12,7 @@ import { createSupabaseClient } from '../_shared/supabase.ts';
 import { applyMorphologicalRules, hasMorphologicalPattern } from '../_shared/morphological-rules.ts';
 import { getLexiconBase, saveLexiconClassification, clearMemoryCache } from '../_shared/semantic-lexicon-lookup.ts';
 import { classifyBatchWithGemini } from '../_shared/gemini-batch-classifier.ts';
+import { classifyBatchWithGPT5 } from '../_shared/gpt5-batch-classifier.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +37,7 @@ interface BatchSeedingJob {
   morfologico_count: number;
   heranca_count: number;
   gemini_count: number;
+  gpt5_count: number;
   failed_count: number;
 }
 
@@ -131,7 +133,8 @@ serve(async (req) => {
       
       const morfologico = results.filter(r => r.fonte === 'morfologico').length;
       const heranca = results.filter(r => r.fonte === 'heranca').length;
-      const gemini = results.filter(r => r.fonte === 'gemini').length;
+      const gemini = results.filter(r => r.fonte === 'gemini_flash').length;
+      const gpt5 = results.filter(r => r.fonte === 'gpt5').length;
       const failed = results.filter(r => !r.success).length;
       
       // Atualizar job com progresso
@@ -143,12 +146,13 @@ serve(async (req) => {
           morfologico_count: morfologico,
           heranca_count: heranca,
           gemini_count: gemini,
+          gpt5_count: gpt5,
           failed_count: failed,
           last_chunk_at: new Date().toISOString()
         })
         .eq('id', job.id);
       
-      console.log(`✅ [batch-seed] Primeiro chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, Falhas=${failed}`);
+      console.log(`✅ [batch-seed] Primeiro chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, GPT-5=${gpt5}, Falhas=${failed}`);
       
       // Auto-invocar para próximo chunk
       const nextOffset = offset + candidates.length;
@@ -188,7 +192,7 @@ serve(async (req) => {
         current_offset: offset,
         next_offset: nextOffset,
         has_more: hasMore,
-        results: { morfologico, heranca, gemini, failed },
+        results: { morfologico, heranca, gemini, gpt5, failed },
         processing_time_ms: Date.now() - startTime
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -239,7 +243,8 @@ serve(async (req) => {
       
       const morfologico = results.filter(r => r.fonte === 'morfologico').length;
       const heranca = results.filter(r => r.fonte === 'heranca').length;
-      const gemini = results.filter(r => r.fonte === 'gemini').length;
+      const gemini = results.filter(r => r.fonte === 'gemini_flash').length;
+      const gpt5 = results.filter(r => r.fonte === 'gpt5').length;
       const failed = results.filter(r => !r.success).length;
       
       // Buscar dados atuais do job para somar
@@ -259,13 +264,14 @@ serve(async (req) => {
             morfologico_count: currentJob.morfologico_count + morfologico,
             heranca_count: currentJob.heranca_count + heranca,
             gemini_count: currentJob.gemini_count + gemini,
+            gpt5_count: currentJob.gpt5_count + gpt5,
             failed_count: currentJob.failed_count + failed,
             last_chunk_at: new Date().toISOString()
           })
           .eq('id', job_id);
       }
       
-      console.log(`✅ [batch-seed] Chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, Falhas=${failed}`);
+      console.log(`✅ [batch-seed] Chunk concluído: Morfológico=${morfologico}, Herança=${heranca}, Gemini=${gemini}, GPT-5=${gpt5}, Falhas=${failed}`);
 
       // Auto-invocar para próximo chunk
       const nextOffset = offset + candidates.length;
@@ -305,7 +311,7 @@ serve(async (req) => {
         current_offset: offset,
         next_offset: nextOffset,
         has_more: hasMore,
-        results: { morfologico, heranca, gemini, failed },
+        results: { morfologico, heranca, gemini, gpt5, failed },
         processing_time_ms: Date.now() - startTime
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -482,6 +488,8 @@ async function processWordsChunk(
   }
 
   // Fase 2: Gemini batch (batches de 15)
+  const geminiFailures: typeof wordsForGemini = [];
+  
   for (let i = 0; i < wordsForGemini.length; i += GEMINI_BATCH_SIZE) {
     const batch = wordsForGemini.slice(i, i + GEMINI_BATCH_SIZE);
     
@@ -512,12 +520,8 @@ async function processWordsChunk(
             tagset_n1: geminiResult.tagset_codigo
           });
         } else {
-          results.push({
-            palavra: word.palavra,
-            success: false,
-            fonte: 'gemini_flash',
-            tagset_n1: 'NC'
-          });
+          // Falha do Gemini - tentar GPT-5 depois
+          geminiFailures.push(word);
         }
       }
 
@@ -528,14 +532,70 @@ async function processWordsChunk(
 
     } catch (error) {
       console.error('[batch-seed] Gemini batch error:', error);
-      batch.forEach(word => {
-        results.push({
-          palavra: word.palavra,
-          success: false,
-          fonte: 'gemini_flash',
-          error: error instanceof Error ? error.message : 'Unknown error'
+      // Adicionar batch inteiro para tentar com GPT-5
+      geminiFailures.push(...batch);
+    }
+  }
+
+  // Fase 3: GPT-5 fallback para falhas do Gemini
+  if (geminiFailures.length > 0) {
+    console.log(`🔄 [batch-seed] GPT-5 fallback: ${geminiFailures.length} palavras`);
+    
+    for (let i = 0; i < geminiFailures.length; i += GEMINI_BATCH_SIZE) {
+      const batch = geminiFailures.slice(i, i + GEMINI_BATCH_SIZE);
+      
+      try {
+        const gpt5Results = await classifyBatchWithGPT5(
+          batch.map(w => ({ palavra: w.palavra, lema: w.lema, pos: w.pos })),
+          { info: () => {}, error: () => {} }
+        );
+
+        for (let j = 0; j < batch.length; j++) {
+          const word = batch[j];
+          const gpt5Result = gpt5Results[j];
+
+          if (gpt5Result && gpt5Result.tagset_codigo !== 'NC') {
+            const saved = await saveLexiconClassification(word.palavra, {
+              lema: word.lema,
+              pos: word.pos,
+              tagset_n1: gpt5Result.tagset_codigo,
+              confianca: gpt5Result.confianca,
+              fonte: 'gpt5',
+              origem_lexicon: word.origem as any
+            });
+
+            results.push({
+              palavra: word.palavra,
+              success: saved,
+              fonte: 'gpt5',
+              tagset_n1: gpt5Result.tagset_codigo
+            });
+          } else {
+            results.push({
+              palavra: word.palavra,
+              success: false,
+              fonte: 'gpt5',
+              tagset_n1: 'NC'
+            });
+          }
+        }
+
+        // Delay entre batches GPT-5
+        if (i + GEMINI_BATCH_SIZE < geminiFailures.length) {
+          await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+        }
+
+      } catch (error) {
+        console.error('[batch-seed] GPT-5 batch error:', error);
+        batch.forEach(word => {
+          results.push({
+            palavra: word.palavra,
+            success: false,
+            fonte: 'gpt5',
+            error: error instanceof Error ? error.message : 'Unknown error'
+          });
         });
-      });
+      }
     }
   }
 

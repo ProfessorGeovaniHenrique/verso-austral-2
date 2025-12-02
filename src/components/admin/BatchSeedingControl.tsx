@@ -148,7 +148,7 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
               </div>
             </div>
             
-            <div className="grid grid-cols-4 gap-2 text-xs">
+            <div className="grid grid-cols-2 gap-2 text-xs mb-2">
               <div className="p-2 bg-blue-500/10 rounded text-center">
                 <p className="font-medium text-blue-600">Morfológico</p>
                 <p className="text-lg font-bold">{activeJob.morfologico_count}</p>
@@ -157,15 +157,39 @@ export function BatchSeedingControl({ semanticLexiconCount, status }: BatchSeedi
                 <p className="font-medium text-green-600">Herança</p>
                 <p className="text-lg font-bold">{activeJob.heranca_count}</p>
               </div>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2 text-xs">
               <div className="p-2 bg-purple-500/10 rounded text-center">
                 <p className="font-medium text-purple-600">Gemini</p>
                 <p className="text-lg font-bold">{activeJob.gemini_count}</p>
+              </div>
+              <div className="p-2 bg-amber-500/10 rounded text-center">
+                <p className="font-medium text-amber-600">GPT-5</p>
+                <p className="text-lg font-bold">{activeJob.gpt5_count || 0}</p>
               </div>
               <div className="p-2 bg-red-500/10 rounded text-center">
                 <p className="font-medium text-red-600">Falhas</p>
                 <p className="text-lg font-bold">{activeJob.failed_count}</p>
               </div>
             </div>
+            
+            {(activeJob.gemini_count > 0 || activeJob.gpt5_count > 0) && (
+              <div className="mt-2 p-2 bg-muted/50 rounded text-center">
+                <p className="text-xs text-muted-foreground">
+                  Taxa de Sucesso: {' '}
+                  <span className="font-bold text-foreground">
+                    {((activeJob.gemini_count + (activeJob.gpt5_count || 0)) / 
+                      Math.max(1, activeJob.processed_words - activeJob.morfologico_count - activeJob.heranca_count) * 100).toFixed(1)}%
+                  </span>
+                </p>
+                {activeJob.gpt5_count > 0 && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    GPT-5 recuperou {activeJob.gpt5_count} palavra{activeJob.gpt5_count !== 1 ? 's' : ''} após falha do Gemini
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

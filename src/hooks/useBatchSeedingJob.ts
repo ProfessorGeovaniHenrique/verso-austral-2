@@ -12,6 +12,7 @@ export interface BatchSeedingJob {
   morfologico_count: number;
   heranca_count: number;
   gemini_count: number;
+  gpt5_count: number;
   failed_count: number;
   tempo_inicio: string;
   tempo_fim: string | null;

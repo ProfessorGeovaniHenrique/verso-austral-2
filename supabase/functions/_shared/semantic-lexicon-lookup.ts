@@ -101,7 +101,7 @@ export async function saveLexiconClassification(
     tagset_n3?: string;
     tagset_n4?: string;
     confianca: number;
-    fonte: 'gemini_flash' | 'morfologico' | 'heranca' | 'manual';
+    fonte: 'gemini_flash' | 'gpt5' | 'morfologico' | 'heranca' | 'manual';
     origem_lexicon?: 'gutenberg' | 'dialectal' | 'corpus';
     frequencia_corpus?: number;
   }

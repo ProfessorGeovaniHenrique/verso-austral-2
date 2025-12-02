@@ -590,6 +590,7 @@ export type Database = {
           erro_mensagem: string | null
           failed_count: number | null
           gemini_count: number | null
+          gpt5_count: number | null
           heranca_count: number | null
           id: string
           last_chunk_at: string | null
@@ -608,6 +609,7 @@ export type Database = {
           erro_mensagem?: string | null
           failed_count?: number | null
           gemini_count?: number | null
+          gpt5_count?: number | null
           heranca_count?: number | null
           id?: string
           last_chunk_at?: string | null
@@ -626,6 +628,7 @@ export type Database = {
           erro_mensagem?: string | null
           failed_count?: number | null
           gemini_count?: number | null
+          gpt5_count?: number | null
           heranca_count?: number | null
           id?: string
           last_chunk_at?: string | null
