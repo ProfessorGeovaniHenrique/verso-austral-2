@@ -3,6 +3,9 @@ import { KeywordEntry, CorpusType } from '@/data/types/corpus-tools.types';
 import { DispersionAnalysis, NGramAnalysis, KWICContext, SongMetadata } from '@/data/types/full-text-corpus.types';
 import { Collocation } from '@/services/collocationService';
 import { debounce } from '@/lib/performanceUtils';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('ToolsContext');
 
 // ==================== SCHEMA VERSIONING ====================
 
@@ -23,13 +26,13 @@ interface StorageWithVersion<T> {
  * Migra dados antigos do localStorage para o schema atual
  */
 function migrateKeywordsSchema(data: any, fromVersion: number): KeywordsState {
-  console.group(`🔄 Migrando schema de Keywords: v${fromVersion} → v${CURRENT_SCHEMA_VERSION.keywords}`);
+  log.debug(`Migrando schema de Keywords: v${fromVersion} → v${CURRENT_SCHEMA_VERSION.keywords}`);
   
   let migrated = { ...data };
   
   // Migração v1 → v2: Adicionar analysisConfig
   if (fromVersion < 2) {
-    console.log('✅ Adicionando analysisConfig ao schema...');
+    log.debug('Adicionando analysisConfig ao schema...');
     migrated.analysisConfig = {
       generateKeywordsList: true,
       generateScatterPlot: false,
@@ -38,8 +41,7 @@ function migrateKeywordsSchema(data: any, fromVersion: number): KeywordsState {
     };
   }
   
-  console.log('📦 Dados migrados:', migrated);
-  console.groupEnd();
+  log.debug('Dados migrados', { migrated });
   
   return migrated as KeywordsState;
 }
@@ -67,7 +69,7 @@ function loadWithMigration<T>(
   try {
     const stored = localStorage.getItem(key);
     if (!stored) {
-      console.log(`📭 Nenhum dado encontrado para "${key}". Usando valores padrão.`);
+      log.debug(`Nenhum dado encontrado para "${key}". Usando valores padrão.`);
       return defaultValue;
     }
     
@@ -78,29 +80,29 @@ function loadWithMigration<T>(
       const storedVersion = parsed.version;
       
       if (storedVersion === currentVersion) {
-        console.log(`✅ Schema de "${key}" está atualizado (v${currentVersion})`);
+        log.debug(`Schema de "${key}" está atualizado (v${currentVersion})`);
         return { ...defaultValue, ...parsed.data } as T;
       }
       
       // Necessário migrar
       if (storedVersion < currentVersion && migrator) {
-        console.warn(`⚠️ Schema antigo detectado para "${key}": v${storedVersion} (atual: v${currentVersion})`);
+        log.warn(`Schema antigo detectado para "${key}": v${storedVersion} (atual: v${currentVersion})`);
         const migrated = migrator(parsed.data, storedVersion);
         
         // Salvar versão migrada
         saveWithVersion(key, migrated, currentVersion);
-        console.log(`✅ Migração concluída e salva para "${key}"`);
+        log.info(`Migração concluída e salva para "${key}"`);
         
         return migrated;
       }
     } else {
       // Formato antigo (sem versionamento) - tratar como v1
-      console.warn(`⚠️ Dados legados detectados para "${key}" (sem versão). Migrando...`);
+      log.warn(`Dados legados detectados para "${key}" (sem versão). Migrando...`);
       
       if (migrator) {
         const migrated = migrator(parsed, 1);
         saveWithVersion(key, migrated, currentVersion);
-        console.log(`✅ Dados legados migrados para v${currentVersion}`);
+        log.info(`Dados legados migrados para v${currentVersion}`);
         return migrated;
       }
       
@@ -502,7 +504,7 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
       artist: string | null;
     }
   ) => {
-    console.log(`🔗 Navegando para KWIC: "${word}" (origem: ${sourceTab})`);
+    log.debug(`Navegando para KWIC: "${word}"`, { sourceTab });
     
     // Salvar contexto temporário para busca contextual
     if (corpusContext) {
@@ -514,7 +516,7 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
       };
       
       sessionStorage.setItem('kwic-temp-context', JSON.stringify(kwicContext));
-      console.log('💾 Contexto temporário salvo:', kwicContext);
+      log.debug('Contexto temporário salvo', kwicContext);
     }
     
     setSelectedWord(word);
@@ -522,11 +524,11 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
   };
 
   const clearAllCache = useCallback(() => {
-    console.group('🧹 Limpando cache completo do localStorage');
+    log.info('Limpando cache completo do localStorage');
     
     // Remover todos os dados das ferramentas
     Object.values(STORAGE_KEYS).forEach(key => {
-      console.log(`🗑️ Removendo: ${key}`);
+      log.debug(`Removendo: ${key}`);
       localStorage.removeItem(key);
     });
     
@@ -537,8 +539,7 @@ export function ToolsProvider({ children }: { children: ReactNode }) {
     setDispersionStateInternal(INITIAL_DISPERSION_STATE);
     setNgramsStateInternal(INITIAL_NGRAMS_STATE);
     
-    console.log('✅ Cache limpo com sucesso!');
-    console.groupEnd();
+    log.info('Cache limpo com sucesso!');
     
     // Recarregar página para garantir estado limpo
     setTimeout(() => {

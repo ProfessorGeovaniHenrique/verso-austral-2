@@ -14,6 +14,9 @@ import {
 import { listenToCacheUpdates } from '@/lib/cacheSync';
 import { cacheMetrics } from '@/lib/cacheMetrics';
 import { trackCorpusUsage } from '@/lib/corpusUsageTracker';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('CorpusContext');
 
 /**
  * Carrega corpus específico para busca contextual isolada (sem alterar estado global)
@@ -23,7 +26,7 @@ export async function loadSpecificCorpus(context: {
   mode: 'complete' | 'single';
   artistaA: string | null;
 }): Promise<CorpusCompleto> {
-  console.log('📦 loadSpecificCorpus chamado com:', context);
+  log.debug('loadSpecificCorpus chamado', context);
   
   const { corpusBase, mode, artistaA } = context;
   
@@ -40,7 +43,7 @@ export async function loadSpecificCorpus(context: {
   }
   
   // Fallback: corpus completo
-  console.warn('⚠️ Contexto inválido para loadSpecificCorpus, usando corpus completo');
+  log.warn('Contexto inválido para loadSpecificCorpus, usando corpus completo');
   return await loadFullTextCorpus(corpusBase);
 }
 
@@ -92,7 +95,7 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     cleanExpiredCache().then(removed => {
       if (removed > 0) {
-        console.log(`🗑️ ${removed} caches expirados removidos ao iniciar`);
+        log.debug(`${removed} caches expirados removidos ao iniciar`);
       }
     });
   }, []);
@@ -133,11 +136,11 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
     
     // Verificar se cache é válido
     if (cached && (Date.now() - cached.loadedAt) < CACHE_TTL) {
-      console.log(`✅ Cache hit: wordlist ${tipo}`);
+      log.debug(`Cache hit: wordlist ${tipo}`);
       return cached;
     }
 
-    console.log(`📂 Cache miss: carregando wordlist ${tipo}...`);
+    log.debug(`Cache miss: carregando wordlist ${tipo}...`);
     setIsLoading(true);
     
     try {
@@ -153,7 +156,7 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
       };
 
       setWordlistCache(prev => new Map(prev).set(cacheKey, cache));
-      console.log(`✅ Wordlist ${tipo} carregada e cacheada: ${parsedCorpus.length} palavras`);
+      log.info(`Wordlist ${tipo} carregada`, { palavras: parsedCorpus.length });
       
       return cache;
     } finally {
@@ -175,14 +178,14 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
     // 🔒 Verificar se já está carregando (prevenir race conditions)
     const existingPromise = activeLoads.get(cacheKey);
     if (existingPromise) {
-      console.log(`⏳ Aguardando carregamento em progresso: ${cacheKey}`);
+      log.debug(`Aguardando carregamento em progresso: ${cacheKey}`);
       return existingPromise;
     }
     
     // 1️⃣ Tentar memória descomprimida (mais rápido)
     const memCorpus = decompressedMemoryCache.get(cacheKey);
     if (memCorpus) {
-      console.log(`✅ Cache hit (memória): ${tipo} (${(performance.now() - startTime).toFixed(0)}ms)`);
+      log.debug(`Cache hit (memória): ${tipo}`, { timeMs: (performance.now() - startTime).toFixed(0) });
       cacheMetrics.recordHit();
       return {
         corpus: memCorpus,
@@ -197,7 +200,7 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
         // 3️⃣ Tentar IndexedDB (persistente)
         const idbCached = await loadCorpusFromCache(tipo, filters);
         if (idbCached) {
-          console.log(`✅ Cache hit (IndexedDB): ${tipo} (${(performance.now() - startTime).toFixed(0)}ms)`);
+          log.debug(`Cache hit (IndexedDB): ${tipo}`, { timeMs: (performance.now() - startTime).toFixed(0) });
           
           // Salvar versão descomprimida em memória
           setDecompressedMemoryCache(prev => new Map(prev).set(cacheKey, idbCached));
@@ -210,7 +213,7 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
         }
         
         // 4️⃣ Fetch do arquivo (último recurso)
-        console.log(`📂 Cache miss completo: carregando ${tipo}...`);
+        log.debug(`Cache miss completo: carregando ${tipo}...`);
         setIsLoading(true);
         
         const corpus = await loadFullTextCorpus(tipo, filters);
@@ -231,10 +234,10 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
         
         // IndexedDB comprimido (não bloquear resposta)
         saveCorpusToCache(tipo, corpus, filters).catch(err => 
-          console.warn('⚠️ Falha ao salvar cache persistente:', err)
+          log.warn('Falha ao salvar cache persistente', { error: err })
         );
         
-        console.log(`✅ ${tipo} carregado: ${corpus.totalMusicas} músicas (${(performance.now() - startTime).toFixed(0)}ms)`);
+        log.info(`${tipo} carregado`, { musicas: corpus.totalMusicas, timeMs: (performance.now() - startTime).toFixed(0) });
         
         return cache;
         
@@ -257,7 +260,7 @@ export function CorpusProvider({ children }: { children: ReactNode }) {
     // Limpar IndexedDB
     await invalidateCache();
     
-    console.log('🗑️ Cache completo limpo (memória + IndexedDB)');
+    log.info('Cache completo limpo (memória + IndexedDB)');
   }, []);
 
   return (
