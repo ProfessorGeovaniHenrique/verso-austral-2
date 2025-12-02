@@ -8,12 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useConstructionPhases } from '@/hooks/useConstructionPhases';
-import { FileText, Plus, Save, Download, Clock, CheckCircle2, Loader2, Calendar, Target } from 'lucide-react';
+import { useConstructionLogSync } from '@/hooks/useConstructionLogSync';
+import { FileText, Plus, Save, Download, Clock, CheckCircle2, Loader2, Calendar, Target, RefreshCw, Upload } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export function ConstructionLogManager() {
   const { phases, isLoading, createPhase, exportToTypeScript } = useConstructionPhases();
+  const { isSyncing, lastSyncResult, syncToDatabase, exportToTypeScript: exportFromDB, staticPhasesCount } = useConstructionLogSync();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     phase_number: 1,
@@ -91,6 +93,30 @@ export function ConstructionLogManager() {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              <Badge variant="outline" className="mr-2">
+                {staticPhasesCount} fases estáticas
+              </Badge>
+              <Button
+                variant="secondary"
+                onClick={syncToDatabase}
+                disabled={isSyncing}
+                className="gap-2"
+              >
+                {isSyncing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Sincronizar com DB
+              </Button>
+              <Button
+                variant="outline"
+                onClick={exportFromDB}
+                className="gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Exportar .ts
+              </Button>
               <Button
                 variant="outline"
                 onClick={createTestPhase}

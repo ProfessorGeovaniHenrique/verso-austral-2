@@ -7,6 +7,7 @@ import { exportDeveloperLogsToPDF } from "@/utils/exportDeveloperLogs";
 import { useState } from "react";
 import {
   AIAssistant,
+  AIAssistantROIDashboard,
   CodeScannerInterface,
   ConstructionLogManager,
   TemporalEvolutionDashboard,
@@ -128,10 +129,14 @@ export default function DeveloperLogs() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 mt-6 container mx-auto px-4 pb-8">
-          <TabsList className="grid w-full grid-cols-7 lg:w-auto">
+          <TabsList className="grid w-full grid-cols-8 lg:w-auto">
             <TabsTrigger value="ai-assistant" className="gap-2">
               <Bot className="w-4 h-4" />
               <span className="hidden sm:inline">🤖 IA Assistant</span>
+            </TabsTrigger>
+            <TabsTrigger value="ai-roi" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              <span className="hidden sm:inline">📈 ROI</span>
             </TabsTrigger>
             <TabsTrigger value="ai-review" className="gap-2">
               <Bot className="w-4 h-4" />
@@ -139,7 +144,7 @@ export default function DeveloperLogs() {
             </TabsTrigger>
             <TabsTrigger value="annotation-debug" className="gap-2">
               <Shield className="w-4 h-4" />
-              <span className="hidden sm:inline">🔐 Auth Debug</span>
+              <span className="hidden sm:inline">🔐 Annotation Debug</span>
             </TabsTrigger>
             <TabsTrigger value="code-scanner" className="gap-2">
               <Bug className="w-4 h-4" />
@@ -155,7 +160,7 @@ export default function DeveloperLogs() {
             </TabsTrigger>
             <TabsTrigger value="subcorpus-debug" className="gap-2">
               <Database className="w-4 h-4" />
-              <span className="hidden sm:inline">🔍 Subcorpus Debug</span>
+              <span className="hidden sm:inline">🔍 Subcorpus</span>
             </TabsTrigger>
           </TabsList>
 
@@ -165,6 +170,11 @@ export default function DeveloperLogs() {
               triggerAnalysis={triggerAnalysis}
               onAnalysisComplete={handleAnalysisComplete}
             />
+          </TabsContent>
+
+          {/* TAB AI ROI: Dashboard de ROI Real */}
+          <TabsContent value="ai-roi">
+            <AIAssistantROIDashboard />
           </TabsContent>
 
           {/* TAB AI REVIEW: Validação Humana das Análises */}

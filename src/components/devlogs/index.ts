@@ -7,6 +7,7 @@ export { SearchBar } from './SearchBar';
 export { CorrectionsLog } from './CorrectionsLog';
 export { AuditReport } from './AuditReport';
 export { AIAssistant } from './AIAssistant';
+export { AIAssistantROIDashboard } from './AIAssistantROIDashboard';
 export { CodeScannerInterface } from './CodeScannerInterface';
 export { ConstructionLogManager } from './ConstructionLogManager';
 export { TemporalEvolutionDashboard } from './TemporalEvolutionDashboard';
