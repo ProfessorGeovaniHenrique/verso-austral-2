@@ -15,3 +15,4 @@ export { CreditsSavingsIndicator } from './CreditsSavingsIndicator';
 export { AIAnalysisReview } from './AIAnalysisReview';
 export { AnnotationDebugPanel } from './AnnotationDebugPanel';
 export { SubcorpusDebugPanel } from './SubcorpusDebugPanel';
+export { SystemHealthOverview } from './SystemHealthOverview';

@@ -25,6 +25,7 @@ import {
   MusicCatalogToolbar,
   MusicCatalogFilters,
   MusicCatalogAlerts,
+  CatalogStatsOverview,
   TabSongs,
   TabArtists,
   TabStats,
@@ -169,6 +170,9 @@ export default function MusicCatalog() {
           songsWithoutYouTube={state.songsWithoutYouTube.length}
           onBatchEnrichYouTube={handlers.handleBatchEnrichYouTube}
         />
+
+        {/* Card de resumo de estatísticas por corpus */}
+        <CatalogStatsOverview />
 
         <Tabs value={state.view} onValueChange={(v) => state.setView(v as any)} className="space-y-4">
           <TabsList>
