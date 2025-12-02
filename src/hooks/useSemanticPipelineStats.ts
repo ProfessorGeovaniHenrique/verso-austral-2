@@ -37,6 +37,8 @@ export interface PipelineStats {
     tempo_inicio: string;
     tempo_fim: string | null;
     erro_mensagem: string | null;
+    last_chunk_at: string | null;
+    chunks_processed: number | null;
   }>;
 }
 
