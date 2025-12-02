@@ -184,12 +184,19 @@ export default function AdminDashboard() {
     if (!confirm(`Tem certeza que deseja excluir o convite ${keyCode}?`)) return;
     
     try {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from("invite_keys")
         .delete()
-        .eq("id", inviteId);
+        .eq("id", inviteId)
+        .select();
 
       if (error) throw error;
+
+      // Verificar se realmente excluiu
+      if (!data || data.length === 0) {
+        toast.error("Não foi possível excluir o convite. Verifique suas permissões.");
+        return;
+      }
 
       toast.success("Convite excluído com sucesso!");
       fetchInvites();
