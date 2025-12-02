@@ -1,6 +1,19 @@
+/**
+ * useCodeScanHistory Hook - Refatorado Sprint 1
+ * Conectado com edge function scan-code-quality real
+ */
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { notifications } from '@/lib/notifications';
+
+export interface CodeIssue {
+  file: string;
+  line?: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  type: string;
+  message: string;
+}
 
 export interface CodeScanHistoryRecord {
   id: string;
@@ -23,10 +36,18 @@ export interface CodeScanHistoryRecord {
       newIssues: number;
       overallImprovement: string;
     };
+    issues?: CodeIssue[];
   };
   comparison_baseline: string;
   improvement_percentage: number;
   scan_duration_ms: number;
+}
+
+export interface ProblematicFile {
+  file: string;
+  issues: number;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  types: string[];
 }
 
 export function useCodeScanHistory() {
@@ -48,21 +69,26 @@ export function useCodeScanHistory() {
       
       return (data || []) as unknown as CodeScanHistoryRecord[];
     },
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000,
   });
 
   const runScan = useMutation({
-    mutationFn: async (_scanType: 'full' | 'edge-functions' | 'components' | 'hooks') => {
-      // Note: scan-codebase-realtime was removed
-      // Return mock data for backwards compatibility
-      return {
-        summary: {
-          totalIssues: 0,
-          resolvedSinceBaseline: 0,
-          newIssues: 0,
-          overallImprovement: '0'
-        }
-      };
+    mutationFn: async (scanType: 'full' | 'edge-functions' | 'components' | 'hooks') => {
+      notifications.info('Iniciando scan', 'Analisando qualidade do código...');
+      
+      const { data, error } = await supabase.functions.invoke('scan-code-quality', {
+        body: { scanType }
+      });
+      
+      if (error) {
+        throw new Error(error.message || 'Erro ao executar scan');
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Scan falhou');
+      }
+      
+      return data;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['code-scan-history'] });
@@ -91,17 +117,61 @@ export function useCodeScanHistory() {
     }
   });
 
+  // Extrair arquivos problemáticos do último scan
+  const getProblematicFiles = (): ProblematicFile[] => {
+    const latestScan = query.data?.[0];
+    if (!latestScan?.scan_data?.issues) {
+      return [];
+    }
+
+    const fileMap = new Map<string, { issues: number; severity: string; types: Set<string> }>();
+    
+    latestScan.scan_data.issues.forEach((issue: CodeIssue) => {
+      const existing = fileMap.get(issue.file);
+      if (existing) {
+        existing.issues++;
+        existing.types.add(issue.type);
+        // Manter a severidade mais alta
+        if (getSeverityWeight(issue.severity) > getSeverityWeight(existing.severity as any)) {
+          existing.severity = issue.severity;
+        }
+      } else {
+        fileMap.set(issue.file, {
+          issues: 1,
+          severity: issue.severity,
+          types: new Set([issue.type])
+        });
+      }
+    });
+
+    return Array.from(fileMap.entries())
+      .map(([file, data]) => ({
+        file,
+        issues: data.issues,
+        severity: data.severity as 'critical' | 'high' | 'medium' | 'low',
+        types: Array.from(data.types)
+      }))
+      .sort((a, b) => {
+        const severityDiff = getSeverityWeight(b.severity) - getSeverityWeight(a.severity);
+        if (severityDiff !== 0) return severityDiff;
+        return b.issues - a.issues;
+      })
+      .slice(0, 10);
+  };
+
   const latestScan = query.data?.[0];
   
   const stats = {
     totalScans: query.data?.length || 0,
-    averageImprovement: query.data 
-      ? (query.data.reduce((acc, scan) => acc + scan.improvement_percentage, 0) / query.data.length)
+    averageImprovement: query.data && query.data.length > 0
+      ? query.data.reduce((acc, scan) => acc + (scan.improvement_percentage || 0), 0) / query.data.length
       : 0,
     lastScanDate: latestScan?.created_at,
     trending: latestScan && query.data?.[1]
-      ? latestScan.improvement_percentage - query.data[1].improvement_percentage
-      : 0
+      ? (latestScan.improvement_percentage || 0) - (query.data[1].improvement_percentage || 0)
+      : 0,
+    totalIssues: latestScan?.total_issues || 0,
+    pendingIssues: latestScan?.pending_issues || 0
   };
 
   return { 
@@ -110,6 +180,18 @@ export function useCodeScanHistory() {
     isScanning: runScan.isPending, 
     runScan: runScan.mutate,
     latestScan,
-    stats
+    stats,
+    problematicFiles: getProblematicFiles(),
+    refetch: query.refetch
   };
+}
+
+function getSeverityWeight(severity: 'critical' | 'high' | 'medium' | 'low'): number {
+  switch (severity) {
+    case 'critical': return 4;
+    case 'high': return 3;
+    case 'medium': return 2;
+    case 'low': return 1;
+    default: return 0;
+  }
 }
