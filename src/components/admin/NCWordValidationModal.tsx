@@ -11,9 +11,10 @@ import { POSSelector } from './POSSelector';
 import { BlauNunesSuggestionPanel } from './BlauNunesSuggestionPanel';
 import { useNCWordValidation } from '@/hooks/useNCWordValidation';
 import { extractKWICContext, KWICResult } from '@/lib/kwicUtils';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Send } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface NCWord {
   palavra: string;
@@ -30,9 +31,11 @@ interface NCWordValidationModalProps {
 }
 
 export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: NCWordValidationModalProps) {
+  const queryClient = useQueryClient();
   const [selectedTagset, setSelectedTagset] = useState<{ codigo: string; nome: string } | null>(null);
   const [justificativa, setJustificativa] = useState('');
   const [aplicarATodas, setAplicarATodas] = useState(true);
+  const [isSendingToCorrection, setIsSendingToCorrection] = useState(false);
   
   // Novos estados de validação linguística
   const [selectedPOS, setSelectedPOS] = useState<string | null>(null);
@@ -43,6 +46,31 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
   const [formaPadrao, setFormaPadrao] = useState('');
 
   const { submitValidation, isSubmitting } = useNCWordValidation();
+
+  // Handler para enviar para correção de digitação
+  const handleSendToCorrection = async () => {
+    if (!word) return;
+    
+    setIsSendingToCorrection(true);
+    try {
+      const { error } = await supabase
+        .from('semantic_disambiguation_cache')
+        .update({ needs_correction: true })
+        .eq('palavra', word.palavra);
+
+      if (error) throw error;
+
+      toast.success(`"${word.palavra}" enviada para correção de digitação`);
+      queryClient.invalidateQueries({ queryKey: ['nc-words'] });
+      queryClient.invalidateQueries({ queryKey: ['nc-words-suspicious'] });
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      toast.error('Erro ao enviar para correção: ' + (error as Error).message);
+    } finally {
+      setIsSendingToCorrection(false);
+    }
+  };
 
   // Buscar letra da música para extrair KWIC
   const { data: songData, isLoading: loadingSong } = useQuery({
@@ -323,27 +351,47 @@ export function NCWordValidationModal({ word, open, onOpenChange, onSuccess }: N
           </div>
         </div>
 
-        <DialogFooter className="mt-6">
+        <DialogFooter className="mt-6 flex-col sm:flex-row gap-2">
           <Button
-            variant="outline"
-            onClick={handleClose}
-            disabled={isSubmitting}
+            variant="secondary"
+            onClick={handleSendToCorrection}
+            disabled={isSubmitting || isSendingToCorrection}
+            className="w-full sm:w-auto"
           >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!selectedTagset || isSubmitting}
-          >
-            {isSubmitting ? (
+            {isSendingToCorrection ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando...
+                Enviando...
               </>
             ) : (
-              <>✓ Salvar Classificação</>
+              <>
+                <Send className="mr-2 h-4 w-4" />
+                Enviar para Correção de Digitação
+              </>
             )}
           </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              disabled={isSubmitting || isSendingToCorrection}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!selectedTagset || isSubmitting || isSendingToCorrection}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>✓ Salvar Classificação</>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

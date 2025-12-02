@@ -2075,6 +2075,7 @@ export type Database = {
           last_hit_at: string | null
           lema: string | null
           mwe_text: string | null
+          needs_correction: boolean | null
           palavra: string
           pos: string | null
           song_id: string | null
@@ -2103,6 +2104,7 @@ export type Database = {
           last_hit_at?: string | null
           lema?: string | null
           mwe_text?: string | null
+          needs_correction?: boolean | null
           palavra: string
           pos?: string | null
           song_id?: string | null
@@ -2131,6 +2133,7 @@ export type Database = {
           last_hit_at?: string | null
           lema?: string | null
           mwe_text?: string | null
+          needs_correction?: boolean | null
           palavra?: string
           pos?: string | null
           song_id?: string | null

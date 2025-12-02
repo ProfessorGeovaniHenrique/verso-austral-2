@@ -14,6 +14,7 @@ interface NCWord {
   confianca: number;
   contexto_hash: string;
   song_id?: string;
+  needs_correction?: boolean;
 }
 
 export function NCWordsPanel() {
@@ -32,7 +33,7 @@ export function NCWordsPanel() {
       // Depois buscar até 100 palavras
       const { data, error } = await supabase
         .from('semantic_disambiguation_cache')
-        .select('palavra, confianca, contexto_hash, song_id')
+        .select('palavra, confianca, contexto_hash, song_id, needs_correction')
         .eq('tagset_codigo', 'NC')
         .order('palavra')
         .limit(100);
@@ -122,6 +123,11 @@ export function NCWordsPanel() {
                 >
                   <span className="text-sm font-mono">{word.palavra}</span>
                   <div className="flex items-center gap-1">
+                    {word.needs_correction && (
+                      <Badge variant="secondary" className="text-xs bg-warning/20 text-warning-foreground" title="Marcada para correção de digitação">
+                        🔧
+                      </Badge>
+                    )}
                     <Badge variant="outline" className="text-xs group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                       <Edit className="h-3 w-3 mr-1" />
                       Validar

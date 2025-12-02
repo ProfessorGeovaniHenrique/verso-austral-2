@@ -29,6 +29,7 @@ interface NCWord {
   contexto_hash: string;
   song_id?: string;
   occurrences?: number;
+  needs_correction?: boolean;
 }
 
 interface SuggestedCorrection {
@@ -36,6 +37,7 @@ interface SuggestedCorrection {
   suggestion: string;
   reason: string;
   confidence: 'high' | 'medium' | 'low';
+  isManuallyMarked?: boolean;
 }
 
 export function NCWordCorrectionTool() {
@@ -43,13 +45,13 @@ export function NCWordCorrectionTool() {
   const [selectedWord, setSelectedWord] = useState<NCWord | null>(null);
   const [correction, setCorrection] = useState('');
 
-  // Buscar palavras NC suspeitas (> 10 chars, padrões anômalos)
+  // Buscar palavras NC suspeitas (> 10 chars, padrões anômalos) + marcadas manualmente
   const { data: ncWords, isLoading } = useQuery({
     queryKey: ['nc-words-suspicious'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('semantic_disambiguation_cache')
-        .select('palavra, confianca, contexto_hash, song_id')
+        .select('palavra, confianca, contexto_hash, song_id, needs_correction')
         .eq('tagset_codigo', 'NC')
         .order('palavra');
 
@@ -61,19 +63,27 @@ export function NCWordCorrectionTool() {
         const existing = grouped.get(item.palavra);
         if (existing) {
           existing.occurrences = (existing.occurrences || 1) + 1;
+          // Manter needs_correction se qualquer ocorrência tiver
+          if (item.needs_correction) existing.needs_correction = true;
         } else {
           grouped.set(item.palavra, { ...item, occurrences: 1 });
         }
       });
 
-      // Filtrar palavras suspeitas
+      // Filtrar palavras suspeitas OU marcadas manualmente
       return Array.from(grouped.values())
         .filter(w => 
+          w.needs_correction || // ✨ Incluir marcadas manualmente
           w.palavra.length > 10 || // Palavras muito longas
           !w.palavra.includes(' ') && w.palavra.length > 15 || // Sem espaço e muito longa
           /[a-z][A-Z]/.test(w.palavra) // CamelCase acidental
         )
-        .sort((a, b) => (b.occurrences || 0) - (a.occurrences || 0));
+        .sort((a, b) => {
+          // Priorizar marcadas manualmente
+          if (a.needs_correction && !b.needs_correction) return -1;
+          if (!a.needs_correction && b.needs_correction) return 1;
+          return (b.occurrences || 0) - (a.occurrences || 0);
+        });
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
   });
@@ -84,8 +94,9 @@ export function NCWordCorrectionTool() {
     return {
       palavra: word.palavra,
       suggestion: suggestion.text,
-      reason: suggestion.reason,
+      reason: word.needs_correction ? 'Marcada manualmente para correção' : suggestion.reason,
       confidence: suggestion.confidence,
+      isManuallyMarked: word.needs_correction,
     };
   }) || [];
 
@@ -100,7 +111,7 @@ export function NCWordCorrectionTool() {
 
       if (fetchError) throw fetchError;
 
-      // 2. Deletar ocorrências antigas
+      // 2. Limpar flag needs_correction e deletar ocorrências antigas
       const { error: deleteError } = await supabase
         .from('semantic_disambiguation_cache')
         .delete()
@@ -185,7 +196,16 @@ export function NCWordCorrectionTool() {
 
                   return (
                     <TableRow key={idx}>
-                      <TableCell className="font-mono">{item.palavra}</TableCell>
+                      <TableCell className="font-mono">
+                        <div className="flex items-center gap-2">
+                          {item.palavra}
+                          {item.isManuallyMarked && (
+                            <Badge variant="default" className="text-xs bg-primary/80">
+                              ✋ Manual
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-mono font-semibold text-primary">
                         {item.suggestion}
                       </TableCell>
