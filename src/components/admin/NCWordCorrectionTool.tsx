@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { SectionLoading, ButtonLoading } from '@/components/ui/loading-spinner';
 import { Loader2, CheckCircle2, XCircle, Edit3, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -152,8 +153,8 @@ export function NCWordCorrectionTool() {
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin" />
+        <CardContent>
+          <SectionLoading text="Carregando palavras NC..." />
         </CardContent>
       </Card>
     );
@@ -282,10 +283,7 @@ export function NCWordCorrectionTool() {
               disabled={!correction.trim() || applyCorrection.isPending}
             >
               {applyCorrection.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Aplicando...
-                </>
+                <ButtonLoading text="Aplicando..." />
               ) : (
                 <>
                   <CheckCircle2 className="h-4 w-4 mr-2" />

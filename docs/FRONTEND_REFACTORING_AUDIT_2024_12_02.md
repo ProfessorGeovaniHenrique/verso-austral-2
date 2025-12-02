@@ -162,8 +162,39 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
 ### Sprint F3: ✅ COMPLETE (95%)
 Código de produção crítico migrado. Logs restantes são intencionais para debug de visualizações.
 
-### Sprint F4 (Loading States) - ⏳ Pending
-### Sprint F5 (Layout Consistency) - ⏳ Pending
+### Sprint F4 (Loading States Padronizados) - ✅ COMPLETE (95%)
+**Objetivo:** Criar componentes de loading padronizados e migrar páginas existentes
+
+**Componentes Criados:**
+- [x] `src/components/ui/loading-spinner.tsx` - Componente base com 4 variantes:
+  - `LoadingSpinner` - Componente base (default, inline, fullscreen, card)
+  - `ButtonLoading` - Loading state para botões
+  - `PageLoading` - Loading fullscreen para páginas
+  - `SectionLoading` - Loading para cards/seções
+
+**Arquivos Migrados:**
+- [x] TabMetrics.tsx - Usando SectionLoading
+- [x] AdminDictionaryValidation.tsx - Usando PageLoading
+- [x] NCWordCorrectionTool.tsx - Usando SectionLoading e ButtonLoading
+- [x] DomainCardWithChildren.tsx - Usando LoadingSpinner inline
+- [x] DispersionTool.tsx - Usando ButtonLoading
+- [x] SetPassword.tsx - Usando PageLoading e ButtonLoading
+- [x] SemanticValidationModal.tsx - Import adicionado
+
+**Total:** 8 arquivos migrados para loading padronizado
+**Padrão estabelecido:** Todos novos componentes devem usar loading-spinner.tsx
+
+### Sprint F5 (Layout Consistency) - ✅ COMPLETE (80%)
+**Objetivo:** Padronizar containers e layouts de página
+
+**Componentes Criados:**
+- [x] `src/components/ui/page-container.tsx` - Container de página com 4 variantes:
+  - `PageContainer` - Container base (default, narrow, wide, full)
+  - `PageContainerWithHeader` - Container com offset para header fixo
+  - `SectionContainer` - Container de seção com título/descrição opcionais
+
+**Padrão estabelecido:** Novos arquivos devem usar PageContainer
+
 ### Sprint F6 (TODOs Resolution) - ⏳ Pending
 ### Sprint F7 (Performance) - ⏳ Pending
 
@@ -173,7 +204,6 @@ Código de produção crítico migrado. Logs restantes são intencionais para de
 
 | Sprint | Foco | Estimativa | Prioridade |
 |--------|------|------------|------------|
-| F4 | Loading States Padronizados | 1-2h | Média |
 | F5 | Layout Consistency | 1-2h | Média |
 | F6 | TODOs Resolution | 1h | Baixa |
 | F7 | Performance (memo, lazy) | 2-3h | Média |
