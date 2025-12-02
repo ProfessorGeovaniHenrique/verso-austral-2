@@ -69,9 +69,15 @@ export function useReclassifyMG() {
         });
         onSuccess?.();
         return result;
+      } else if (response.processed > 0 && response.updated === 0) {
+        // Processed but nothing saved - likely matching issue
+        toast.warning(`"${entry.palavra}" processado mas não atualizado`, {
+          description: response.errors?.[0] || 'Palavra não encontrada ou já atualizada',
+        });
+        return null;
       } else {
         toast.error('Falha na reclassificação', {
-          description: response.errors?.[0] || 'Erro desconhecido',
+          description: response.errors?.[0] || 'Nenhuma palavra foi processada',
         });
         return null;
       }

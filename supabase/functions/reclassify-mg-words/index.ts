@@ -488,11 +488,23 @@ serve(async (req) => {
     let updatedCount = 0;
     let correctedCount = 0;
     const finalResults: ReclassificationResult[] = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      const originalWord = words.find(w => w.palavra === result.palavra);
-      const originalDomainN1 = originalWord?.tagset_codigo?.split('.')[0] || 'NC';
+      // Case-insensitive matching to handle AI capitalization changes
+      const originalWord = words.find(w => 
+        w.palavra.toLowerCase() === result.palavra.toLowerCase()
+      );
+      
+      if (!originalWord) {
+        const inputWords = words.map(w => w.palavra).join(', ');
+        console.warn(`[refine-domain] Word "${result.palavra}" from AI not found in input: [${inputWords}]`);
+        errors.push(`Palavra "${result.palavra}" não encontrada na entrada`);
+        continue;
+      }
+      
+      const originalDomainN1 = originalWord.tagset_codigo?.split('.')[0] || 'NC';
       
       // Validate and fix the code
       const validatedResult = validateAndFixCode(result, validCodes, originalDomainN1);
@@ -500,39 +512,39 @@ serve(async (req) => {
 
       finalResults.push(validatedResult);
 
-      // Find matching word and update database
-      if (originalWord) {
-        const { error: updateError } = await supabase
-          .from('semantic_disambiguation_cache')
-          .update({
-            tagset_codigo: validatedResult.tagset_codigo_validated,
-            tagset_n1: validatedResult.tagset_n1,
-            tagset_n2: validatedResult.tagset_n2,
-            tagset_n3: validatedResult.tagset_n3,
-            tagset_n4: validatedResult.tagset_n4,
-            confianca: validatedResult.confianca,
-            fonte: model === 'gpt5' ? 'gpt5_mg_refinement' : 'gemini_flash_mg_refinement',
-            cached_at: new Date().toISOString(),
-          })
-          .eq('id', originalWord.id);
+      // Update database
+      const { error: updateError } = await supabase
+        .from('semantic_disambiguation_cache')
+        .update({
+          tagset_codigo: validatedResult.tagset_codigo_validated,
+          tagset_n1: validatedResult.tagset_n1,
+          tagset_n2: validatedResult.tagset_n2,
+          tagset_n3: validatedResult.tagset_n3,
+          tagset_n4: validatedResult.tagset_n4,
+          confianca: validatedResult.confianca,
+          fonte: model === 'gpt5' ? 'gpt5_mg_refinement' : 'gemini_flash_mg_refinement',
+          cached_at: new Date().toISOString(),
+        })
+        .eq('id', originalWord.id);
 
-        if (updateError) {
-          console.error(`[refine-domain] Failed to update ${result.palavra}:`, updateError);
-        } else {
-          updatedCount++;
-        }
+      if (updateError) {
+        console.error(`[refine-domain] Failed to update ${result.palavra}:`, updateError);
+        errors.push(`Erro ao salvar "${result.palavra}": ${updateError.message}`);
+      } else {
+        updatedCount++;
       }
     }
 
     const duration = Date.now() - startTime;
-    console.log(`[refine-domain] Completed: ${updatedCount} updated, ${correctedCount} corrected, ${duration}ms`);
+    console.log(`[refine-domain] Completed: ${updatedCount} updated, ${correctedCount} corrected, ${errors.length} errors, ${duration}ms`);
 
     return new Response(
       JSON.stringify({
-        success: true,
+        success: updatedCount > 0,
         processed: results.length,
         updated: updatedCount,
         corrected: correctedCount,
+        errors: errors.length > 0 ? errors : undefined,
         model,
         source: model === 'gpt5' ? 'gpt5_mg_refinement' : 'gemini_flash_mg_refinement',
         duration,
