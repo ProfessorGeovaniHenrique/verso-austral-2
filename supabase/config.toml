@@ -57,11 +57,9 @@ verify_jwt = true
 
 [functions.import-navarro-backend]
 verify_jwt = true
-# Importação do Dicionário do Nordeste (Fred Navarro 2014)
 
 [functions.process-nordestino-navarro]
 verify_jwt = true
-# Processamento do Dicionário do Nordeste (Fred Navarro 2014)
 
 [functions.generate-artist-bio]
 verify_jwt = false
@@ -143,3 +141,6 @@ verify_jwt = true
 
 [functions.add-text-correction]
 verify_jwt = true
+
+[functions.reclassify-mg-words]
+verify_jwt = false

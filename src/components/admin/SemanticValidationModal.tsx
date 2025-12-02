@@ -9,10 +9,11 @@ import { Input } from '@/components/ui/input';
 import { HierarchicalTagsetSelector } from './HierarchicalTagsetSelector';
 import { POSSelector } from './POSSelector';
 import { useNCWordValidation } from '@/hooks/useNCWordValidation';
+import { useReclassifyMG } from '@/hooks/useReclassifyMG';
 import { extractKWICContext, KWICResult } from '@/lib/kwicUtils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, Sparkles, AlertTriangle } from 'lucide-react';
 import { SemanticLexiconEntry } from '@/hooks/useSemanticLexiconData';
 
 interface Props {
@@ -21,6 +22,13 @@ interface Props {
   onOpenChange: (open: boolean) => void;
   onSuccess?: () => void;
 }
+
+// Check if this is an MG word classified only at N1 level
+const isMGN1Only = (entry: SemanticLexiconEntry | null): boolean => {
+  if (!entry) return false;
+  return entry.tagset_codigo === 'MG' && 
+    (entry.fonte === 'rule_based' || !entry.tagset_n2);
+};
 
 export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }: Props) {
   const [confirmAsCorrect, setConfirmAsCorrect] = useState(false);
@@ -35,6 +43,9 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
   const [formaPadrao, setFormaPadrao] = useState('');
 
   const { submitValidation, isSubmitting } = useNCWordValidation();
+  const { reclassifySingle, isProcessing: isReclassifying } = useReclassifyMG();
+
+  const showMGWarning = isMGN1Only(entry);
 
   // Pre-populate form when entry changes
   useEffect(() => {
@@ -74,6 +85,17 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
     if (!songData?.lyrics || !entry?.palavra) return [];
     return extractKWICContext(songData.lyrics, entry.palavra, 50);
   }, [songData?.lyrics, entry?.palavra]);
+
+  const handleSuggestWithAI = async () => {
+    if (!entry) return;
+    
+    const result = await reclassifySingle(entry, { model: 'gemini' });
+    if (result) {
+      // Pre-populate the tagset selector with the AI suggestion
+      setSelectedTagset({ codigo: result.tagset_codigo, nome: '' });
+      setJustificativa(result.justificativa);
+    }
+  };
 
   const handleSave = () => {
     if (!entry) return;
@@ -124,7 +146,7 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!isSubmitting && !isReclassifying) {
       onOpenChange(false);
       resetForm();
     }
@@ -146,6 +168,37 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* MG N1 Warning Banner */}
+          {showMGWarning && (
+            <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+              <AlertTriangle className="h-5 w-5 text-blue-600 flex-shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm text-blue-700 font-medium">
+                  Marcador Gramatical apenas em N1
+                </p>
+                <p className="text-xs text-blue-600">
+                  Esta palavra está classificada apenas no nível 1. Use o botão abaixo para obter uma sugestão mais específica.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 border-blue-500/30"
+                onClick={handleSuggestWithAI}
+                disabled={isReclassifying}
+              >
+                {isReclassifying ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-1" />
+                    Sugerir com Gemini
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
           {/* Current classification */}
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
             <div className="flex-1">
@@ -282,9 +335,27 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
                 </div>
               </div>
 
-              {/* Tagset selector */}
+              {/* Tagset selector with AI suggestion button for MG N1 */}
               <div className="space-y-2">
-                <Label className="text-sm font-semibold">📂 Domínio Semântico</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold">📂 Domínio Semântico</Label>
+                  {showMGWarning && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-blue-600"
+                      onClick={handleSuggestWithAI}
+                      disabled={isReclassifying}
+                    >
+                      {isReclassifying ? (
+                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      ) : (
+                        <Sparkles className="h-3 w-3 mr-1" />
+                      )}
+                      Sugerir
+                    </Button>
+                  )}
+                </div>
                 <div className="border rounded-lg p-3 bg-card">
                   <HierarchicalTagsetSelector
                     value={selectedTagset?.codigo || null}
@@ -322,12 +393,12 @@ export function SemanticValidationModal({ entry, open, onOpenChange, onSuccess }
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
+          <Button variant="outline" onClick={handleClose} disabled={isSubmitting || isReclassifying}>
             Cancelar
           </Button>
           <Button
             onClick={handleSave}
-            disabled={(!confirmAsCorrect && !selectedTagset) || isSubmitting}
+            disabled={(!confirmAsCorrect && !selectedTagset) || isSubmitting || isReclassifying}
           >
             {isSubmitting ? (
               <>

@@ -1,13 +1,25 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Database, AlertTriangle, CheckCircle, Award, Loader2 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { ChevronLeft, ChevronRight, Database, AlertTriangle, CheckCircle, Award, Loader2, Sparkles, Zap } from 'lucide-react';
 import { useSemanticLexiconData, SemanticLexiconEntry } from '@/hooks/useSemanticLexiconData';
 import { SemanticLexiconFilters } from './SemanticLexiconFilters';
 import { SemanticWordRow } from './SemanticWordRow';
 import { SemanticValidationModal } from './SemanticValidationModal';
+import { useReclassifyMG } from '@/hooks/useReclassifyMG';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export function SemanticLexiconPanel() {
   const {
@@ -27,6 +39,16 @@ export function SemanticLexiconPanel() {
 
   const [selectedEntry, setSelectedEntry] = useState<SemanticLexiconEntry | null>(null);
   const [validationOpen, setValidationOpen] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<'gemini' | 'gpt5'>('gemini');
+
+  const { reclassifyBatch, isProcessing, progress } = useReclassifyMG();
+
+  // Find MG N1 only entries for batch processing
+  const mgN1Entries = useMemo(() => 
+    entries.filter(e => e.tagset_codigo === 'MG' && (e.fonte === 'rule_based' || !e.tagset_n2)),
+    [entries]
+  );
 
   const handleValidate = (entry: SemanticLexiconEntry) => {
     setSelectedEntry(entry);
@@ -36,6 +58,18 @@ export function SemanticLexiconPanel() {
   const handleValidationSuccess = () => {
     refetch();
   };
+
+  const handleBatchRefine = async () => {
+    setBatchDialogOpen(false);
+    await reclassifyBatch(mgN1Entries, {
+      model: selectedModel,
+      onSuccess: refetch,
+    });
+  };
+
+  const progressPercent = progress.total > 0 
+    ? Math.round((progress.current / progress.total) * 100) 
+    : 0;
 
   return (
     <div className="space-y-6">
@@ -78,20 +112,49 @@ export function SemanticLexiconPanel() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Com Insígnias</CardTitle>
-            <Award className="h-4 w-4 text-green-500" />
+            <CardTitle className="text-sm font-medium">MG apenas N1</CardTitle>
+            <Sparkles className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats?.withInsignias.toLocaleString() || '-'}</div>
-            <p className="text-xs text-muted-foreground">marcadores culturais</p>
+            <div className="text-2xl font-bold text-blue-600">{stats?.mgOnlyN1?.toLocaleString() || '-'}</div>
+            <p className="text-xs text-muted-foreground">precisam refinamento</p>
           </CardContent>
         </Card>
       </div>
 
+      {/* Batch Processing Progress */}
+      {isProcessing && (
+        <Card className="border-blue-500/50 bg-blue-500/5">
+          <CardContent className="py-4">
+            <div className="flex items-center gap-4">
+              <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <div className="flex justify-between text-sm mb-1">
+                  <span>Refinando palavras MG com {selectedModel === 'gpt5' ? 'GPT-5' : 'Gemini'}...</span>
+                  <span>{progress.current}/{progress.total} ({progressPercent}%)</span>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Filters */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Filtros</CardTitle>
+          {mgN1Entries.length > 0 && !isProcessing && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 border-blue-500/30"
+              onClick={() => setBatchDialogOpen(true)}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              Refinar MG em Lote ({mgN1Entries.length})
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           <SemanticLexiconFilters
@@ -140,7 +203,7 @@ export function SemanticLexiconPanel() {
                       <TableHead>Conf.</TableHead>
                       <TableHead>Fonte</TableHead>
                       <TableHead>Flags</TableHead>
-                      <TableHead className="w-24">Ação</TableHead>
+                      <TableHead className="w-32">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -149,6 +212,7 @@ export function SemanticLexiconPanel() {
                         key={entry.id}
                         entry={entry}
                         onValidate={handleValidate}
+                        onRefresh={refetch}
                       />
                     ))}
                   </TableBody>
@@ -196,6 +260,53 @@ export function SemanticLexiconPanel() {
         onOpenChange={setValidationOpen}
         onSuccess={handleValidationSuccess}
       />
+
+      {/* Batch Refine Confirmation Dialog */}
+      <AlertDialog open={batchDialogOpen} onOpenChange={setBatchDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-blue-600" />
+              Refinar Marcadores Gramaticais em Lote
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Serão processadas <strong>{mgN1Entries.length}</strong> palavras MG classificadas 
+                apenas no nível 1, refinando-as para níveis mais específicos (N2-N4).
+              </p>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant={selectedModel === 'gemini' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('gemini')}
+                  className={selectedModel === 'gemini' ? 'bg-blue-600' : ''}
+                >
+                  <Zap className="h-4 w-4 mr-1" />
+                  Gemini (rápido)
+                </Button>
+                <Button
+                  variant={selectedModel === 'gpt5' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedModel('gpt5')}
+                  className={selectedModel === 'gpt5' ? 'bg-purple-600' : ''}
+                >
+                  <Sparkles className="h-4 w-4 mr-1" />
+                  GPT-5 (preciso)
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Tempo estimado: ~{Math.ceil(mgN1Entries.length / 15)} minutos
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchRefine}>
+              Iniciar Refinamento
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

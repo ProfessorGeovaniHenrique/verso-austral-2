@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Check, Edit, AlertTriangle, Link2, Pencil, Award } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, Edit, AlertTriangle, Link2, Pencil, Award, Sparkles, Loader2 } from 'lucide-react';
 import { SemanticLexiconEntry } from '@/hooks/useSemanticLexiconData';
 import { KWICInlineDisplay } from './KWICInlineDisplay';
+import { useReclassifyMG } from '@/hooks/useReclassifyMG';
 import { cn } from '@/lib/utils';
 
 interface Props {
   entry: SemanticLexiconEntry;
   onValidate: (entry: SemanticLexiconEntry) => void;
+  onRefresh?: () => void;
 }
 
 const getConfidenceColor = (confidence: number | null): string => {
@@ -22,8 +24,10 @@ const getConfidenceColor = (confidence: number | null): string => {
 const getSourceBadge = (fonte: string | null) => {
   switch (fonte) {
     case 'gemini_flash':
+    case 'gemini_flash_mg_refinement':
       return <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600">Gemini</Badge>;
     case 'gpt5':
+    case 'gpt5_mg_refinement':
       return <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600">GPT-5</Badge>;
     case 'rule_based':
       return <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600">Regras</Badge>;
@@ -35,12 +39,28 @@ const getSourceBadge = (fonte: string | null) => {
   }
 };
 
-export function SemanticWordRow({ entry, onValidate }: Props) {
+// Check if this is an MG word classified only at N1 level
+const isMGN1Only = (entry: SemanticLexiconEntry): boolean => {
+  return entry.tagset_codigo === 'MG' && 
+    (entry.fonte === 'rule_based' || !entry.tagset_n2);
+};
+
+export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { reclassifySingle, isProcessing } = useReclassifyMG();
 
   const confidence = entry.confianca !== null ? Math.round(entry.confianca * 100) : null;
   const needsReview = confidence !== null && confidence < 80 && 
     entry.fonte !== 'manual' && entry.fonte !== 'human_validated';
+  const showRefineButton = isMGN1Only(entry);
+
+  const handleRefine = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await reclassifySingle(entry, { 
+      model: 'gemini',
+      onSuccess: onRefresh 
+    });
+  };
 
   return (
     <>
@@ -48,7 +68,8 @@ export function SemanticWordRow({ entry, onValidate }: Props) {
         className={cn(
           'cursor-pointer transition-colors hover:bg-muted/50',
           getConfidenceColor(entry.confianca),
-          needsReview && 'border-l-2 border-l-amber-500'
+          needsReview && 'border-l-2 border-l-amber-500',
+          showRefineButton && 'border-l-2 border-l-blue-500'
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -74,6 +95,11 @@ export function SemanticWordRow({ entry, onValidate }: Props) {
           <Badge variant="secondary" className="font-mono text-xs">
             {entry.tagset_codigo}
           </Badge>
+          {showRefineButton && (
+            <Badge variant="outline" className="ml-1 text-xs bg-blue-500/10 text-blue-600">
+              N1
+            </Badge>
+          )}
         </TableCell>
 
         {/* Domain N1 */}
@@ -130,26 +156,47 @@ export function SemanticWordRow({ entry, onValidate }: Props) {
           </div>
         </TableCell>
 
-        {/* Action */}
+        {/* Actions */}
         <TableCell onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => onValidate(entry)}
-          >
-            {needsReview ? (
-              <>
-                <Edit className="h-3 w-3 mr-1" />
-                Revisar
-              </>
-            ) : (
-              <>
-                <Check className="h-3 w-3 mr-1" />
-                Validar
-              </>
+          <div className="flex gap-1">
+            {showRefineButton && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-600"
+                onClick={handleRefine}
+                disabled={isProcessing}
+                title="Refinar classificação com Gemini"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Refinar
+                  </>
+                )}
+              </Button>
             )}
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => onValidate(entry)}
+            >
+              {needsReview ? (
+                <>
+                  <Edit className="h-3 w-3 mr-1" />
+                  Revisar
+                </>
+              ) : (
+                <>
+                  <Check className="h-3 w-3 mr-1" />
+                  Validar
+                </>
+              )}
+            </Button>
+          </div>
         </TableCell>
       </TableRow>
 
@@ -163,6 +210,17 @@ export function SemanticWordRow({ entry, onValidate }: Props) {
                 palavra={entry.palavra} 
                 songId={entry.song_id}
               />
+
+              {/* MG N1 Warning */}
+              {showRefineButton && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10 text-blue-700 text-sm">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>
+                    Esta palavra está classificada apenas no nível 1 (MG). 
+                    Clique em "Refinar" para classificação mais específica com Gemini.
+                  </span>
+                </div>
+              )}
 
               {/* Additional info */}
               <div className="flex flex-wrap gap-4 text-xs text-muted-foreground pt-2 border-t">

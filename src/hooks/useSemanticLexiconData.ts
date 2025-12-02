@@ -13,6 +13,7 @@ export interface SemanticLexiconFilters {
     spellingDeviation: boolean;
     withInsignias: boolean;
     needsReview: boolean;
+    mgOnlyN1: boolean; // NEW: Filter for MG words classified only at N1
   };
 }
 
@@ -45,6 +46,7 @@ export interface LexiconStats {
   spellingDeviations: number;
   withInsignias: number;
   needsReview: number;
+  mgOnlyN1: number; // NEW: Count of MG words at N1 only
   bySource: Record<string, number>;
   byDomain: Record<string, number>;
 }
@@ -60,6 +62,7 @@ const DEFAULT_FILTERS: SemanticLexiconFilters = {
     spellingDeviation: false,
     withInsignias: false,
     needsReview: false,
+    mgOnlyN1: false,
   },
 };
 
@@ -73,7 +76,7 @@ export function useSemanticLexiconData(pageSize = 50) {
     queryFn: async (): Promise<LexiconStats> => {
       const { data, error } = await supabase
         .from('semantic_disambiguation_cache')
-        .select('tagset_codigo, tagset_n1, confianca, fonte, is_polysemous, is_mwe, is_spelling_deviation, insignias_culturais')
+        .select('tagset_codigo, tagset_n1, tagset_n2, confianca, fonte, is_polysemous, is_mwe, is_spelling_deviation, insignias_culturais')
         .neq('tagset_codigo', 'NC');
 
       if (error) throw error;
@@ -87,6 +90,7 @@ export function useSemanticLexiconData(pageSize = 50) {
       let spellingDeviations = 0;
       let withInsignias = 0;
       let needsReview = 0;
+      let mgOnlyN1 = 0;
 
       entries.forEach(entry => {
         // By source
@@ -109,6 +113,12 @@ export function useSemanticLexiconData(pageSize = 50) {
             entry.fonte !== 'manual' && entry.fonte !== 'human_validated') {
           needsReview++;
         }
+
+        // MG only at N1 level (no N2)
+        if (entry.tagset_codigo === 'MG' && 
+            (entry.fonte === 'rule_based' || !entry.tagset_n2)) {
+          mgOnlyN1++;
+        }
       });
 
       return {
@@ -119,6 +129,7 @@ export function useSemanticLexiconData(pageSize = 50) {
         spellingDeviations,
         withInsignias,
         needsReview,
+        mgOnlyN1,
         bySource,
         byDomain,
       };
@@ -177,6 +188,13 @@ export function useSemanticLexiconData(pageSize = 50) {
         query = query
           .lt('confianca', 0.80)
           .not('fonte', 'in', '("manual","human_validated")');
+      }
+
+      // NEW: Filter for MG words classified only at N1
+      if (filters.flags.mgOnlyN1) {
+        query = query
+          .eq('tagset_codigo', 'MG')
+          .or('fonte.eq.rule_based,tagset_n2.is.null');
       }
 
       // Pagination
