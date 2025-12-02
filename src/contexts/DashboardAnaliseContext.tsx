@@ -1,4 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('DashboardAnaliseContext');
 
 export interface DomainData {
   dominio: string;
@@ -98,7 +101,7 @@ export function DashboardAnaliseProvider({ children }: { children: ReactNode }) 
       
       // Se versão diferente, invalidar cache antigo
       if (savedVersion !== CACHE_VERSION) {
-        console.log('Cache version mismatch. Clearing old data.');
+        log.info('Cache version mismatch, clearing old data');
         localStorage.removeItem(STORAGE_KEY);
         localStorage.setItem(VERSION_KEY, CACHE_VERSION);
         return initialData;
@@ -106,7 +109,7 @@ export function DashboardAnaliseProvider({ children }: { children: ReactNode }) 
       
       return saved ? JSON.parse(saved) : initialData;
     } catch (error) {
-      console.error('Error loading processamento data from localStorage:', error);
+      log.error('Error loading processamento data from localStorage', error instanceof Error ? error : new Error(String(error)));
       return initialData;
     }
   });
@@ -116,7 +119,7 @@ export function DashboardAnaliseProvider({ children }: { children: ReactNode }) 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(processamentoData));
     } catch (error) {
-      console.error('Error saving processamento data to localStorage:', error);
+      log.error('Error saving processamento data to localStorage', error instanceof Error ? error : new Error(String(error)));
     }
   }, [processamentoData]);
 

@@ -5,7 +5,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/lib/loggerFactory';
 import type { SongWithRelations, ArtistWithRelations, CatalogStats } from '@/types/music';
+
+const log = createLogger('useCatalogData');
 
 export function useCatalogData() {
   const [songs, setSongs] = useState<SongWithRelations[]>([]);
@@ -15,7 +18,7 @@ export function useCatalogData() {
   const [error, setError] = useState<string | null>(null);
 
   const loadSongs = async () => {
-    console.log('[useCatalogData] ⚠️ ATENÇÃO: Carregando apenas 1000 músicas mais recentes (limite Supabase)');
+    log.debug('Carregando músicas mais recentes (limite Supabase)');
     
     try {
       const { data, error: fetchError } = await supabase
@@ -38,16 +41,16 @@ export function useCatalogData() {
       
       if (fetchError) throw fetchError;
       
-      console.log(`[useCatalogData] Loaded ${data?.length || 0} songs`);
+      log.info(`Loaded ${data?.length || 0} songs`);
       setSongs((data as SongWithRelations[]) || []);
     } catch (err) {
-      console.error('[useCatalogData] Error loading songs:', err);
+      log.error('Error loading songs', err instanceof Error ? err : new Error(String(err)));
       throw err;
     }
   };
 
   const loadArtists = async () => {
-    console.log('[useCatalogData] Loading artists from materialized view...');
+    log.debug('Loading artists from materialized view');
     
     try {
       const { data, error: fetchError } = await supabase
@@ -57,7 +60,7 @@ export function useCatalogData() {
       
       if (fetchError) throw fetchError;
       
-      console.log(`[useCatalogData] Loaded ${data?.length || 0} artists with stats`);
+      log.info(`Loaded ${data?.length || 0} artists with stats`);
       
       // Transformar para o formato ArtistWithRelations + stats
       const artistsWithStats = data?.map(row => {
@@ -91,13 +94,13 @@ export function useCatalogData() {
       
       setArtists(artistsWithStats as any);
     } catch (err) {
-      console.error('[useCatalogData] Error loading artists:', err);
+      log.error('Error loading artists', err instanceof Error ? err : new Error(String(err)));
       throw err;
     }
   };
 
   const loadStats = async () => {
-    console.log('[useCatalogData] Loading stats from aggregated queries...');
+    log.debug('Loading stats from aggregated queries');
     
     try {
       // Query otimizada 1: Contar total de músicas por status
@@ -137,10 +140,10 @@ export function useCatalogData() {
         avgConfidence
       };
 
-      console.log('[useCatalogData] Stats:', calculatedStats);
+      log.debug('Stats loaded', { stats: calculatedStats });
       setStats(calculatedStats);
     } catch (err) {
-      console.error('[useCatalogData] Error loading stats:', err);
+      log.error('Error loading stats', err instanceof Error ? err : new Error(String(err)));
       throw err;
     }
   };
@@ -158,7 +161,7 @@ export function useCatalogData() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
       setError(errorMessage);
-      console.error('[useCatalogData] Error reloading data:', errorMessage);
+      log.error('Error reloading data', err instanceof Error ? err : new Error(errorMessage));
     } finally {
       setLoading(false);
     }
@@ -170,10 +173,10 @@ export function useCatalogData() {
 
   // Reload com delay para aguardar refresh da materialized view
   const reloadWithDelay = async (delayMs: number = 2500) => {
-    console.log(`[useCatalogData] ⏳ Aguardando ${delayMs}ms para MV atualizar...`);
+    log.debug(`Aguardando ${delayMs}ms para MV atualizar`);
     await new Promise(resolve => setTimeout(resolve, delayMs));
     await reload();
-    console.log('[useCatalogData] ✅ Reload após delay concluído');
+    log.info('Reload após delay concluído');
   };
 
   return { 

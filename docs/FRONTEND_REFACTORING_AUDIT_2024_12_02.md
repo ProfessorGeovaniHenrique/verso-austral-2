@@ -119,8 +119,57 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
 - **Files Created**: 12 new focused files
 - **Benefit**: Massive maintainability improvement, reusable components
 
-### Sprint F3 (Console.logs Cleanup) - ⏳ Pending
+### Sprint F3 (Console.logs Cleanup) - 🔄 Em Progresso
+**Scope:** 1219 ocorrências em 57 arquivos
+**Estratégia:** Migrar para createLogger (já existente em src/lib/loggerFactory.ts)
+**Progresso:**
+- [x] useCatalogData.ts - Migrado para createLogger
+- [x] DashboardAnaliseContext.tsx - Migrado para createLogger
+- [ ] Demais hooks críticos (~20 arquivos)
+- [ ] Services (~10 arquivos)
+- [ ] Componentes de página (~15 arquivos)
+
+**Infraestrutura existente:**
+- `src/lib/logger.ts` - StructuredLogger com Sentry integration
+- `src/lib/loggerFactory.ts` - Factory para loggers contextualizados
+- `src/config/loggingConfig.ts` - Configuração por categoria
+
 ### Sprint F4 (Loading States) - ⏳ Pending
 ### Sprint F5 (Layout Consistency) - ⏳ Pending
 ### Sprint F6 (TODOs Resolution) - ⏳ Pending
 ### Sprint F7 (Performance) - ⏳ Pending
+
+---
+
+## 📋 Próximos Sprints Planejados
+
+| Sprint | Foco | Estimativa | Prioridade |
+|--------|------|------------|------------|
+| F3 | Console.logs Cleanup | 2-3h | Alta |
+| F4 | Loading States Padronizados | 1-2h | Média |
+| F5 | Layout Consistency | 1-2h | Média |
+| F6 | TODOs Resolution | 1h | Baixa |
+| F7 | Performance (memo, lazy) | 2-3h | Média |
+
+### Detalhamento dos Sprints Pendentes:
+
+**Sprint F4 - Loading States:**
+- Criar `<CatalogLoader />` componente padronizado
+- Criar `<TableSkeleton />` para tabelas
+- Criar `<CardSkeleton />` para cards
+- Unificar padrão de loading em todas as páginas
+
+**Sprint F5 - Layout Consistency:**
+- Padronizar espaçamentos (usar tokens do design system)
+- Unificar containers de página
+- Melhorar estados vazios com ilustrações e CTAs
+
+**Sprint F6 - TODOs Resolution:**
+- Buscar e resolver todos os `// TODO` no código
+- Documentar decisões de não-implementação
+
+**Sprint F7 - Performance:**
+- Adicionar `React.memo` em componentes pesados
+- Implementar `useMemo` para cálculos derivados
+- Lazy loading para rotas e componentes
+- Code splitting otimizado
