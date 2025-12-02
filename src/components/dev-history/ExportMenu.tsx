@@ -1,4 +1,4 @@
-import { Download, FileText, FileType, Code } from "lucide-react";
+import { Download, FileText, FileType, Code, GraduationCap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -6,9 +6,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { exportDeveloperHistoryToPDF } from "@/utils/exportDeveloperHistoryPDF";
 import { exportDeveloperHistoryToDOCX } from "@/utils/exportDeveloperHistoryDOCX";
+import { exportDeveloperHistoryABNT } from "@/utils/exportDeveloperHistoryABNT";
 import { toast } from "sonner";
 import {
   productVision,
@@ -68,6 +70,27 @@ export function ExportMenu() {
     }
   };
 
+  const handleExportABNT = async () => {
+    try {
+      toast.loading("Gerando Relatório Acadêmico ABNT...");
+      await exportDeveloperHistoryABNT({
+        includeIntroduction: true,
+        includeMethodology: true,
+        includeDevelopment: true,
+        includeFunctionalities: true,
+        includeResults: true,
+        includeRoadmap: true,
+        includeReferences: true,
+        authorName: 'Equipe Verso Austral',
+        institutionName: 'Verso Austral - Plataforma de Análise Cultural'
+      });
+      toast.success("Relatório ABNT exportado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao exportar ABNT:", error);
+      toast.error("Erro ao exportar Relatório ABNT");
+    }
+  };
+
   const handleExportDataJSON = () => {
     try {
       const data = {
@@ -107,7 +130,10 @@ export function ExportMenu() {
           Exportar Relatório
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>Exportar Documentos</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        
         <DropdownMenuItem onClick={handleExportFullPDF}>
           <FileText className="mr-2 h-4 w-4" />
           Relatório Completo (PDF)
@@ -121,6 +147,16 @@ export function ExportMenu() {
         <DropdownMenuItem onClick={handleExportFullDOCX}>
           <FileType className="mr-2 h-4 w-4" />
           Relatório Completo (DOCX)
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="text-xs text-muted-foreground">
+          Formato Acadêmico
+        </DropdownMenuLabel>
+        
+        <DropdownMenuItem onClick={handleExportABNT} className="font-medium">
+          <GraduationCap className="mr-2 h-4 w-4" />
+          📄 Relatório ABNT NBR 14724
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

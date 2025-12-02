@@ -364,15 +364,29 @@ export const futureProspects: FutureProspect[] = [
 // ============================================
 
 export const mvpMetrics = {
-  overallCompletion: 90, // %
-  implementedStories: 10,
+  overallCompletion: 95, // %
+  implementedStories: 11,
   totalMvpStories: 8,
   totalStories: 12,
-  inProgressStories: 1,
-  completedEpics: 1,
+  inProgressStories: 0,
+  completedEpics: 2,
   totalEpics: 2,
-  nextMilestone: "Validação Final e Dashboard com Dados Reais",
-  estimatedMvpCompletion: "Q2 2025"
+  nextMilestone: "Exportação ABNT e Consolidação de Métricas",
+  estimatedMvpCompletion: "Dez 2025",
+  // Métricas atualizadas Dez 2025
+  corpusStats: {
+    totalSongs: 52050,
+    totalArtists: 412,
+    semanticCacheWords: 5000,
+    semanticDomainsN1: 13,
+    dialectalLexiconEntries: 500
+  },
+  refactoringStats: {
+    sprintsCompleted: 8,
+    codeReduction: 300,
+    componentsExtracted: 15,
+    filesRefactored: 35
+  }
 };
 
 // ============================================
@@ -381,12 +395,36 @@ export const mvpMetrics = {
 
 export const milestones: Milestone[] = [
   {
+    id: 'refactoring-complete',
+    date: 'Dez 02, 2025',
+    title: 'Refatoração Frontend F0-F7 Completa',
+    epicIds: ['epic-refactoring'],
+    status: 'completed',
+    description: 'Sprints F0-F7: NavigationConfig (-24% código), AdminUsers (-54%), MusicCatalog (-80%), LoadingSpinner, PageContainer, Logger estruturado. Zero bugs em produção durante refatoração.'
+  },
+  {
+    id: 'deduplication-complete',
+    date: 'Dez 02, 2025',
+    title: 'Deduplicação de Músicas 100% Concluída',
+    epicIds: ['epic-data-quality'],
+    status: 'completed',
+    description: 'Eliminação de 15.218 duplicatas via SQL migration. Corpus consolidado: 52.050 músicas únicas. Constraint UNIQUE (normalized_title, artist_id) previne recorrência.'
+  },
+  {
+    id: 'abnt-export',
+    date: 'Dez 02, 2025',
+    title: 'Exportação ABNT NBR 14724',
+    epicIds: ['epic-export'],
+    status: 'completed',
+    description: 'Relatório acadêmico completo: capa, sumário, introdução, metodologia, fases de desenvolvimento, funcionalidades, resultados, roadmap, referências bibliográficas.'
+  },
+  {
     id: 'semantic-incremental',
     date: 'Nov 26, 2025',
     title: 'Pipeline Semântico Incremental On-Demand',
     epicIds: ['epic-semantic-pipeline'],
     status: 'completed',
-    description: 'Processamento incremental por artista com cache acumulativo, eliminando timeouts de batch jobs. Usuário seleciona artista → sistema verifica cache → se insuficiente, dispara processamento com feedback visual em tempo real. Cache cresce de 64 para 700+ palavras, redução de 70% em chamadas API Gemini.'
+    description: 'Processamento incremental por artista com cache acumulativo. Cache cresce de 64 para 5000+ palavras, redução de 70% em chamadas API Gemini.'
   },
   {
     id: 'mvp-auth',

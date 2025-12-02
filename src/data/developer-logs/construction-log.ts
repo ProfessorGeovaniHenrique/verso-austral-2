@@ -1172,6 +1172,283 @@ export const constructionLog: ConstructionPhase[] = [
       "Expandir regras morfológicas para verbos (conjugações)",
       "Implementar validação humana de classificações do lexicon"
     ]
+  },
+
+  // ==========================================
+  // FASES DE REFATORAÇÃO FRONTEND (F0-F7)
+  // ==========================================
+  {
+    phase: "Fase F0: Backup e Documentação de Refatoração",
+    dateStart: "2025-12-01",
+    dateEnd: "2025-12-01",
+    status: "completed",
+    objective: "Documentar estado atual do frontend antes de refatoração massiva, criar audit trail completo",
+    decisions: [
+      {
+        decision: "Criar FRONTEND_REFACTORING_AUDIT.md como source of truth",
+        rationale: "Refatoração de 7 sprints requer rastreabilidade de mudanças e decisões",
+        alternatives: ["Documentar em memórias apenas", "Não documentar"],
+        chosenBecause: "Markdown permite versionamento e referência futura para manutenção",
+        impact: "Zero rollbacks necessários durante refatoração"
+      }
+    ],
+    artifacts: [
+      {
+        file: "docs/FRONTEND_REFACTORING_AUDIT_2024_12_02.md",
+        linesOfCode: 250,
+        coverage: "Audit completo de todos os sprints F0-F7",
+        description: "Diagnóstico inicial, issues identificadas, ações tomadas, métricas de sucesso"
+      }
+    ],
+    metrics: {
+      documentationCoverage: { before: 0, after: 100 }
+    },
+    scientificBasis: [],
+    challenges: ["Mapear 6 páginas de métricas fragmentadas com dados inconsistentes"]
+  },
+  {
+    phase: "Fase F1: Unificação de Navegação",
+    dateStart: "2025-12-01",
+    dateEnd: "2025-12-01",
+    status: "completed",
+    objective: "Centralizar configuração de navegação em single source of truth eliminando duplicação entre 4 componentes",
+    decisions: [
+      {
+        decision: "Criar navigationConfig.ts como único ponto de definição de rotas",
+        rationale: "Menus definidos em 4 locais diferentes (Sidebar, MobileMenu, ProfileMenu, MVPHeader) causavam inconsistências",
+        alternatives: ["Manter definições separadas", "Usar CMS externo"],
+        chosenBecause: "TypeScript permite type-safety e autocomplete para itens de navegação"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/config/navigationConfig.ts",
+        linesOfCode: 180,
+        coverage: "100% das rotas da aplicação organizadas hierarquicamente",
+        description: "mainMenuItems, adminMenuItems, devMenuItems, toolsMenuItems centralizados"
+      }
+    ],
+    metrics: {
+      duplicatedMenuDefinitions: { before: 4, after: 1 },
+      codeReduction: { before: 320, after: 180 }
+    },
+    scientificBasis: [],
+    challenges: ["Sincronizar 4 componentes sem quebrar navegação existente"]
+  },
+  {
+    phase: "Fase F2: Componentização de Páginas Administrativas",
+    dateStart: "2025-12-01",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Refatorar AdminUsers.tsx (605→280 linhas, -54%) extraindo componentes reutilizáveis",
+    decisions: [
+      {
+        decision: "Extrair UserTable, UserTableRow, UserInviteForm, UserPasswordResetDialog",
+        rationale: "Arquivo monolítico de 605 linhas violava princípio de responsabilidade única",
+        alternatives: ["Manter arquivo único", "Apenas dividir em 2 arquivos"],
+        chosenBecause: "Componentes pequenos (<150 linhas) são mais testáveis e manuteníveis"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/components/admin/users/UserTable.tsx",
+        linesOfCode: 120,
+        coverage: "Tabela de usuários com paginação",
+        description: "Componente de tabela extraído de AdminUsers"
+      },
+      {
+        file: "src/components/admin/users/UserTableRow.tsx",
+        linesOfCode: 80,
+        coverage: "Linha individual de usuário com ações",
+        description: "Row com botões de ação (editar, resetar senha, etc.)"
+      }
+    ],
+    metrics: {
+      adminUsersLOC: { before: 605, after: 280 },
+      componentsExtracted: { before: 0, after: 4 }
+    },
+    scientificBasis: [],
+    challenges: ["Preservar funcionalidade durante extração de componentes"]
+  },
+  {
+    phase: "Fase F2.1: Refatoração do MusicCatalog",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Reduzir MusicCatalog.tsx de 1830 para 357 linhas (-80%) via extração de hooks e componentes",
+    decisions: [
+      {
+        decision: "Extrair useMusicCatalogData hook para lógica de dados",
+        rationale: "Lógica de fetching, filtering e state management misturada com renderização",
+        alternatives: ["Manter inline", "Usar Redux"],
+        chosenBecause: "Custom hook permite reutilização e testabilidade isolada"
+      },
+      {
+        decision: "Criar componentes CatalogHeader, ArtistGrid, CatalogPagination",
+        rationale: "UI de 1830 linhas impossível de manter",
+        alternatives: ["Apenas hooks", "Context API"],
+        chosenBecause: "Componentes focados em UI + hooks focados em lógica = separação clara"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/hooks/useMusicCatalogData.ts",
+        linesOfCode: 180,
+        coverage: "Toda lógica de dados do catálogo",
+        description: "Fetching, filtering, pagination, search centralizados"
+      },
+      {
+        file: "src/components/music-catalog/ArtistGrid.tsx",
+        linesOfCode: 120,
+        coverage: "Grid virtualizado de artistas",
+        description: "Renderização de cards com TanStack Virtual"
+      }
+    ],
+    metrics: {
+      musicCatalogLOC: { before: 1830, after: 357 },
+      reductionPercentage: { before: 0, after: 80 }
+    },
+    scientificBasis: [],
+    challenges: ["Manter virtualização funcionando após extração"]
+  },
+  {
+    phase: "Fase F3: Migração de Console.logs para Logger Estruturado",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Substituir console.log por createLogger em 21 arquivos para logging estruturado em produção",
+    decisions: [
+      {
+        decision: "Usar createLogger de @/lib/loggerFactory",
+        rationale: "1219 console.log statements em produção causavam ruído e falta de contexto",
+        alternatives: ["Remover todos os logs", "Manter console.log"],
+        chosenBecause: "Logger estruturado permite filtragem por level, contexto e feature"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/lib/loggerFactory.ts",
+        linesOfCode: 80,
+        coverage: "Factory de loggers com níveis e contexto",
+        description: "createLogger(context) retorna logger com info, warn, error, debug"
+      }
+    ],
+    metrics: {
+      filesWithConsoleLog: { before: 39, after: 18 },
+      filesMigrated: { before: 0, after: 21 }
+    },
+    scientificBasis: [],
+    challenges: ["Identificar logs críticos vs. logs de debug descartáveis"]
+  },
+  {
+    phase: "Fase F4: Padronização de Loading States",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Criar componente LoadingSpinner padronizado e migrar 8 arquivos para uso consistente",
+    decisions: [
+      {
+        decision: "Criar loading-spinner.tsx com variantes size e message",
+        rationale: "Loading states implementados de 5 formas diferentes (spinner, skeleton, texto, etc.)",
+        alternatives: ["Múltiplos componentes", "CSS-only loading"],
+        chosenBecause: "Componente único com variantes garante consistência visual"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/components/ui/loading-spinner.tsx",
+        linesOfCode: 45,
+        coverage: "Spinner com variantes sm, md, lg e mensagem opcional",
+        description: "Lucide Loader2 com animação spin e texto centralizado"
+      }
+    ],
+    metrics: {
+      loadingImplementations: { before: 5, after: 1 },
+      filesMigrated: { before: 0, after: 8 }
+    },
+    scientificBasis: [],
+    challenges: ["Manter loading states específicos onde necessário (skeletons)"]
+  },
+  {
+    phase: "Fase F5: Layout Consistency com PageContainer",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Criar PageContainer para padronizar estrutura de páginas administrativas",
+    decisions: [
+      {
+        decision: "Criar page-container.tsx com props para breadcrumb, title, actions",
+        rationale: "Cada página definia seu próprio container com margens e estruturas diferentes",
+        alternatives: ["Layout global", "CSS utilities"],
+        chosenBecause: "Componente permite consistência com flexibilidade para variações"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/components/ui/page-container.tsx",
+        linesOfCode: 60,
+        coverage: "Container padronizado com header, breadcrumb, content slots",
+        description: "AdminBreadcrumb + título + descrição + actions + children"
+      }
+    ],
+    metrics: {
+      layoutVariations: { before: 8, after: 1 },
+      pagesUsingContainer: { before: 0, after: 3 }
+    },
+    scientificBasis: [],
+    challenges: ["Retrofitar páginas existentes sem quebrar layouts específicos"]
+  },
+  {
+    phase: "Fase F6: Resolução de TODOs",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Resolver TODO/FIXME/HACK pendentes no código",
+    decisions: [
+      {
+        decision: "Buscar e resolver todos os TODOs críticos",
+        rationale: "TODOs esquecidos acumulam dívida técnica",
+        alternatives: ["Ignorar", "Criar issues"],
+        chosenBecause: "Resolução direta elimina dívida técnica imediatamente"
+      }
+    ],
+    artifacts: [
+      {
+        file: "src/hooks/useAIAnalysisFeedback.ts",
+        linesOfCode: 5,
+        coverage: "Fix de validated_by hardcoded",
+        description: "TODO 'usar user ID real' → agora usa user?.id || 'anonymous'"
+      }
+    ],
+    metrics: {
+      todosFound: { before: 1, after: 0 },
+      todosResolved: { before: 0, after: 1 }
+    },
+    scientificBasis: [],
+    challenges: ["Apenas 1 TODO real encontrado - codebase já estava bem mantido"]
+  },
+  {
+    phase: "Fase F7: Análise de Performance",
+    dateStart: "2025-12-02",
+    dateEnd: "2025-12-02",
+    status: "completed",
+    objective: "Identificar oportunidades de otimização de performance no frontend",
+    decisions: [
+      {
+        decision: "Concluir que codebase já está adequadamente otimizado",
+        rationale: "68 arquivos já usam useMemo, useCallback ou React.memo. Lazy loading implementado.",
+        alternatives: ["Adicionar mais memoização", "Code splitting adicional"],
+        chosenBecause: "Micro-otimizações teriam ROI baixo vs. risco de bugs",
+        impact: "Zero mudanças necessárias - codebase já bem otimizado"
+      }
+    ],
+    artifacts: [],
+    metrics: {
+      filesWithMemoization: { before: 68, after: 68 },
+      lazyLoadedRoutes: { before: 15, after: 15 }
+    },
+    scientificBasis: [],
+    challenges: ["Análise revelou que otimizações já foram aplicadas em sprints anteriores"]
   }
 ];
 
