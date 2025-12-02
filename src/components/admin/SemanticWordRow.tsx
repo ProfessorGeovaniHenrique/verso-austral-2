@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronRight, ChevronDown, Check, Edit, AlertTriangle, Link2, Pencil, Award, Sparkles, Loader2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Check, Edit, AlertTriangle, Link2, Pencil, Award, Sparkles, Loader2, Layers } from 'lucide-react';
 import { SemanticLexiconEntry } from '@/hooks/useSemanticLexiconData';
 import { KWICInlineDisplay } from './KWICInlineDisplay';
 import { useReclassifyMG } from '@/hooks/useReclassifyMG';
@@ -45,6 +45,13 @@ const isMGN1Only = (entry: SemanticLexiconEntry): boolean => {
     (entry.fonte === 'rule_based' || !entry.tagset_n2);
 };
 
+// Check if ANY domain is classified only at N1 level (no dots in code)
+const isDSN1Only = (entry: SemanticLexiconEntry): boolean => {
+  return entry.tagset_codigo && 
+    !entry.tagset_codigo.includes('.') && 
+    entry.tagset_codigo !== 'NC';
+};
+
 export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
   const [isExpanded, setIsExpanded] = useState(false);
   const { reclassifySingle, isProcessing } = useReclassifyMG();
@@ -52,7 +59,8 @@ export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
   const confidence = entry.confianca !== null ? Math.round(entry.confianca * 100) : null;
   const needsReview = confidence !== null && confidence < 80 && 
     entry.fonte !== 'manual' && entry.fonte !== 'human_validated';
-  const showRefineButton = isMGN1Only(entry);
+  const showMGRefine = isMGN1Only(entry);
+  const showDSRefine = isDSN1Only(entry) && !showMGRefine; // Only show if not already showing MG refine
 
   const handleRefine = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -69,7 +77,8 @@ export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
           'cursor-pointer transition-colors hover:bg-muted/50',
           getConfidenceColor(entry.confianca),
           needsReview && 'border-l-2 border-l-amber-500',
-          showRefineButton && 'border-l-2 border-l-blue-500'
+          showMGRefine && 'border-l-2 border-l-blue-500',
+          showDSRefine && 'border-l-2 border-l-purple-500'
         )}
         onClick={() => setIsExpanded(!isExpanded)}
       >
@@ -95,9 +104,14 @@ export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
           <Badge variant="secondary" className="font-mono text-xs">
             {entry.tagset_codigo}
           </Badge>
-          {showRefineButton && (
+          {showMGRefine && (
             <Badge variant="outline" className="ml-1 text-xs bg-blue-500/10 text-blue-600">
-              N1
+              MG N1
+            </Badge>
+          )}
+          {showDSRefine && (
+            <Badge variant="outline" className="ml-1 text-xs bg-purple-500/10 text-purple-600">
+              DS N1
             </Badge>
           )}
         </TableCell>
@@ -159,21 +173,40 @@ export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
         {/* Actions */}
         <TableCell onClick={(e) => e.stopPropagation()}>
           <div className="flex gap-1">
-            {showRefineButton && (
+            {showMGRefine && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-600"
                 onClick={handleRefine}
                 disabled={isProcessing}
-                title="Refinar classificação com Gemini"
+                title="Refinar MG para nível mais específico"
               >
                 {isProcessing ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
                   <>
                     <Sparkles className="h-3 w-3 mr-1" />
-                    Refinar
+                    Refinar MG
+                  </>
+                )}
+              </Button>
+            )}
+            {showDSRefine && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs bg-purple-500/10 hover:bg-purple-500/20 text-purple-600"
+                onClick={handleRefine}
+                disabled={isProcessing}
+                title="Refinar DS para nível mais específico"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <>
+                    <Layers className="h-3 w-3 mr-1" />
+                    Refinar DS
                   </>
                 )}
               </Button>
@@ -212,12 +245,23 @@ export function SemanticWordRow({ entry, onValidate, onRefresh }: Props) {
               />
 
               {/* MG N1 Warning */}
-              {showRefineButton && (
+              {showMGRefine && (
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-blue-500/10 text-blue-700 text-sm">
                   <AlertTriangle className="h-4 w-4" />
                   <span>
                     Esta palavra está classificada apenas no nível 1 (MG). 
-                    Clique em "Refinar" para classificação mais específica com Gemini.
+                    Clique em "Refinar MG" para classificação mais específica com Gemini.
+                  </span>
+                </div>
+              )}
+
+              {/* DS N1 Warning */}
+              {showDSRefine && (
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-purple-500/10 text-purple-700 text-sm">
+                  <Layers className="h-4 w-4" />
+                  <span>
+                    Esta palavra está classificada apenas no nível 1 ({entry.tagset_codigo}). 
+                    Clique em "Refinar DS" para classificação mais específica com IA.
                   </span>
                 </div>
               )}

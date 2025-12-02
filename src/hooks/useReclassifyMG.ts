@@ -51,6 +51,7 @@ export function useReclassifyMG() {
             lema: entry.lema,
             pos: entry.pos,
             contexto_hash: entry.contexto_hash,
+            song_id: entry.song_id, // Include for KWIC extraction
           }],
           model,
         },
@@ -108,6 +109,7 @@ export function useReclassifyMG() {
           lema: entry.lema,
           pos: entry.pos,
           contexto_hash: entry.contexto_hash,
+          song_id: entry.song_id, // Include for KWIC extraction
         }));
 
         try {

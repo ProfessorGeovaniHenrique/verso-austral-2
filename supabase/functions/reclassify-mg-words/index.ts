@@ -25,6 +25,7 @@ interface WordToReclassify {
   lema: string | null;
   pos: string | null;
   contexto_hash: string;
+  song_id: string | null; // NEW: for KWIC extraction
 }
 
 interface ReclassificationResult {
@@ -191,6 +192,7 @@ REGRAS DE CLASSIFICAÇÃO CRÍTICAS:
 
 IMPORTANTE: 
 - SEMPRE classifique no nível N4 quando disponível
+- USE O CONTEXTO KWIC FORNECIDO para entender o uso da palavra
 - Forneça confiança entre 0.70 e 1.00
 - Use APENAS os códigos listados na hierarquia acima
 
@@ -208,12 +210,42 @@ Responda APENAS com JSON válido no formato:
   }
 ]`;
 
-function buildPrompt(words: WordToReclassify[]): string {
-  const wordList = words.map(w => 
-    `- "${w.palavra}" (lema: ${w.lema || w.palavra}, POS: ${w.pos || 'desconhecido'})`
-  ).join('\n');
+/**
+ * Extrai KWIC (Key Word In Context) de um texto
+ */
+function extractKWIC(text: string, palavra: string, windowSize = 40): string {
+  if (!text || !palavra) return '';
   
-  return `Classifique os seguintes marcadores gramaticais no subnível mais específico:
+  const lowerText = text.toLowerCase();
+  const lowerPalavra = palavra.toLowerCase();
+  const idx = lowerText.indexOf(lowerPalavra);
+  
+  if (idx === -1) return '';
+  
+  const start = Math.max(0, idx - windowSize);
+  const end = Math.min(text.length, idx + palavra.length + windowSize);
+  
+  let context = text.substring(start, end).replace(/\n/g, ' ').trim();
+  
+  if (start > 0) context = '...' + context;
+  if (end < text.length) context = context + '...';
+  
+  return context;
+}
+
+interface WordWithKWIC extends WordToReclassify {
+  kwic: string;
+}
+
+function buildPrompt(words: WordWithKWIC[]): string {
+  const wordList = words.map(w => {
+    const contextLine = w.kwic 
+      ? `\n  Contexto: "${w.kwic}"`
+      : ' [sem contexto disponível]';
+    return `- "${w.palavra}" (lema: ${w.lema || w.palavra}, POS: ${w.pos || 'desconhecido'})${contextLine}`;
+  }).join('\n');
+  
+  return `Classifique os seguintes marcadores gramaticais no subnível mais específico, USANDO O CONTEXTO para desambiguar palavras polissêmicas:
 
 ${wordList}
 
@@ -306,7 +338,7 @@ function validateAndFixCode(
   };
 }
 
-async function reclassifyWithGemini(words: WordToReclassify[]): Promise<ReclassificationResult[]> {
+async function reclassifyWithGemini(words: WordWithKWIC[]): Promise<ReclassificationResult[]> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -337,7 +369,7 @@ async function reclassifyWithGemini(words: WordToReclassify[]): Promise<Reclassi
   return extractJsonFromText(content);
 }
 
-async function reclassifyWithGPT5(words: WordToReclassify[]): Promise<ReclassificationResult[]> {
+async function reclassifyWithGPT5(words: WordWithKWIC[]): Promise<ReclassificationResult[]> {
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -417,21 +449,53 @@ serve(async (req) => {
     const validCodes = new Set(validTagsets?.map(t => t.codigo) || []);
     console.log(`[reclassify-mg-words] Loaded ${validCodes.size} valid MG codes from database`);
 
-    // STEP 2: Reclassify using selected model
+    // STEP 2: Fetch song lyrics for KWIC extraction
+    const songIds = [...new Set(words.filter(w => w.song_id).map(w => w.song_id!))];
+    const songsMap = new Map<string, string>();
+    
+    if (songIds.length > 0) {
+      console.log(`[reclassify-mg-words] Fetching lyrics for ${songIds.length} songs`);
+      const { data: songs, error: songsError } = await supabase
+        .from('songs')
+        .select('id, letra')
+        .in('id', songIds);
+      
+      if (!songsError && songs) {
+        songs.forEach(s => {
+          if (s.letra) songsMap.set(s.id, s.letra);
+        });
+        console.log(`[reclassify-mg-words] Loaded ${songsMap.size} song lyrics for KWIC`);
+      }
+    }
+
+    // STEP 3: Enrich words with KWIC context
+    const wordsWithKWIC: WordWithKWIC[] = words.map(w => {
+      let kwic = '';
+      if (w.song_id && songsMap.has(w.song_id)) {
+        const letra = songsMap.get(w.song_id)!;
+        kwic = extractKWIC(letra, w.palavra);
+      }
+      return { ...w, kwic };
+    });
+    
+    const wordsWithContext = wordsWithKWIC.filter(w => w.kwic).length;
+    console.log(`[reclassify-mg-words] ${wordsWithContext}/${words.length} words have KWIC context`);
+
+    // STEP 4: Reclassify using selected model
     let results: ReclassificationResult[];
     const sourceLabel = model === 'gpt5' ? 'gpt5_mg_refinement' : 'gemini_flash_mg_refinement';
     
     try {
       results = model === 'gpt5' 
-        ? await reclassifyWithGPT5(words)
-        : await reclassifyWithGemini(words);
+        ? await reclassifyWithGPT5(wordsWithKWIC)
+        : await reclassifyWithGemini(wordsWithKWIC);
     } catch (apiError) {
       console.error(`[reclassify-mg-words] ${model} failed, trying fallback:`, apiError);
       
       // Try fallback model
       results = model === 'gpt5'
-        ? await reclassifyWithGemini(words)
-        : await reclassifyWithGPT5(words);
+        ? await reclassifyWithGemini(wordsWithKWIC)
+        : await reclassifyWithGPT5(wordsWithKWIC);
     }
 
     console.log(`[reclassify-mg-words] Got ${results.length} classifications from AI`);

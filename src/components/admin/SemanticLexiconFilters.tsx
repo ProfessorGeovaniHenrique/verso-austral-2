@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Filter, AlertTriangle, Link2, Pencil, Award, Eye } from 'lucide-react';
+import { Search, X, Filter, AlertTriangle, Link2, Pencil, Award, Eye, Sparkles, Layers } from 'lucide-react';
 import { SemanticLexiconFilters as FiltersType, LexiconStats } from '@/hooks/useSemanticLexiconData';
 import { cn } from '@/lib/utils';
 
@@ -124,6 +124,36 @@ export function SemanticLexiconFilters({ filters, stats, onUpdateFilter, onToggl
           <Eye className="h-3 w-3 mr-1" />
           Precisa Revisão
           <span className="ml-1 text-xs opacity-70">({stats?.needsReview || 0})</span>
+        </Badge>
+
+        <Badge
+          variant="outline"
+          className={cn(
+            'cursor-pointer transition-all hover:scale-105',
+            filters.flags.mgOnlyN1 
+              ? 'bg-blue-500/10 text-blue-600 border-blue-200' 
+              : 'opacity-60 hover:opacity-100'
+          )}
+          onClick={() => onToggleFlag('mgOnlyN1')}
+        >
+          <Sparkles className="h-3 w-3 mr-1" />
+          MG apenas N1
+          <span className="ml-1 text-xs opacity-70">({stats?.mgOnlyN1 || 0})</span>
+        </Badge>
+
+        <Badge
+          variant="outline"
+          className={cn(
+            'cursor-pointer transition-all hover:scale-105',
+            filters.flags.dsOnlyN1 
+              ? 'bg-purple-500/10 text-purple-600 border-purple-200' 
+              : 'opacity-60 hover:opacity-100'
+          )}
+          onClick={() => onToggleFlag('dsOnlyN1')}
+        >
+          <Layers className="h-3 w-3 mr-1" />
+          DS apenas N1
+          <span className="ml-1 text-xs opacity-70">({stats?.dsOnlyN1 || 0})</span>
         </Badge>
 
         <Badge

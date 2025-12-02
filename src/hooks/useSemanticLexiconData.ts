@@ -13,7 +13,8 @@ export interface SemanticLexiconFilters {
     spellingDeviation: boolean;
     withInsignias: boolean;
     needsReview: boolean;
-    mgOnlyN1: boolean; // NEW: Filter for MG words classified only at N1
+    mgOnlyN1: boolean; // Filter for MG words classified only at N1
+    dsOnlyN1: boolean; // NEW: Filter for ANY domain classified only at N1
   };
 }
 
@@ -46,7 +47,8 @@ export interface LexiconStats {
   spellingDeviations: number;
   withInsignias: number;
   needsReview: number;
-  mgOnlyN1: number; // NEW: Count of MG words at N1 only
+  mgOnlyN1: number; // Count of MG words at N1 only
+  dsOnlyN1: number; // NEW: Count of ANY domain at N1 only
   bySource: Record<string, number>;
   byDomain: Record<string, number>;
 }
@@ -63,6 +65,7 @@ const DEFAULT_FILTERS: SemanticLexiconFilters = {
     withInsignias: false,
     needsReview: false,
     mgOnlyN1: false,
+    dsOnlyN1: false,
   },
 };
 
@@ -91,6 +94,7 @@ export function useSemanticLexiconData(pageSize = 50) {
       let withInsignias = 0;
       let needsReview = 0;
       let mgOnlyN1 = 0;
+      let dsOnlyN1 = 0;
 
       entries.forEach(entry => {
         // By source
@@ -119,6 +123,14 @@ export function useSemanticLexiconData(pageSize = 50) {
             (entry.fonte === 'rule_based' || !entry.tagset_n2)) {
           mgOnlyN1++;
         }
+
+        // ANY domain only at N1 level (tagset_codigo has no dot, meaning it's just N1)
+        const isN1Only = entry.tagset_codigo && 
+          !entry.tagset_codigo.includes('.') && 
+          entry.tagset_codigo !== 'NC';
+        if (isN1Only) {
+          dsOnlyN1++;
+        }
       });
 
       return {
@@ -130,6 +142,7 @@ export function useSemanticLexiconData(pageSize = 50) {
         withInsignias,
         needsReview,
         mgOnlyN1,
+        dsOnlyN1,
         bySource,
         byDomain,
       };
@@ -195,6 +208,13 @@ export function useSemanticLexiconData(pageSize = 50) {
         query = query
           .eq('tagset_codigo', 'MG')
           .or('fonte.eq.rule_based,tagset_n2.is.null');
+      }
+
+      // NEW: Filter for ANY domain classified only at N1 (no dots in tagset_codigo)
+      if (filters.flags.dsOnlyN1) {
+        query = query
+          .not('tagset_codigo', 'like', '%.%')
+          .neq('tagset_codigo', 'NC');
       }
 
       // Pagination
