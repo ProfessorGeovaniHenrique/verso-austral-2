@@ -173,18 +173,83 @@ Retorne um array JSON com a classificação de cada palavra.`;
 }
 
 function extractJsonFromText(text: string): any {
+  // Helper to clean and fix common JSON issues
+  const cleanJson = (str: string): string => {
+    return str
+      .replace(/,\s*]/g, ']')           // Remove trailing commas in arrays
+      .replace(/,\s*}/g, '}')           // Remove trailing commas in objects
+      .replace(/\n/g, ' ')              // Remove newlines
+      .replace(/\t/g, ' ')              // Remove tabs
+      .replace(/[\x00-\x1F\x7F]/g, '')  // Remove control characters
+      .replace(/\\n/g, ' ')             // Replace escaped newlines
+      .trim();
+  };
+
+  // Helper to attempt fixing truncated JSON arrays
+  const fixTruncatedArray = (str: string): string => {
+    let cleaned = cleanJson(str);
+    
+    // Count brackets to detect truncation
+    const openBrackets = (cleaned.match(/\[/g) || []).length;
+    const closeBrackets = (cleaned.match(/\]/g) || []).length;
+    const openBraces = (cleaned.match(/\{/g) || []).length;
+    const closeBraces = (cleaned.match(/\}/g) || []).length;
+    
+    // If truncated, try to close it
+    if (openBrackets > closeBrackets || openBraces > closeBraces) {
+      // Find last complete object
+      const lastCompleteObject = cleaned.lastIndexOf('}');
+      if (lastCompleteObject > 0) {
+        cleaned = cleaned.substring(0, lastCompleteObject + 1);
+        // Add missing brackets
+        for (let i = 0; i < openBraces - closeBraces; i++) cleaned += '}';
+        for (let i = 0; i < openBrackets - closeBrackets; i++) cleaned += ']';
+      }
+    }
+    
+    return cleaned;
+  };
+
+  // Try direct parse first
   try {
     return JSON.parse(text);
-  } catch {
+  } catch (e1) {
+    // Try extracting from markdown code block
     const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (jsonMatch) {
-      return JSON.parse(jsonMatch[1].trim());
+      try {
+        return JSON.parse(cleanJson(jsonMatch[1]));
+      } catch {
+        try {
+          return JSON.parse(fixTruncatedArray(jsonMatch[1]));
+        } catch {}
+      }
     }
+    
+    // Try extracting array pattern
     const arrayMatch = text.match(/\[[\s\S]*\]/);
     if (arrayMatch) {
-      return JSON.parse(arrayMatch[0]);
+      try {
+        return JSON.parse(cleanJson(arrayMatch[0]));
+      } catch {
+        try {
+          return JSON.parse(fixTruncatedArray(arrayMatch[0]));
+        } catch {}
+      }
     }
-    throw new Error('Could not extract JSON from response');
+    
+    // Last resort: try to find and parse individual objects
+    const objectMatches = text.match(/\{[^{}]*"palavra"[^{}]*\}/g);
+    if (objectMatches && objectMatches.length > 0) {
+      try {
+        const parsed = objectMatches.map(obj => JSON.parse(cleanJson(obj)));
+        console.log(`[refine-domain] Recovered ${parsed.length} objects from malformed JSON`);
+        return parsed;
+      } catch {}
+    }
+    
+    console.error('[refine-domain] Failed to parse JSON. Raw text:', text.substring(0, 500));
+    throw new Error('Could not extract valid JSON from AI response');
   }
 }
 
