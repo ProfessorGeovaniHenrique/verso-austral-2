@@ -60,27 +60,34 @@ export function useCatalogData() {
       console.log(`[useCatalogData] Loaded ${data?.length || 0} artists with stats`);
       
       // Transformar para o formato ArtistWithRelations + stats
-      const artistsWithStats = data?.map(row => ({
-        id: row.artist_id,
-        name: row.artist_name,
-        normalized_name: row.normalized_name,
-        genre: row.genre,
-        corpus_id: row.corpus_id,
-        created_at: '',
-        updated_at: '',
-        biography: null,
-        biography_source: null,
-        biography_updated_at: null,
-        corpora: row.corpus_name ? {
-          id: row.corpus_id,
-          name: row.corpus_name,
-          color: row.corpus_color
-        } : null,
-        totalSongs: row.total_songs,
-        pendingSongs: row.pending_songs,
-        enrichedSongs: row.enriched_songs,
-        errorSongs: row.error_songs
-      })) || [];
+      const artistsWithStats = data?.map(row => {
+        const total = row.total_songs || 0;
+        const enriched = row.enriched_songs || 0;
+        const enrichedPercentage = total > 0 ? Math.round((enriched / total) * 100) : 0;
+        
+        return {
+          id: row.artist_id,
+          name: row.artist_name,
+          normalized_name: row.normalized_name,
+          genre: row.genre,
+          corpus_id: row.corpus_id,
+          created_at: '',
+          updated_at: '',
+          biography: null,
+          biography_source: null,
+          biography_updated_at: null,
+          corpora: row.corpus_name ? {
+            id: row.corpus_id,
+            name: row.corpus_name,
+            color: row.corpus_color
+          } : null,
+          totalSongs: total,
+          pendingSongs: row.pending_songs || 0,
+          enrichedSongs: enriched,
+          errorSongs: row.error_songs || 0,
+          enrichedPercentage
+        };
+      }) || [];
       
       setArtists(artistsWithStats as any);
     } catch (err) {
