@@ -1,4 +1,4 @@
-import { Download, FileText, FileType, Code, GraduationCap } from "lucide-react";
+import { Download, FileText, FileType, Code, GraduationCap, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -70,24 +70,37 @@ export function ExportMenu() {
     }
   };
 
-  const handleExportABNT = async () => {
+  const handleExportAcademicABNT = async () => {
     try {
       toast.loading("Gerando Relatório Acadêmico ABNT...");
       await exportDeveloperHistoryABNT({
-        includeIntroduction: true,
-        includeMethodology: true,
-        includeDevelopment: true,
-        includeFunctionalities: true,
-        includeResults: true,
-        includeRoadmap: true,
-        includeReferences: true,
+        reportType: 'academic',
         authorName: 'Equipe Verso Austral',
-        institutionName: 'Verso Austral - Plataforma de Análise Cultural'
+        institutionName: 'Universidade',
+        courseName: 'Curso de Letras',
+        city: 'Porto Alegre'
       });
-      toast.success("Relatório ABNT exportado com sucesso!");
+      toast.success("Relatório Acadêmico ABNT exportado!");
     } catch (error) {
       console.error("Erro ao exportar ABNT:", error);
       toast.error("Erro ao exportar Relatório ABNT");
+    }
+  };
+
+  const handleExportTechnicalABNT = async () => {
+    try {
+      toast.loading("Gerando Documentação Técnica ABNT...");
+      await exportDeveloperHistoryABNT({
+        reportType: 'technical',
+        authorName: 'Equipe Verso Austral',
+        institutionName: 'Verso Austral',
+        courseName: 'Desenvolvimento de Software',
+        city: 'Porto Alegre'
+      });
+      toast.success("Documentação Técnica ABNT exportada!");
+    } catch (error) {
+      console.error("Erro ao exportar ABNT técnico:", error);
+      toast.error("Erro ao exportar Documentação Técnica");
     }
   };
 
@@ -130,7 +143,7 @@ export function ExportMenu() {
           Exportar Relatório
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-72">
         <DropdownMenuLabel>Exportar Documentos</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
@@ -151,12 +164,17 @@ export function ExportMenu() {
         
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs text-muted-foreground">
-          Formato Acadêmico
+          Formato Acadêmico ABNT
         </DropdownMenuLabel>
         
-        <DropdownMenuItem onClick={handleExportABNT} className="font-medium">
+        <DropdownMenuItem onClick={handleExportAcademicABNT} className="font-medium">
           <GraduationCap className="mr-2 h-4 w-4" />
-          📄 Relatório ABNT NBR 14724
+          📄 Relatório Acadêmico (Linguagem Acessível)
+        </DropdownMenuItem>
+        
+        <DropdownMenuItem onClick={handleExportTechnicalABNT} className="font-medium">
+          <Wrench className="mr-2 h-4 w-4" />
+          🔧 Documentação Técnica (Detalhada)
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />
