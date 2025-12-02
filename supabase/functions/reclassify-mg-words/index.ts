@@ -35,7 +35,7 @@ interface ReclassificationResult {
   justificativa: string;
 }
 
-// Hierarquia completa de MG para o prompt
+// Hierarquia REAL de MG do banco de dados semantic_tagset
 const MG_HIERARCHY = `
 HIERARQUIA COMPLETA DE MARCADORES GRAMATICAIS (MG):
 
@@ -44,48 +44,62 @@ MG - Marcadores Gramaticais (N1)
 │   ├── MG.AUX.TEM - Tempo Composto (N3): ter, haver + particípio
 │   ├── MG.AUX.VOZ - Voz Passiva (N3): ser + particípio
 │   └── MG.AUX.LOC - Locução Verbal (N3): ir, estar, poder + infinitivo/gerúndio
-├── MG.CON - Conectores (N2)
-│   ├── MG.CON.ORA - Oracionais (N3)
-│   │   ├── MG.CON.ORA.ADI - Aditivos (N4): e, nem, também, além disso
-│   │   ├── MG.CON.ORA.ADV - Adversativos (N4): mas, porém, contudo, todavia
-│   │   ├── MG.CON.ORA.ALT - Alternativos (N4): ou, ora...ora, quer...quer
-│   │   ├── MG.CON.ORA.CON - Conclusivos (N4): portanto, logo, assim, então
-│   │   └── MG.CON.ORA.EXP - Explicativos (N4): pois, porque, que
-│   ├── MG.CON.SUB - Subordinativos (N3)
-│   │   ├── MG.CON.SUB.CAU - Causais (N4): porque, já que, visto que
-│   │   ├── MG.CON.SUB.CON - Condicionais (N4): se, caso, desde que
-│   │   ├── MG.CON.SUB.TEM - Temporais (N4): quando, enquanto, assim que
-│   │   ├── MG.CON.SUB.FIN - Finais (N4): para que, a fim de que
-│   │   └── MG.CON.SUB.CES - Concessivos (N4): embora, ainda que, mesmo que
-│   └── MG.CON.PRE - Preposições (N3)
-│       ├── MG.CON.PRE.ESS - Essenciais (N4): de, a, para, em, com, por, sem
-│       └── MG.CON.PRE.ACI - Acidentais (N4): durante, mediante, conforme
-├── MG.DET - Determinantes (N2)
-│   ├── MG.DET.ART - Artigos (N3)
-│   │   ├── MG.DET.ART.DEF - Definidos (N4): o, a, os, as
-│   │   └── MG.DET.ART.IND - Indefinidos (N4): um, uma, uns, umas
-│   ├── MG.DET.DEM - Demonstrativos (N3): este, esse, aquele, isto, isso
-│   ├── MG.DET.POS - Possessivos (N3): meu, teu, seu, nosso, vosso
-│   └── MG.DET.IND - Indefinidos (N3): algum, nenhum, todo, qualquer, outro
-├── MG.PRO - Pronomes (N2)
-│   ├── MG.PRO.PES - Pessoais (N3)
-│   │   ├── MG.PRO.PES.RET - Retos (N4): eu, tu, ele, nós, vós, eles
-│   │   └── MG.PRO.PES.OBL - Oblíquos (N4): me, te, se, lhe, nos, vos
-│   ├── MG.PRO.REL - Relativos (N3): que, qual, quem, cujo, onde
-│   ├── MG.PRO.INT - Interrogativos (N3): que, qual, quem, quanto
-│   └── MG.PRO.IND - Indefinidos (N3): alguém, ninguém, tudo, nada, algo
-├── MG.ADV - Advérbios Funcionais (N2)
-│   ├── MG.ADV.NEG - Negação (N3): não, nunca, jamais
-│   ├── MG.ADV.AFI - Afirmação (N3): sim, certamente, realmente
-│   ├── MG.ADV.DUV - Dúvida (N3): talvez, possivelmente, provavelmente
-│   └── MG.ADV.INT - Intensificadores (N3): muito, pouco, bastante, mais, menos
-├── MG.NUM - Numerais (N2)
-│   ├── MG.NUM.CAR - Cardinais (N3): um, dois, três, cem, mil
-│   ├── MG.NUM.ORD - Ordinais (N3): primeiro, segundo, terceiro
-│   └── MG.NUM.MUL - Multiplicativos (N3): dobro, triplo, quádruplo
-└── MG.INT - Interjeições (N2)
-    ├── MG.INT.EMO - Emoção (N3): ah, oh, ai, ui
-    └── MG.INT.APE - Apelativas (N3): psiu, ô, ei, alô
+├── MG.CON - Conector (N2)
+│   ├── MG.CON.ORA - Oracional (N3)
+│   │   ├── MG.CON.ORA.ADI - Adição (N4): e, nem, também
+│   │   ├── MG.CON.ORA.ADV - Adversativa (N4): mas, porém, contudo
+│   │   ├── MG.CON.ORA.CAU - Causal (N4): porque, já que, visto que
+│   │   ├── MG.CON.ORA.CND - Condicional (N4): se, caso, desde que
+│   │   ├── MG.CON.ORA.CON - Concessiva (N4): embora, ainda que
+│   │   ├── MG.CON.ORA.FIN - Final (N4): para que, a fim de que
+│   │   └── MG.CON.ORA.TMP - Temporal (N4): quando, enquanto, assim que
+│   └── MG.CON.REL - Relacional/Preposições (N3) *** IMPORTANTE: todas preposições aqui ***
+│       ├── MG.CON.REL.CAU - Causa (N4): por (causa), por causa de
+│       ├── MG.CON.REL.FIN - Finalidade (N4): para (fim), a fim de
+│       ├── MG.CON.REL.INS - Instrumento (N4): com (instrumento), mediante
+│       ├── MG.CON.REL.LUG - Lugar (N4): em, de, para, a (direção/localização)
+│       ├── MG.CON.REL.MOD - Modo (N4): sem, conforme, segundo
+│       └── MG.CON.REL.TEM - Tempo (N4): durante, desde, até
+├── MG.DEI - Deíctico (N2) *** PRONOMES PESSOAIS, DEMONSTRATIVOS E POSSESSIVOS ***
+│   ├── MG.DEI.ESP - Espacial/Demonstrativos (N3)
+│   │   ├── MG.DEI.ESP.PRO - Proximidade (N4): este, esse, aquele, isto, isso, aquilo
+│   │   └── MG.DEI.ESP.REL - Relativo (N4): onde, aonde
+│   ├── MG.DEI.PES - Pessoal/Pronomes (N3) *** PRONOMES PESSOAIS ***
+│   │   ├── MG.DEI.PES.RET - Reto (N4): eu, tu, ele, ela, nós, vós, eles, elas
+│   │   └── MG.DEI.PES.OBL - Oblíquo (N4): me, te, se, lhe, nos, vos, lhes
+│   └── MG.DEI.POS - Possessivo (N3)
+│       ├── MG.DEI.POS.PRI - 1ª Pessoa (N4): meu, minha, nosso, nossa
+│       └── MG.DEI.POS.TER - 3ª Pessoa (N4): seu, sua, dele, dela
+├── MG.ESP - Especificador (N2) *** ARTIGOS E QUANTIFICADORES ***
+│   ├── MG.ESP.DEF - Definidor/Artigos (N3)
+│   │   ├── MG.ESP.DEF.ART - Artigo Definido (N4): o, a, os, as
+│   │   └── MG.ESP.DEF.IND - Artigo Indefinido (N4): um, uma, uns, umas
+│   └── MG.ESP.QUA - Quantificador (N3)
+│       ├── MG.ESP.QUA.CAR - Cardinal (N4): um, dois, três, cem
+│       ├── MG.ESP.QUA.IMP - Impreciso (N4): algum, nenhum, todo, qualquer, outro
+│       └── MG.ESP.QUA.ORD - Ordinal (N4): primeiro, segundo, terceiro
+├── MG.EXP - Expressivo/Interjeições (N2)
+│   ├── MG.EXP.APE - Apelo (N3): psiu, ô, ei, alô
+│   └── MG.EXP.EMO - Emoção (N3): ah, oh, ai, ui
+├── MG.MOD - Modificador/Advérbios (N2) *** ADVÉRBIOS FUNCIONAIS ***
+│   ├── MG.MOD.CIR - Circunstância (N3)
+│   │   ├── MG.MOD.CIR.INT - Intensidade (N4): muito, pouco, bastante, mais, menos
+│   │   ├── MG.MOD.CIR.LUG - Lugar (N4): aqui, ali, lá, cá, acolá
+│   │   ├── MG.MOD.CIR.NEG - Negação (N4): não, nunca, jamais
+│   │   └── MG.MOD.CIR.TEM - Tempo (N4): agora, hoje, ontem, amanhã, sempre
+│   └── MG.MOD.FOC - Focalizador (N3)
+│       ├── MG.MOD.FOC.INC - Inclusão (N4): também, ainda, até, inclusive
+│       └── MG.MOD.FOC.RES - Restrição (N4): só, apenas, somente
+├── MG.NPR - Nome Próprio (N2)
+│   ├── MG.NPR.LOC - Lugar (N3): Porto Alegre, Brasil, Uruguai
+│   ├── MG.NPR.PES - Pessoa (N3): João, Maria, Luiz Marenco
+│   ├── MG.NPR.REL - Religioso (N3): Jesus, Nossa Senhora
+│   └── MG.NPR.OUT - Outros (N3): outros nomes próprios
+├── MG.NQ - Números e Quantificadores (N2): apenas N2, sem subníveis
+└── MG.VRL - Verbo Relacional (N2)
+    ├── MG.VRL.MUD - Mudança (N3): tornar-se, ficar, virar
+    ├── MG.VRL.PER - Permanência (N3): continuar, permanecer
+    └── MG.VRL.TRA - Trânsito (N3): andar, viver, parecer
 `;
 
 const SYSTEM_PROMPT = `Você é um especialista em gramática portuguesa com foco em classificação morfossintática.
@@ -94,12 +108,49 @@ Sua tarefa é classificar marcadores gramaticais (MG) no subnível mais específ
 
 ${MG_HIERARCHY}
 
-REGRAS DE CLASSIFICAÇÃO:
-1. SEMPRE classifique no nível mais específico possível (prefira N4 sobre N3, N3 sobre N2)
-2. Para palavras ambíguas, considere o contexto e POS tag fornecidos
-3. Para contrações (do, da, no, na), classifique pela preposição + artigo (MG.CON.PRE.ESS + MG.DET.ART.DEF)
-4. Se não houver subnível específico, use o nível mais granular disponível
-5. Forneça confiança entre 0.70 e 1.00 baseado na certeza da classificação
+REGRAS DE CLASSIFICAÇÃO CRÍTICAS:
+
+1. ARTIGOS:
+   - o, a, os, as → MG.ESP.DEF.ART (artigo definido)
+   - um, uma, uns, umas → MG.ESP.DEF.IND (artigo indefinido)
+
+2. PRONOMES PESSOAIS:
+   - eu, tu, ele, ela, nós, vós, eles, elas → MG.DEI.PES.RET (reto)
+   - me, te, se, lhe, nos, vos, lhes → MG.DEI.PES.OBL (oblíquo)
+
+3. PREPOSIÇÕES (todas vão em MG.CON.REL.*):
+   - de, em, a, para (indicando lugar/direção) → MG.CON.REL.LUG
+   - por (causa) → MG.CON.REL.CAU
+   - para (finalidade) → MG.CON.REL.FIN
+   - com (instrumento) → MG.CON.REL.INS
+   - sem, conforme → MG.CON.REL.MOD
+   - durante, desde, até → MG.CON.REL.TEM
+
+4. CONTRAÇÕES:
+   - do, da, dos, das = de + artigo → MG.CON.REL.LUG (pelo contexto mais comum)
+   - no, na, nos, nas = em + artigo → MG.CON.REL.LUG
+   - ao, à, aos, às = a + artigo → MG.CON.REL.LUG
+
+5. ADVÉRBIOS:
+   - não, nunca, jamais → MG.MOD.CIR.NEG
+   - muito, pouco, mais, menos → MG.MOD.CIR.INT
+   - aqui, ali, lá → MG.MOD.CIR.LUG
+   - agora, hoje, sempre → MG.MOD.CIR.TEM
+
+6. DEMONSTRATIVOS:
+   - este, esse, aquele, isto, isso, aquilo → MG.DEI.ESP.PRO
+
+7. POSSESSIVOS:
+   - meu, minha, nosso, nossa → MG.DEI.POS.PRI
+   - seu, sua, dele, dela → MG.DEI.POS.TER
+
+8. QUANTIFICADORES:
+   - algum, nenhum, todo, qualquer → MG.ESP.QUA.IMP
+
+IMPORTANTE: 
+- SEMPRE classifique no nível N4 quando disponível
+- Forneça confiança entre 0.70 e 1.00
+- Use APENAS os códigos listados na hierarquia acima
 
 Responda APENAS com JSON válido no formato:
 [
