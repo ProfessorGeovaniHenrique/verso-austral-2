@@ -168,3 +168,6 @@ verify_jwt = false
 
 [functions.analyze-and-suggest-fixes]
 verify_jwt = true
+
+[functions.scan-code-quality]
+verify_jwt = false
