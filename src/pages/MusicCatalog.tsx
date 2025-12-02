@@ -28,6 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -114,8 +115,12 @@ export default function MusicCatalog() {
     artists: artistsWithStats, 
     stats: catalogStats, 
     loading: catalogLoading, 
-    reload 
+    reload,
+    reloadWithDelay
   } = useCatalogData();
+  
+  // State para indicar dados possivelmente desatualizados
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   
   // ✅ Hook carrega músicas do artista selecionado (sob demanda)
   const { songs: artistSongs, loading: artistSongsLoading, reload: reloadArtistSongs } = useArtistSongs(selectedArtistId);
@@ -415,12 +420,51 @@ export default function MusicCatalog() {
     setYoutubeModalOpen(true);
   };
 
-  const handleBatchComplete = async () => {
-    await reload();
-    await reloadArtistSongs?.();
+  // Atualização otimista do estado local após enriquecimento
+  const handleOptimisticUpdate = (artistId: string, enrichedCount: number) => {
+    const artist = artistsWithStats.find((a: any) => a.id === artistId) as any;
+    if (!artist || enrichedCount <= 0) return;
+    
+    setArtistStatsOverrides(prev => {
+      const newMap = new Map(prev);
+      const currentPending = artist.pendingSongs ?? 0;
+      const currentEnriched = artist.enrichedSongs ?? 0;
+      const totalSongs = artist.totalSongs ?? 1;
+      
+      newMap.set(artistId, {
+        pendingSongs: Math.max(0, currentPending - enrichedCount),
+        enrichedPercentage: Math.min(100, 
+          Math.round(((currentEnriched + enrichedCount) / totalSongs) * 100)
+        )
+      });
+      return newMap;
+    });
+  };
+
+  const handleBatchComplete = async (enrichedCount: number = 0, artistIdFromModal?: string) => {
+    // 1. Atualização otimista imediata (se temos o artistId)
+    const targetArtistId = artistIdFromModal || selectedArtistId;
+    if (targetArtistId && enrichedCount > 0) {
+      handleOptimisticUpdate(targetArtistId, enrichedCount);
+    }
+    
+    // 2. Toast informando sobre sincronização
+    setIsDataRefreshing(true);
     toast({
       title: "🎉 Enriquecimento concluído!",
-      description: "Todas as músicas foram processadas."
+      description: `${enrichedCount} músicas processadas. Sincronizando dados...`
+    });
+    
+    // 3. Reload com delay para garantir MV atualizada
+    await reloadWithDelay(2500);
+    await reloadArtistSongs?.();
+    
+    // 4. Limpar estado de refresh
+    setIsDataRefreshing(false);
+    
+    toast({
+      title: "✅ Dados atualizados",
+      description: `Catálogo sincronizado com sucesso.`
     });
   };
 
@@ -1245,6 +1289,23 @@ export default function MusicCatalog() {
                     {catalogStats?.totalSongs || 0} músicas no total
                   </p>
                 </div>
+                <div className="flex items-center gap-2">
+                  {isDataRefreshing && (
+                    <Badge variant="secondary" className="animate-pulse">
+                      <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                      Sincronizando...
+                    </Badge>
+                  )}
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => reloadWithDelay(500)}
+                    disabled={catalogLoading || isDataRefreshing}
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${catalogLoading ? 'animate-spin' : ''}`} />
+                    Atualizar
+                  </Button>
+                </div>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1663,10 +1724,10 @@ export default function MusicCatalog() {
         songs={pendingSongsForBatch.map(s => ({
           id: s.id,
           title: s.title,
-          artist: s.artists?.name || 'Desconhecido'
+          artist: s.artists?.name || s.artist || 'Desconhecido'
         }))}
         onEnrich={handleEnrichSong}
-        onComplete={handleBatchComplete}
+        onComplete={(enrichedCount) => handleBatchComplete(enrichedCount)}
       />
 
       {/* YouTube Enrichment Modal */}
@@ -1674,7 +1735,7 @@ export default function MusicCatalog() {
         open={youtubeModalOpen}
         onOpenChange={setYoutubeModalOpen}
         pendingSongs={songsWithoutYouTube}
-        onComplete={handleBatchComplete}
+        onComplete={() => handleBatchComplete(0)}
       />
 
       {/* Artist-specific EnrichmentBatchModal */}
@@ -1682,6 +1743,7 @@ export default function MusicCatalog() {
         open={isEnrichmentModalOpen}
         onOpenChange={setIsEnrichmentModalOpen}
         songs={songsToEnrich}
+        artistId={selectedArtistId || undefined}
         onEnrich={async (songId: string, forceReenrich?: boolean) => {
           const result = await enrichmentService.enrichSong(songId, 'metadata-only', forceReenrich || false);
           return {
@@ -1690,40 +1752,14 @@ export default function MusicCatalog() {
             error: result.error
           };
         }}
-        onComplete={async () => {
-          // Atualizar stats dos artistas afetados
-          const uniqueArtistIds = [...new Set(
-            songsToEnrich.map(s => {
-              const song = songs.find(song => song.id === s.id);
-              return song?.artist_id;
-            }).filter(Boolean)
-          )];
-
-          for (const artistId of uniqueArtistIds) {
-            const { data: updatedStats } = await supabase
-              .from('songs')
-              .select('status')
-              .eq('artist_id', artistId);
-            
-            if (updatedStats) {
-              const total = updatedStats.length;
-              const enriched = updatedStats.filter(s => s.status === 'enriched').length;
-              const pending = updatedStats.filter(s => s.status === 'pending').length;
-              const newPercentage = total > 0 ? Math.round((enriched / total) * 100) : 0;
-              
-              setArtistStatsOverrides(prev => {
-                const newMap = new Map(prev);
-                newMap.set(artistId as string, {
-                  pendingSongs: pending,
-                  enrichedPercentage: newPercentage
-                });
-                return newMap;
-              });
-            }
-          }
+        onComplete={async (enrichedCount) => {
+          // Identificar artista das músicas enriquecidas
+          const firstSong = songs.find(song => songsToEnrich.some(s => s.id === song.id));
+          const artistId = firstSong?.artist_id;
           
-          await reloadArtistSongs?.();
-          await reload();
+          // Usar handleBatchComplete centralizado
+          await handleBatchComplete(enrichedCount, artistId);
+          
           setIsEnrichmentModalOpen(false);
           setSongsToEnrich([]);
         }}

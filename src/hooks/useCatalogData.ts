@@ -161,12 +161,21 @@ export function useCatalogData() {
     reload();
   }, []);
 
+  // Reload com delay para aguardar refresh da materialized view
+  const reloadWithDelay = async (delayMs: number = 2500) => {
+    console.log(`[useCatalogData] ⏳ Aguardando ${delayMs}ms para MV atualizar...`);
+    await new Promise(resolve => setTimeout(resolve, delayMs));
+    await reload();
+    console.log('[useCatalogData] ✅ Reload após delay concluído');
+  };
+
   return { 
     songs, 
     artists, 
     stats, 
     loading, 
     error, 
-    reload 
+    reload,
+    reloadWithDelay
   };
 }

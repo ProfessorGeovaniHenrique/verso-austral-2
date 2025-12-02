@@ -123,7 +123,8 @@ interface EnrichmentBatchModalProps {
   onOpenChange: (open: boolean) => void;
   songs: Array<{ id: string; title: string; artist: string }>;
   onEnrich: (songId: string, forceReenrich?: boolean) => Promise<{ success: boolean; message?: string; error?: string }>;
-  onComplete: () => void;
+  onComplete: (enrichedCount: number) => void;
+  artistId?: string;
 }
 
 export function EnrichmentBatchModal({
@@ -132,6 +133,7 @@ export function EnrichmentBatchModal({
   songs,
   onEnrich,
   onComplete,
+  artistId,
 }: EnrichmentBatchModalProps) {
   const [state, dispatch] = useReducer(enrichmentReducer, {
     status: 'idle',
@@ -318,15 +320,19 @@ export function EnrichmentBatchModal({
 
     if (!isCancelledRef.current) {
       dispatch({ type: 'COMPLETE' });
+      
+      // Conta final de sucessos (state pode estar desatualizado pelo closure)
+      const finalSucceeded = state.succeeded + 1;
 
       // Notify user
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Enriquecimento concluído!', {
-          body: `${state.succeeded + 1} músicas enriquecidas com sucesso`,
+          body: `${finalSucceeded} músicas enriquecidas com sucesso`,
         });
       }
 
-      onComplete();
+      // Passa o número de músicas enriquecidas para o callback
+      onComplete(finalSucceeded);
     }
   };
 
