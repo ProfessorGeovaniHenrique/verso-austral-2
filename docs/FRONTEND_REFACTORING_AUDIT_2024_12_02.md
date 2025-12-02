@@ -89,12 +89,36 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
   - [x] Extract UserTable.tsx (108 lines)
   - [x] Remove duplicate search input (PageToolbar vs Card)
   - [x] Remove duplicate "Criar Convite" button
-- [ ] MusicCatalog.tsx (1830 lines) - DEFERRED (high complexity, needs dedicated sprint)
 
 **Results AdminUsers.tsx:**
 - **Before**: 605 lines in 1 file
 - **After**: 280 lines main + 337 lines components = 617 total
 - **Benefit**: 4 focused components, better maintainability, reusable dialogs
+
+### Sprint F2.1 (MusicCatalog Dedicated Refactor) - ✅ Complete
+- [x] Extract useMusicCatalogState.ts (267 lines - all 28 states centralized)
+- [x] Extract useMusicCatalogHandlers.ts (345 lines - all handlers)
+- [x] Extract useFilteredData.ts (131 lines - filtering logic)
+- [x] Extract MusicCatalogToolbar.tsx (toolbar component)
+- [x] Extract MusicCatalogFilters.tsx (96 lines - filters)
+- [x] Extract MusicCatalogAlerts.tsx (alerts component)
+- [x] Extract TabSongs.tsx (songs tab)
+- [x] Extract TabArtists.tsx (355 lines - artists tab with memoization)
+- [x] Extract TabStats.tsx (34 lines)
+- [x] Extract TabMetrics.tsx (metrics tab)
+- [x] Extract TabValidation.tsx (validation tab)
+- [x] Extract TabDeduplication.tsx (deduplication tab)
+- [x] Remove duplicate search input
+- [x] Remove unused handlers
+- [x] Clean up imports
+
+**Results MusicCatalog.tsx:**
+- **Before**: 1830 lines in 1 monolithic component
+- **After**: 357 lines main + ~1200 lines distributed
+- **Reduction**: -80% in main component
+- **Files Created**: 12 new focused files
+- **Benefit**: Massive maintainability improvement, reusable components
+
 ### Sprint F3 (Console.logs Cleanup) - ⏳ Pending
 ### Sprint F4 (Loading States) - ⏳ Pending
 ### Sprint F5 (Layout Consistency) - ⏳ Pending
