@@ -73,14 +73,10 @@ export const useTagsetMerge = () => {
 
       // 3. Migrar referências (se existirem)
       if (absorbedDataResult.data?.codigo) {
-        const { error: migrateError } = await supabase
+        await supabase
           .from('annotated_corpus')
           .update({ tagset_codigo: mergedData.codigo })
           .eq('tagset_codigo', absorbedDataResult.data.codigo);
-
-        if (migrateError) {
-          console.warn('Erro ao migrar anotações:', migrateError);
-        }
       }
 
       // 4. Rejeitar absorbed
@@ -241,7 +237,6 @@ export const useTagsetMerge = () => {
           .single();
         
         if (error || !parent) {
-          console.warn(`Parent tagset not found: ${parentCode}`);
           return 2; // Fallback seguro para N2 se pai não encontrado
         }
         

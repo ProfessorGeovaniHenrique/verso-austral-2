@@ -18,7 +18,6 @@ export function useArtistSongs(artistId: string | null) {
       return;
     }
 
-    console.log(`[useArtistSongs] Loading songs for artist ${artistId}...`);
     setLoading(true);
     setError(null);
 
@@ -44,7 +43,6 @@ export function useArtistSongs(artistId: string | null) {
 
       if (fetchError) throw fetchError;
 
-      console.log(`[useArtistSongs] Loaded ${data?.length || 0} songs`);
       setSongs((data as SongWithRelations[]) || []);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';

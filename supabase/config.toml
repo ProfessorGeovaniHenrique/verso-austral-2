@@ -34,25 +34,10 @@ verify_jwt = false
 [functions.calculate-priority-score]
 verify_jwt = false
 
-[functions.enrich-corpus-metadata]
-verify_jwt = true
-
-[functions.batch-enrich-corpus]
-verify_jwt = true
-
-[functions.upload-corpus-to-storage]
-verify_jwt = true
-
-[functions.divide-and-upload-corpus]
-verify_jwt = true
-
 [functions.import-gutenberg-backend]
 verify_jwt = true
 
 [functions.import-dialectal-backend]
-verify_jwt = true
-
-[functions.import-houaiss-backend]
 verify_jwt = true
 
 [functions.import-navarro-backend]
@@ -67,40 +52,7 @@ verify_jwt = false
 [functions.semantic-chat-assistant]
 verify_jwt = true
 
-[functions.get-artists-with-songs]
-verify_jwt = false
-
-[functions.enrich-youtube-batch]
-verify_jwt = false
-
-[functions.health-check]
-verify_jwt = false
-
 [functions.health-aggregator]
-verify_jwt = false
-
-[functions.check-gutenberg-import]
-verify_jwt = false
-
-[functions.check-dialectal-import]
-verify_jwt = false
-
-[functions.check-houaiss-import]
-verify_jwt = false
-
-[functions.validate-import-env]
-verify_jwt = false
-
-[functions.check-navarro-import]
-verify_jwt = false
-
-[functions.check-nordestino-import]
-verify_jwt = false
-
-[functions.cancel-dictionary-import]
-verify_jwt = false
-
-[functions.generate-semantic-consultant-response]
 verify_jwt = false
 
 [functions.annotate-semantic-domain]
@@ -144,3 +96,75 @@ verify_jwt = true
 
 [functions.reclassify-mg-words]
 verify_jwt = false
+
+[functions.cancel-dictionary-job]
+verify_jwt = false
+
+[functions.health-check-lexicon]
+verify_jwt = false
+
+[functions.get-lexicon-stats]
+verify_jwt = false
+
+[functions.process-demo-corpus]
+verify_jwt = false
+
+[functions.clear-music-catalog]
+verify_jwt = true
+
+[functions.clear-song-metadata]
+verify_jwt = true
+
+[functions.monitor-and-alert]
+verify_jwt = false
+
+[functions.recover-stalled-jobs]
+verify_jwt = false
+
+[functions.send-invite-email]
+verify_jwt = true
+
+[functions.validate-lexicon-batch]
+verify_jwt = false
+
+[functions.batch-populate-semantic-cache]
+verify_jwt = false
+
+[functions.process-corpus-analysis]
+verify_jwt = false
+
+[functions.annotate-pos-gemini]
+verify_jwt = false
+
+[functions.clean-temp-storage]
+verify_jwt = true
+
+[functions.clear-all-dictionaries]
+verify_jwt = true
+
+[functions.clear-dictionary]
+verify_jwt = true
+
+[functions.process-dialectal-dictionary]
+verify_jwt = true
+
+[functions.process-gutenberg-dictionary]
+verify_jwt = true
+
+[functions.process-rocha-pombo-dictionary]
+verify_jwt = true
+
+[functions.import-rocha-pombo-backend]
+verify_jwt = true
+
+[functions.process-nordestino-corpus]
+verify_jwt = true
+
+[functions.process-single-song]
+verify_jwt = false
+
+[functions.test-sentry-error]
+verify_jwt = false
+
+[functions.analyze-and-suggest-fixes]
+verify_jwt = true

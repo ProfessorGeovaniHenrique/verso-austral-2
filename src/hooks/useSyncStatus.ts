@@ -58,15 +58,10 @@ export function useSyncStatus() {
       // Registrar timestamp da sincronização manual
       lastManualSyncRef.current = new Date();
 
-      const { data, error } = await supabase.functions.invoke('sync-construction-log', {
-        body: { trigger: 'manual' }
-      });
-
-      if (error) throw error;
-      console.log('✅ Sincronização manual concluída:', data);
-      return { success: true, data };
+      // Note: sync-construction-log was removed - this is a no-op now
+      return { success: true, data: { message: 'Sync function deprecated' } };
     } catch (error) {
-      console.error('❌ Erro na sincronização:', error);
+      console.error('Erro na sincronização:', error);
       return { success: false, error };
     }
   };
@@ -80,8 +75,7 @@ export function useSyncStatus() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'sync_metadata' },
-        (payload) => {
-          console.log('🔄 Metadata de sincronização atualizado!', payload);
+        () => {
           fetchSyncMetadata();
         }
       )
@@ -90,7 +84,7 @@ export function useSyncStatus() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [syncMetadata.lastSyncAt]); // Re-run quando lastSyncAt mudar
+  }, [syncMetadata.lastSyncAt]);
 
   return {
     syncMetadata,

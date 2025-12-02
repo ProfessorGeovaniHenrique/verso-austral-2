@@ -25,14 +25,11 @@ export function useKeywords() {
         // Detectar se é subcorpus (formato: 'corpus-artista')
         if (id.includes('-')) {
           const [corpusBase, artist] = id.split('-');
-          console.log(`📚 Carregando subcorpus: ${corpusBase} - Artista: ${artist}`);
           
           // Carregar DIRETAMENTE do catálogo com filtro de artista
           const fullCorpus = await loadCorpusFromCatalog(corpusBase as CorpusType, {
             artistNames: [artist]
           });
-          
-          console.log(`🎵 Músicas de ${artist}: ${fullCorpus.musicas.length}`);
           
           if (fullCorpus.musicas.length === 0) {
             throw new Error(`Nenhuma música encontrada para o artista ${artist}`);
@@ -50,21 +47,19 @@ export function useKeywords() {
           });
           
           const totalWords = Array.from(wordFreqMap.values()).reduce((a, b) => a + b, 0);
-          console.log(`📊 Total de palavras: ${totalWords}, Palavras únicas: ${wordFreqMap.size}`);
           
           return Array.from(wordFreqMap.entries())
             .map(([word, freq], index) => ({
               headword: word,
               freq,
               rank: index + 1,
-              range: 0, // Range não aplicável para subcorpus
+              range: 0,
               normFreq: (freq / totalWords) * 1000000,
               normRange: 0
             }))
             .sort((a, b) => b.freq - a.freq);
         } else {
           // Corpus completo - usar caminho TSV
-          console.log(`📚 Carregando corpus completo: ${id}`);
           const path = getCorpusPath(id as CorpusType);
           const response = await fetch(path);
           const text = await response.text();
@@ -76,9 +71,6 @@ export function useKeywords() {
         loadCorpusData(estudoId),
         loadCorpusData(referenciaId)
       ]);
-      
-      console.log(`📄 Corpus Estudo: ${estudoData.length} palavras únicas`);
-      console.log(`📄 Corpus Referência: ${referenciaData.length} palavras únicas`);
       
       if (estudoData.length === 0) {
         throw new Error('Corpus de estudo vazio ou mal formatado');

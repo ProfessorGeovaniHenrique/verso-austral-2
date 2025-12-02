@@ -25,8 +25,6 @@ export function useAnalytics() {
       supabase.from('analytics_user_sessions').insert({
         user_id: user.id,
         session_id: sessionId.current,
-      }).then(() => {
-        console.log('[Analytics] Session started');
       });
     }
   }, [user]);
@@ -36,8 +34,7 @@ export function useAnalytics() {
       if (user) {
         supabase.from('analytics_user_sessions')
           .update({ ended_at: new Date().toISOString() })
-          .eq('session_id', sessionId.current)
-          .then(() => console.log('[Analytics] Session ended'));
+          .eq('session_id', sessionId.current);
       }
     };
   }, [user]);

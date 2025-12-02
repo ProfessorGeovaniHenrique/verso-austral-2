@@ -1,6 +1,6 @@
 /**
- * ✅ FASE 3 - BLOCO 2: Notificações em Tempo Real para Jobs de Importação
- * Hook para receber alertas instantâneos via Supabase Realtime
+ * Hook para Notificações em Tempo Real para Jobs de Importação
+ * Recebe alertas instantâneos via Supabase Realtime
  */
 
 import { useEffect, useRef } from 'react';
@@ -33,11 +33,11 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
 
     const playNotificationSound = () => {
       if (settings.soundEnabled && audioRef.current) {
-        audioRef.current.play().catch(e => console.warn('Não foi possível tocar som:', e));
+        audioRef.current.play().catch(() => {
+          // Silently fail if audio can't play
+        });
       }
     };
-
-    console.log('🔔 Iniciando subscrição de notificações em tempo real...');
 
     // Subscrever a mudanças na tabela dictionary_import_jobs
     const channel = supabase
@@ -60,9 +60,7 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
           }
           notifiedJobsRef.current.add(notificationKey);
 
-          console.log(`🔔 Mudança detectada no job ${jobId}: status=${job.status}`);
-
-          // 1️⃣ Job concluído com sucesso
+          // Job concluído com sucesso
           if (job.status === 'concluido' && job.progresso === 100) {
             playNotificationSound();
             toast({
@@ -73,7 +71,7 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
             settings.onComplete?.(jobId);
           }
 
-          // 2️⃣ Job com erro
+          // Job com erro
           else if (job.status === 'erro') {
             playNotificationSound();
             toast({
@@ -85,7 +83,7 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
             settings.onError?.(jobId, job.erro_mensagem);
           }
 
-          // 3️⃣ Job cancelado
+          // Job cancelado
           else if (job.status === 'cancelado') {
             playNotificationSound();
             toast({
@@ -96,7 +94,7 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
             settings.onCancelled?.(jobId);
           }
 
-          // 4️⃣ Job travado (detectado por falta de atualização há mais de 5 minutos)
+          // Job travado (detectado por falta de atualização há mais de 5 minutos)
           else if (job.status === 'processando') {
             const lastUpdate = new Date(job.atualizado_em);
             const now = new Date();
@@ -122,12 +120,9 @@ export function useDictionaryJobNotifications(settings: NotificationSettings) {
           queryClient.invalidateQueries({ queryKey: ['dictionary-import-jobs'] });
         }
       )
-      .subscribe((status) => {
-        console.log('🔔 Status da subscrição Realtime:', status);
-      });
+      .subscribe();
 
     return () => {
-      console.log('🔕 Desconectando subscrição Realtime...');
       supabase.removeChannel(channel);
       notifiedJobsRef.current.clear();
     };

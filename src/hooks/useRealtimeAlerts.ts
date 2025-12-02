@@ -47,7 +47,6 @@ export function useRealtimeAlerts() {
         },
         (payload) => {
           const newAlert = payload.new as SystemAlert;
-          console.log('🔔 Novo alerta recebido:', newAlert);
           
           setAlerts(prev => [newAlert, ...prev]);
           

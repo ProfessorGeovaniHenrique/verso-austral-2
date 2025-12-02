@@ -25,8 +25,6 @@ export function useAnalysisTracking() {
         _user_id: user.id,
         _feature_name: feature,
       });
-      
-      console.log(`[Analysis Tracking] Feature tracked: ${feature}`);
     } catch (error) {
       console.error(`[Analysis Tracking] Error tracking ${feature}:`, error);
     }

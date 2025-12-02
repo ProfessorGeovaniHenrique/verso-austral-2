@@ -73,8 +73,8 @@ export function useJobAutoRefresh(
             lastAttemptAt: null
           });
         }
-      } catch (e) {
-        console.warn('Failed to parse auto-resume attempts:', e);
+      } catch {
+        // Ignore parse errors
       }
     }
   }, []);

@@ -20,8 +20,6 @@ export function useYouTubeEnrichment() {
   const { toast } = useToast();
 
   const enrichYouTube = async (songId: string) => {
-    console.log(`[useYouTubeEnrichment] Enriching YouTube link for song: ${songId}`);
-    
     try {
       const { data, error } = await supabase.functions.invoke('enrich-music-data', {
         body: { 
@@ -33,7 +31,6 @@ export function useYouTubeEnrichment() {
       if (error) throw error;
 
       if (data?.success) {
-        console.log(`[useYouTubeEnrichment] Success:`, data);
         return {
           success: true,
           message: data.enrichedData?.youtubeVideoId ? 'Link encontrado!' : 'Link não encontrado'
@@ -57,7 +54,6 @@ export function useYouTubeEnrichment() {
     onProgress?: (progress: BatchProgress) => void
   ) => {
     const idsToProcess = limit ? songIds.slice(0, limit) : songIds;
-    console.log(`[useYouTubeEnrichment] Starting batch: ${idsToProcess.length} songs`);
     
     setBatchProgress({
       current: 0,
@@ -74,7 +70,6 @@ export function useYouTubeEnrichment() {
     for (let i = 0; i < idsToProcess.length; i++) {
       // Check for cancellation
       if (cancelRef?.current) {
-        console.log(`[useYouTubeEnrichment] Batch cancelled at ${i}/${idsToProcess.length}`);
         setBatchProgress(null);
         return results;
       }
@@ -110,8 +105,6 @@ export function useYouTubeEnrichment() {
     }
 
     setBatchProgress(null);
-
-    console.log(`[useYouTubeEnrichment] Batch complete:`, results);
     return results;
   };
 

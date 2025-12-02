@@ -51,7 +51,7 @@ export function useSemanticConsultant() {
         throw new Error('Erro ao processar mensagem');
       }
 
-      // ✅ Processar stream SSE
+      // Processar stream SSE
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let assistantMessage = '';
@@ -88,7 +88,7 @@ export function useSemanticConsultant() {
                     return updated;
                   });
                 }
-              } catch (e) {
+              } catch {
                 // Ignorar erros de parse de chunks parciais
               }
             }
@@ -96,7 +96,7 @@ export function useSemanticConsultant() {
         }
       }
 
-      // ✅ Salvar resposta completa do assistente no banco
+      // Salvar resposta completa do assistente no banco
       if (assistantMessage) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
@@ -110,9 +110,7 @@ export function useSemanticConsultant() {
       }
 
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Stream abortado pelo usuário');
-      } else {
+      if (error.name !== 'AbortError') {
         console.error('Erro ao enviar mensagem:', error);
         toast.error('Erro ao processar sua mensagem');
         // Remover mensagem do assistente incompleta

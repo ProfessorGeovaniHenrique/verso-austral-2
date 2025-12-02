@@ -77,14 +77,6 @@ import { extractSubcorpora, compareSubcorpora, getSubcorpusByArtista } from '@/u
  * @see {@link UnifiedCorpusSelector} para o componente de seleção
  */
 export function useSubcorpora(corpusType: CorpusType) {
-  // Emitir warning no console (apenas em desenvolvimento)
-  if (import.meta.env.DEV) {
-    console.warn(
-      '⚠️  useSubcorpora() está deprecated.\n' +
-      '📚 Migre para useSubcorpus() do SubcorpusContext.\n' +
-      '🔗 Veja a documentação inline para exemplos.'
-    );
-  }
   const { corpus, isLoading: isLoadingCorpus } = useFullTextCorpus(corpusType);
   const [subcorpora, setSubcorpora] = useState<SubcorpusMetadata[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -96,7 +88,6 @@ export function useSubcorpora(corpusType: CorpusType) {
       try {
         const extracted = extractSubcorpora(corpus);
         setSubcorpora(extracted);
-        console.log(`✅ Subcorpora extraídos: ${extracted.length} artistas`);
       } catch (error) {
         console.error('Erro ao extrair subcorpora:', error);
       } finally {
