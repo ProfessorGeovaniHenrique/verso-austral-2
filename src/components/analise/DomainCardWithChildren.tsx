@@ -1,7 +1,8 @@
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useChildDomains } from '@/hooks/useChildDomains';
-import { Loader2, ChevronRight } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { ChevronRight } from 'lucide-react';
 
 interface DomainCardWithChildrenProps {
   codigo: string;
@@ -43,10 +44,7 @@ export function DomainCardWithChildren({
             </div>
             
             {isLoading ? (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Carregando subcategorias...
-              </div>
+              <LoadingSpinner variant="inline" size="xs" text="Carregando subcategorias..." />
             ) : (
               <div>
                 <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1">

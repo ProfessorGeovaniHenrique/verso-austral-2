@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { PageLoading, LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Loader2, CheckCircle2, Clock, AlertCircle, Zap, Keyboard, RefreshCw, Database } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -390,11 +391,7 @@ export default function AdminDictionaryValidation() {
   });
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <PageLoading text="Carregando dicionário..." />;
   }
 
   return (

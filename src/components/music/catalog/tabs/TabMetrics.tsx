@@ -1,9 +1,11 @@
 /**
  * Tab de Métricas do MusicCatalog
  * Sprint F2.1 - Refatoração
+ * Sprint F4 - Loading States Padronizados
  */
 
 import { Button } from '@/components/ui/button';
+import { SectionLoading } from '@/components/ui/loading-spinner';
 import { EnrichmentMetricsDashboard } from '@/components/music/EnrichmentMetricsDashboard';
 import { RefreshCw } from 'lucide-react';
 
@@ -16,12 +18,7 @@ interface TabMetricsProps {
 
 export function TabMetrics({ metrics, loading, onRefresh, onExportReport }: TabMetricsProps) {
   if (loading) {
-    return (
-      <div className="text-center py-12">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-        <p className="text-muted-foreground">Carregando métricas de qualidade...</p>
-      </div>
-    );
+    return <SectionLoading text="Carregando métricas de qualidade..." />;
   }
 
   if (!metrics) {

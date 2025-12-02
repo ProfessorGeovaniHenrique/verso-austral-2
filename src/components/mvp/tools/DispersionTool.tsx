@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
-import { Search, Download, Loader2, TrendingUp, Music } from "lucide-react";
+import { Search, Download, TrendingUp, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ButtonLoading } from "@/components/ui/loading-spinner";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { useTools } from "@/contexts/ToolsContext";
 import { generateDispersion, exportDispersionToCSV } from "@/services/dispersionService";
@@ -177,10 +178,7 @@ export function DispersionTool() {
               data-tour="dispersion-analyze"
             >
               {isProcessing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisando...
-                </>
+                <ButtonLoading text="Analisando..." />
               ) : (
                 <>
                   <TrendingUp className="h-4 w-4" />

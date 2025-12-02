@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { PageLoading, ButtonLoading } from "@/components/ui/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock } from "lucide-react";
+import { Lock } from "lucide-react";
 import { createLogger } from '@/lib/loggerFactory';
 
 const log = createLogger('SetPassword');
@@ -188,14 +189,7 @@ export default function SetPassword() {
   };
 
   if (!inviteData) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-          <p className="text-muted-foreground">Carregando...</p>
-        </div>
-      </div>
-    );
+    return <PageLoading text="Carregando..." />;
   }
 
   return (
@@ -258,10 +252,7 @@ export default function SetPassword() {
                 disabled={isLoading}
               >
                 {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Criando conta...
-                  </>
+                  <ButtonLoading text="Criando conta..." />
                 ) : (
                   "Criar Conta"
                 )}

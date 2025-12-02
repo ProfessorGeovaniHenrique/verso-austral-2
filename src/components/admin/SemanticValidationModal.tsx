@@ -13,6 +13,7 @@ import { useReclassifyMG } from '@/hooks/useReclassifyMG';
 import { extractKWICContext, KWICResult } from '@/lib/kwicUtils';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { Loader2, AlertCircle, CheckCircle, Sparkles, AlertTriangle } from 'lucide-react';
 import { SemanticLexiconEntry } from '@/hooks/useSemanticLexiconData';
 
