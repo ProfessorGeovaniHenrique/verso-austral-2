@@ -230,28 +230,55 @@ export const useTagsetMerge = () => {
 
   const reorganizeTagsets = useMutation({
     mutationFn: async ({ tagsetAId, tagsetBId, tagsetA_newParent, tagsetB_newParent }: ReorganizeTagsetsParams) => {
-      // Atualizar ambos tagsets com novos pais
+      // Helper: buscar nível do pai e calcular nível do filho
+      const getChildLevel = async (parentCode: string | null): Promise<number> => {
+        if (!parentCode) return 1; // Sem pai = N1
+        
+        const { data: parent, error } = await supabase
+          .from('semantic_tagset')
+          .select('nivel_profundidade')
+          .eq('codigo', parentCode)
+          .single();
+        
+        if (error || !parent) {
+          console.warn(`Parent tagset not found: ${parentCode}`);
+          return 2; // Fallback seguro para N2 se pai não encontrado
+        }
+        
+        const childLevel = (parent.nivel_profundidade || 1) + 1;
+        if (childLevel > 4) {
+          throw new Error(`Hierarquia máxima é 4 níveis. Pai "${parentCode}" está no nível ${parent.nivel_profundidade}`);
+        }
+        
+        return childLevel;
+      };
+
+      // Atualizar ambos tagsets com novos pais E nivel_profundidade
       const updates = [];
       
       if (tagsetA_newParent !== undefined) {
+        const nivelA = await getChildLevel(tagsetA_newParent);
         updates.push(
           supabase
             .from('semantic_tagset')
             .update({ 
               categoria_pai: tagsetA_newParent,
-              tagset_pai: tagsetA_newParent
+              tagset_pai: tagsetA_newParent,
+              nivel_profundidade: nivelA
             })
             .eq('id', tagsetAId)
         );
       }
       
       if (tagsetB_newParent !== undefined) {
+        const nivelB = await getChildLevel(tagsetB_newParent);
         updates.push(
           supabase
             .from('semantic_tagset')
             .update({ 
               categoria_pai: tagsetB_newParent,
-              tagset_pai: tagsetB_newParent
+              tagset_pai: tagsetB_newParent,
+              nivel_profundidade: nivelB
             })
             .eq('id', tagsetBId)
         );
@@ -263,7 +290,7 @@ export const useTagsetMerge = () => {
         if (result.error) throw result.error;
       }
 
-      // Recalcular hierarquia
+      // Recalcular hierarquia completa (códigos N1-N4, hierarquia_completa, etc.)
       await supabase.rpc('calculate_tagset_hierarchy');
 
       return { tagsetAId, tagsetBId };
