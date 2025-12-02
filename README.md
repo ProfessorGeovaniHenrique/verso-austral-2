@@ -19,9 +19,24 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.0+-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
 [![Vite](https://img.shields.io/badge/Vite-5.0+-646CFF?logo=vite)](https://vitejs.dev/)
 
+## 📖 Documentation
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/ARCHITECTURE.md) | System architecture overview |
+| [Edge Functions](docs/EDGE_FUNCTIONS.md) | Backend functions catalog |
+| [Code Conventions](docs/CODE_CONVENTIONS.md) | Coding standards |
+| [Refactoring Audit](docs/REFACTORING_AUDIT_2024_12_02.md) | Current audit snapshot |
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/fc1bf733-4b9c-4a2a-a7f4-ecf8aa116226
+
+### Scale
+- 🎵 **52,356 songs** across 649 artists
+- 📊 **12,973 semantic annotations** in cache
+- 📚 **70,360 lexicon entries** (Gutenberg + Dialectal)
+- ⚡ **62 edge functions** for backend processing
 
 ## How can I edit this code?
 
