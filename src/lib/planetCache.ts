@@ -14,6 +14,10 @@
  * - Limite: 100 planetas únicos (~35MB)
  */
 
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('planetCache');
+
 interface CacheEntry {
   canvas: OffscreenCanvas;
   lastUsed: number;
@@ -103,7 +107,7 @@ class PlanetCacheManager {
       this.cache.delete(entries[i][0]);
     }
     
-    console.log(`🧹 Planet cache cleanup: removed ${toRemove} entries, ${this.cache.size} remaining`);
+    log.debug(`Planet cache cleanup: removed ${toRemove} entries, ${this.cache.size} remaining`);
   }
   
   /**
@@ -111,7 +115,7 @@ class PlanetCacheManager {
    */
   clear(): void {
     this.cache.clear();
-    console.log('🗑️ Planet cache cleared');
+    log.debug('Planet cache cleared');
   }
   
   /**

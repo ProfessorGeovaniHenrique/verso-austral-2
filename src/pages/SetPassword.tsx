@@ -10,6 +10,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Lock } from "lucide-react";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('SetPassword');
 
 const setPasswordSchema = z.object({
   password: z.string().min(8, "A senha deve ter pelo menos 8 caracteres"),
@@ -54,7 +57,7 @@ export default function SetPassword() {
         const parsedInvite = JSON.parse(storedInvite);
         setInviteData(parsedInvite);
       } catch (error) {
-        console.error("Erro ao parsear dados do convite:", error);
+        log.error("Erro ao parsear dados do convite", error as Error);
         toast({
           title: "Erro",
           description: "Dados do convite inválidos. Por favor, solicite um novo convite.",
@@ -100,7 +103,7 @@ export default function SetPassword() {
       if (authError) {
         // Tratar caso de email já existente
         if (authError.message.includes("already") || authError.message.includes("User already registered")) {
-          console.log("Email já existe, enviando reset de senha...");
+          log.info("Email já existe, enviando reset de senha...");
           
           // Enviar email de redefinição de senha
           const { error: resetError } = await supabase.auth.resetPasswordForEmail(
@@ -111,7 +114,7 @@ export default function SetPassword() {
           );
 
           if (resetError) {
-            console.error("Erro ao enviar reset de senha:", resetError);
+            log.error("Erro ao enviar reset de senha", resetError as Error);
           }
 
           toast({
@@ -137,7 +140,7 @@ export default function SetPassword() {
       });
 
       if (markError) {
-        console.error("Erro ao marcar convite como usado:", markError);
+        log.error("Erro ao marcar convite como usado", markError as Error);
         // Não bloqueia o fluxo, apenas loga o erro
       }
 
@@ -155,7 +158,7 @@ export default function SetPassword() {
         });
 
         if (signInError) {
-          console.error("Erro ao fazer login automático:", signInError);
+          log.error("Erro ao fazer login automático", signInError as Error);
           toast({
             title: "Conta criada",
             description: "Sua conta foi criada. Por favor, faça login.",
@@ -173,7 +176,7 @@ export default function SetPassword() {
 
       navigate("/onboarding");
     } catch (error: any) {
-      console.error("Erro ao criar conta:", error);
+      log.error("Erro ao criar conta", error);
       toast({
         title: "Erro ao criar conta",
         description: error.message || "Ocorreu um erro. Por favor, tente novamente.",

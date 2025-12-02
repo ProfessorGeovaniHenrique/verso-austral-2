@@ -2,6 +2,10 @@
  * Sincronização de cache entre tabs usando BroadcastChannel
  */
 
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('cacheSync');
+
 interface CacheUpdateMessage {
   cacheKey: string;
   action: 'saved' | 'deleted' | 'cleared';
@@ -29,9 +33,9 @@ export function broadcastCacheUpdate(cacheKey: string, action: 'saved' | 'delete
       timestamp: Date.now()
     };
     channel.postMessage(message);
-    console.log('📡 Broadcast cache update:', message);
+    log.debug('Broadcast cache update', { cacheKey: message.cacheKey, action: message.action });
   } catch (error) {
-    console.warn('⚠️ Failed to broadcast cache update:', error);
+    log.warn('Failed to broadcast cache update');
   }
 }
 
@@ -45,7 +49,7 @@ export function listenToCacheUpdates(
     const channel = getChannel();
     
     const handler = (event: MessageEvent<CacheUpdateMessage>) => {
-      console.log('📡 Received cache update from another tab:', event.data);
+      log.debug('Received cache update from another tab', { cacheKey: event.data.cacheKey, action: event.data.action });
       onUpdate(event.data.cacheKey, event.data.action);
     };
     
@@ -56,7 +60,7 @@ export function listenToCacheUpdates(
       channel.removeEventListener('message', handler);
     };
   } catch (error) {
-    console.warn('⚠️ Failed to setup cache sync listener:', error);
+    log.warn('Failed to setup cache sync listener', { error });
     return () => {}; // Noop cleanup
   }
 }

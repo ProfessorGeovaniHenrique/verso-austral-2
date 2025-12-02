@@ -36,6 +36,9 @@ import { useTagsets } from '@/hooks/useTagsets';
 import { toast } from 'sonner';
 import { validateNivelAndPai } from '@/lib/tagsetValidation';
 import { cn } from '@/lib/utils';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('EditTagsetDialog');
 
 const editTagsetSchema = z.object({
   codigo: z.string().min(1, 'Código é obrigatório').max(20, 'Código deve ter no máximo 20 caracteres'),
@@ -153,7 +156,7 @@ export function EditTagsetDialog({
     setIsSubmitting(true);
     try {
       // 🔥 FASE 3: Validação robusta antes do submit
-      console.log('[EditTagsetDialog] Validando dados antes do submit:', {
+      log.debug('Validando dados antes do submit', {
         nivel_profundidade: data.nivel_profundidade,
         categoria_pai: data.categoria_pai,
         codigo: tagset.codigo,
@@ -162,7 +165,7 @@ export function EditTagsetDialog({
       // Validação centralizada
       const validation = validateNivelAndPai(data.nivel_profundidade, data.categoria_pai);
       if (!validation.valid) {
-        console.error('[EditTagsetDialog] Falha na validação:', validation.error);
+        log.error('Falha na validação', new Error(validation.error || 'Unknown'));
         toast.error(validation.error || 'Erro de validação');
         setIsSubmitting(false);
         return;
@@ -171,7 +174,7 @@ export function EditTagsetDialog({
       // Validação adicional para nível 2+
       if (data.nivel_profundidade > 1 && (!data.categoria_pai || data.categoria_pai.trim() === '')) {
         const errorMsg = '⚠️ Selecione uma categoria pai para domínios de nível 2-4';
-        console.error('[EditTagsetDialog] Categoria pai obrigatória para nível', data.nivel_profundidade);
+        log.error('Categoria pai obrigatória para nível', new Error(String(data.nivel_profundidade)));
         toast.error(errorMsg);
         setIsSubmitting(false);
         return;
@@ -182,7 +185,7 @@ export function EditTagsetDialog({
         ? null 
         : (data.categoria_pai?.trim() || null);
 
-      console.log('[EditTagsetDialog] Enviando atualização com valores validados:', {
+      log.debug('Enviando atualização com valores validados', {
         categoria_pai: categoriaPaiValue,
         nivel_profundidade: data.nivel_profundidade,
       });
@@ -200,7 +203,7 @@ export function EditTagsetDialog({
       toast.success('✅ Domínio semântico atualizado com sucesso!');
       onClose();
     } catch (error) {
-      console.error('[EditTagsetDialog] Erro ao atualizar tagset:', error);
+      log.error('Erro ao atualizar tagset', error as Error);
       toast.error('❌ Erro ao atualizar domínio semântico. Verifique o console.');
     } finally {
       setIsSubmitting(false);
@@ -219,13 +222,13 @@ export function EditTagsetDialog({
     
     // Se mudou para nível 1 E tem pai definido → limpar
     if (nivelAtual === 1 && categoriaPaiValue) {
-      console.log('[EditTagsetDialog] Nível 1 detectado, limpando categoria_pai');
+      log.debug('Nível 1 detectado, limpando categoria_pai');
       form.setValue('categoria_pai', '', { shouldValidate: true });
     }
     
     // Se mudou para nível 2+ E não tem pai → forçar validação
     if (nivelAtual > 1 && !categoriaPaiValue) {
-      console.log('[EditTagsetDialog] Nível 2+ detectado sem pai, forçando validação');
+      log.debug('Nível 2+ detectado sem pai, forçando validação');
       form.trigger('categoria_pai');
     }
   }, [nivelAtual, form]);

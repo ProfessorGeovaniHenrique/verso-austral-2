@@ -9,6 +9,9 @@ import { KeywordEntry } from '@/data/types/corpus-tools.types';
 import { findInDictionary, DIALECTAL_DICTIONARY } from '@/data/dialectal-dictionary';
 import { EnrichedDialectalMark } from '@/data/types/dialectal-dictionary.types';
 import { isDialectalStopword, hasDialectalCharacteristics } from '@/data/dialectal-stopwords';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('dialectalDictionaryService');
 
 /**
  * Enriquece uma palavra-chave com dados do dicionário dialetal
@@ -21,7 +24,7 @@ export function enrichWordWithDictionary(
   
   // FILTRO 1: Stopwords dialetais (palavras gramaticais)
   if (isDialectalStopword(palavra)) {
-    console.log(`🚫 Filtered stopword: ${palavra}`);
+    log.debug(`Filtered stopword: ${palavra}`);
     return null;
   }
   
@@ -29,7 +32,7 @@ export function enrichWordWithDictionary(
   
   // FILTRO 2: Se não está no dicionário E não tem características dialetais E tem LL baixo
   if (!dictionaryEntry && !hasDialectalCharacteristics(palavra) && keywordData.ll < 20) {
-    console.log(`🚫 Filtered non-dialectal: ${palavra} (LL: ${keywordData.ll.toFixed(2)})`);
+    log.debug(`Filtered non-dialectal: ${palavra}`, { ll: keywordData.ll.toFixed(2) });
     return null;
   }
   

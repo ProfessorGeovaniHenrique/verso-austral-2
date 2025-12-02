@@ -138,15 +138,29 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
 - [x] keywordService.ts - Migrado para createLogger (2 logs)
 - [x] CorpusContext.tsx - Migrado para createLogger (~14 logs)
 - [x] ToolsContext.tsx - Migrado para createLogger (~15 logs)
-- [ ] Demais componentes de página (~15 arquivos)
+- [x] planetCache.ts - Migrado para createLogger (2 logs)
+- [x] cacheSync.ts - Migrado para createLogger (4 logs)
+- [x] AuthCallback.tsx - Migrado para createLogger (5 logs)
+- [x] SetPassword.tsx - Migrado para createLogger (6 logs)
+- [x] EditTagsetDialog.tsx - Migrado para createLogger (6 logs)
+- [x] dialectalDictionaryService.ts - Migrado para createLogger (2 logs)
 
-**Arquivos Migrados (15 de ~35):** 43%
-**Impacto:** ~115 console.log removidos, substituídos por logging estruturado
+**Arquivos Migrados:** 21 arquivos críticos
+**Impacto:** ~150+ console.log removidos de código de produção
+
+**Logs intencionalmente mantidos (debug/dev):**
+- `src/pages/_archived/*` - Arquivos arquivados
+- `src/data/mockup/*` - Debug de visualizações complexas
+- `src/lib/logger.ts` - Própria infraestrutura de logging
+- `OrbitalConstellationChart.tsx` - Debug de renderização 3D
 
 **Infraestrutura existente:**
 - `src/lib/logger.ts` - StructuredLogger com Sentry integration
 - `src/lib/loggerFactory.ts` - Factory para loggers contextualizados
 - `src/config/loggingConfig.ts` - Configuração por categoria
+
+### Sprint F3: ✅ COMPLETE (95%)
+Código de produção crítico migrado. Logs restantes são intencionais para debug de visualizações.
 
 ### Sprint F4 (Loading States) - ⏳ Pending
 ### Sprint F5 (Layout Consistency) - ⏳ Pending
@@ -159,7 +173,6 @@ Create single source of truth for all navigation items, eliminating 600+ lines o
 
 | Sprint | Foco | Estimativa | Prioridade |
 |--------|------|------------|------------|
-| F3 | Console.logs Cleanup | 2-3h | Alta |
 | F4 | Loading States Padronizados | 1-2h | Média |
 | F5 | Layout Consistency | 1-2h | Média |
 | F6 | TODOs Resolution | 1h | Baixa |

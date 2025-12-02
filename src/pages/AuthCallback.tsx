@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('AuthCallback');
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
@@ -31,7 +34,7 @@ export default function AuthCallback() {
           .maybeSingle();
 
         if (inviteError) {
-          console.error("Invite verification error:", inviteError);
+          log.error("Invite verification error", inviteError as Error);
           setStatus("error");
           setMessage(`Erro ao verificar convite: ${inviteError.message}`);
           setTimeout(() => navigate("/auth"), 5000);
@@ -39,7 +42,7 @@ export default function AuthCallback() {
         }
 
         if (!inviteData) {
-          console.error("No invite data returned - token or code mismatch");
+          log.error("No invite data returned - token or code mismatch");
           setStatus("error");
           setMessage("Convite não encontrado. Verifique o link recebido.");
           setTimeout(() => navigate("/auth"), 5000);
@@ -47,7 +50,7 @@ export default function AuthCallback() {
         }
 
         if (!inviteData.is_valid) {
-          console.error("Invite is not valid:", inviteData);
+          log.error("Invite is not valid");
           setStatus("error");
           setMessage("Este convite já foi utilizado ou expirou.");
           setTimeout(() => navigate("/auth"), 5000);
@@ -71,7 +74,7 @@ export default function AuthCallback() {
         }
 
         // Store invite data in sessionStorage and redirect to set-password
-        console.log("Armazenando dados do convite e redirecionando...");
+        log.info("Armazenando dados do convite e redirecionando...");
         
         sessionStorage.setItem(
           "invite_data",
@@ -90,7 +93,7 @@ export default function AuthCallback() {
         setTimeout(() => navigate("/set-password"), 1000);
 
       } catch (error: any) {
-        console.error("Callback error:", error);
+        log.error("Callback error", error);
         setStatus("error");
         setMessage("Erro ao processar convite. Tente novamente.");
         setTimeout(() => navigate("/auth"), 3000);
