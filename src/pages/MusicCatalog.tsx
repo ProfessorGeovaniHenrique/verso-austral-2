@@ -6,6 +6,7 @@ const log = createLogger('MusicCatalog');
 import { useCatalogData } from '@/hooks/useCatalogData';
 import { useArtistSongs } from '@/hooks/useArtistSongs';
 import { useSemanticAnnotationCatalog } from '@/hooks/useSemanticAnnotationCatalog';
+import { useEnrichmentQualityMetrics } from '@/hooks/useEnrichmentQualityMetrics';
 import {
   EnrichedDataTable,
   SongCard,
@@ -119,6 +120,9 @@ export default function MusicCatalog() {
   // ✅ Hook carrega músicas do artista selecionado (sob demanda)
   const { songs: artistSongs, loading: artistSongsLoading, reload: reloadArtistSongs } = useArtistSongs(selectedArtistId);
   
+  // ✅ Hook de métricas de qualidade do enriquecimento
+  const { data: enrichmentMetrics, isLoading: metricsLoading, refetch: refetchMetrics } = useEnrichmentQualityMetrics();
+  
   // States de dados locais (sincronizados com hook)
   const [songs, setSongs] = useState<Song[]>([]);
   const [allSongs, setAllSongs] = useState<Song[]>([]);
@@ -131,7 +135,6 @@ export default function MusicCatalog() {
   const [batchModalOpen, setBatchModalOpen] = useState(false);
   const [youtubeModalOpen, setYoutubeModalOpen] = useState(false);
   const [pendingSongsForBatch, setPendingSongsForBatch] = useState<any[]>([]);
-  const [metricsData, setMetricsData] = useState<any>(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isClearingCatalog, setIsClearingCatalog] = useState(false);
   const [enrichingByLetter, setEnrichingByLetter] = useState(false);
@@ -422,22 +425,25 @@ export default function MusicCatalog() {
   };
 
   const handleExportReport = () => {
-    if (!metricsData) return;
+    if (!enrichmentMetrics) return;
 
     const reportData = {
       generatedAt: new Date().toISOString(),
       summary: {
-        totalSongs: metricsData.totalSongs,
-        enriched: metricsData.enriched,
-        pending: metricsData.pending,
-        errors: metricsData.errors,
-        successRate: metricsData.successRate,
-        avgConfidence: metricsData.avgConfidence
+        totalSongs: enrichmentMetrics.totalSongs,
+        enriched: enrichmentMetrics.enrichedCount,
+        pending: enrichmentMetrics.pendingCount,
+        errors: enrichmentMetrics.errorCount,
+        successRate: enrichmentMetrics.successRate,
+        avgConfidence: enrichmentMetrics.avgConfidence
       },
-      enrichmentHistory: metricsData.enrichmentHistory,
-      sourceDistribution: metricsData.sourceDistribution,
-      confidenceDistribution: metricsData.confidenceDistribution,
-      recentEnrichments: metricsData.recentEnrichments
+      fieldCoverage: enrichmentMetrics.fieldCoverage,
+      layerStats: enrichmentMetrics.layerStats,
+      enrichmentHistory: enrichmentMetrics.enrichmentHistory,
+      sourceDistribution: enrichmentMetrics.sourceDistribution,
+      confidenceDistribution: enrichmentMetrics.confidenceDistribution,
+      recentEnrichments: enrichmentMetrics.recentEnrichments,
+      dataQuality: enrichmentMetrics.dataQuality
     };
 
     const blob = new Blob([JSON.stringify(reportData, null, 2)], { 
@@ -1567,11 +1573,36 @@ export default function MusicCatalog() {
         </TabsContent>
 
         <TabsContent value="metrics" className="space-y-4">
-          {metricsData && (
-            <EnrichmentMetricsDashboard 
-              metrics={metricsData}
-              onExportReport={handleExportReport}
-            />
+          {metricsLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+              <p className="text-muted-foreground">Carregando métricas de qualidade...</p>
+            </div>
+          ) : enrichmentMetrics ? (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-2xl font-bold">Dashboard de Qualidade do Enriquecimento</h2>
+                  <p className="text-muted-foreground">Monitore a qualidade e eficácia do pipeline de enriquecimento</p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetchMetrics()}
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Atualizar Métricas
+                </Button>
+              </div>
+              <EnrichmentMetricsDashboard 
+                metrics={enrichmentMetrics}
+                onExportReport={handleExportReport}
+              />
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">Nenhuma métrica disponível</p>
+            </div>
           )}
         </TabsContent>
 
