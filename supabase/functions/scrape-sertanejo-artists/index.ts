@@ -9,8 +9,13 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-// ============ LISTA MANUAL DE ARTISTAS TOP SERTANEJO ============
+// ============ CONFIGURAÇÃO ============
+const ARTISTS_PER_CHUNK = 3; // Artistas por execução (evita timeout)
+const DEFAULT_SONGS_PER_ARTIST = 15;
+
+// ============ LISTA EXPANDIDA DE ARTISTAS (60+) ============
 const TOP_SERTANEJO_ARTISTS = [
+  // Top 30 mais populares
   { name: 'Henrique e Juliano', slug: 'henrique-e-juliano' },
   { name: 'Marília Mendonça', slug: 'marilia-mendonca' },
   { name: 'Jorge e Mateus', slug: 'jorge-mateus' },
@@ -23,7 +28,7 @@ const TOP_SERTANEJO_ARTISTS = [
   { name: 'Wesley Safadão', slug: 'wesley-safadao' },
   { name: 'Chitãozinho e Xororó', slug: 'chitaozinho-e-xororo' },
   { name: 'Michel Teló', slug: 'michel-telo' },
-  { name: 'Simone e Simaria', slug: 'simone-e-simaria' },
+  { name: 'Simone e Simaria', slug: 'simone-simaria' }, // CORRIGIDO
   { name: 'Paula Fernandes', slug: 'paula-fernandes' },
   { name: 'Cristiano Araújo', slug: 'cristiano-araujo' },
   { name: 'Ana Castela', slug: 'ana-castela' },
@@ -37,19 +42,73 @@ const TOP_SERTANEJO_ARTISTS = [
   { name: 'Israel e Rodolffo', slug: 'israel-e-rodolffo' },
   { name: 'Lauana Prado', slug: 'lauana-prado' },
   { name: 'Naiara Azevedo', slug: 'naiara-azevedo' },
-  { name: 'Léo Santana', slug: 'leo-santana' },
   { name: 'Gustavo Mioto', slug: 'gustavo-mioto' },
   { name: 'Hugo e Guilherme', slug: 'hugo-e-guilherme' },
+  { name: 'Léo Santana', slug: 'leo-santana' },
   { name: 'Menos é Mais', slug: 'menos-e-mais' },
+  // 30+ artistas adicionais
+  { name: 'Felipe Araújo', slug: 'felipe-araujo' },
+  { name: 'Marcos e Belutti', slug: 'marcos-e-belutti' },
+  { name: 'César Menotti e Fabiano', slug: 'cesar-menotti-e-fabiano' },
+  { name: 'Maria Cecília e Rodolfo', slug: 'maria-cecilia-e-rodolfo' },
+  { name: 'Jads e Jadson', slug: 'jads-e-jadson' },
+  { name: 'Thaeme e Thiago', slug: 'thaeme-e-thiago' },
+  { name: 'João Neto e Frederico', slug: 'joao-neto-e-frederico' },
+  { name: 'Lucas Lucco', slug: 'lucas-lucco' },
+  { name: 'Eduardo Costa', slug: 'eduardo-costa' },
+  { name: 'Roberta Miranda', slug: 'roberta-miranda' },
+  { name: 'Daniel', slug: 'daniel' },
+  { name: 'Rick e Renner', slug: 'rick-e-renner' },
+  { name: 'Edson e Hudson', slug: 'edson-e-hudson' },
+  { name: 'Teodoro e Sampaio', slug: 'teodoro-e-sampaio' },
+  { name: 'Gian e Giovani', slug: 'gian-e-giovani' },
+  { name: 'Rio Negro e Solimões', slug: 'rio-negro-e-solimoes' },
+  { name: 'Guilherme e Santiago', slug: 'guilherme-e-santiago' },
+  { name: 'Leandro e Leonardo', slug: 'leandro-e-leonardo' },
+  { name: 'Milionário e José Rico', slug: 'milionario-e-jose-rico' },
+  { name: 'Chrystian e Ralf', slug: 'chrystian-e-ralf' },
+  { name: 'Sergio Reis', slug: 'sergio-reis' },
+  { name: 'Almir Sater', slug: 'almir-sater' },
+  { name: 'Renato Teixeira', slug: 'renato-teixeira' },
+  { name: 'Tonico e Tinoco', slug: 'tonico-e-tinoco' },
+  { name: 'Inezita Barroso', slug: 'inezita-barroso' },
+  { name: 'Padre Fábio de Melo', slug: 'padre-fabio-de-melo' },
+  { name: 'Ney Matogrosso', slug: 'ney-matogrosso' },
+  { name: 'Mariano', slug: 'mariano' },
+  { name: 'Munhoz e Mariano', slug: 'munhoz-e-mariano' },
+  { name: 'João Carreiro e Capataz', slug: 'joao-carreiro-e-capataz' },
 ];
 
 // ============ NORMALIZAÇÃO ============
 function normalizeForDb(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
+  return text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+// ============ FETCH COM RETRY ============
+async function fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
+  for (let i = 0; i < retries; i++) {
+    const delay = Math.min(500 * Math.pow(2, i), 2000);
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml',
+          'Accept-Language': 'pt-BR,pt;q=0.9',
+        },
+      });
+      
+      if (response.ok) return response;
+      if (response.status === 429) {
+        console.log(`[scrape] Rate limited, waiting ${delay * 2}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay * 2));
+      }
+    } catch (error) {
+      console.warn(`[scrape] Fetch attempt ${i + 1} failed:`, error);
+    }
+  }
+  return null;
 }
 
 // ============ EXTRAÇÃO DE MÚSICAS ============
@@ -57,11 +116,10 @@ function extractSongLinks(html: string, artistSlug: string): Array<{ title: stri
   const songs: Array<{ title: string; url: string }> = [];
   const seen = new Set<string>();
   
-  // Multiple patterns for song extraction
+  const SKIP_TITLES = ['ver mais', 'carregar', 'top ', 'mais acessadas', 'tradução', 'cifra', 'álbum', 'álbuns'];
+  
   const patterns = [
-    // Pattern 1: Direct song links with artist slug
     new RegExp(`<a[^>]*href="\\/${artistSlug}\\/([^/"]+)\\/"[^>]*>([^<]+)<\\/a>`, 'gi'),
-    // Pattern 2: Song links with title attribute
     new RegExp(`<a[^>]*href="\\/${artistSlug}\\/([^/"]+)\\/"[^>]*title="([^"]+)"[^>]*>`, 'gi'),
   ];
   
@@ -74,16 +132,11 @@ function extractSongLinks(html: string, artistSlug: string): Array<{ title: stri
       if (!slug || !title || title.length < 2) continue;
       if (seen.has(slug)) continue;
       
-      // Skip navigation-like entries
       const lowerTitle = title.toLowerCase();
-      if (lowerTitle.includes('ver mais') || lowerTitle.includes('carregar') || 
-          lowerTitle.includes('top ') || lowerTitle.includes('mais acessadas')) continue;
+      if (SKIP_TITLES.some(skip => lowerTitle.includes(skip))) continue;
       
       seen.add(slug);
-      songs.push({
-        title,
-        url: `https://www.letras.mus.br/${artistSlug}/${slug}/`
-      });
+      songs.push({ title, url: `https://www.letras.mus.br/${artistSlug}/${slug}/` });
     }
   }
 
@@ -96,7 +149,6 @@ function extractLyrics(html: string): string | null {
     /<div[^>]*class="[^"]*lyric-original[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
     /<div[^>]*class="[^"]*cnt-letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
     /<div[^>]*class="[^"]*letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
-    /<div[^>]*id="[^"]*letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
   ];
 
   for (const pattern of patterns) {
@@ -116,12 +168,65 @@ function extractLyrics(html: string): string | null {
         .replace(/\n{3,}/g, '\n\n')
         .trim();
 
-      if (lyrics.length > 50) {
-        return lyrics;
-      }
+      if (lyrics.length > 50) return lyrics;
     }
   }
   return null;
+}
+
+// ============ AUTO-INVOCAÇÃO ============
+async function autoInvokeNextChunk(jobId: string, nextArtistIndex: number) {
+  const MAX_RETRIES = 3;
+  
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      console.log(`[scrape] Auto-invocando próximo chunk (tentativa ${attempt})...`);
+      
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/scrape-sertanejo-artists`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId, continueFrom: { artistIndex: nextArtistIndex } }),
+      });
+      
+      if (response.ok) {
+        console.log(`[scrape] ✅ Auto-invocação bem-sucedida`);
+        return true;
+      }
+    } catch (error) {
+      console.warn(`[scrape] Auto-invocação falhou (tentativa ${attempt}):`, error);
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+    }
+  }
+  
+  console.log(`[scrape] ⚠️ Todas as tentativas de auto-invocação falharam`);
+  return false;
+}
+
+// ============ VERIFICAÇÕES ============
+async function checkCancellation(supabase: any, jobId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('scraping_jobs')
+    .select('is_cancelling, status')
+    .eq('id', jobId)
+    .single();
+  
+  return data?.is_cancelling || data?.status === 'cancelado';
+}
+
+async function acquireLock(supabase: any, jobId: string): Promise<boolean> {
+  const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
+  
+  const { data, error } = await supabase
+    .from('scraping_jobs')
+    .update({ last_chunk_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .or(`last_chunk_at.is.null,last_chunk_at.lte.${thirtySecondsAgo}`)
+    .select();
+  
+  return !error && data && data.length > 0;
 }
 
 // ============ MAIN SERVER ============
@@ -130,26 +235,90 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
   try {
-    const { artistLimit = 25, songsPerArtist = 20 } = await req.json();
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const body = await req.json().catch(() => ({}));
+    const { 
+      jobId,
+      continueFrom,
+      artistLimit = TOP_SERTANEJO_ARTISTS.length,
+      songsPerArtist = DEFAULT_SONGS_PER_ARTIST 
+    } = body;
 
-    console.log(`[scrape-sertanejo] ========== STARTING ==========`);
-    console.log(`[scrape-sertanejo] Config: artistLimit=${artistLimit}, songsPerArtist=${songsPerArtist}`);
+    console.log(`[scrape] ========== INICIANDO ==========`);
+    console.log(`[scrape] Params: jobId=${jobId}, continueFrom=${JSON.stringify(continueFrom)}`);
 
-    // Ensure Sertanejo corpus exists
+    // ============ CRIAR OU CONTINUAR JOB ============
+    let job: any;
+    let startIndex = 0;
+    
+    if (jobId && continueFrom) {
+      // Continuar job existente
+      const { data: existingJob, error } = await supabase
+        .from('scraping_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single();
+      
+      if (error || !existingJob) {
+        return new Response(
+          JSON.stringify({ error: 'Job não encontrado' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      job = existingJob;
+      startIndex = continueFrom.artistIndex || job.current_artist_index;
+      
+      // Verificar cancelamento
+      if (await checkCancellation(supabase, jobId)) {
+        await supabase.from('scraping_jobs').update({ status: 'cancelado', completed_at: new Date().toISOString() }).eq('id', jobId);
+        return new Response(JSON.stringify({ status: 'cancelled', jobId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      // Tentar adquirir lock
+      if (!await acquireLock(supabase, jobId)) {
+        console.log(`[scrape] Lock não adquirido, outro chunk em execução`);
+        return new Response(JSON.stringify({ status: 'locked', jobId }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      
+      // Atualizar status para processando
+      await supabase.from('scraping_jobs').update({ status: 'processando' }).eq('id', jobId);
+      
+    } else {
+      // Criar novo job
+      const totalArtists = Math.min(artistLimit, TOP_SERTANEJO_ARTISTS.length);
+      
+      const { data: newJob, error } = await supabase
+        .from('scraping_jobs')
+        .insert({
+          corpus_type: 'sertanejo',
+          total_artists: totalArtists,
+          songs_per_artist: songsPerArtist,
+          status: 'processando',
+          config: { artistLimit, songsPerArtist }
+        })
+        .select()
+        .single();
+      
+      if (error) throw new Error(`Falha ao criar job: ${error.message}`);
+      job = newJob;
+      console.log(`[scrape] ✅ Novo job criado: ${job.id}`);
+    }
+
+    // ============ GARANTIR CORPUS EXISTE ============
+    let corpusId: string;
     const { data: existingCorpus } = await supabase
       .from('corpora')
       .select('id')
       .eq('normalized_name', 'sertanejo')
       .single();
 
-    let corpusId: string;
     if (existingCorpus) {
       corpusId = existingCorpus.id;
-      console.log(`[scrape-sertanejo] Using existing Sertanejo corpus: ${corpusId}`);
     } else {
-      const { data: newCorpus, error: corpusError } = await supabase
+      const { data: newCorpus, error } = await supabase
         .from('corpora')
         .insert({
           name: 'Sertanejo',
@@ -162,41 +331,60 @@ serve(async (req) => {
         .select('id')
         .single();
 
-      if (corpusError) throw new Error(`Failed to create corpus: ${corpusError.message}`);
+      if (error) throw new Error(`Falha ao criar corpus: ${error.message}`);
       corpusId = newCorpus.id;
-      console.log(`[scrape-sertanejo] Created Sertanejo corpus: ${corpusId}`);
     }
 
-    // USE MANUAL ARTIST LIST (SPA pages can't be scraped)
-    const artistsToProcess = TOP_SERTANEJO_ARTISTS.slice(0, artistLimit);
-    console.log(`[scrape-sertanejo] Using manual artist list: ${artistsToProcess.length} artists`);
-    console.log(`[scrape-sertanejo] Artists: ${artistsToProcess.map(a => a.name).join(', ')}`);
+    // ============ PROCESSAR CHUNK DE ARTISTAS ============
+    const endIndex = Math.min(startIndex + ARTISTS_PER_CHUNK, job.total_artists);
+    const artistsToProcess = TOP_SERTANEJO_ARTISTS.slice(startIndex, endIndex);
+    
+    console.log(`[scrape] Processando artistas ${startIndex + 1}-${endIndex} de ${job.total_artists}`);
 
-    let artistsCreated = 0;
+    let artistsProcessed = 0;
+    let artistsSkipped = 0;
     let songsCreated = 0;
     let songsWithLyrics = 0;
-    const errors: string[] = [];
 
-    // Process each artist
     for (const artist of artistsToProcess) {
-      try {
-        console.log(`[scrape-sertanejo] Processing artist: ${artist.name}`);
+      // Verificar cancelamento a cada artista
+      if (await checkCancellation(supabase, job.id)) {
+        console.log(`[scrape] Cancelamento detectado, interrompendo...`);
+        break;
+      }
 
-        // Check if artist already exists
+      try {
+        console.log(`[scrape] Processando: ${artist.name}`);
+        
+        // Verificar se artista já existe
         const normalizedName = normalizeForDb(artist.name);
+        let artistId: string;
+        
         const { data: existingArtist } = await supabase
           .from('artists')
           .select('id')
           .eq('normalized_name', normalizedName)
           .single();
 
-        let artistId: string;
         if (existingArtist) {
           artistId = existingArtist.id;
-          console.log(`[scrape-sertanejo] Artist exists: ${artist.name} (${artistId})`);
+          
+          // Verificar se já tem músicas suficientes
+          const { count } = await supabase
+            .from('songs')
+            .select('id', { count: 'exact', head: true })
+            .eq('artist_id', artistId)
+            .eq('corpus_id', corpusId);
+          
+          if ((count || 0) >= job.songs_per_artist) {
+            console.log(`[scrape] ⏭️ ${artist.name} já tem ${count} músicas, pulando`);
+            artistsSkipped++;
+            artistsProcessed++;
+            continue;
+          }
         } else {
-          // Create artist
-          const { data: newArtist, error: artistError } = await supabase
+          // Criar artista
+          const { data: newArtist, error } = await supabase
             .from('artists')
             .insert({
               name: artist.name,
@@ -207,127 +395,142 @@ serve(async (req) => {
             .select('id')
             .single();
 
-          if (artistError) {
-            errors.push(`Failed to create artist ${artist.name}: ${artistError.message}`);
+          if (error) {
+            console.warn(`[scrape] Falha ao criar ${artist.name}: ${error.message}`);
             continue;
           }
           artistId = newArtist.id;
-          artistsCreated++;
-          console.log(`[scrape-sertanejo] ✓ Created artist: ${artist.name} (${artistId})`);
         }
 
-        // Fetch artist page for songs
+        // Buscar página do artista
         const artistUrl = `https://www.letras.mus.br/${artist.slug}/`;
-        console.log(`[scrape-sertanejo] Fetching: ${artistUrl}`);
+        const artistResponse = await fetchWithRetry(artistUrl);
         
-        await new Promise(resolve => setTimeout(resolve, 500)); // Rate limit
-        const artistResponse = await fetch(artistUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml',
-            'Accept-Language': 'pt-BR,pt;q=0.9',
-          },
-        });
-
-        if (!artistResponse.ok) {
-          errors.push(`Failed to fetch artist page ${artist.name}: ${artistResponse.status}`);
-          console.log(`[scrape-sertanejo] ✗ Failed to fetch ${artist.name}: ${artistResponse.status}`);
+        if (!artistResponse) {
+          console.warn(`[scrape] Falha ao buscar ${artist.name}`);
+          artistsProcessed++;
           continue;
         }
 
         const artistHtml = await artistResponse.text();
-        console.log(`[scrape-sertanejo] Artist page HTML: ${artistHtml.length} bytes`);
+        const songLinks = extractSongLinks(artistHtml, artist.slug).slice(0, job.songs_per_artist);
         
-        const songLinks = extractSongLinks(artistHtml, artist.slug).slice(0, songsPerArtist);
-        console.log(`[scrape-sertanejo] Found ${songLinks.length} songs for ${artist.name}`);
+        console.log(`[scrape] ${artist.name}: ${songLinks.length} músicas encontradas`);
 
-        if (songLinks.length === 0) {
-          console.log(`[scrape-sertanejo] WARNING: No songs found for ${artist.name}`);
-          console.log(`[scrape-sertanejo] HTML snippet: ${artistHtml.substring(0, 2000)}`);
-        }
-
-        // Process each song
+        // Processar músicas
         for (const songLink of songLinks) {
-          try {
-            // Check if song already exists
-            const normalizedTitle = normalizeForDb(songLink.title);
-            const { data: existingSong } = await supabase
-              .from('songs')
-              .select('id')
-              .eq('artist_id', artistId)
-              .eq('normalized_title', normalizedTitle)
-              .single();
+          const normalizedTitle = normalizeForDb(songLink.title);
+          
+          // Verificar se música já existe
+          const { data: existingSong } = await supabase
+            .from('songs')
+            .select('id')
+            .eq('artist_id', artistId)
+            .eq('normalized_title', normalizedTitle)
+            .single();
 
-            if (existingSong) {
-              console.log(`[scrape-sertanejo] Song exists: ${songLink.title}`);
-              continue;
-            }
+          if (existingSong) continue;
 
-            // Fetch song page for lyrics
-            await new Promise(resolve => setTimeout(resolve, 300)); // Rate limit
-            const songResponse = await fetch(songLink.url, {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-                'Accept': 'text/html,application/xhtml+xml',
-                'Accept-Language': 'pt-BR,pt;q=0.9',
-              },
+          // Buscar letra
+          const songResponse = await fetchWithRetry(songLink.url);
+          let lyrics: string | null = null;
+          
+          if (songResponse) {
+            const songHtml = await songResponse.text();
+            lyrics = extractLyrics(songHtml);
+          }
+
+          // Criar música
+          const { error: songError } = await supabase
+            .from('songs')
+            .insert({
+              title: songLink.title,
+              normalized_title: normalizedTitle,
+              artist_id: artistId,
+              corpus_id: corpusId,
+              lyrics,
+              lyrics_source: lyrics ? 'letras.mus.br' : null,
+              lyrics_url: lyrics ? songLink.url : null,
+              status: 'pending'
             });
 
-            let lyrics: string | null = null;
-            if (songResponse.ok) {
-              const songHtml = await songResponse.text();
-              lyrics = extractLyrics(songHtml);
-            }
-
-            // Create song
-            const { error: songError } = await supabase
-              .from('songs')
-              .insert({
-                title: songLink.title,
-                normalized_title: normalizedTitle,
-                artist_id: artistId,
-                corpus_id: corpusId,
-                lyrics: lyrics,
-                lyrics_source: lyrics ? 'letras.mus.br' : null,
-                lyrics_url: lyrics ? songLink.url : null,
-                status: 'pending'
-              });
-
-            if (songError) {
-              errors.push(`Failed to create song ${songLink.title}: ${songError.message}`);
-              continue;
-            }
-
+          if (!songError) {
             songsCreated++;
             if (lyrics) songsWithLyrics++;
-            console.log(`[scrape-sertanejo] ✓ Song: ${songLink.title} ${lyrics ? '(with lyrics)' : '(no lyrics)'}`);
-
-          } catch (songError) {
-            errors.push(`Error processing song ${songLink.title}: ${songError instanceof Error ? songError.message : String(songError)}`);
           }
         }
 
-      } catch (artistError) {
-        errors.push(`Error processing artist ${artist.name}: ${artistError instanceof Error ? artistError.message : String(artistError)}`);
+        artistsProcessed++;
+        
+      } catch (error) {
+        console.warn(`[scrape] Erro em ${artist.name}:`, error);
+        artistsProcessed++;
       }
+
+      // Atualizar progresso no banco
+      await supabase.from('scraping_jobs').update({
+        current_artist_index: startIndex + artistsProcessed,
+        artists_processed: (job.artists_processed || 0) + artistsProcessed,
+        artists_skipped: (job.artists_skipped || 0) + artistsSkipped,
+        songs_created: (job.songs_created || 0) + songsCreated,
+        songs_with_lyrics: (job.songs_with_lyrics || 0) + songsWithLyrics,
+        chunks_processed: (job.chunks_processed || 0) + 1,
+      }).eq('id', job.id);
     }
 
-    console.log(`[scrape-sertanejo] ========== COMPLETED ==========`);
-    console.log(`[scrape-sertanejo] Results: ${artistsCreated} artists, ${songsCreated} songs, ${songsWithLyrics} with lyrics`);
+    // ============ VERIFICAR SE TEM MAIS ============
+    const nextArtistIndex = startIndex + artistsProcessed;
+    const hasMore = nextArtistIndex < job.total_artists && !await checkCancellation(supabase, job.id);
+
+    if (hasMore) {
+      // Auto-invocar próximo chunk
+      const autoInvoked = await autoInvokeNextChunk(job.id, nextArtistIndex);
+      
+      if (!autoInvoked) {
+        // Se auto-invocação falhou, marcar como pausado (GitHub Actions vai retomar)
+        await supabase.from('scraping_jobs').update({ status: 'pausado' }).eq('id', job.id);
+      }
+    } else {
+      // Job concluído
+      await supabase.from('scraping_jobs').update({
+        status: 'concluido',
+        completed_at: new Date().toISOString()
+      }).eq('id', job.id);
+      
+      console.log(`[scrape] ✅ JOB CONCLUÍDO!`);
+    }
+
+    // ============ BUSCAR DADOS FINAIS ============
+    const { data: finalJob } = await supabase
+      .from('scraping_jobs')
+      .select('*')
+      .eq('id', job.id)
+      .single();
 
     return new Response(
       JSON.stringify({
-        corpusId,
-        artistsCreated,
-        songsCreated,
-        songsWithLyrics,
-        errors: errors.slice(0, 10)
+        success: true,
+        jobId: job.id,
+        status: finalJob?.status,
+        progress: {
+          currentIndex: nextArtistIndex,
+          total: job.total_artists,
+          percentage: Math.round((nextArtistIndex / job.total_artists) * 100)
+        },
+        stats: {
+          artistsProcessed: finalJob?.artists_processed || 0,
+          artistsSkipped: finalJob?.artists_skipped || 0,
+          songsCreated: finalJob?.songs_created || 0,
+          songsWithLyrics: finalJob?.songs_with_lyrics || 0,
+        },
+        hasMore,
+        nextArtistIndex: hasMore ? nextArtistIndex : null
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('[scrape-sertanejo] Fatal error:', error);
+    console.error('[scrape] Erro fatal:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : String(error) }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

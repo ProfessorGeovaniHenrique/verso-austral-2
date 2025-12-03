@@ -1,0 +1,65 @@
+name: recover-scraping-jobs
+# Recovery automático de jobs de scraping travados
+# Executa a cada 10 minutos para detectar e retomar jobs pausados
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Recover stalled scraping jobs
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          set -e
+          echo "🔄 Checking for stalled scraping jobs at $(date -u)"
+          
+          # Buscar jobs travados (última atualização > 10 minutos, status processando/pausado)
+          stalled_jobs=$(curl -s \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/scraping_jobs?status=in.(processando,pausado,iniciado)&updated_at=lt.$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)&select=id,status,current_artist_index,total_artists" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
+          
+          echo "Stalled jobs found: $stalled_jobs"
+          
+          # Verificar se há jobs para recuperar
+          job_count=$(echo "$stalled_jobs" | jq '. | length')
+          
+          if [ "$job_count" -eq 0 ] || [ "$stalled_jobs" = "[]" ]; then
+            echo "✅ No stalled scraping jobs found"
+            exit 0
+          fi
+          
+          # Para cada job travado, re-invocar
+          echo "$stalled_jobs" | jq -c '.[]' | while read job; do
+            job_id=$(echo $job | jq -r '.id')
+            artist_index=$(echo $job | jq -r '.current_artist_index')
+            total_artists=$(echo $job | jq -r '.total_artists')
+            status=$(echo $job | jq -r '.status')
+            
+            echo "🔄 Resuming job $job_id (status: $status, progress: $artist_index/$total_artists)"
+            
+            response=$(curl -s -w "\n%{http_code}" -X POST "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/scrape-sertanejo-artists" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"jobId\": \"$job_id\", \"continueFrom\": {\"artistIndex\": $artist_index}}")
+            
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            
+            if [ "$http_code" = "200" ]; then
+              echo "✅ Job $job_id resumed successfully"
+              echo "Response: $body"
+            else
+              echo "❌ Failed to resume job $job_id (HTTP $http_code)"
+              echo "Response: $body"
+            fi
+          done
+          
+          echo "✅ Recovery check complete"

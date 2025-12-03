@@ -1,6 +1,6 @@
 /**
- * SertanejoPopulateCard - Card para popular Corpus Sertanejo vazio
- * Scraping de Letras.mus.br/mais-acessadas/sertanejo
+ * SertanejoPopulateCard - Card para popular Corpus Sertanejo
+ * Sistema de jobs assíncronos com progresso real-time
  */
 
 import { useState } from 'react';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Select,
   SelectContent,
@@ -24,26 +25,54 @@ import {
   AlertCircle,
   Users,
   FileMusic,
+  XCircle,
+  Play,
+  Clock,
+  Wifi,
 } from 'lucide-react';
-import { useLyricsEnrichment } from '@/hooks/useLyricsEnrichment';
+import { useSertanejoScrapingJob } from '@/hooks/useSertanejoScrapingJob';
 
 interface SertanejoPopulateCardProps {
   onComplete?: () => void;
 }
 
 export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps) {
-  const [artistLimit, setArtistLimit] = useState<string>('25');
-  const [songsPerArtist, setSongsPerArtist] = useState<string>('20');
+  const [artistLimit, setArtistLimit] = useState<string>('30');
+  const [songsPerArtist, setSongsPerArtist] = useState<string>('15');
   
-  const { populateSertanejo, sertanejoProgress, isPopulating } = useLyricsEnrichment();
+  const { 
+    activeJob, 
+    lastCompletedJob,
+    isLoading,
+    isStarting,
+    progress, 
+    isAbandoned,
+    startJob, 
+    cancelJob, 
+    resumeJob,
+    isProcessing,
+    isPaused,
+    isCancelling,
+  } = useSertanejoScrapingJob();
 
-  const handlePopulate = async () => {
-    await populateSertanejo(parseInt(artistLimit), parseInt(songsPerArtist));
+  const handleStart = async () => {
+    await startJob(parseInt(artistLimit), parseInt(songsPerArtist));
     onComplete?.();
   };
 
-  const isCompleted = sertanejoProgress.status === 'completed';
-  const hasError = sertanejoProgress.status === 'error';
+  const job = activeJob || lastCompletedJob;
+  const isCompleted = !activeJob && lastCompletedJob?.status === 'concluido';
+  const hasActiveJob = !!activeJob;
+
+  if (isLoading) {
+    return (
+      <Card className="border-amber-200 dark:border-amber-900 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+        <CardContent className="flex items-center justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-amber-600" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="border-amber-200 dark:border-amber-900 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
@@ -52,17 +81,21 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
           <Guitar className="h-5 w-5 text-amber-600" />
           Corpus Sertanejo
           {isCompleted && <Badge variant="default" className="bg-green-500">Populado</Badge>}
+          {isProcessing && <Badge variant="default" className="bg-blue-500 animate-pulse">Processando</Badge>}
+          {isPaused && <Badge variant="outline" className="border-amber-500 text-amber-600">Pausado</Badge>}
         </CardTitle>
         <CardDescription>
           {isCompleted 
             ? 'O corpus foi populado com sucesso!' 
-            : 'Este corpus ainda não possui artistas cadastrados.'}
+            : hasActiveJob 
+              ? 'Scraping em andamento...'
+              : 'Popular automaticamente com artistas sertanejo'}
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-4">
-        {/* Info Section */}
-        {!isCompleted && !isPopulating && (
+        {/* ============ FORMULÁRIO INICIAL ============ */}
+        {!hasActiveJob && !isCompleted && (
           <>
             <div className="p-3 rounded-lg bg-white/50 dark:bg-black/20 border border-amber-200 dark:border-amber-800">
               <p className="text-sm text-muted-foreground">
@@ -79,7 +112,6 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
               </p>
             </div>
 
-            {/* Configuration */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-muted-foreground">
@@ -90,10 +122,10 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10 artistas</SelectItem>
-                    <SelectItem value="25">25 artistas</SelectItem>
-                    <SelectItem value="50">50 artistas</SelectItem>
-                    <SelectItem value="100">100 artistas</SelectItem>
+                    <SelectItem value="15">15 artistas</SelectItem>
+                    <SelectItem value="30">30 artistas</SelectItem>
+                    <SelectItem value="45">45 artistas</SelectItem>
+                    <SelectItem value="60">60 artistas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -108,111 +140,170 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="10">10 músicas</SelectItem>
+                    <SelectItem value="15">15 músicas</SelectItem>
                     <SelectItem value="20">20 músicas</SelectItem>
-                    <SelectItem value="30">30 músicas</SelectItem>
-                    <SelectItem value="50">50 músicas</SelectItem>
+                    <SelectItem value="25">25 músicas</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Estimate */}
             <div className="text-xs text-muted-foreground">
-              Estimativa: ~{parseInt(artistLimit) * parseInt(songsPerArtist)} músicas com letras verificadas
+              Estimativa: ~{parseInt(artistLimit) * parseInt(songsPerArtist)} músicas com letras
             </div>
 
-            {/* Action Button */}
             <Button 
               className="w-full" 
-              onClick={handlePopulate}
-              disabled={isPopulating}
+              onClick={handleStart}
+              disabled={isStarting}
             >
-              <Music className="h-4 w-4 mr-2" />
+              {isStarting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Music className="h-4 w-4 mr-2" />
+              )}
               Popular Corpus Sertanejo
             </Button>
           </>
         )}
 
-        {/* Progress Section */}
-        {isPopulating && (
+        {/* ============ PROGRESSO EM TEMPO REAL ============ */}
+        {hasActiveJob && (
           <div className="space-y-4">
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
+            {/* Status e progresso */}
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Artista {activeJob.current_artist_index} de {activeJob.total_artists}
+              </span>
+              <Badge variant="outline" className="font-mono">
+                Chunk {activeJob.chunks_processed || 0}
+              </Badge>
             </div>
             
-            <p className="text-center text-sm text-muted-foreground">
-              Populando corpus... Isso pode levar alguns minutos.
-            </p>
-
-            <Progress value={50} className="h-2" />
+            <Progress value={progress} className="h-2" />
             
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            {/* Métricas */}
+            <div className="grid grid-cols-4 gap-2 text-center text-sm">
               <div className="p-2 rounded bg-white/50 dark:bg-black/20">
                 <div className="font-bold text-amber-600 flex items-center justify-center gap-1">
-                  <Users className="h-4 w-4" />
-                  {sertanejoProgress.artistsCreated}
+                  <Users className="h-3 w-3" />
+                  {activeJob.artists_processed}
                 </div>
                 <div className="text-xs text-muted-foreground">Artistas</div>
               </div>
               <div className="p-2 rounded bg-white/50 dark:bg-black/20">
                 <div className="font-bold text-amber-600 flex items-center justify-center gap-1">
-                  <Music className="h-4 w-4" />
-                  {sertanejoProgress.songsCreated}
+                  <Music className="h-3 w-3" />
+                  {activeJob.songs_created}
                 </div>
                 <div className="text-xs text-muted-foreground">Músicas</div>
               </div>
               <div className="p-2 rounded bg-white/50 dark:bg-black/20">
                 <div className="font-bold text-green-600 flex items-center justify-center gap-1">
-                  <FileMusic className="h-4 w-4" />
-                  {sertanejoProgress.songsWithLyrics}
+                  <FileMusic className="h-3 w-3" />
+                  {activeJob.songs_with_lyrics}
                 </div>
                 <div className="text-xs text-muted-foreground">Com Letras</div>
               </div>
+              <div className="p-2 rounded bg-white/50 dark:bg-black/20">
+                <div className="font-bold text-gray-500 flex items-center justify-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  {activeJob.artists_skipped}
+                </div>
+                <div className="text-xs text-muted-foreground">Pulados</div>
+              </div>
+            </div>
+
+            {/* Alerta de background */}
+            <Alert className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800">
+              <Wifi className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800 dark:text-green-200">
+                <strong>Processamento automático ativo.</strong> Você pode fechar esta página - 
+                o processo continua em segundo plano e será retomado automaticamente se houver interrupção.
+              </AlertDescription>
+            </Alert>
+
+            {/* Alerta de abandonado */}
+            {isAbandoned && (
+              <Alert className="bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800">
+                <AlertCircle className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800 dark:text-amber-200">
+                  Job parece estar pausado. Será retomado automaticamente em breve, ou clique para retomar agora.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Botões de controle */}
+            <div className="flex gap-2">
+              {isPaused && (
+                <Button variant="default" onClick={resumeJob} className="flex-1">
+                  <Play className="h-4 w-4 mr-2" />
+                  Retomar Agora
+                </Button>
+              )}
+              
+              {!isCancelling && (
+                <Button 
+                  variant="outline" 
+                  onClick={cancelJob}
+                  className="flex-1"
+                  disabled={isCancelling}
+                >
+                  <XCircle className="h-4 w-4 mr-2" />
+                  {isCancelling ? 'Cancelando...' : 'Cancelar'}
+                </Button>
+              )}
             </div>
           </div>
         )}
 
-        {/* Completed Section */}
-        {isCompleted && (
+        {/* ============ CONCLUÍDO ============ */}
+        {isCompleted && lastCompletedJob && (
           <div className="space-y-4">
             <div className="flex items-center justify-center py-4">
               <CheckCircle2 className="h-12 w-12 text-green-500" />
             </div>
             
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            <div className="grid grid-cols-4 gap-2 text-center text-sm">
               <div className="p-3 rounded bg-white/50 dark:bg-black/20">
-                <div className="text-2xl font-bold text-amber-600">
-                  {sertanejoProgress.artistsCreated}
+                <div className="text-xl font-bold text-amber-600">
+                  {lastCompletedJob.artists_processed}
                 </div>
                 <div className="text-xs text-muted-foreground">Artistas</div>
               </div>
               <div className="p-3 rounded bg-white/50 dark:bg-black/20">
-                <div className="text-2xl font-bold text-amber-600">
-                  {sertanejoProgress.songsCreated}
+                <div className="text-xl font-bold text-amber-600">
+                  {lastCompletedJob.songs_created}
                 </div>
                 <div className="text-xs text-muted-foreground">Músicas</div>
               </div>
               <div className="p-3 rounded bg-white/50 dark:bg-black/20">
-                <div className="text-2xl font-bold text-green-600">
-                  {sertanejoProgress.songsWithLyrics}
+                <div className="text-xl font-bold text-green-600">
+                  {lastCompletedJob.songs_with_lyrics}
                 </div>
                 <div className="text-xs text-muted-foreground">Com Letras</div>
+              </div>
+              <div className="p-3 rounded bg-white/50 dark:bg-black/20">
+                <div className="text-xl font-bold text-gray-500">
+                  {lastCompletedJob.artists_skipped}
+                </div>
+                <div className="text-xs text-muted-foreground">Pulados</div>
               </div>
             </div>
 
             <p className="text-center text-sm text-muted-foreground">
-              Todas as letras incluem link de atribuição para o site original.
+              Concluído em {new Date(lastCompletedJob.completed_at!).toLocaleString('pt-BR')}
             </p>
-          </div>
-        )}
 
-        {/* Error Section */}
-        {hasError && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900">
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
-            <div className="text-sm text-red-800 dark:text-red-200">
-              <strong>Erro:</strong> {sertanejoProgress.error || 'Falha ao popular corpus'}
-            </div>
+            {/* Botão para iniciar novo scraping */}
+            <Button 
+              variant="outline" 
+              className="w-full"
+              onClick={() => window.location.reload()}
+            >
+              <Music className="h-4 w-4 mr-2" />
+              Iniciar Novo Scraping
+            </Button>
           </div>
         )}
       </CardContent>

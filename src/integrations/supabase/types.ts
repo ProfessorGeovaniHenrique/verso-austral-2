@@ -1954,6 +1954,69 @@ export type Database = {
         }
         Relationships: []
       }
+      scraping_jobs: {
+        Row: {
+          artists_processed: number
+          artists_skipped: number
+          chunks_processed: number
+          completed_at: string | null
+          config: Json | null
+          corpus_type: string
+          created_at: string | null
+          current_artist_index: number
+          erro_mensagem: string | null
+          id: string
+          is_cancelling: boolean
+          last_chunk_at: string | null
+          songs_created: number
+          songs_per_artist: number
+          songs_with_lyrics: number
+          status: string
+          total_artists: number
+          updated_at: string | null
+        }
+        Insert: {
+          artists_processed?: number
+          artists_skipped?: number
+          chunks_processed?: number
+          completed_at?: string | null
+          config?: Json | null
+          corpus_type?: string
+          created_at?: string | null
+          current_artist_index?: number
+          erro_mensagem?: string | null
+          id?: string
+          is_cancelling?: boolean
+          last_chunk_at?: string | null
+          songs_created?: number
+          songs_per_artist?: number
+          songs_with_lyrics?: number
+          status?: string
+          total_artists?: number
+          updated_at?: string | null
+        }
+        Update: {
+          artists_processed?: number
+          artists_skipped?: number
+          chunks_processed?: number
+          completed_at?: string | null
+          config?: Json | null
+          corpus_type?: string
+          created_at?: string | null
+          current_artist_index?: number
+          erro_mensagem?: string | null
+          id?: string
+          is_cancelling?: boolean
+          last_chunk_at?: string | null
+          songs_created?: number
+          songs_per_artist?: number
+          songs_with_lyrics?: number
+          status?: string
+          total_artists?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       semantic_annotation_jobs: {
         Row: {
           artist_id: string
