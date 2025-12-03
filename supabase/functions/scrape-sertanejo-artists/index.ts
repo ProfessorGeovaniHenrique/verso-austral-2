@@ -21,8 +21,8 @@ const TOP_SERTANEJO_ARTISTS = [
   { name: 'Jorge e Mateus', slug: 'jorge-mateus' },
   { name: 'Luan Santana', slug: 'luan-santana' },
   { name: 'Gusttavo Lima', slug: 'gusttavo-lima' },
-  { name: 'Zé Neto e Cristiano', slug: 'ze-neto-e-cristiano' },
-  { name: 'Maiara e Maraisa', slug: 'maiara-e-maraisa' },
+  { name: 'Zé Neto e Cristiano', slug: 'ze-neto-cristiano' },
+  { name: 'Maiara e Maraisa', slug: 'maiara-maraisa' },
   { name: 'Bruno e Marrone', slug: 'bruno-e-marrone' },
   { name: 'Leonardo', slug: 'leonardo' },
   { name: 'Wesley Safadão', slug: 'wesley-safadao' },
@@ -466,29 +466,49 @@ serve(async (req) => {
         console.warn(`[scrape] Erro em ${artist.name}:`, error);
         artistsProcessed++;
       }
-
-      // Atualizar progresso no banco
-      await supabase.from('scraping_jobs').update({
-        current_artist_index: startIndex + artistsProcessed,
-        artists_processed: (job.artists_processed || 0) + artistsProcessed,
-        artists_skipped: (job.artists_skipped || 0) + artistsSkipped,
-        songs_created: (job.songs_created || 0) + songsCreated,
-        songs_with_lyrics: (job.songs_with_lyrics || 0) + songsWithLyrics,
-        chunks_processed: (job.chunks_processed || 0) + 1,
-      }).eq('id', job.id);
     }
 
-    // ============ VERIFICAR SE TEM MAIS ============
+    // ============ ATUALIZAR PROGRESSO (FORA DO LOOP) ============
+    // Atualiza apenas UMA VEZ por chunk, não por artista
     const nextArtistIndex = startIndex + artistsProcessed;
+    
+    await supabase.from('scraping_jobs').update({
+      current_artist_index: nextArtistIndex,
+      artists_processed: (job.artists_processed || 0) + artistsProcessed,
+      artists_skipped: (job.artists_skipped || 0) + artistsSkipped,
+      songs_created: (job.songs_created || 0) + songsCreated,
+      songs_with_lyrics: (job.songs_with_lyrics || 0) + songsWithLyrics,
+      chunks_processed: (job.chunks_processed || 0) + 1,
+    }).eq('id', job.id);
+    
+    console.log(`[scrape] ✅ Chunk concluído: ${artistsProcessed} artistas, ${songsCreated} músicas, ${songsWithLyrics} com letras`);
+
+    // ============ VERIFICAR SE TEM MAIS ============
     const hasMore = nextArtistIndex < job.total_artists && !await checkCancellation(supabase, job.id);
 
     if (hasMore) {
-      // Auto-invocar próximo chunk
-      const autoInvoked = await autoInvokeNextChunk(job.id, nextArtistIndex);
+      console.log(`[scrape] 🔄 Auto-invocando próximo chunk (índice ${nextArtistIndex})...`);
       
-      if (!autoInvoked) {
-        // Se auto-invocação falhou, marcar como pausado (GitHub Actions vai retomar)
-        await supabase.from('scraping_jobs').update({ status: 'pausado' }).eq('id', job.id);
+      // Auto-invocar próximo chunk (fire and forget com waitUntil se disponível)
+      const autoInvokePromise = autoInvokeNextChunk(job.id, nextArtistIndex);
+      
+      // Tentar usar waitUntil para garantir que a auto-invocação seja completada
+      // @ts-ignore - EdgeRuntime pode não estar tipado
+      if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+        // @ts-ignore
+        EdgeRuntime.waitUntil(autoInvokePromise.then(success => {
+          if (!success) {
+            console.log('[scrape] ⚠️ Auto-invocação falhou, job ficará pausado');
+          }
+        }));
+      } else {
+        // Fallback: aguardar resultado
+        const autoInvoked = await autoInvokePromise;
+        if (!autoInvoked) {
+          // Marcar como pausado para GitHub Actions retomar
+          await supabase.from('scraping_jobs').update({ status: 'pausado' }).eq('id', job.id);
+          console.log('[scrape] ⚠️ Job marcado como pausado - aguardando recovery');
+        }
       }
     } else {
       // Job concluído
