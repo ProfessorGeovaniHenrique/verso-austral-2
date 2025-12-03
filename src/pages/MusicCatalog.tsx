@@ -327,10 +327,15 @@ export default function MusicCatalog() {
           open={state.isSheetOpen}
           onOpenChange={state.setIsSheetOpen}
           artistId={state.selectedArtistId}
-          artist={state.selectedArtistId ? {
-            ...state.artistsWithStats.find(a => a.id === state.selectedArtistId),
-            ...state.artistBioOverrides.get(state.selectedArtistId)
-          } : null}
+          artist={state.selectedArtistId ? (() => {
+            const foundArtist = state.artistsWithStats.find(a => a.id === state.selectedArtistId);
+            const corpus = state.corpora.find(c => c.id === foundArtist?.corpus_id);
+            return {
+              ...foundArtist,
+              ...state.artistBioOverrides.get(state.selectedArtistId),
+              corpus_type: corpus?.normalized_name as 'gaucho' | 'sertanejo' | 'nordestino' | null
+            };
+          })() : null}
           songs={state.artistSongs.map(song => ({
             id: song.id,
             title: song.title,
