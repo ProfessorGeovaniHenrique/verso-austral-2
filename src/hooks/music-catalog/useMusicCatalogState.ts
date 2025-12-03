@@ -12,7 +12,7 @@ import { Song } from '@/components/music/SongCard';
 import { supabase } from '@/integrations/supabase/client';
 import { debounce } from '@/lib/performanceUtils';
 
-export type ViewType = 'songs' | 'artists' | 'stats' | 'metrics' | 'validation' | 'deduplication';
+export type ViewType = 'songs' | 'artists' | 'stats' | 'metrics' | 'validation' | 'deduplication' | 'scraping-jobs' | 'enrichment-jobs';
 export type ViewMode = 'table' | 'grid';
 
 export interface MusicCatalogState {

@@ -1,5 +1,6 @@
 /**
  * Aba de monitoramento de jobs de enriquecimento
+ * Centraliza controles de iniciar jobs + histórico
  */
 
 import { useState } from 'react';
@@ -31,7 +32,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Sparkles,
   Database
 } from 'lucide-react';
 import { useEnrichmentJobsList, EnrichmentJob, EnrichmentStatus, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
@@ -39,6 +39,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { EnrichmentControlPanel } from './EnrichmentControlPanel';
 
 const JOB_TYPE_LABELS: Record<EnrichmentJobType, string> = {
   metadata: 'Metadados',
@@ -151,7 +152,10 @@ export function TabEnrichmentJobs() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Painel de controle para iniciar novos jobs */}
+      <EnrichmentControlPanel />
+
       {/* Header com estatísticas */}
       <div className="grid gap-4 md:grid-cols-5">
         <Card>

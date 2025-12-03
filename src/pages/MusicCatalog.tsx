@@ -173,9 +173,8 @@ export default function MusicCatalog() {
             state.setShowSuspiciousOnly(false);
           }}
           pendingSongs={state.catalogStats?.pendingSongs || 0}
-          onBatchEnrich={handlers.handleBatchEnrich}
           songsWithoutYouTube={state.songsWithoutYouTube.length}
-          onBatchEnrichYouTube={handlers.handleBatchEnrichYouTube}
+          onNavigateToEnrichment={() => state.setView('enrichment-jobs')}
         />
 
         {/* Card de resumo de estatísticas por corpus */}

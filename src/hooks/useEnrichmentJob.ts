@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 export type EnrichmentJobType = 'metadata' | 'youtube' | 'lyrics' | 'full';
-export type EnrichmentScope = 'all' | 'artist' | 'corpus' | 'selection';
+export type EnrichmentScope = 'all' | 'artist' | 'corpus' | 'selection' | 'letter';
 export type EnrichmentStatus = 'pendente' | 'processando' | 'pausado' | 'concluido' | 'erro' | 'cancelado';
 
 export interface EnrichmentJob {
