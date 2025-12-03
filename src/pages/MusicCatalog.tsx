@@ -10,6 +10,7 @@ import { enrichmentService } from '@/services/enrichmentService';
 import { ArtistDetailsSheet } from '@/components/music/ArtistDetailsSheet';
 import { EnrichmentBatchModal } from '@/components/music/EnrichmentBatchModal';
 import { YouTubeEnrichmentModal } from '@/components/music/YouTubeEnrichmentModal';
+import { SertanejoPopulateCard } from '@/components/music/SertanejoPopulateCard';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
@@ -173,6 +174,13 @@ export default function MusicCatalog() {
 
         {/* Card de resumo de estatísticas por corpus */}
         <CatalogStatsOverview />
+
+        {/* Card para popular Corpus Sertanejo quando vazio */}
+        {state.selectedCorpusFilter !== 'all' && 
+         corpusOptions.find(c => c.id === state.selectedCorpusFilter)?.normalized_name === 'sertanejo' &&
+         filteredArtists.length === 0 && (
+          <SertanejoPopulateCard onComplete={() => state.reload()} />
+        )}
 
         <Tabs value={state.view} onValueChange={(v) => state.setView(v as any)} className="space-y-4">
           <TabsList>
