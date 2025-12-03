@@ -92,36 +92,78 @@ serve(async (req) => {
 
     log.info('Unique artists identified', { uniqueCount: uniqueArtists.size });
 
-    // OTIMIZAÇÃO: Batch upsert para artistas
+    // OTIMIZAÇÃO: Batch upsert para artistas COM atualização de corpus_id
     const artistsToInsert = Array.from(uniqueArtists.entries()).map(([normalized, original]) => ({
       name: original,
       normalized_name: normalized,
       corpus_id: corpusId || null,
     }));
 
-    const { data: upsertedArtists, error: artistError } = await supabase
+    // Primeiro: buscar artistas existentes
+    const normalizedNames = Array.from(uniqueArtists.keys());
+    const { data: existingArtists } = await supabase
       .from('artists')
-      .upsert(artistsToInsert, { 
-        onConflict: 'normalized_name',
-        ignoreDuplicates: false 
-      })
-      .select('id, name, normalized_name');
+      .select('id, name, normalized_name, corpus_id')
+      .in('normalized_name', normalizedNames);
 
-    log.logDatabaseQuery('artists', 'insert', artistsToInsert.length);
+    const existingArtistMap = new Map(
+      (existingArtists || []).map(a => [a.normalized_name, a])
+    );
 
-    if (artistError) {
-      log.error('Failed to upsert artists', artistError);
-      throw new Error(`Falha ao criar artistas: ${artistError.message}`);
+    // Separar artistas novos dos existentes que precisam atualização
+    const newArtists: typeof artistsToInsert = [];
+    const artistsToUpdate: Array<{ id: string; corpus_id: string }> = [];
+    const artistIds: Record<string, string> = {};
+
+    for (const artist of artistsToInsert) {
+      const existing = existingArtistMap.get(artist.normalized_name);
+      if (existing) {
+        artistIds[artist.name] = existing.id;
+        // Atualizar corpus_id se estava null e agora tem valor
+        if (!existing.corpus_id && corpusId) {
+          artistsToUpdate.push({ id: existing.id, corpus_id: corpusId });
+        }
+      } else {
+        newArtists.push(artist);
+      }
     }
 
-    // Mapear artistas criados/existentes para IDs
-    const artistIds: Record<string, string> = {};
-    upsertedArtists?.forEach(artist => {
-      artistIds[artist.name] = artist.id;
-    });
+    // Inserir novos artistas
+    let artistsCreated = 0;
+    if (newArtists.length > 0) {
+      const { data: insertedArtists, error: insertError } = await supabase
+        .from('artists')
+        .insert(newArtists)
+        .select('id, name, normalized_name');
 
-    const artistsCreated = artistsToInsert.length - uniqueArtists.size;
-    log.info('Artists upserted', { upserted: upsertedArtists?.length || 0 });
+      if (insertError) {
+        log.error('Failed to insert new artists', insertError);
+        throw new Error(`Falha ao criar artistas: ${insertError.message}`);
+      }
+
+      insertedArtists?.forEach(artist => {
+        artistIds[artist.name] = artist.id;
+      });
+      artistsCreated = insertedArtists?.length || 0;
+    }
+
+    // Atualizar corpus_id dos artistas existentes que não tinham
+    if (artistsToUpdate.length > 0 && corpusId) {
+      for (const artist of artistsToUpdate) {
+        await supabase
+          .from('artists')
+          .update({ corpus_id: artist.corpus_id })
+          .eq('id', artist.id);
+      }
+      log.info('Updated corpus_id for existing artists', { count: artistsToUpdate.length });
+    }
+
+    log.logDatabaseQuery('artists', 'insert', newArtists.length);
+    log.info('Artists processed', { 
+      new: artistsCreated, 
+      existing: existingArtistMap.size,
+      corpusUpdated: artistsToUpdate.length 
+    });
 
     // VALIDAÇÃO: Verificar integridade dos artist_ids
     const missingArtists = songs.filter(song => song.artista && !artistIds[song.artista]);
