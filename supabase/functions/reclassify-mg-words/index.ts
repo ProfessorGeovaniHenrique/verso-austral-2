@@ -169,22 +169,12 @@ Retorne um array JSON com a classificação de cada palavra.`;
 }
 
 function extractJsonFromText(text: string): any {
-  // Helper to fix unescaped quotes inside string values
-  const fixUnescapedQuotes = (str: string): string => {
-    // Match string values and escape internal quotes
-    return str.replace(/"([^"]*?)"/g, (match, content) => {
-      // Check if content has patterns like "word" which should be \"word\"
-      const fixed = content.replace(/(?<!\\)"/g, '\\"');
-      return `"${fixed}"`;
-    });
-  };
-
   // Helper to clean and fix common JSON issues
   const cleanJson = (str: string): string => {
     return str
       .replace(/,\s*]/g, ']')           // Remove trailing commas in arrays
       .replace(/,\s*}/g, '}')           // Remove trailing commas in objects
-      .replace(/[\x00-\x1F\x7F]/g, ' ') // Remove control characters but keep as space
+      .replace(/[\x00-\x1F\x7F]/g, ' ') // Remove control characters
       .replace(/\s+/g, ' ')             // Collapse whitespace
       .trim();
   };
@@ -237,11 +227,6 @@ function extractJsonFromText(text: string): any {
       // Try with truncation fix
       try {
         return JSON.parse(fixTruncatedArray(extracted));
-      } catch {}
-      
-      // Try fixing unescaped quotes
-      try {
-        return JSON.parse(cleanJson(fixUnescapedQuotes(extracted)));
       } catch {}
     }
     
