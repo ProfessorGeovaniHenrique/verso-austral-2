@@ -11,9 +11,11 @@ import { ArtistDetailsSheet } from '@/components/music/ArtistDetailsSheet';
 import { EnrichmentBatchModal } from '@/components/music/EnrichmentBatchModal';
 import { YouTubeEnrichmentModal } from '@/components/music/YouTubeEnrichmentModal';
 import { SertanejoPopulateCard } from '@/components/music/SertanejoPopulateCard';
+import { LyricsEnrichmentDashboard } from '@/components/music/LyricsEnrichmentDashboard';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { Sparkles } from 'lucide-react';
 
 // Hooks refatorados
 import { 
@@ -191,6 +193,10 @@ export default function MusicCatalog() {
             <TabsTrigger value="artists">
               Artistas {state.selectedLetter !== 'all' && `(${state.selectedLetter})`}
             </TabsTrigger>
+            <TabsTrigger value="enrichment" className="flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              Enriquecimento
+            </TabsTrigger>
             <TabsTrigger value="stats">Estatísticas</TabsTrigger>
             <TabsTrigger value="metrics">Métricas</TabsTrigger>
             <TabsTrigger value="validation">🧪 Validação</TabsTrigger>
@@ -244,6 +250,10 @@ export default function MusicCatalog() {
               isAnnotatingArtist={state.isAnnotatingArtist}
               reload={state.reload}
             />
+          </TabsContent>
+
+          <TabsContent value="enrichment">
+            <LyricsEnrichmentDashboard />
           </TabsContent>
 
           <TabsContent value="stats">

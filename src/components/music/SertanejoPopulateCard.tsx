@@ -29,6 +29,8 @@ import {
   Play,
   Clock,
   Wifi,
+  RotateCcw,
+  Pause,
 } from 'lucide-react';
 import { useSertanejoScrapingJob } from '@/hooks/useSertanejoScrapingJob';
 
@@ -45,15 +47,22 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
     lastCompletedJob,
     isLoading,
     isStarting,
+    isResuming,
     progress, 
     isAbandoned,
     startJob, 
+    pauseJob,
     cancelJob, 
     resumeJob,
+    restartJob,
     isProcessing,
     isPaused,
     isCancelling,
   } = useSertanejoScrapingJob();
+
+  const handleRestartJob = async () => {
+    await restartJob(parseInt(artistLimit), parseInt(songsPerArtist));
+  };
 
   const handleStart = async () => {
     await startJob(parseInt(artistLimit), parseInt(songsPerArtist));
@@ -235,22 +244,52 @@ export function SertanejoPopulateCard({ onComplete }: SertanejoPopulateCardProps
 
             {/* Botões de controle */}
             <div className="flex gap-2">
-              {isPaused && (
-                <Button variant="default" onClick={resumeJob} className="flex-1">
-                  <Play className="h-4 w-4 mr-2" />
-                  Retomar Agora
+              {isProcessing && (
+                <Button 
+                  variant="secondary" 
+                  onClick={pauseJob}
+                  className="flex-1"
+                >
+                  <Pause className="h-4 w-4 mr-2" />
+                  Pausar
                 </Button>
               )}
               
+              {isPaused && (
+                <Button 
+                  variant="default" 
+                  onClick={resumeJob} 
+                  className="flex-1"
+                  disabled={isResuming}
+                >
+                  {isResuming ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="h-4 w-4 mr-2" />
+                  )}
+                  Retomar
+                </Button>
+              )}
+              
+              <Button 
+                variant="outline" 
+                onClick={handleRestartJob}
+                className="flex-1"
+                disabled={isStarting}
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Reiniciar do Zero
+              </Button>
+              
               {!isCancelling && (
                 <Button 
-                  variant="outline" 
+                  variant="destructive" 
                   onClick={cancelJob}
                   className="flex-1"
                   disabled={isCancelling}
                 >
                   <XCircle className="h-4 w-4 mr-2" />
-                  {isCancelling ? 'Cancelando...' : 'Cancelar'}
+                  Cancelar
                 </Button>
               )}
             </div>

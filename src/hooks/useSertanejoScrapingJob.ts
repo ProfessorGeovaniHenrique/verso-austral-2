@@ -25,6 +25,7 @@ export function useSertanejoScrapingJob() {
   const [activeJob, setActiveJob] = useState<ScrapingJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
+  const [isResuming, setIsResuming] = useState(false);
 
   // Buscar job ativo ao montar
   const fetchActiveJob = useCallback(async () => {
@@ -117,9 +118,28 @@ export function useSertanejoScrapingJob() {
     setActiveJob(prev => prev ? { ...prev, is_cancelling: true } : null);
   }, [activeJob]);
 
+  // Pausar job
+  const pauseJob = useCallback(async () => {
+    if (!activeJob) return;
+    
+    const { error } = await supabase
+      .from('scraping_jobs')
+      .update({ status: 'pausado' })
+      .eq('id', activeJob.id);
+    
+    if (error) {
+      toast.error('Erro ao pausar');
+      return;
+    }
+    
+    toast.info('Job pausado');
+    setActiveJob(prev => prev ? { ...prev, status: 'pausado' } : null);
+  }, [activeJob]);
+
   // Retomar job pausado
   const resumeJob = useCallback(async () => {
     if (!activeJob) return;
+    setIsResuming(true);
 
     try {
       await supabase.functions.invoke('scrape-sertanejo-artists', {
@@ -133,8 +153,24 @@ export function useSertanejoScrapingJob() {
       await fetchActiveJob();
     } catch (error) {
       toast.error('Erro ao retomar job');
+    } finally {
+      setIsResuming(false);
     }
   }, [activeJob, fetchActiveJob]);
+
+  // Reiniciar job do zero
+  const restartJob = useCallback(async (artistLimit: number, songsPerArtist: number) => {
+    // Cancelar job atual se existir
+    if (activeJob) {
+      await supabase
+        .from('scraping_jobs')
+        .update({ status: 'cancelado' })
+        .eq('id', activeJob.id);
+    }
+    
+    // Iniciar novo job
+    await startJob(artistLimit, songsPerArtist);
+  }, [activeJob, startJob]);
 
   // Calcular progresso
   const progress = activeJob && activeJob.total_artists > 0
@@ -170,11 +206,14 @@ export function useSertanejoScrapingJob() {
     lastCompletedJob,
     isLoading,
     isStarting,
+    isResuming,
     progress,
     isAbandoned,
     startJob,
+    pauseJob,
     cancelJob,
     resumeJob,
+    restartJob,
     refetch: fetchActiveJob,
     isProcessing: activeJob?.status === 'processando',
     isPaused: activeJob?.status === 'pausado',
