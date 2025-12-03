@@ -505,9 +505,22 @@ serve(async (req) => {
 
     // Auto-invocar próximo chunk com delay para evitar race condition de lock
     if (!isComplete) {
-      console.log(`[scrape-gaucho] ⏳ Aguardando 5s antes de invocar próximo chunk...`);
-      await new Promise(r => setTimeout(r, 5000));
-      await autoInvokeNextChunk(job.id, newArtistIndex);
+      console.log(`[scrape-gaucho] ⏳ Aguardando 10s antes de invocar próximo chunk...`);
+      await new Promise(r => setTimeout(r, 10000));
+      
+      const autoInvokeSuccess = await autoInvokeNextChunk(job.id, newArtistIndex);
+      
+      // Se auto-invocação falhou, marcar como pausado para recovery automático
+      if (!autoInvokeSuccess) {
+        console.log(`[scrape-gaucho] ⚠️ Marcando job como pausado para recovery automático`);
+        await supabase
+          .from('scraping_jobs')
+          .update({ 
+            status: 'pausado',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+      }
     }
 
     return new Response(
