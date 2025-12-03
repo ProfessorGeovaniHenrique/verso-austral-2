@@ -1,0 +1,90 @@
+name: Recover Stalled Enrichment Jobs
+
+on:
+  schedule:
+    # Executar a cada 10 minutos
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+env:
+  SUPABASE_PROJECT_REF: kywmhuubbsvclkorxrse
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+jobs:
+  recover-enrichment-jobs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for stalled enrichment jobs
+        run: |
+          set -e
+          echo "🔄 Checking for stalled enrichment jobs at $(date -u)"
+          
+          # Primeiro: Limpar jobs com is_cancelling=true há mais de 5 minutos
+          echo "🧹 Cleaning up stuck cancellation requests..."
+          cancel_cleanup=$(curl -s -X PATCH \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/enrichment_jobs?is_cancelling=eq.true&status=eq.processando&updated_at=lt.$(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%SZ)" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=representation" \
+            -d '{"status": "cancelado", "tempo_fim": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'", "is_cancelling": false}')
+          
+          cleaned_count=$(echo "$cancel_cleanup" | jq 'length // 0')
+          if [ "$cleaned_count" != "0" ] && [ "$cleaned_count" != "null" ]; then
+            echo "✅ Cleaned up $cleaned_count stuck cancellation jobs"
+          fi
+          
+          # Buscar jobs travados (última atualização > 10 minutos, status processando/pausado/pendente)
+          stalled_jobs=$(curl -s \
+            "https://${SUPABASE_PROJECT_REF}.supabase.co/rest/v1/enrichment_jobs?status=in.(processando,pausado,pendente)&updated_at=lt.$(date -u -d '10 minutes ago' +%Y-%m-%dT%H:%M:%SZ)&select=id,status,job_type,current_song_index,total_songs,is_cancelling" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY")
+          
+          # Verificar se há jobs
+          job_count=$(echo "$stalled_jobs" | jq 'length')
+          
+          if [ "$job_count" = "0" ] || [ "$job_count" = "null" ]; then
+            echo "✅ No stalled enrichment jobs found"
+            exit 0
+          fi
+          
+          echo "⚠️ Found $job_count stalled enrichment job(s)"
+          
+          # Para cada job travado, re-invocar
+          echo "$stalled_jobs" | jq -c '.[]' | while read job; do
+            job_id=$(echo $job | jq -r '.id')
+            song_index=$(echo $job | jq -r '.current_song_index')
+            total_songs=$(echo $job | jq -r '.total_songs')
+            status=$(echo $job | jq -r '.status')
+            job_type=$(echo $job | jq -r '.job_type')
+            is_cancelling=$(echo $job | jq -r '.is_cancelling')
+            
+            # Ignorar jobs em cancelamento (já foram limpos acima)
+            if [ "$is_cancelling" = "true" ]; then
+              echo "⏭️ Skipping job $job_id (is_cancelling=true, should be cleaned)"
+              continue
+            fi
+            
+            echo "🔄 Resuming enrichment job $job_id (type: $job_type, status: $status, progress: $song_index/$total_songs)"
+            
+            response=$(curl -s -w "\n%{http_code}" -X POST "https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1/enrich-songs-batch" \
+              -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+              -H "Content-Type: application/json" \
+              -d "{\"jobId\": \"$job_id\", \"continueFrom\": $song_index}")
+            
+            http_code=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+            
+            if [ "$http_code" = "200" ]; then
+              echo "✅ Enrichment job $job_id resumed successfully"
+              echo "Response: $body"
+            else
+              echo "❌ Failed to resume enrichment job $job_id (HTTP $http_code)"
+              echo "Response: $body"
+            fi
+            
+            # Delay entre invocações para evitar sobrecarga
+            sleep 2
+          done
+          
+          echo "🏁 Enrichment job recovery check complete"

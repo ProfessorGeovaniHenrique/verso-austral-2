@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const CHUNK_SIZE = 20; // Músicas por chunk
 const LOCK_TIMEOUT_MS = 30000; // 30 segundos para evitar race conditions
-const AUTO_INVOKE_DELAY_MS = 5000; // 5 segundos
+const AUTO_INVOKE_DELAY_MS = 10000; // 10 segundos (consistente com scraping)
 
 interface EnrichmentJobPayload {
   jobId?: string;
@@ -161,7 +161,7 @@ async function enrichSingleSong(
   }
 }
 
-async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise<void> {
+async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise<boolean> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
@@ -179,11 +179,14 @@ async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise
 
     if (!response.ok) {
       console.error(`[enrich-batch] Falha na auto-invocação: ${response.status}`);
-    } else {
-      console.log(`[enrich-batch] Auto-invocação iniciada com sucesso`);
+      return false;
     }
+    
+    console.log(`[enrich-batch] Auto-invocação iniciada com sucesso`);
+    return true;
   } catch (err) {
     console.error(`[enrich-batch] Erro na auto-invocação:`, err);
+    return false;
   }
 }
 
@@ -457,7 +460,20 @@ Deno.serve(async (req) => {
       // Auto-invocar próximo chunk com delay
       console.log(`[enrich-batch] ⏳ Aguardando ${AUTO_INVOKE_DELAY_MS}ms antes de invocar próximo chunk...`);
       await new Promise(r => setTimeout(r, AUTO_INVOKE_DELAY_MS));
-      await autoInvokeNextChunk(job.id, newIndex);
+      
+      const autoInvokeSuccess = await autoInvokeNextChunk(job.id, newIndex);
+      
+      // Se auto-invocação falhou, marcar como pausado para recovery automático
+      if (!autoInvokeSuccess) {
+        console.log(`[enrich-batch] ⚠️ Marcando job como pausado para recovery automático`);
+        await supabase
+          .from('enrichment_jobs')
+          .update({ 
+            status: 'pausado',
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+      }
     } else if (!hasMore) {
       // Marcar como concluído
       await supabase
