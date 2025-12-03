@@ -317,14 +317,14 @@ async function checkCancellation(supabase: any, jobId: string): Promise<boolean>
 }
 
 async function acquireLock(supabase: any, jobId: string): Promise<boolean> {
-  // Reduzido de 30s para 5s para evitar race condition com delay de auto-invocação
-  const fiveSecondsAgo = new Date(Date.now() - 5000).toISOString();
+  // Aumentado para 30s para prevenir race conditions
+  const thirtySecondsAgo = new Date(Date.now() - 30000).toISOString();
   
   const { data, error } = await supabase
     .from('scraping_jobs')
     .update({ last_chunk_at: new Date().toISOString() })
     .eq('id', jobId)
-    .or(`last_chunk_at.is.null,last_chunk_at.lte.${fiveSecondsAgo}`)
+    .or(`last_chunk_at.is.null,last_chunk_at.lte.${thirtySecondsAgo}`)
     .select();
   
   return !error && data && data.length > 0;
