@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube, Play, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   DropdownMenu,
@@ -13,6 +12,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { LyricsAttributionCard } from './LyricsAttributionCard';
 
 export interface Song {
   id: string;
@@ -33,6 +33,8 @@ export interface Song {
   youtubeUrl?: string | null;
   youtube_url?: string | null;
   lyrics?: string | null;
+  lyrics_source?: string | null;
+  lyrics_url?: string | null;
   enrichment_source?: string | null;
   raw_data?: any;
   corpus_id?: string | null;
@@ -455,35 +457,16 @@ export function SongCard({
             )}
           </div>
 
-          {/* Letra Colapsável */}
+          {/* Letra com Atribuição de Fonte */}
           {song.lyrics && (
-            <Collapsible open={isLyricsOpen} onOpenChange={setIsLyricsOpen} className="mt-2">
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="w-full justify-between text-xs h-8 bg-muted/20 hover:bg-muted/40 border-muted"
-                >
-                  <span className="font-medium">
-                    {isLyricsOpen ? 'Ocultar Letra' : 'Ver Letra'}
-                  </span>
-                  {isLyricsOpen ? (
-                    <ChevronUp className="w-3 h-3" />
-                  ) : (
-                    <ChevronDown className="w-3 h-3" />
-                  )}
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <ScrollArea className="h-48 w-full rounded-md border border-muted bg-muted/20">
-                  <div className="p-4">
-                    <pre className="text-xs whitespace-pre-wrap font-sans leading-relaxed text-foreground">
-                      {song.lyrics}
-                    </pre>
-                  </div>
-                </ScrollArea>
-              </CollapsibleContent>
-            </Collapsible>
+            <div className="mt-2">
+              <LyricsAttributionCard
+                lyrics={song.lyrics}
+                lyricsSource={song.lyrics_source || null}
+                lyricsUrl={song.lyrics_url || null}
+                maxHeight={200}
+              />
+            </div>
           )}
 
           {/* YouTube Player Embed */}

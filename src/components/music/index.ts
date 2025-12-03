@@ -40,6 +40,11 @@ export { StatsCard } from './StatsCard';
 export { AdvancedExportMenu } from './AdvancedExportMenu';
 export type { ExportFormat, ExportOptions } from './AdvancedExportMenu';
 export { ExportDialog } from './ExportDialog';
+
+// Lyrics Enrichment Components
+export { LyricsAttributionCard } from './LyricsAttributionCard';
+export { LyricsEnrichmentModal } from './LyricsEnrichmentModal';
+export { SertanejoPopulateCard } from './SertanejoPopulateCard';
 export { PerformanceDashboard } from './PerformanceDashboard';
 export { ProcessingDashboard } from './ProcessingDashboard';
 

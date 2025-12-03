@@ -171,3 +171,12 @@ verify_jwt = true
 
 [functions.scan-code-quality]
 verify_jwt = false
+
+[functions.fetch-lyrics]
+verify_jwt = false
+
+[functions.enrich-missing-lyrics]
+verify_jwt = false
+
+[functions.scrape-sertanejo-artists]
+verify_jwt = false

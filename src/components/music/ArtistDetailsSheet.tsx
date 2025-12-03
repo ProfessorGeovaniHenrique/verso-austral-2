@@ -21,10 +21,12 @@ import {
   Sparkles,
   RefreshCw,
   Search,
+  Music,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SongCard, Song } from './SongCard';
 import { Card, CardContent } from '@/components/ui/card';
+import { LyricsEnrichmentModal } from './LyricsEnrichmentModal';
 
 interface Artist {
   id: string;
@@ -70,6 +72,7 @@ export function ArtistDetailsSheet({
   const [isEnrichingBio, setIsEnrichingBio] = useState(false);
   const [recentlyEnrichedIds, setRecentlyEnrichedIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [showLyricsModal, setShowLyricsModal] = useState(false);
   const { toast } = useToast();
 
   // Filtrar músicas pela busca
@@ -201,6 +204,17 @@ export function ArtistDetailsSheet({
                 </div>
 
                 <div className="flex gap-2">
+                  {/* Botão Descobrir Letras */}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowLyricsModal(true)}
+                    title="Descobrir letras faltantes"
+                  >
+                    <Music className="h-4 w-4 mr-1" />
+                    Letras
+                  </Button>
+                  
                   {artist.biography && (
                     <Button
                       size="sm"
@@ -403,6 +417,16 @@ export function ArtistDetailsSheet({
             </TabsContent>
           </Tabs>
         </div>
+        
+        {/* Modal de Enriquecimento de Letras */}
+        {artist && (
+          <LyricsEnrichmentModal
+            open={showLyricsModal}
+            onOpenChange={setShowLyricsModal}
+            artistId={artist.id}
+            artistName={artist.name}
+          />
+        )}
       </SheetContent>
     </Sheet>
   );

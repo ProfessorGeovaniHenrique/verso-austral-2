@@ -2515,6 +2515,8 @@ export type Database = {
           enrichment_source: string | null
           id: string
           lyrics: string | null
+          lyrics_source: string | null
+          lyrics_url: string | null
           normalized_title: string | null
           raw_data: Json | null
           release_year: string | null
@@ -2536,6 +2538,8 @@ export type Database = {
           enrichment_source?: string | null
           id?: string
           lyrics?: string | null
+          lyrics_source?: string | null
+          lyrics_url?: string | null
           normalized_title?: string | null
           raw_data?: Json | null
           release_year?: string | null
@@ -2557,6 +2561,8 @@ export type Database = {
           enrichment_source?: string | null
           id?: string
           lyrics?: string | null
+          lyrics_source?: string | null
+          lyrics_url?: string | null
           normalized_title?: string | null
           raw_data?: Json | null
           release_year?: string | null
