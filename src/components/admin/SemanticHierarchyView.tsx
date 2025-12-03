@@ -4,8 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronDown, Loader2, Pencil } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { ChevronDown, Download, FileSpreadsheet, FileText, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
+import * as XLSX from 'xlsx';
 import { EditTagsetDialog } from '@/components/admin/EditTagsetDialog';
 import { SemanticConsultantChat } from '@/components/admin/SemanticConsultantChat';
 
@@ -17,6 +20,8 @@ interface SemanticTagset {
   categoria_pai: string | null;
   nivel_profundidade: number | null;
   status: string;
+  exemplos?: string[] | null;
+  hierarquia_completa?: string | null;
 }
 
 interface HierarchyNode {
@@ -152,6 +157,65 @@ export function SemanticHierarchyView() {
     }
   };
 
+  // ========== EXPORT FUNCTIONS ==========
+  const exportToCSV = () => {
+    const csvData = [
+      ['Código', 'Nome', 'Descrição', 'Nível', 'Hierarquia Completa', 'Categoria Pai', 'Exemplos'],
+      ...tagsets.map(t => [
+        t.codigo,
+        t.nome,
+        t.descricao || '',
+        t.nivel_profundidade?.toString() || '',
+        t.hierarquia_completa || t.codigo,
+        t.categoria_pai || '',
+        t.exemplos?.join('; ') || ''
+      ])
+    ];
+
+    const csvContent = csvData.map(row => 
+      row.map(cell => `"${cell.toString().replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `dominios-semanticos-hierarquia-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    
+    toast.success(`${tagsets.length} domínios exportados em CSV`);
+  };
+
+  const exportToExcel = () => {
+    const data = tagsets.map(t => ({
+      'Código': t.codigo,
+      'Nome': t.nome,
+      'Descrição': t.descricao || '',
+      'Nível': t.nivel_profundidade || '',
+      'Hierarquia Completa': t.hierarquia_completa || t.codigo,
+      'Categoria Pai': t.categoria_pai || '',
+      'Exemplos': t.exemplos?.join('; ') || ''
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Domínios Semânticos');
+    
+    // Ajustar largura das colunas
+    ws['!cols'] = [
+      { wch: 12 },  // Código
+      { wch: 35 },  // Nome
+      { wch: 60 },  // Descrição
+      { wch: 8 },   // Nível
+      { wch: 25 },  // Hierarquia Completa
+      { wch: 12 },  // Categoria Pai
+      { wch: 40 },  // Exemplos
+    ];
+
+    XLSX.writeFile(wb, `dominios-semanticos-${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success(`${tagsets.length} domínios exportados em Excel`);
+  };
+
   const handleEditClick = (tagset: SemanticTagset) => {
     setEditingTagset(tagset);
     setIsEditDialogOpen(true);
@@ -187,7 +251,29 @@ export function SemanticHierarchyView() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Taxonomia Aprovada</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">Taxonomia Aprovada</CardTitle>
+            
+            {/* Dropdown de Exportação */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={exportToCSV}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  CSV (.csv)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToExcel}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel (.xlsx)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-4 gap-4 text-center">
@@ -283,7 +369,7 @@ export function SemanticHierarchyView() {
           codigo: editingTagset.codigo,
           nome: editingTagset.nome,
           descricao: editingTagset.descricao,
-          exemplos: (editingTagset as any).exemplos || null,
+          exemplos: editingTagset.exemplos || null,
           nivel_profundidade: editingTagset.nivel_profundidade,
           categoria_pai: editingTagset.categoria_pai,
         } : null}
