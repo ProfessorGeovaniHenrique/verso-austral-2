@@ -35,6 +35,7 @@ interface Artist {
   normalized_name: string | null;
   biography?: string | null;
   biography_source?: string | null;
+  corpus_type?: 'gaucho' | 'sertanejo' | 'nordestino' | null;
 }
 
 interface ArtistDetailsSheetProps {
@@ -425,6 +426,7 @@ export function ArtistDetailsSheet({
             onOpenChange={setShowLyricsModal}
             artistId={artist.id}
             artistName={artist.name}
+            corpusType={artist.corpus_type}
           />
         )}
       </SheetContent>

@@ -28,21 +28,67 @@ import {
 } from 'lucide-react';
 import { useLyricsEnrichment, LyricsAnalysis, LyricsEnrichmentResult } from '@/hooks/useLyricsEnrichment';
 
+type CorpusType = 'gaucho' | 'sertanejo' | 'nordestino' | null;
+
 interface LyricsEnrichmentModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   artistId: string;
   artistName: string;
+  corpusType?: CorpusType;
   onComplete?: () => void;
 }
+
+// Configuração de fontes por corpus
+const CORPUS_SOURCES = {
+  gaucho: [
+    {
+      badge: '1º',
+      name: 'Música Tradicionalista',
+      description: 'Especializado em música gaúcha • Link de atribuição',
+      colorClass: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900',
+      iconColorClass: 'text-emerald-600',
+      isPrimary: true
+    },
+    {
+      badge: '2º',
+      name: 'Letras.mus.br',
+      description: 'Maior acervo brasileiro • Fallback',
+      colorClass: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900',
+      iconColorClass: 'text-blue-600',
+      isPrimary: false
+    }
+  ],
+  default: [
+    {
+      badge: '1º',
+      name: 'Letras.mus.br',
+      description: 'Maior acervo brasileiro • Link de atribuição incluído',
+      colorClass: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900',
+      iconColorClass: 'text-green-600',
+      isPrimary: true
+    },
+    {
+      badge: '2º',
+      name: 'Pesquisa Web (IA)',
+      description: 'Busca em sites oficiais • Não gera letras',
+      colorClass: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900',
+      iconColorClass: 'text-blue-600',
+      isPrimary: false
+    }
+  ]
+};
 
 export function LyricsEnrichmentModal({
   open,
   onOpenChange,
   artistId,
   artistName,
+  corpusType,
   onComplete
 }: LyricsEnrichmentModalProps) {
+  // Selecionar fontes baseado no corpus
+  const sources = corpusType === 'gaucho' ? CORPUS_SOURCES.gaucho : CORPUS_SOURCES.default;
   const {
     analyzeArtist,
     analysisResult,
@@ -141,27 +187,27 @@ export function LyricsEnrichmentModal({
                 <h4 className="text-sm font-medium">Fontes de Busca</h4>
                 
                 <div className="space-y-2">
-                  <div className="flex items-start gap-3 p-2 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900">
-                    <Badge className="bg-green-500 text-white">1º</Badge>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">Letras.mus.br</div>
-                      <div className="text-xs text-muted-foreground">
-                        Maior acervo brasileiro • Link de atribuição incluído
+                  {sources.map((source, idx) => (
+                    <div 
+                      key={idx}
+                      className={`flex items-start gap-3 p-2 rounded-lg border ${source.colorClass}`}
+                    >
+                      <Badge className={source.isPrimary ? "bg-green-500 text-white" : "bg-blue-500 text-white"}>
+                        {source.badge}
+                      </Badge>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{source.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {source.description}
+                        </div>
                       </div>
+                      {source.isPrimary ? (
+                        <CheckCircle2 className={`h-4 w-4 ${source.iconColorClass}`} />
+                      ) : (
+                        <Globe className={`h-4 w-4 ${source.iconColorClass}`} />
+                      )}
                     </div>
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  </div>
-                  
-                  <div className="flex items-start gap-3 p-2 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
-                    <Badge className="bg-blue-500 text-white">2º</Badge>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">Pesquisa Web (IA)</div>
-                      <div className="text-xs text-muted-foreground">
-                        Busca em sites oficiais • Não gera letras
-                      </div>
-                    </div>
-                    <Globe className="h-4 w-4 text-blue-600" />
-                  </div>
+                  ))}
                 </div>
               </div>
 
