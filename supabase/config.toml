@@ -180,3 +180,6 @@ verify_jwt = false
 
 [functions.scrape-sertanejo-artists]
 verify_jwt = false
+
+[functions.scrape-gaucho-artists]
+verify_jwt = false
