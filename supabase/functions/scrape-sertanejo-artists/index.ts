@@ -9,70 +9,41 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
-// ============ LISTA DE EXCLUSÃO DE NAVEGAÇÃO ============
-const NAVIGATION_KEYWORDS = [
-  'top músicas', 'top artistas', 'top álbuns', 'top letras',
-  'envie letras', 'envie álbuns', 'correções de letras',
-  'mais acessadas', 'mais acessados', 'estilos', 'rankings',
-  'traduções', 'cifras', 'playlists', 'aplicativos',
-  'letras.mus.br', 'sobre nós', 'contato', 'privacidade',
-  'termos de uso', 'ajuda', 'faq', 'login', 'cadastro',
-  'ver todos', 'ver mais', 'mostrar mais', 'carregar mais'
+// ============ LISTA MANUAL DE ARTISTAS TOP SERTANEJO ============
+const TOP_SERTANEJO_ARTISTS = [
+  { name: 'Henrique e Juliano', slug: 'henrique-e-juliano' },
+  { name: 'Marília Mendonça', slug: 'marilia-mendonca' },
+  { name: 'Jorge e Mateus', slug: 'jorge-mateus' },
+  { name: 'Luan Santana', slug: 'luan-santana' },
+  { name: 'Gusttavo Lima', slug: 'gusttavo-lima' },
+  { name: 'Zé Neto e Cristiano', slug: 'ze-neto-e-cristiano' },
+  { name: 'Maiara e Maraisa', slug: 'maiara-e-maraisa' },
+  { name: 'Bruno e Marrone', slug: 'bruno-e-marrone' },
+  { name: 'Leonardo', slug: 'leonardo' },
+  { name: 'Wesley Safadão', slug: 'wesley-safadao' },
+  { name: 'Chitãozinho e Xororó', slug: 'chitaozinho-e-xororo' },
+  { name: 'Michel Teló', slug: 'michel-telo' },
+  { name: 'Simone e Simaria', slug: 'simone-e-simaria' },
+  { name: 'Paula Fernandes', slug: 'paula-fernandes' },
+  { name: 'Cristiano Araújo', slug: 'cristiano-araujo' },
+  { name: 'Ana Castela', slug: 'ana-castela' },
+  { name: 'Murilo Huff', slug: 'murilo-huff' },
+  { name: 'Diego e Victor Hugo', slug: 'diego-e-victor-hugo' },
+  { name: 'João Bosco e Vinícius', slug: 'joao-bosco-vinicius' },
+  { name: 'Fernando e Sorocaba', slug: 'fernando-e-sorocaba' },
+  { name: 'Victor e Leo', slug: 'victor-e-leo' },
+  { name: 'Zezé Di Camargo e Luciano', slug: 'zeze-di-camargo-e-luciano' },
+  { name: 'Matheus e Kauan', slug: 'matheus-e-kauan' },
+  { name: 'Israel e Rodolffo', slug: 'israel-e-rodolffo' },
+  { name: 'Lauana Prado', slug: 'lauana-prado' },
+  { name: 'Naiara Azevedo', slug: 'naiara-azevedo' },
+  { name: 'Léo Santana', slug: 'leo-santana' },
+  { name: 'Gustavo Mioto', slug: 'gustavo-mioto' },
+  { name: 'Hugo e Guilherme', slug: 'hugo-e-guilherme' },
+  { name: 'Menos é Mais', slug: 'menos-e-mais' },
 ];
-
-const NAVIGATION_SLUGS = [
-  'mais-acessadas', 'top-artistas', 'top-musicas', 'top-albuns',
-  'estilos', 'rankings', 'traducoes', 'cifras', 'playlists',
-  'aplicativos', 'sobre', 'contato', 'privacidade', 'termos',
-  'ajuda', 'faq', 'login', 'cadastro', 'busca', 'search'
-];
-
-function isNavigationLink(name: string, slug: string): boolean {
-  const normalizedName = name.toLowerCase().trim();
-  const normalizedSlug = slug.toLowerCase().trim();
-  
-  // Check name against keywords
-  if (NAVIGATION_KEYWORDS.some(kw => normalizedName.includes(kw))) {
-    return true;
-  }
-  
-  // Check slug against navigation slugs
-  if (NAVIGATION_SLUGS.some(ns => normalizedSlug === ns || normalizedSlug.startsWith(ns + '-'))) {
-    return true;
-  }
-  
-  return false;
-}
-
-function isValidArtistSlug(slug: string): boolean {
-  // Must be lowercase alphanumeric with hyphens
-  if (!/^[a-z0-9-]+$/.test(slug)) return false;
-  
-  // Must be at least 2 characters
-  if (slug.length < 2) return false;
-  
-  // Slugs too short without hyphens are suspicious
-  if (!slug.includes('-') && slug.length < 4) return false;
-  
-  // Skip slugs starting with common non-artist patterns
-  const invalidPrefixes = ['mais-', 'top-', 'ver-', 'busca-', 'search-', 'app-', 'play-'];
-  if (invalidPrefixes.some(p => slug.startsWith(p))) return false;
-  
-  return true;
-}
 
 // ============ NORMALIZAÇÃO ============
-function normalizeForUrl(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .trim();
-}
-
 function normalizeForDb(text: string): string {
   return text
     .toLowerCase()
@@ -81,114 +52,39 @@ function normalizeForDb(text: string): string {
     .trim();
 }
 
-// ============ EXTRAÇÃO DE ARTISTAS ============
-function extractArtistLinks(html: string): Array<{ name: string; url: string }> {
-  const artists: Array<{ name: string; url: string }> = [];
-  const seen = new Set<string>();
-  
-  // Log HTML length and snippet for debugging
-  console.log(`[scrape-sertanejo] HTML length: ${html.length}`);
-  console.log(`[scrape-sertanejo] HTML snippet (first 2000 chars):\n${html.substring(0, 2000)}`);
-  
-  // Multiple patterns to try, from most specific to more general
-  const patterns = [
-    // Pattern 1: Links in list-row items (ranking lists)
-    /<li[^>]*class="[^"]*list-row[^"]*"[^>]*>[\s\S]*?<a[^>]*href="\/([^/"]+)\/"[^>]*>([^<]+)<\/a>/gi,
-    
-    // Pattern 2: Links with artist class
-    /<a[^>]*href="\/([^/"]+)\/"[^>]*class="[^"]*art[^"]*"[^>]*>([^<]+)<\/a>/gi,
-    
-    // Pattern 3: Links inside cnt-list container
-    /<div[^>]*class="[^"]*cnt-list[^"]*"[^>]*>[\s\S]*?<a[^>]*href="\/([^/"]+)\/"[^>]*>([^<]+)<\/a>/gi,
-    
-    // Pattern 4: Links in ordered/unordered lists
-    /<[ou]l[^>]*>[\s\S]*?<li[^>]*>[\s\S]*?<a[^>]*href="\/([^/"]+)\/"[^>]*>([^<]+)<\/a>/gi,
-    
-    // Pattern 5: Generic artist-like links (more flexible)
-    /<a[^>]*href="\/([a-z0-9-]+)\/"[^>]*title="([^"]+)"[^>]*>/gi,
-    
-    // Pattern 6: Final fallback - any link to root-level slug
-    /<a[^>]*href="\/([a-z0-9][a-z0-9-]+[a-z0-9])\/"[^>]*>([^<]+)<\/a>/gi,
-  ];
-
-  for (let i = 0; i < patterns.length; i++) {
-    const pattern = patterns[i];
-    let match;
-    let matchCount = 0;
-    
-    while ((match = pattern.exec(html)) !== null) {
-      const slug = match[1]?.trim();
-      const name = match[2]?.trim();
-      
-      matchCount++;
-      
-      // Skip invalid entries
-      if (!slug || !name) continue;
-      if (name.length < 2 || name.length > 100) continue;
-      
-      // Skip navigation links
-      if (isNavigationLink(name, slug)) {
-        console.log(`[scrape-sertanejo] Skipped navigation: "${name}" (${slug})`);
-        continue;
-      }
-      
-      // Validate slug format
-      if (!isValidArtistSlug(slug)) {
-        console.log(`[scrape-sertanejo] Invalid slug: "${slug}"`);
-        continue;
-      }
-      
-      // Deduplicate
-      if (seen.has(slug)) continue;
-      
-      seen.add(slug);
-      artists.push({
-        name,
-        url: `https://www.letras.mus.br/${slug}/`
-      });
-      
-      console.log(`[scrape-sertanejo] ✓ Found artist: "${name}" -> /${slug}/`);
-    }
-    
-    console.log(`[scrape-sertanejo] Pattern ${i + 1} matched ${matchCount} times, ${artists.length} valid artists so far`);
-    
-    // If we found enough artists with a specific pattern, stop
-    if (artists.length >= 10) {
-      console.log(`[scrape-sertanejo] Found sufficient artists with pattern ${i + 1}, stopping search`);
-      break;
-    }
-  }
-
-  console.log(`[scrape-sertanejo] Total artists extracted: ${artists.length}`);
-  console.log(`[scrape-sertanejo] Artists list:`, artists.map(a => a.name).join(', '));
-
-  return artists;
-}
-
 // ============ EXTRAÇÃO DE MÚSICAS ============
 function extractSongLinks(html: string, artistSlug: string): Array<{ title: string; url: string }> {
   const songs: Array<{ title: string; url: string }> = [];
   const seen = new Set<string>();
   
-  // Pattern for song links - songs have format /artist-slug/song-slug/
-  const pattern = new RegExp(`<a[^>]*href="\\/${artistSlug}\\/([^/"]+)\\/"[^>]*>([^<]+)<\\/a>`, 'gi');
-  let match;
+  // Multiple patterns for song extraction
+  const patterns = [
+    // Pattern 1: Direct song links with artist slug
+    new RegExp(`<a[^>]*href="\\/${artistSlug}\\/([^/"]+)\\/"[^>]*>([^<]+)<\\/a>`, 'gi'),
+    // Pattern 2: Song links with title attribute
+    new RegExp(`<a[^>]*href="\\/${artistSlug}\\/([^/"]+)\\/"[^>]*title="([^"]+)"[^>]*>`, 'gi'),
+  ];
   
-  while ((match = pattern.exec(html)) !== null) {
-    const slug = match[1]?.trim();
-    const title = match[2]?.trim();
-    
-    if (!slug || !title || title.length < 2) continue;
-    if (seen.has(slug)) continue;
-    
-    // Skip navigation-like song titles
-    if (isNavigationLink(title, slug)) continue;
-    
-    seen.add(slug);
-    songs.push({
-      title,
-      url: `https://www.letras.mus.br/${artistSlug}/${slug}/`
-    });
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(html)) !== null) {
+      const slug = match[1]?.trim();
+      const title = match[2]?.trim();
+      
+      if (!slug || !title || title.length < 2) continue;
+      if (seen.has(slug)) continue;
+      
+      // Skip navigation-like entries
+      const lowerTitle = title.toLowerCase();
+      if (lowerTitle.includes('ver mais') || lowerTitle.includes('carregar') || 
+          lowerTitle.includes('top ') || lowerTitle.includes('mais acessadas')) continue;
+      
+      seen.add(slug);
+      songs.push({
+        title,
+        url: `https://www.letras.mus.br/${artistSlug}/${slug}/`
+      });
+    }
   }
 
   return songs;
@@ -200,6 +96,7 @@ function extractLyrics(html: string): string | null {
     /<div[^>]*class="[^"]*lyric-original[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
     /<div[^>]*class="[^"]*cnt-letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
     /<div[^>]*class="[^"]*letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
+    /<div[^>]*id="[^"]*letra[^"]*"[^>]*>([\s\S]*?)<\/div>/i,
   ];
 
   for (const pattern of patterns) {
@@ -270,51 +167,10 @@ serve(async (req) => {
       console.log(`[scrape-sertanejo] Created Sertanejo corpus: ${corpusId}`);
     }
 
-    // Fetch artist list from Letras.mus.br sertanejo ranking
-    const rankingUrl = 'https://www.letras.mus.br/mais-acessadas/artistas/sertanejo/';
-    console.log(`[scrape-sertanejo] Fetching: ${rankingUrl}`);
-    
-    const rankingResponse = await fetch(rankingUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Cache-Control': 'no-cache',
-      },
-    });
-
-    console.log(`[scrape-sertanejo] Ranking response status: ${rankingResponse.status}`);
-
-    if (!rankingResponse.ok) {
-      throw new Error(`Failed to fetch artist ranking: ${rankingResponse.status}`);
-    }
-
-    const rankingHtml = await rankingResponse.text();
-    console.log(`[scrape-sertanejo] Received HTML: ${rankingHtml.length} bytes`);
-    
-    const artistLinks = extractArtistLinks(rankingHtml).slice(0, artistLimit);
-
-    if (artistLinks.length === 0) {
-      console.log(`[scrape-sertanejo] WARNING: No artists found! HTML might have changed.`);
-      console.log(`[scrape-sertanejo] Full HTML (first 5000 chars):\n${rankingHtml.substring(0, 5000)}`);
-      
-      return new Response(
-        JSON.stringify({
-          corpusId,
-          artistsCreated: 0,
-          songsCreated: 0,
-          songsWithLyrics: 0,
-          errors: ['No artists found in ranking page. Site structure may have changed.'],
-          debug: {
-            htmlLength: rankingHtml.length,
-            htmlSnippet: rankingHtml.substring(0, 1000)
-          }
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log(`[scrape-sertanejo] Processing ${artistLinks.length} artists`);
+    // USE MANUAL ARTIST LIST (SPA pages can't be scraped)
+    const artistsToProcess = TOP_SERTANEJO_ARTISTS.slice(0, artistLimit);
+    console.log(`[scrape-sertanejo] Using manual artist list: ${artistsToProcess.length} artists`);
+    console.log(`[scrape-sertanejo] Artists: ${artistsToProcess.map(a => a.name).join(', ')}`);
 
     let artistsCreated = 0;
     let songsCreated = 0;
@@ -322,12 +178,12 @@ serve(async (req) => {
     const errors: string[] = [];
 
     // Process each artist
-    for (const artistLink of artistLinks) {
+    for (const artist of artistsToProcess) {
       try {
-        console.log(`[scrape-sertanejo] Processing artist: ${artistLink.name}`);
+        console.log(`[scrape-sertanejo] Processing artist: ${artist.name}`);
 
         // Check if artist already exists
-        const normalizedName = normalizeForDb(artistLink.name);
+        const normalizedName = normalizeForDb(artist.name);
         const { data: existingArtist } = await supabase
           .from('artists')
           .select('id')
@@ -337,13 +193,13 @@ serve(async (req) => {
         let artistId: string;
         if (existingArtist) {
           artistId = existingArtist.id;
-          console.log(`[scrape-sertanejo] Artist exists: ${artistLink.name}`);
+          console.log(`[scrape-sertanejo] Artist exists: ${artist.name} (${artistId})`);
         } else {
           // Create artist
           const { data: newArtist, error: artistError } = await supabase
             .from('artists')
             .insert({
-              name: artistLink.name,
+              name: artist.name,
               normalized_name: normalizedName,
               genre: 'Sertanejo',
               corpus_id: corpusId
@@ -352,17 +208,20 @@ serve(async (req) => {
             .single();
 
           if (artistError) {
-            errors.push(`Failed to create artist ${artistLink.name}: ${artistError.message}`);
+            errors.push(`Failed to create artist ${artist.name}: ${artistError.message}`);
             continue;
           }
           artistId = newArtist.id;
           artistsCreated++;
-          console.log(`[scrape-sertanejo] ✓ Created artist: ${artistLink.name}`);
+          console.log(`[scrape-sertanejo] ✓ Created artist: ${artist.name} (${artistId})`);
         }
 
         // Fetch artist page for songs
+        const artistUrl = `https://www.letras.mus.br/${artist.slug}/`;
+        console.log(`[scrape-sertanejo] Fetching: ${artistUrl}`);
+        
         await new Promise(resolve => setTimeout(resolve, 500)); // Rate limit
-        const artistResponse = await fetch(artistLink.url, {
+        const artistResponse = await fetch(artistUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml',
@@ -371,15 +230,21 @@ serve(async (req) => {
         });
 
         if (!artistResponse.ok) {
-          errors.push(`Failed to fetch artist page ${artistLink.name}: ${artistResponse.status}`);
+          errors.push(`Failed to fetch artist page ${artist.name}: ${artistResponse.status}`);
+          console.log(`[scrape-sertanejo] ✗ Failed to fetch ${artist.name}: ${artistResponse.status}`);
           continue;
         }
 
         const artistHtml = await artistResponse.text();
-        const artistSlug = artistLink.url.match(/\/([^/]+)\/$/)?.[1] || '';
-        const songLinks = extractSongLinks(artistHtml, artistSlug).slice(0, songsPerArtist);
+        console.log(`[scrape-sertanejo] Artist page HTML: ${artistHtml.length} bytes`);
+        
+        const songLinks = extractSongLinks(artistHtml, artist.slug).slice(0, songsPerArtist);
+        console.log(`[scrape-sertanejo] Found ${songLinks.length} songs for ${artist.name}`);
 
-        console.log(`[scrape-sertanejo] Found ${songLinks.length} songs for ${artistLink.name}`);
+        if (songLinks.length === 0) {
+          console.log(`[scrape-sertanejo] WARNING: No songs found for ${artist.name}`);
+          console.log(`[scrape-sertanejo] HTML snippet: ${artistHtml.substring(0, 2000)}`);
+        }
 
         // Process each song
         for (const songLink of songLinks) {
@@ -394,6 +259,7 @@ serve(async (req) => {
               .single();
 
             if (existingSong) {
+              console.log(`[scrape-sertanejo] Song exists: ${songLink.title}`);
               continue;
             }
 
@@ -442,7 +308,7 @@ serve(async (req) => {
         }
 
       } catch (artistError) {
-        errors.push(`Error processing artist ${artistLink.name}: ${artistError instanceof Error ? artistError.message : String(artistError)}`);
+        errors.push(`Error processing artist ${artist.name}: ${artistError instanceof Error ? artistError.message : String(artistError)}`);
       }
     }
 
