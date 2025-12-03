@@ -295,13 +295,11 @@ export default function MusicCatalog() {
         <EnrichmentBatchModal
           open={state.batchModalOpen}
           onOpenChange={state.setBatchModalOpen}
-          songs={state.pendingSongsForBatch.map(s => ({
-            id: s.id,
-            title: s.title,
-            artist: s.artists?.name || s.artist || 'Desconhecido'
-          }))}
-          onEnrich={handlers.handleEnrichSong}
-          onComplete={(enrichedCount) => handlers.handleBatchComplete(enrichedCount)}
+          songIds={state.pendingSongsForBatch.map(s => s.id)}
+          onComplete={() => {
+            handlers.handleBatchComplete(0);
+            state.setBatchModalOpen(false);
+          }}
         />
 
         <YouTubeEnrichmentModal
@@ -314,19 +312,11 @@ export default function MusicCatalog() {
         <EnrichmentBatchModal
           open={state.isEnrichmentModalOpen}
           onOpenChange={state.setIsEnrichmentModalOpen}
-          songs={state.songsToEnrich}
-          artistId={state.selectedArtistId || undefined}
-          onEnrich={async (songId: string, forceReenrich?: boolean) => {
-            const result = await enrichmentService.enrichSong(songId, 'metadata-only', forceReenrich || false);
-            return {
-              success: result.success,
-              message: result.success ? 'Música enriquecida com sucesso' : undefined,
-              error: result.error
-            };
-          }}
-          onComplete={async (enrichedCount) => {
-            const firstSong = state.songs.find(song => state.songsToEnrich.some(s => s.id === song.id));
-            await handlers.handleBatchComplete(enrichedCount, firstSong?.artist_id);
+          artistId={state.selectedArtistId || ''}
+          artistName={state.artistsWithStats.find(a => a.id === state.selectedArtistId)?.name || ''}
+          songIds={state.songsToEnrich.map(s => s.id)}
+          onComplete={() => {
+            handlers.handleBatchComplete(0, state.selectedArtistId || undefined);
             state.setIsEnrichmentModalOpen(false);
             state.setSongsToEnrich([]);
           }}

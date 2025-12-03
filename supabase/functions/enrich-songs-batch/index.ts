@@ -12,7 +12,7 @@ const corsHeaders = {
 };
 
 const CHUNK_SIZE = 20; // Músicas por chunk
-const LOCK_TIMEOUT_MS = 5000; // 5 segundos
+const LOCK_TIMEOUT_MS = 30000; // 30 segundos para evitar race conditions
 const AUTO_INVOKE_DELAY_MS = 5000; // 5 segundos
 
 interface EnrichmentJobPayload {
