@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { LogOut, Moon, Sun } from "lucide-react";
-import logoVersoAustral from "@/assets/logo-versoaustral-completo.png";
+import logoVersoAustral from "@/assets/logo-versoaustral-horizontal.png";
 import logoPpglet from "@/assets/logo-ppglet.png";
 import { MobileMenu } from "@/components/MobileMenu";
 import { useIsActiveRoute } from "@/hooks/useIsActiveRoute";

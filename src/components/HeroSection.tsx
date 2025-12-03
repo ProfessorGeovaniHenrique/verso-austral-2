@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Sparkles } from "lucide-react";
-import logoVersoAustral from "@/assets/logo-versoaustral-lira.png";
+import logoVersoAustral from "@/assets/logo-versoaustral-simbolo.png";
 
 interface HeroSectionProps {
   onCtaClick: () => void;
