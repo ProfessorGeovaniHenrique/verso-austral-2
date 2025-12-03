@@ -46,6 +46,45 @@ interface TagsetHierarchy {
 }
 
 /**
+ * Mapeamento de contrações portuguesas para formas base
+ * Resolve o bug onde a IA retorna "dum" mas a entrada é "um"
+ */
+const CONTRACTION_MAP: Record<string, string> = {
+  // de + artigo
+  'dum': 'um', 'duma': 'uma', 'duns': 'uns', 'dumas': 'umas',
+  'do': 'o', 'da': 'a', 'dos': 'os', 'das': 'as',
+  // em + artigo  
+  'num': 'um', 'numa': 'uma', 'nuns': 'uns', 'numas': 'umas',
+  'no': 'o', 'na': 'a', 'nos': 'os', 'nas': 'as',
+  // para + artigo/pronome
+  'pra': 'para', 'pro': 'para', 'pras': 'para', 'pros': 'para',
+  'pruma': 'para', 'prum': 'para',
+  // por + artigo
+  'pelo': 'por', 'pela': 'por', 'pelos': 'por', 'pelas': 'por',
+  // com + pronome
+  'comigo': 'com', 'contigo': 'com', 'consigo': 'com', 
+  'conosco': 'com', 'convosco': 'com',
+  // a + artigo
+  'ao': 'a', 'aos': 'a', 'à': 'a', 'às': 'a',
+  // outros
+  'cum': 'com', 'cuma': 'como',
+  'nesse': 'esse', 'nessa': 'essa', 'nesses': 'esses', 'nessas': 'essas',
+  'neste': 'este', 'nesta': 'esta', 'nestes': 'estes', 'nestas': 'estas',
+  'naquele': 'aquele', 'naquela': 'aquela', 'naqueles': 'aqueles', 'naquelas': 'aquelas',
+  'desse': 'esse', 'dessa': 'essa', 'desses': 'esses', 'dessas': 'essas',
+  'deste': 'este', 'desta': 'esta', 'destes': 'estes', 'destas': 'estas',
+  'daquele': 'aquele', 'daquela': 'aquela', 'daqueles': 'aqueles', 'daquelas': 'aquelas',
+};
+
+/**
+ * Normaliza contrações para sua forma base
+ */
+function normalizeContraction(palavra: string): string {
+  const lower = palavra.toLowerCase().trim();
+  return CONTRACTION_MAP[lower] || lower;
+}
+
+/**
  * Extrai KWIC (Key Word In Context) de um texto
  */
 function extractKWIC(text: string, palavra: string, windowSize = 50): string {
@@ -161,6 +200,12 @@ function buildPrompt(words: WordWithKWIC[]): string {
   }).join('\n');
   
   return `Classifique as seguintes palavras no subnível mais específico da hierarquia fornecida.
+
+⚠️ REGRA CRÍTICA: Retorne EXATAMENTE a mesma palavra que está na lista abaixo no campo "palavra".
+NÃO modifique a palavra, mesmo que o contexto mostre uma variante ou contração.
+Exemplo: Se a palavra na lista é "um" e o contexto mostra "dum", você DEVE retornar "um".
+Exemplo: Se a palavra na lista é "para" e o contexto mostra "pra", você DEVE retornar "para".
+
 ATENÇÃO: Use o contexto KWIC para desambiguar palavras polissêmicas.
 
 ${wordList}
@@ -525,17 +570,24 @@ serve(async (req) => {
 
     for (let i = 0; i < results.length; i++) {
       const result = results[i];
-      // Case-insensitive matching to handle AI capitalization changes
-      const originalWord = words.find(w => 
-        w.palavra.toLowerCase() === result.palavra.toLowerCase()
-      );
+      
+      // Matching with contraction normalization to handle AI returning "dum" when input was "um"
+      const resultNormalized = normalizeContraction(result.palavra);
+      const originalWord = words.find(w => {
+        const inputNormalized = normalizeContraction(w.palavra);
+        return inputNormalized === resultNormalized || 
+               w.palavra.toLowerCase() === result.palavra.toLowerCase();
+      });
       
       if (!originalWord) {
         const inputWords = words.map(w => w.palavra).join(', ');
-        console.warn(`[refine-domain] Word "${result.palavra}" from AI not found in input: [${inputWords}]`);
+        console.warn(`[refine-domain] Word "${result.palavra}" (normalized: ${resultNormalized}) from AI not found in input: [${inputWords}]`);
         errors.push(`Palavra "${result.palavra}" não encontrada na entrada`);
         continue;
       }
+      
+      console.log(`[refine-domain] Matched "${result.palavra}" -> "${originalWord.palavra}"`);
+    
       
       const originalDomainN1 = originalWord.tagset_codigo?.split('.')[0] || 'NC';
       

@@ -41,12 +41,24 @@ export function SemanticLexiconPanel() {
   const [validationOpen, setValidationOpen] = useState(false);
   const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [selectedModel, setSelectedModel] = useState<'gemini' | 'gpt5'>('gemini');
+  const [selectedBatchType, setSelectedBatchType] = useState<'MG' | 'DS'>('MG');
 
   const { reclassifyBatch, isProcessing, progress } = useReclassifyMG();
 
   // Find MG N1 only entries for batch processing
   const mgN1Entries = useMemo(() => 
     entries.filter(e => e.tagset_codigo === 'MG' && (e.fonte === 'rule_based' || !e.tagset_n2)),
+    [entries]
+  );
+
+  // Find other DS N1 only entries (not MG, not NC)
+  const dsN1Entries = useMemo(() => 
+    entries.filter(e => 
+      !e.tagset_codigo.includes('.') && // N1 only (no dots)
+      e.tagset_codigo !== 'MG' && 
+      e.tagset_codigo !== 'NC' &&
+      !e.tagset_n2 // No N2 classification
+    ),
     [entries]
   );
 
@@ -59,9 +71,15 @@ export function SemanticLexiconPanel() {
     refetch();
   };
 
+  const handleOpenBatchDialog = (type: 'MG' | 'DS') => {
+    setSelectedBatchType(type);
+    setBatchDialogOpen(true);
+  };
+
   const handleBatchRefine = async () => {
     setBatchDialogOpen(false);
-    await reclassifyBatch(mgN1Entries, {
+    const entriesToProcess = selectedBatchType === 'MG' ? mgN1Entries : dsN1Entries;
+    await reclassifyBatch(entriesToProcess, {
       model: selectedModel,
       onSuccess: refetch,
     });
@@ -71,10 +89,13 @@ export function SemanticLexiconPanel() {
     ? Math.round((progress.current / progress.total) * 100) 
     : 0;
 
+  const batchEntries = selectedBatchType === 'MG' ? mgN1Entries : dsN1Entries;
+  const batchTitle = selectedBatchType === 'MG' ? 'Marcadores Gramaticais' : 'Domínios Semânticos';
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Anotado</CardTitle>
@@ -120,6 +141,17 @@ export function SemanticLexiconPanel() {
             <p className="text-xs text-muted-foreground">precisam refinamento</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Outros DS N1</CardTitle>
+            <Award className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{dsN1Entries.length.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">precisam refinamento</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Batch Processing Progress */}
@@ -130,7 +162,7 @@ export function SemanticLexiconPanel() {
               <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
               <div className="flex-1">
                 <div className="flex justify-between text-sm mb-1">
-                  <span>Refinando palavras MG com {selectedModel === 'gpt5' ? 'GPT-5' : 'Gemini'}...</span>
+                  <span>Refinando palavras {selectedBatchType} com {selectedModel === 'gpt5' ? 'GPT-5' : 'Gemini'}...</span>
                   <span>{progress.current}/{progress.total} ({progressPercent}%)</span>
                 </div>
                 <Progress value={progressPercent} className="h-2" />
@@ -144,17 +176,30 @@ export function SemanticLexiconPanel() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Filtros</CardTitle>
-          {mgN1Entries.length > 0 && !isProcessing && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 border-blue-500/30"
-              onClick={() => setBatchDialogOpen(true)}
-            >
-              <Sparkles className="h-4 w-4 mr-2" />
-              Refinar MG em Lote ({mgN1Entries.length})
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {mgN1Entries.length > 0 && !isProcessing && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 border-blue-500/30"
+                onClick={() => handleOpenBatchDialog('MG')}
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Refinar MG em Lote ({mgN1Entries.length})
+              </Button>
+            )}
+            {dsN1Entries.length > 0 && !isProcessing && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 border-purple-500/30"
+                onClick={() => handleOpenBatchDialog('DS')}
+              >
+                <Award className="h-4 w-4 mr-2" />
+                Refinar DS em Lote ({dsN1Entries.length})
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <SemanticLexiconFilters
@@ -266,12 +311,16 @@ export function SemanticLexiconPanel() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-blue-600" />
-              Refinar Marcadores Gramaticais em Lote
+              {selectedBatchType === 'MG' ? (
+                <Sparkles className="h-5 w-5 text-blue-600" />
+              ) : (
+                <Award className="h-5 w-5 text-purple-600" />
+              )}
+              Refinar {batchTitle} em Lote
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                Serão processadas <strong>{mgN1Entries.length}</strong> palavras MG classificadas 
+                Serão processadas <strong>{batchEntries.length}</strong> palavras {selectedBatchType === 'MG' ? 'MG' : 'de domínios semânticos'} classificadas 
                 apenas no nível 1, refinando-as para níveis mais específicos (N2-N4).
               </p>
               <div className="flex gap-2 pt-2">
@@ -295,7 +344,7 @@ export function SemanticLexiconPanel() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Tempo estimado: ~{Math.ceil(mgN1Entries.length / 15)} minutos
+                Tempo estimado: ~{Math.ceil(batchEntries.length / 15)} minutos
               </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
