@@ -12,10 +12,11 @@ import { EnrichmentBatchModal } from '@/components/music/EnrichmentBatchModal';
 import { YouTubeEnrichmentModal } from '@/components/music/YouTubeEnrichmentModal';
 import { SertanejoPopulateCard } from '@/components/music/SertanejoPopulateCard';
 import { TabEnrichmentJobs } from '@/components/music/TabEnrichmentJobs';
+import { TabScrapingJobs } from '@/components/music/TabScrapingJobs';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Briefcase } from 'lucide-react';
+import { Sparkles, Briefcase, Download } from 'lucide-react';
 
 // Hooks refatorados
 import { 
@@ -193,9 +194,13 @@ export default function MusicCatalog() {
             <TabsTrigger value="artists">
               Artistas {state.selectedLetter !== 'all' && `(${state.selectedLetter})`}
             </TabsTrigger>
+            <TabsTrigger value="scraping-jobs" className="flex items-center gap-1">
+              <Download className="h-3 w-3" />
+              Scraping
+            </TabsTrigger>
             <TabsTrigger value="enrichment-jobs" className="flex items-center gap-1">
               <Briefcase className="h-3 w-3" />
-              Jobs de Enriquecimento
+              Enriquecimento
             </TabsTrigger>
             <TabsTrigger value="stats">Estatísticas</TabsTrigger>
             <TabsTrigger value="metrics">Métricas</TabsTrigger>
@@ -250,6 +255,10 @@ export default function MusicCatalog() {
               isAnnotatingArtist={state.isAnnotatingArtist}
               reload={state.reload}
             />
+          </TabsContent>
+
+          <TabsContent value="scraping-jobs">
+            <TabScrapingJobs />
           </TabsContent>
 
           <TabsContent value="enrichment-jobs">
