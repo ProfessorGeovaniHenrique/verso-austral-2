@@ -99,7 +99,7 @@ export function SemanticLexiconPanel() {
       const { error } = await supabase
         .from('semantic_disambiguation_cache')
         .update({ 
-          fonte: 'human_validated',
+          fonte: 'manual',
           confianca: 1.0
         })
         .in('id', ids);
