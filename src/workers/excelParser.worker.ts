@@ -10,6 +10,7 @@ interface WorkerMessage {
     compositor?: string;
     ano?: string;
     letra?: string;
+    url?: string;
   };
 }
 
@@ -73,9 +74,10 @@ function detectColumns(headers: string[]): Record<string, number> {
     'nome'
   ];
   
-  const composerPatterns = ['compositor', 'composer', 'autor'];
+  const composerPatterns = ['compositor', 'composer', 'autor', 'compositores'];
   const yearPatterns = ['ano', 'year', 'lancamento'];
   const lyricsPatterns = ['letra', 'lyrics', 'texto'];
+  const urlPatterns = ['url', 'link', 'fonte', 'source'];
 
   const findColumn = (patterns: string[]) => {
     let exactMatchIndex = normalized.findIndex(h => 
@@ -94,6 +96,7 @@ function detectColumns(headers: string[]): Record<string, number> {
     compositor: findColumn(composerPatterns),
     ano: findColumn(yearPatterns),
     letra: findColumn(lyricsPatterns),
+    url: findColumn(urlPatterns),
   };
 
   const detectedIndices = Object.values(columnMap).filter(idx => idx !== -1);
@@ -172,6 +175,10 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         : '';
       const letra = sanitizeLyrics(letraRaw);
 
+      const lyricsUrl = row[columnMap.url]
+        ? String(row[columnMap.url]).trim()
+        : '';
+
       if (artista) lastArtista = artista;
 
       parsedData.push({
@@ -181,6 +188,7 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         compositor,
         ano,
         letra,
+        lyricsUrl: lyricsUrl || undefined,
         fonte: file.name,
       });
     }

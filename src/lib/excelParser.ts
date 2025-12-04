@@ -87,6 +87,7 @@ export interface ParsedMusic {
   compositor?: string;
   ano?: string;
   letra?: string;
+  lyricsUrl?: string;
   fonte: string;
   id: string;
 }
@@ -300,6 +301,12 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
                 lowerCell.includes('lancamento') || lowerCell.includes('year')) {
               columnIndices.ano = index;
             }
+
+            // URL da fonte da letra
+            if (lowerCell === 'url' || lowerCell === 'link' || 
+                lowerCell.includes('fonte') || lowerCell.includes('source')) {
+              columnIndices.url = index;
+            }
           });
 
           if (columnIndices.musica !== undefined) {
@@ -400,6 +407,7 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
             const rawComposer = columnIndices.compositor !== undefined ? row[columnIndices.compositor] : undefined;
             const rawYear = columnIndices.ano !== undefined ? row[columnIndices.ano] : undefined;
             const rawLyrics = columnIndices.letra !== undefined ? row[columnIndices.letra] : undefined;
+            const rawUrl = columnIndices.url !== undefined ? row[columnIndices.url] : undefined;
 
             const titleStr = String(rawTitle || '').trim();
 
@@ -435,6 +443,7 @@ export async function parseExcelFile(file: File): Promise<ParseResult> {
               compositor: effectiveComposer || undefined,
               ano: String(rawYear || '').trim() || undefined,
               letra: String(rawLyrics || '').trim() || undefined,
+              lyricsUrl: String(rawUrl || '').trim() || undefined,
               fonte: file.name
             });
           }

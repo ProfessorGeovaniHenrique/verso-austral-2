@@ -14,8 +14,20 @@ interface ParsedMusic {
   ano?: string;
   compositor?: string;
   genero?: string;
-  letra?: string;  // ✅ FASE 0: Adicionar campo letra
+  letra?: string;
+  lyricsUrl?: string;
 }
+
+// Extrair domínio da URL para lyrics_source
+const extractDomain = (url: string): string | null => {
+  if (!url) return null;
+  try {
+    const domain = new URL(url).hostname.replace('www.', '');
+    return domain;
+  } catch {
+    return null;
+  }
+};
 
 interface DeduplicationResult {
   artistsCreated: number;
@@ -195,6 +207,8 @@ serve(async (req) => {
           composer: song.compositor || null,
           release_year: song.ano || null,
           lyrics: song.letra || null,
+          lyrics_url: song.lyricsUrl || null,
+          lyrics_source: song.lyricsUrl ? extractDomain(song.lyricsUrl) : null,
           status: 'pending' as const,
           upload_id: uploadId || null,
           corpus_id: corpusId || null,

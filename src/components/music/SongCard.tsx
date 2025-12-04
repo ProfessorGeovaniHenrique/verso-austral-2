@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube, Play, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Music, Eye, Edit, Sparkles, Loader2, AlertCircle, CheckCircle2, MoreVertical, RefreshCw, Trash2, Folder, Youtube, Play, X, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -255,6 +255,26 @@ export function SongCard({
             
             {/* Botões de Ação + Dropdown */}
             <div className="flex items-center gap-1 flex-shrink-0">
+              {/* Botão de fonte da letra */}
+              {song.lyrics_url && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-primary hover:text-primary/80 hover:bg-primary/10"
+                        onClick={() => window.open(song.lyrics_url!, '_blank', 'noopener,noreferrer')}
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Ver letra em {song.lyrics_source || 'fonte original'}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
               {videoId && (
                 <>
                   <TooltipProvider>
