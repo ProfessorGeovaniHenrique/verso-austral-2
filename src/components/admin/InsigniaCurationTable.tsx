@@ -6,17 +6,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { 
   Search, ChevronLeft, ChevronRight, Sparkles, Check, Trash2, 
-  Loader2, RefreshCw, Filter, X 
+  Loader2, RefreshCw, X, Layers, List 
 } from 'lucide-react';
 import { InsigniaCurationRow } from './InsigniaCurationRow';
+import { GroupedInsigniaRow } from './GroupedInsigniaRow';
 import { 
   useInsigniaCuration, 
   InsigniaCurationFilters,
   useBatchValidateInsignias,
   useBatchRemoveInsignias
 } from '@/hooks/useInsigniaCuration';
+import { 
+  useGroupedInsigniaCuration,
+  useValidateByWord,
+  useUpdateInsigniasByWord
+} from '@/hooks/useGroupedInsigniaCuration';
 import { useAnalyzeBatchInsignias, useApplyAnalysisSuggestion, InsigniaAnalysisResult } from '@/hooks/useInsigniaAnalysis';
 import { INSIGNIAS_OPTIONS } from '@/data/types/cultural-insignia.types';
 import { toast } from 'sonner';
@@ -25,19 +33,38 @@ export function InsigniaCurationTable() {
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<InsigniaCurationFilters>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedWords, setSelectedWords] = useState<Set<string>>(new Set());
   const [searchInput, setSearchInput] = useState('');
   const [batchAnalysisResults, setBatchAnalysisResults] = useState<InsigniaAnalysisResult[]>([]);
   const [showBatchResults, setShowBatchResults] = useState(false);
+  const [viewMode, setViewMode] = useState<'grouped' | 'individual'>('grouped');
 
-  const { data, isLoading, refetch } = useInsigniaCuration(filters, page);
+  // Individual view hooks
+  const { data: individualData, isLoading: individualLoading, refetch: refetchIndividual } = useInsigniaCuration(filters, page);
+  
+  // Grouped view hooks
+  const { data: groupedData, isLoading: groupedLoading, refetch: refetchGrouped } = useGroupedInsigniaCuration(filters, page);
+
   const batchValidate = useBatchValidateInsignias();
   const batchRemove = useBatchRemoveInsignias();
   const batchAnalyze = useAnalyzeBatchInsignias();
   const applySuggestion = useApplyAnalysisSuggestion();
+  const validateByWord = useValidateByWord();
+  const updateByWord = useUpdateInsigniasByWord();
 
-  const entries = data?.entries || [];
-  const totalPages = data?.totalPages || 0;
-  const totalCount = data?.totalCount || 0;
+  const isGroupedView = viewMode === 'grouped';
+  const isLoading = isGroupedView ? groupedLoading : individualLoading;
+  
+  const entries = individualData?.entries || [];
+  const groupedEntries = groupedData?.entries || [];
+  const totalPages = isGroupedView ? (groupedData?.totalPages || 0) : (individualData?.totalPages || 0);
+  const totalCount = isGroupedView ? (groupedData?.totalCount || 0) : (individualData?.totalCount || 0);
+  const uniqueWords = groupedData?.uniqueWords || 0;
+
+  const refetch = () => {
+    refetchIndividual();
+    refetchGrouped();
+  };
 
   const handleSearch = () => {
     setFilters(prev => ({ ...prev, search: searchInput || undefined }));
@@ -48,6 +75,7 @@ export function InsigniaCurationTable() {
     setFilters(prev => ({ ...prev, [key]: value }));
     setPage(0);
     setSelectedIds(new Set());
+    setSelectedWords(new Set());
   };
 
   const clearFilters = () => {
@@ -55,6 +83,7 @@ export function InsigniaCurationTable() {
     setSearchInput('');
     setPage(0);
     setSelectedIds(new Set());
+    setSelectedWords(new Set());
   };
 
   const toggleSelection = (id: string, selected: boolean) => {
@@ -69,21 +98,60 @@ export function InsigniaCurationTable() {
     });
   };
 
+  const toggleWordSelection = (palavra: string, selected: boolean) => {
+    setSelectedWords(prev => {
+      const next = new Set(prev);
+      if (selected) {
+        next.add(palavra);
+      } else {
+        next.delete(palavra);
+      }
+      return next;
+    });
+  };
+
   const selectAll = () => {
-    if (selectedIds.size === entries.length) {
-      setSelectedIds(new Set());
+    if (isGroupedView) {
+      if (selectedWords.size === groupedEntries.length) {
+        setSelectedWords(new Set());
+      } else {
+        setSelectedWords(new Set(groupedEntries.map(e => e.palavra)));
+      }
     } else {
-      setSelectedIds(new Set(entries.map(e => e.id)));
+      if (selectedIds.size === entries.length) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(entries.map(e => e.id)));
+      }
     }
   };
 
   const handleBatchValidate = async () => {
-    if (selectedIds.size === 0) {
-      toast.warning('Selecione ao menos uma entrada');
-      return;
+    if (isGroupedView) {
+      if (selectedWords.size === 0) {
+        toast.warning('Selecione ao menos uma palavra');
+        return;
+      }
+      
+      let totalValidated = 0;
+      for (const palavra of selectedWords) {
+        try {
+          const count = await validateByWord.mutateAsync(palavra);
+          totalValidated += count;
+        } catch (error) {
+          console.error('Error validating word:', palavra, error);
+        }
+      }
+      toast.success(`${totalValidated} entradas validadas em ${selectedWords.size} palavras`);
+      setSelectedWords(new Set());
+    } else {
+      if (selectedIds.size === 0) {
+        toast.warning('Selecione ao menos uma entrada');
+        return;
+      }
+      await batchValidate.mutateAsync(Array.from(selectedIds));
+      setSelectedIds(new Set());
     }
-    await batchValidate.mutateAsync(Array.from(selectedIds));
-    setSelectedIds(new Set());
   };
 
   const handleBatchRemove = async () => {
@@ -96,13 +164,14 @@ export function InsigniaCurationTable() {
   };
 
   const handleBatchAnalyze = async () => {
-    if (selectedIds.size === 0) {
-      toast.warning('Selecione ao menos uma entrada');
+    const palavras = isGroupedView 
+      ? Array.from(selectedWords)
+      : entries.filter(e => selectedIds.has(e.id)).map(e => e.palavra);
+    
+    if (palavras.length === 0) {
+      toast.warning('Selecione ao menos uma palavra');
       return;
     }
-
-    const selectedEntries = entries.filter(e => selectedIds.has(e.id));
-    const palavras = selectedEntries.map(e => e.palavra);
 
     toast.loading('Analisando com Gemini...', { id: 'batch-analyze' });
     
@@ -121,33 +190,68 @@ export function InsigniaCurationTable() {
     
     let applied = 0;
     for (const result of batchAnalysisResults) {
-      const entry = entries.find(e => e.palavra === result.palavra);
-      if (entry) {
-        try {
-          await applySuggestion.mutateAsync({ id: entry.id, insignias: result.insignias_sugeridas });
-          applied++;
-        } catch (error) {
-          console.error('Error applying suggestion:', error);
-        }
+      try {
+        await updateByWord.mutateAsync({ 
+          palavra: result.palavra, 
+          insignias: result.insignias_sugeridas 
+        });
+        applied++;
+      } catch (error) {
+        console.error('Error applying suggestion:', error);
       }
     }
 
-    toast.success(`${applied} sugestões aplicadas`, { id: 'apply-all' });
+    toast.success(`${applied} palavras atualizadas`, { id: 'apply-all' });
     setShowBatchResults(false);
     setBatchAnalysisResults([]);
     setSelectedIds(new Set());
+    setSelectedWords(new Set());
     refetch();
   };
 
-  const isOperating = batchValidate.isPending || batchRemove.isPending || batchAnalyze.isPending;
+  const isOperating = batchValidate.isPending || batchRemove.isPending || batchAnalyze.isPending || validateByWord.isPending;
   const hasActiveFilters = Object.values(filters).some(v => v !== undefined && v !== null && v !== '');
+  const selectionCount = isGroupedView ? selectedWords.size : selectedIds.size;
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Curadoria de Insígnias</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => refetch()}>
+          <div className="flex items-center gap-3">
+            <CardTitle className="text-lg">Curadoria de Insígnias</CardTitle>
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-2 ml-4 p-1 bg-muted rounded-lg">
+              <Button
+                size="sm"
+                variant={isGroupedView ? 'secondary' : 'ghost'}
+                onClick={() => {
+                  setViewMode('grouped');
+                  setPage(0);
+                  setSelectedIds(new Set());
+                  setSelectedWords(new Set());
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                <Layers className="h-3 w-3 mr-1" />
+                Agrupado
+              </Button>
+              <Button
+                size="sm"
+                variant={!isGroupedView ? 'secondary' : 'ghost'}
+                onClick={() => {
+                  setViewMode('individual');
+                  setPage(0);
+                  setSelectedIds(new Set());
+                  setSelectedWords(new Set());
+                }}
+                className="h-7 px-2 text-xs"
+              >
+                <List className="h-3 w-3 mr-1" />
+                Individual
+              </Button>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={refetch}>
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
@@ -221,9 +325,11 @@ export function InsigniaCurationTable() {
         </div>
 
         {/* Selection Toolbar */}
-        {selectedIds.size > 0 && (
+        {selectionCount > 0 && (
           <div className="flex items-center gap-3 p-3 bg-primary/5 rounded-lg mt-3">
-            <Badge variant="secondary">{selectedIds.size} selecionadas</Badge>
+            <Badge variant="secondary">
+              {selectionCount} {isGroupedView ? 'palavras' : 'entradas'} selecionadas
+            </Badge>
             
             <Button
               size="sm"
@@ -242,24 +348,29 @@ export function InsigniaCurationTable() {
               disabled={isOperating}
               className="text-green-600"
             >
-              {batchValidate.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
-              Validar Lote
+              {(batchValidate.isPending || validateByWord.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Check className="h-4 w-4 mr-1" />}
+              Validar {isGroupedView ? 'Palavras' : 'Lote'}
             </Button>
             
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleBatchRemove}
-              disabled={isOperating}
-            >
-              {batchRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
-              Remover Insígnias
-            </Button>
+            {!isGroupedView && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={handleBatchRemove}
+                disabled={isOperating}
+              >
+                {batchRemove.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+                Remover Insígnias
+              </Button>
+            )}
             
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => setSelectedIds(new Set())}
+              onClick={() => {
+                setSelectedIds(new Set());
+                setSelectedWords(new Set());
+              }}
             >
               Cancelar
             </Button>
@@ -268,9 +379,9 @@ export function InsigniaCurationTable() {
 
         {/* Batch Analysis Results */}
         {showBatchResults && batchAnalysisResults.length > 0 && (
-          <div className="mt-3 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+          <div className="mt-3 p-4 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200 dark:border-amber-800">
             <div className="flex items-center justify-between mb-3">
-              <span className="font-medium text-blue-700 dark:text-blue-300">
+              <span className="font-medium text-amber-700 dark:text-amber-300">
                 Resultados da Análise em Lote ({batchAnalysisResults.length} palavras)
               </span>
               <div className="flex gap-2">
@@ -310,7 +421,13 @@ export function InsigniaCurationTable() {
       <CardContent>
         {/* Stats */}
         <div className="flex items-center justify-between mb-4 text-sm text-muted-foreground">
-          <span>{totalCount.toLocaleString()} entradas encontradas</span>
+          {isGroupedView ? (
+            <span>
+              <strong>{uniqueWords.toLocaleString()}</strong> palavras únicas ({totalCount.toLocaleString()} ocorrências)
+            </span>
+          ) : (
+            <span>{totalCount.toLocaleString()} entradas encontradas</span>
+          )}
           <span>Página {page + 1} de {totalPages || 1}</span>
         </div>
 
@@ -319,7 +436,7 @@ export function InsigniaCurationTable() {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : entries.length === 0 ? (
+        ) : (isGroupedView ? groupedEntries.length === 0 : entries.length === 0) ? (
           <div className="text-center py-12 text-muted-foreground">
             Nenhuma entrada encontrada com os filtros atuais
           </div>
@@ -330,26 +447,45 @@ export function InsigniaCurationTable() {
                 <tr>
                   <th className="p-3 w-10">
                     <Checkbox
-                      checked={selectedIds.size === entries.length && entries.length > 0}
+                      checked={
+                        isGroupedView 
+                          ? (selectedWords.size === groupedEntries.length && groupedEntries.length > 0)
+                          : (selectedIds.size === entries.length && entries.length > 0)
+                      }
                       onCheckedChange={selectAll}
                     />
                   </th>
-                  <th className="p-3 text-left text-sm font-medium">Palavra</th>
+                  <th className="p-3 text-left text-sm font-medium">
+                    {isGroupedView ? 'Palavra (Ocorrências)' : 'Palavra'}
+                  </th>
                   <th className="p-3 text-left text-sm font-medium">Insígnias</th>
-                  <th className="p-3 text-left text-sm font-medium">Corpus</th>
+                  <th className="p-3 text-left text-sm font-medium">
+                    {isGroupedView ? 'Consenso' : 'Corpus'}
+                  </th>
                   <th className="p-3 text-left text-sm font-medium">Confiança</th>
                   <th className="p-3 text-left text-sm font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {entries.map(entry => (
-                  <InsigniaCurationRow
-                    key={entry.id}
-                    entry={entry}
-                    isSelected={selectedIds.has(entry.id)}
-                    onSelectionChange={(selected) => toggleSelection(entry.id, selected)}
-                  />
-                ))}
+                {isGroupedView ? (
+                  groupedEntries.map(entry => (
+                    <GroupedInsigniaRow
+                      key={entry.palavra}
+                      entry={entry}
+                      isSelected={selectedWords.has(entry.palavra)}
+                      onSelectionChange={(selected) => toggleWordSelection(entry.palavra, selected)}
+                    />
+                  ))
+                ) : (
+                  entries.map(entry => (
+                    <InsigniaCurationRow
+                      key={entry.id}
+                      entry={entry}
+                      isSelected={selectedIds.has(entry.id)}
+                      onSelectionChange={(selected) => toggleSelection(entry.id, selected)}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
