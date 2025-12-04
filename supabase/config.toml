@@ -180,3 +180,6 @@ verify_jwt = false
 
 [functions.analyze-insignias]
 verify_jwt = false
+
+[functions.update-songs-metadata]
+verify_jwt = false

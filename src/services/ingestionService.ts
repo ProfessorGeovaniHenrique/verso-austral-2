@@ -40,6 +40,12 @@ export interface ProcessingResult {
   errors: Array<{ songId: string; error: string }>;
 }
 
+export interface UpdateResult {
+  songsUpdated: number;
+  songsNotFound: number;
+  notFoundList: string[];
+}
+
 export interface ChunkProgress {
   currentChunk: number;
   totalChunks: number;
@@ -304,5 +310,24 @@ export const ingestionService = {
     }
 
     return stats;
+  },
+
+  /**
+   * Update existing songs metadata (composer, lyrics_url, lyrics) by matching title/artist
+   */
+  async updateSongsMetadata(
+    songs: ParsedMusic[],
+    corpusId?: string | null
+  ): Promise<UpdateResult> {
+    const { data, error } = await supabase.functions.invoke('update-songs-metadata', {
+      body: { songs, corpusId },
+    });
+
+    if (error) {
+      console.error('Error updating songs metadata:', error);
+      throw new Error(error.message || 'Failed to update songs metadata');
+    }
+
+    return data as UpdateResult;
   },
 };

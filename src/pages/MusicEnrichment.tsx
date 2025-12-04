@@ -9,7 +9,7 @@ import { WorkflowProvider } from '@/contexts/WorkflowContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { EmptyStateMusicEnrichment } from '@/components/music/EmptyStateMusicEnrichment';
-import { MusicAnalysisResult } from '@/components/music/MusicAnalysisResult';
+import { MusicAnalysisResult, type ImportMode } from '@/components/music/MusicAnalysisResult';
 import { MusicUploadDialog } from '@/components/music/MusicUploadDialog';
 import { MusicImportProgressModal } from '@/components/music/MusicImportProgressModal';
 import { ingestionService } from '@/services/ingestionService';
@@ -64,7 +64,7 @@ function MusicEnrichmentContent() {
     toast.info('Operação cancelada');
   }, [resetProcessing]);
 
-  const handleImport = useCallback(async (corpusId: string | null) => {
+  const handleImport = useCallback(async (corpusId: string | null, mode: ImportMode = 'import') => {
     try {
       // Usar dados deduplicados se disponíveis
       const songsToImport = deduplicationResult?.unique || parsedData;
@@ -85,56 +85,81 @@ function MusicEnrichmentContent() {
       setSongsProcessed(0);
       setShowImportProgress(true);
       
-      const result = await ingestionService.extractTitlesChunked(
-        validSongs.map(song => ({
-          titulo: song.titulo,
-          artista: song.artista!,
-          compositor: song.compositor,
-          ano: song.ano,
-          letra: song.letra,
-          album: undefined,
-          genero: undefined
-        })),
-        {
-          uploadId: undefined,
-          corpusId,
-          chunkSize: 5000,
-          onProgress: (progress) => {
-            setCurrentChunk(progress.currentChunk);
-            setTotalChunks(progress.totalChunks);
-            setSongsProcessed(progress.songsProcessed);
-          }
+      const mappedSongs = validSongs.map(song => ({
+        titulo: song.titulo,
+        artista: song.artista!,
+        compositor: song.compositor,
+        ano: song.ano,
+        letra: song.letra,
+        lyricsUrl: song.lyricsUrl,
+        album: undefined,
+        genero: undefined
+      }));
+
+      if (mode === 'update') {
+        // Modo atualização: atualizar músicas existentes
+        const updateResult = await ingestionService.updateSongsMetadata(mappedSongs, corpusId);
+        
+        setIsImporting(false);
+        setImportResult({ 
+          songsCreated: updateResult.songsUpdated, 
+          artistsCreated: 0 
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setShowImportProgress(false);
+        
+        if (updateResult.songsNotFound > 0) {
+          toast.warning(
+            `${updateResult.songsUpdated} músicas atualizadas. ${updateResult.songsNotFound} não encontradas.`
+          );
+        } else {
+          toast.success(`${updateResult.songsUpdated} músicas atualizadas com sucesso!`);
         }
-      );
-      
-      // Atualizar com resultado real
-      setIsImporting(false);
-      setImportResult(result);
-      
-      // Aguardar um pouco para mostrar o resultado final
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setShowImportProgress(false);
-      
-      const dedupeInfo = deduplicationResult?.duplicatesRemoved 
-        ? ` (${deduplicationResult.duplicatesRemoved} duplicatas removidas)`
-        : '';
-      
-      toast.success(
-        `${result.songsCreated} músicas importadas${dedupeInfo}! ${result.artistsCreated} artistas criados.`
-      );
-      
-      navigate('/music-catalog');
+        
+        navigate('/music-catalog');
+      } else {
+        // Modo importação: criar novas músicas
+        const result = await ingestionService.extractTitlesChunked(
+          mappedSongs,
+          {
+            uploadId: undefined,
+            corpusId,
+            chunkSize: 5000,
+            onProgress: (progress) => {
+              setCurrentChunk(progress.currentChunk);
+              setTotalChunks(progress.totalChunks);
+              setSongsProcessed(progress.songsProcessed);
+            }
+          }
+        );
+        
+        setIsImporting(false);
+        setImportResult(result);
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        setShowImportProgress(false);
+        
+        const dedupeInfo = deduplicationResult?.duplicatesRemoved 
+          ? ` (${deduplicationResult.duplicatesRemoved} duplicatas removidas)`
+          : '';
+        
+        toast.success(
+          `${result.songsCreated} músicas importadas${dedupeInfo}! ${result.artistsCreated} artistas criados.`
+        );
+        
+        navigate('/music-catalog');
+      }
     } catch (error) {
       setIsImporting(false);
       setImportError(error instanceof Error ? error.message : 'Erro desconhecido');
       
-      // Aguardar antes de fechar
       await new Promise(resolve => setTimeout(resolve, 3000));
       
       setShowImportProgress(false);
-      toast.error('Erro ao importar dados');
-      log.error('Import error', error instanceof Error ? error : new Error(String(error)), { 
+      toast.error(mode === 'update' ? 'Erro ao atualizar dados' : 'Erro ao importar dados');
+      log.error('Import/Update error', error instanceof Error ? error : new Error(String(error)), { 
+        mode,
         validSongsCount: (deduplicationResult?.unique || parsedData).filter(s => s.titulo && s.artista).length 
       });
     }

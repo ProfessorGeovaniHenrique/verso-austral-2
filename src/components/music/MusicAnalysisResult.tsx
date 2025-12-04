@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, FileSpreadsheet, Music2, TrendingUp } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, FileSpreadsheet, Music2, TrendingUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,6 +7,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CorpusSelector } from './CorpusSelector';
 import { DuplicatePreviewDialog } from './DuplicatePreviewDialog';
 import type { ParsedMusic } from '@/lib/excelParser';
+
+export type ImportMode = 'import' | 'update';
 
 interface MusicAnalysisResultProps {
   fileName: string;
@@ -16,7 +18,7 @@ interface MusicAnalysisResultProps {
   duplicateGroups: Map<string, ParsedMusic[]>;
   previewData: Array<{ musica?: string; artista?: string; [key: string]: any }>;
   onCancel: () => void;
-  onImport: (corpusId: string | null) => void;
+  onImport: (corpusId: string | null, mode: ImportMode) => void;
 }
 
 export function MusicAnalysisResult({
@@ -31,6 +33,7 @@ export function MusicAnalysisResult({
 }: MusicAnalysisResultProps) {
   const [selectedCorpusId, setSelectedCorpusId] = useState<string | null>(null);
   const [showDuplicates, setShowDuplicates] = useState(false);
+  const [importMode, setImportMode] = useState<ImportMode>('import');
   
   const uniqueArtists = new Set(previewData.map(row => row.artista).filter(Boolean)).size;
   const diversity = uniqueSongs > 0 ? Math.round((uniqueArtists / uniqueSongs) * 100) : 0;
@@ -151,13 +154,44 @@ export function MusicAnalysisResult({
           </div>
         </CardContent>
 
-        <CardFooter className="flex justify-between pt-6">
-          <Button variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button onClick={() => onImport(selectedCorpusId)} size="lg">
-            Importar para Catálogo ({uniqueSongs} músicas)
-          </Button>
+        <CardFooter className="flex flex-col gap-4 pt-6">
+          {/* Import Mode Selection */}
+          <div className="w-full flex gap-2">
+            <Button
+              variant={importMode === 'import' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => setImportMode('import')}
+            >
+              <Music2 className="h-4 w-4 mr-2" />
+              Importar como novas
+            </Button>
+            <Button
+              variant={importMode === 'update' ? 'default' : 'outline'}
+              className="flex-1"
+              onClick={() => setImportMode('update')}
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar existentes
+            </Button>
+          </div>
+          
+          {importMode === 'update' && (
+            <div className="w-full p-3 rounded-lg bg-muted/50 text-sm text-muted-foreground">
+              <strong>Modo Atualização:</strong> Busca músicas existentes por título/artista e atualiza compositor, URL e letra.
+            </div>
+          )}
+          
+          <div className="w-full flex justify-between">
+            <Button variant="outline" onClick={onCancel}>
+              Cancelar
+            </Button>
+            <Button onClick={() => onImport(selectedCorpusId, importMode)} size="lg">
+              {importMode === 'import' 
+                ? `Importar para Catálogo (${uniqueSongs} músicas)`
+                : `Atualizar Metadados (${uniqueSongs} músicas)`
+              }
+            </Button>
+          </div>
         </CardFooter>
       </Card>
 
