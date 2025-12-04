@@ -12,12 +12,14 @@ const corsHeaders = {
 };
 
 const CHUNK_SIZE = 20; // Músicas por chunk
-const LOCK_TIMEOUT_MS = 30000; // 30 segundos para evitar race conditions
+const LOCK_TIMEOUT_MS = 90000; // 90 segundos para evitar race conditions
 const AUTO_INVOKE_DELAY_MS = 10000; // 10 segundos (consistente com scraping)
+const ABANDONED_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos para considerar job abandonado
 
 interface EnrichmentJobPayload {
   jobId?: string;
   continueFrom?: number;
+  forceLock?: boolean; // Força aquisição de lock (ignora timeout)
   // Parâmetros para novo job
   jobType?: 'metadata' | 'youtube' | 'lyrics' | 'full';
   scope?: 'all' | 'artist' | 'corpus' | 'selection';
@@ -63,8 +65,20 @@ function createSupabaseClient() {
   });
 }
 
-async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jobId: string): Promise<boolean> {
+async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jobId: string, forceLock = false): Promise<boolean> {
   const lockThreshold = new Date(Date.now() - LOCK_TIMEOUT_MS).toISOString();
+  
+  // Force lock ignora o tempo do lock (usado para forçar reinício)
+  if (forceLock) {
+    const { data, error } = await supabase
+      .from('enrichment_jobs')
+      .update({ last_chunk_at: new Date().toISOString() })
+      .eq('id', jobId)
+      .select();
+    
+    console.log(`[enrich-batch] Force lock adquirido para job ${jobId}`);
+    return !error && data && data.length > 0;
+  }
   
   const { data, error } = await supabase
     .from('enrichment_jobs')
@@ -74,6 +88,38 @@ async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jo
     .select();
   
   return !error && data && data.length > 0;
+}
+
+// Detectar e recuperar jobs abandonados
+async function detectAndHandleAbandonedJobs(supabase: ReturnType<typeof createSupabaseClient>): Promise<number> {
+  const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
+  
+  const { data: abandonedJobs, error } = await supabase
+    .from('enrichment_jobs')
+    .select('id, job_type, artist_name, songs_processed')
+    .eq('status', 'processando')
+    .eq('songs_processed', 0)
+    .lt('tempo_inicio', abandonedThreshold);
+  
+  if (error || !abandonedJobs || abandonedJobs.length === 0) {
+    return 0;
+  }
+  
+  console.log(`[enrich-batch] Detectados ${abandonedJobs.length} jobs abandonados`);
+  
+  for (const job of abandonedJobs) {
+    console.log(`[enrich-batch] Marcando job ${job.id} (${job.artist_name || job.job_type}) como erro (abandonado)`);
+    await supabase
+      .from('enrichment_jobs')
+      .update({ 
+        status: 'erro', 
+        erro_mensagem: 'Job abandonado automaticamente (sem progresso por 5 min)',
+        tempo_fim: new Date().toISOString()
+      })
+      .eq('id', job.id);
+  }
+  
+  return abandonedJobs.length;
 }
 
 async function checkCancellation(supabase: ReturnType<typeof createSupabaseClient>, jobId: string): Promise<boolean> {
@@ -226,6 +272,12 @@ Deno.serve(async (req) => {
     const payload: EnrichmentJobPayload = await req.json();
     console.log(`[enrich-batch] Payload recebido:`, JSON.stringify(payload));
 
+    // Detectar e limpar jobs abandonados antes de processar
+    const abandonedCount = await detectAndHandleAbandonedJobs(supabase);
+    if (abandonedCount > 0) {
+      console.log(`[enrich-batch] ${abandonedCount} jobs abandonados foram marcados como erro`);
+    }
+
     let job: EnrichmentJob;
     let startIndex = payload.continueFrom || 0;
     let isNewJob = false;
@@ -274,11 +326,17 @@ Deno.serve(async (req) => {
       }
 
       // Adquirir lock APENAS para jobs existentes (continuação)
-      const lockAcquired = await acquireLock(supabase, job.id);
+      // Se status é pausado, sempre permitir (usuário quer retomar)
+      const shouldForceLock = payload.forceLock || job.status === 'pausado';
+      const lockAcquired = await acquireLock(supabase, job.id, shouldForceLock);
       if (!lockAcquired) {
         console.log(`[enrich-batch] Lock não adquirido para job ${job.id} (outro chunk em execução)`);
         return new Response(
-          JSON.stringify({ success: false, error: 'Lock não adquirido (outro chunk em execução)' }),
+          JSON.stringify({ 
+            success: false, 
+            error: 'Lock não adquirido (outro chunk em execução)',
+            hint: 'Use forceLock: true para forçar reinício'
+          }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

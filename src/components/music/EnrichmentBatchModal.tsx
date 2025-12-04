@@ -61,7 +61,10 @@ export function EnrichmentBatchModal({
     pauseJob,
     resumeJob,
     cancelJob,
-    progress
+    progress,
+    isAbandoned,
+    resumeJobWithForce,
+    forceRestartJob
   } = useEnrichmentJob({
     jobType: 'metadata',
     artistId: artistId || undefined,
@@ -132,7 +135,8 @@ export function EnrichmentBatchModal({
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Enriquecimento em Lote
-            {isProcessing && <Badge variant="default" className="bg-blue-500">Processando</Badge>}
+            {isProcessing && !isAbandoned && <Badge variant="default" className="bg-blue-500">Processando</Badge>}
+            {isAbandoned && <Badge variant="destructive" className="animate-pulse">⚠️ Travado</Badge>}
             {isPaused && <Badge variant="secondary">Pausado</Badge>}
             {isCompleted && <Badge variant="default" className="bg-green-500">Concluído</Badge>}
             {hasError && <Badge variant="destructive">Erro</Badge>}
@@ -238,13 +242,52 @@ export function EnrichmentBatchModal({
                 </div>
               )}
 
+              {/* Alerta de Job Travado */}
+              {isAbandoned && (
+                <div className="flex items-start gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/30">
+                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-600">Job Travado</p>
+                    <p className="text-xs text-muted-foreground">
+                      O job não atualiza há mais de 5 minutos. Pode ter ocorrido um erro.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Controles */}
               <div className="flex gap-2">
-                {isProcessing && (
+                {isProcessing && !isAbandoned && (
                   <>
                     <Button variant="outline" onClick={() => pauseJob()} className="flex-1">
                       <Pause className="h-4 w-4 mr-2" />
                       Pausar
+                    </Button>
+                    <Button variant="destructive" onClick={() => cancelJob()} size="icon">
+                      <Square className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+
+                {isAbandoned && (
+                  <>
+                    <Button onClick={() => resumeJobWithForce()} className="flex-1" variant="default">
+                      <Play className="h-4 w-4 mr-2" />
+                      Forçar Retomada
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => forceRestartJob({
+                        jobType: 'metadata',
+                        scope,
+                        artistId,
+                        artistName,
+                        songIds
+                      })} 
+                      className="flex-1"
+                    >
+                      <Clock className="h-4 w-4 mr-2" />
+                      Reiniciar
                     </Button>
                     <Button variant="destructive" onClick={() => cancelJob()} size="icon">
                       <Square className="h-4 w-4" />

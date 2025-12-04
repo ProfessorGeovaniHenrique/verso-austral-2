@@ -72,6 +72,8 @@ export function EnrichmentJobCard({
     pauseJob,
     cancelJob,
     resumeJob,
+    resumeJobWithForce,
+    forceRestartJob,
   } = useEnrichmentJob({ artistId, corpusId, jobType });
 
   const handleStart = async () => {
@@ -237,23 +239,41 @@ export function EnrichmentJobCard({
               )}
 
               {isAbandoned && (
-                <Button
-                  size="sm"
-                  variant="default"
-                  onClick={resumeJob}
-                  disabled={isResuming}
-                  className="flex-1"
-                >
-                  {isResuming ? (
-                    <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="mr-1 h-3 w-3" />
-                  )}
-                  Retomar (Travado)
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={resumeJobWithForce}
+                    disabled={isResuming}
+                    className="flex-1"
+                  >
+                    {isResuming ? (
+                      <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="mr-1 h-3 w-3" />
+                    )}
+                    Forçar Retomada
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => forceRestartJob({
+                      jobType,
+                      scope: artistId ? 'artist' : corpusId ? 'corpus' : 'all',
+                      artistId,
+                      artistName,
+                      corpusId,
+                      corpusType,
+                    })}
+                    disabled={isStarting}
+                  >
+                    <Clock className="mr-1 h-3 w-3" />
+                    Reiniciar
+                  </Button>
+                </>
               )}
 
-              {!isCancelling && (
+              {!isCancelling && !isAbandoned && (
                 <Button
                   size="sm"
                   variant="destructive"

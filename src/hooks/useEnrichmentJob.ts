@@ -149,7 +149,24 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
 
       if (!data.success) {
         if (data.existingJobId) {
-          toast.warning('Já existe um job ativo para este escopo');
+          // Oferecer opção de forçar reinício
+          toast.warning('Já existe um job ativo para este escopo', {
+            description: 'Deseja cancelar o existente e iniciar novo?',
+            action: {
+              label: 'Forçar Reinício',
+              onClick: () => forceRestartJob(params)
+            },
+            duration: 10000
+          });
+        } else if (data.hint === 'Use forceLock: true para forçar reinício') {
+          toast.warning('Outro chunk está em execução', {
+            description: 'O job pode estar travado. Forçar reinício?',
+            action: {
+              label: 'Forçar',
+              onClick: () => resumeJobWithForce()
+            },
+            duration: 10000
+          });
         } else {
           toast.error(data.error || 'Erro ao iniciar job');
         }
@@ -163,6 +180,55 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
       setIsStarting(false);
     }
   }, [fetchActiveJob]);
+
+  // Forçar reinício do job (cancelar atual e iniciar novo)
+  const forceRestartJob = useCallback(async (params: Parameters<typeof startJob>[0]) => {
+    if (activeJob) {
+      await supabase
+        .from('enrichment_jobs')
+        .update({ 
+          status: 'cancelado',
+          is_cancelling: false,
+          tempo_fim: new Date().toISOString(),
+          erro_mensagem: 'Cancelado para reinício forçado'
+        })
+        .eq('id', activeJob.id);
+      
+      setActiveJob(null);
+    }
+
+    // Pequeno delay para garantir que o job foi cancelado
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    return startJob(params);
+  }, [activeJob, startJob]);
+
+  // Retomar job com force lock
+  const resumeJobWithForce = useCallback(async () => {
+    if (!activeJob || isResuming) return;
+
+    setIsResuming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('enrich-songs-batch', {
+        body: {
+          jobId: activeJob.id,
+          continueFrom: activeJob.current_song_index,
+          forceLock: true // Força aquisição de lock
+        }
+      });
+
+      if (error) {
+        toast.error('Erro ao forçar retomada do job');
+        console.error('[useEnrichmentJob] Erro forçando retomada:', error);
+        return;
+      }
+
+      toast.success('Job retomado com força!');
+      await fetchActiveJob();
+    } finally {
+      setIsResuming(false);
+    }
+  }, [activeJob, isResuming, fetchActiveJob]);
 
   // Pausar job
   const pauseJob = useCallback(async () => {
@@ -204,7 +270,18 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
 
   // Retomar job pausado
   const resumeJob = useCallback(async () => {
-    if (!activeJob || activeJob.status !== 'pausado' || isResuming) return;
+    if (!activeJob || isResuming) return;
+    
+    // Se job está travado (processando mas sem atualização), usar force
+    const isStuck = activeJob.status === 'processando' && activeJob.last_chunk_at
+      ? new Date().getTime() - new Date(activeJob.last_chunk_at).getTime() > ABANDONED_TIMEOUT_MINUTES * 60 * 1000
+      : false;
+
+    if (isStuck) {
+      return resumeJobWithForce();
+    }
+
+    if (activeJob.status !== 'pausado') return;
 
     setIsResuming(true);
     try {
@@ -226,23 +303,42 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     } finally {
       setIsResuming(false);
     }
-  }, [activeJob, isResuming, fetchActiveJob]);
+  }, [activeJob, isResuming, fetchActiveJob, resumeJobWithForce]);
 
   // Reiniciar job (cancelar atual e iniciar novo)
   const restartJob = useCallback(async (params: Parameters<typeof startJob>[0]) => {
-    if (activeJob) {
-      await supabase
-        .from('enrichment_jobs')
-        .update({ 
-          status: 'cancelado',
-          is_cancelling: false,
-          tempo_fim: new Date().toISOString()
-        })
-        .eq('id', activeJob.id);
+    return forceRestartJob(params);
+  }, [forceRestartJob]);
+
+  // Limpar jobs órfãos/abandonados
+  const cleanupAbandonedJobs = useCallback(async () => {
+    const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MINUTES * 60 * 1000).toISOString();
+    
+    const { data, error } = await supabase
+      .from('enrichment_jobs')
+      .update({ 
+        status: 'erro',
+        erro_mensagem: 'Marcado como abandonado pelo usuário',
+        tempo_fim: new Date().toISOString()
+      })
+      .eq('status', 'processando')
+      .eq('songs_processed', 0)
+      .lt('tempo_inicio', abandonedThreshold)
+      .select();
+
+    if (error) {
+      toast.error('Erro ao limpar jobs abandonados');
+      return 0;
     }
 
-    return startJob(params);
-  }, [activeJob, startJob]);
+    const count = data?.length || 0;
+    if (count > 0) {
+      toast.success(`${count} job(s) abandonado(s) limpo(s)`);
+    }
+    
+    await fetchActiveJob();
+    return count;
+  }, [fetchActiveJob]);
 
   // Calcular progresso
   const progress = activeJob && activeJob.total_songs > 0
@@ -338,6 +434,9 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     cancelJob,
     resumeJob,
     restartJob,
+    forceRestartJob,
+    resumeJobWithForce,
+    cleanupAbandonedJobs,
     refetch: fetchActiveJob,
   };
 }
@@ -385,4 +484,65 @@ export function useEnrichmentJobsList() {
   }, [fetchJobs]);
 
   return { jobs, isLoading, refetch: fetchJobs };
+}
+
+// Hook para buscar jobs órfãos/abandonados
+export function useOrphanedEnrichmentJobs() {
+  const [orphanedJobs, setOrphanedJobs] = useState<EnrichmentJob[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const ABANDONED_TIMEOUT_MS = 5 * 60 * 1000;
+
+  const fetchOrphanedJobs = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
+      
+      const { data, error } = await supabase
+        .from('enrichment_jobs')
+        .select('*')
+        .eq('status', 'processando')
+        .eq('songs_processed', 0)
+        .lt('tempo_inicio', abandonedThreshold)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[useOrphanedEnrichmentJobs] Erro:', error);
+        return;
+      }
+
+      setOrphanedJobs((data || []) as EnrichmentJob[]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const cleanupOrphanedJobs = useCallback(async () => {
+    const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
+    
+    const { error } = await supabase
+      .from('enrichment_jobs')
+      .update({ 
+        status: 'erro',
+        erro_mensagem: 'Marcado como abandonado pelo sistema',
+        tempo_fim: new Date().toISOString()
+      })
+      .eq('status', 'processando')
+      .eq('songs_processed', 0)
+      .lt('tempo_inicio', abandonedThreshold);
+
+    if (error) {
+      toast.error('Erro ao limpar jobs órfãos');
+      return;
+    }
+
+    toast.success('Jobs órfãos limpos com sucesso');
+    await fetchOrphanedJobs();
+  }, [fetchOrphanedJobs]);
+
+  useEffect(() => {
+    fetchOrphanedJobs();
+  }, [fetchOrphanedJobs]);
+
+  return { orphanedJobs, isLoading, cleanupOrphanedJobs, refetch: fetchOrphanedJobs };
 }

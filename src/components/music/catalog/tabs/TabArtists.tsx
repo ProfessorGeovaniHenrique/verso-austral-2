@@ -6,11 +6,13 @@
 import { memo, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArtistCard } from '@/components/music';
-import { Sparkles, Loader2, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useYouTubeEnrichment } from '@/hooks/useYouTubeEnrichment';
+import { useOrphanedEnrichmentJobs } from '@/hooks/useEnrichmentJob';
 import { createLogger } from '@/lib/loggerFactory';
 
 const log = createLogger('TabArtists');
@@ -95,6 +97,7 @@ export function TabArtists({
 }: TabArtistsProps) {
   const { toast } = useToast();
   const { enrichYouTubeBatch } = useYouTubeEnrichment();
+  const { orphanedJobs, cleanupOrphanedJobs, isLoading: loadingOrphaned } = useOrphanedEnrichmentJobs();
 
   const handleEnrichArtist = useCallback(async (artist: any) => {
     try {
@@ -215,6 +218,28 @@ export function TabArtists({
 
   return (
     <div className="space-y-4">
+      {/* Alerta de Jobs Órfãos */}
+      {orphanedJobs.length > 0 && (
+        <Alert variant="destructive" className="border-amber-500 bg-amber-500/10">
+          <AlertCircle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-amber-700">
+              {orphanedJobs.length} job(s) de enriquecimento travado(s) detectado(s).
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={cleanupOrphanedJobs}
+              disabled={loadingOrphaned}
+              className="ml-4"
+            >
+              <Trash2 className="h-3 w-3 mr-1" />
+              Limpar Jobs Abandonados
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       <AlphabetFilter selectedLetter={selectedLetter} onLetterChange={onLetterChange} />
 
       {/* Batch Enrich by Letter */}
