@@ -174,3 +174,6 @@ verify_jwt = false
 
 [functions.backfill-insignia-attribution]
 verify_jwt = false
+
+[functions.reprocess-insignias]
+verify_jwt = false
