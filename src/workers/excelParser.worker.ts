@@ -27,6 +27,27 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+function sanitizeLyrics(rawLyrics: string): string {
+  if (!rawLyrics) return '';
+  
+  const invalidPatterns = [
+    /letra\s*n[ãa]o\s*encontrada/i,
+    /sabe\s*a\s*letra\?\s*envie/i,
+    /\[email.*protected\]/i,
+    /envie-nos\s*por\s*e-?mail/i,
+    /email&#160;protected/i,
+  ];
+  
+  for (const pattern of invalidPatterns) {
+    if (pattern.test(rawLyrics)) {
+      console.log('[Parser] Letra placeholder detectada e removida');
+      return '';
+    }
+  }
+  
+  return rawLyrics.trim();
+}
+
 function detectColumns(headers: string[]): Record<string, number> {
   const normalized = headers.map(h => normalizeText(h));
   
@@ -146,9 +167,10 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         ? String(row[columnMap.ano]).trim() 
         : '';
 
-      const letra = row[columnMap.letra]
+      const letraRaw = row[columnMap.letra]
         ? String(row[columnMap.letra]).trim()
         : '';
+      const letra = sanitizeLyrics(letraRaw);
 
       if (artista) lastArtista = artista;
 
