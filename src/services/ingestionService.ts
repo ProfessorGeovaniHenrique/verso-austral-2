@@ -350,7 +350,7 @@ export const ingestionService = {
       onProgress?: (progress: UpdateChunkProgress) => void;
     } = {}
   ): Promise<UpdateResult> {
-    const { corpusId, chunkSize = 500, onProgress } = options;
+    const { corpusId, chunkSize = 100, onProgress } = options;
 
     const totalChunks = Math.ceil(songs.length / chunkSize);
     let totalUpdated = 0;
