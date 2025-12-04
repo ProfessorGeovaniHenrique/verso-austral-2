@@ -1336,6 +1336,7 @@ async function loadDialectalCacheForInsignias(supabase: any) {
 
 /**
  * FASE 2: Inferir insígnias culturais usando cache em memória (zero queries por palavra)
+ * Sprint IC-2: Mapeamento expandido de origens regionais
  */
 async function inferCulturalInsignias(
   palavra: string,
@@ -1346,35 +1347,100 @@ async function inferCulturalInsignias(
   const dialectal = cache.get(palavra.toLowerCase());
   const insignias: string[] = [];
   
+  // Mapeamento de origem_primaria para insígnias
+  const origemPrimariaMap: Record<string, string> = {
+    'BRAS': 'Brasileiro',
+    'PLAT': 'Platino',
+    'PORT': 'Lusitano',
+    'ESP': 'Platino',      // Espanhol → influência platina
+    'IND': 'Indígena',
+    'AME': 'Indígena',     // Ameríndio → Indígena
+    'AFR': 'Afro-Brasileiro',
+  };
+  
+  // Estados/regiões que mapeiam para Nordestino
+  const regionaisNordeste = [
+    'NORDESTE', 'nordeste', 'nordestino',
+    'BA', 'CE', 'PE', 'PB', 'PI', 'AL', 'SE', 'RN', 'MA',
+    'Bahia', 'Ceará', 'Pernambuco', 'Paraíba', 'Piauí', 
+    'Alagoas', 'Sergipe', 'Rio Grande do Norte', 'Maranhão',
+    'sertão', 'sertanejo', 'cangaço'
+  ];
+  
+  // Estados/regiões que mapeiam para Gaúcho
+  const regionaisGaucho = [
+    'RS', 'Rio Grande do Sul', 'gaúcho', 'gaucho',
+    'campeiro', 'fronteira', 'pampa', 'campanha',
+    'missioneiro', 'charqueada', 'estância'
+  ];
+  
+  // Estados/regiões que mapeiam para Caipira
+  const regionaisCaipira = [
+    'SP', 'MG', 'GO', 'MS', 'MT', 'PR',
+    'São Paulo', 'Minas Gerais', 'Goiás', 'Mato Grosso', 'Paraná',
+    'caipira', 'interior', 'sertão paulista', 'roceiro'
+  ];
+  
+  // Termos que indicam influência platina
+  const termosPlatinosRegionais = [
+    'platino', 'rio-platense', 'castelhano', 'uruguaio', 'argentino',
+    'fronteiriço', 'pampeano'
+  ];
+  
   if (dialectal) {
-    // Baseado em origem_primaria
-    if (dialectal.origemPrimaria === 'BRAS') {
-      insignias.push('Brasileiro');
-    }
-    if (dialectal.origemPrimaria === 'PLAT') {
-      insignias.push('Platino');
-    }
-    if (dialectal.origemPrimaria === 'PORT') {
-      insignias.push('Lusitano');
+    // 1. Mapear origem_primaria
+    if (dialectal.origemPrimaria && origemPrimariaMap[dialectal.origemPrimaria]) {
+      const insignia = origemPrimariaMap[dialectal.origemPrimaria];
+      if (!insignias.includes(insignia)) {
+        insignias.push(insignia);
+      }
     }
     
-    // Baseado em origem_regionalista
-    if (dialectal.origemRegionalista?.includes('campeiro')) {
-      insignias.push('Gaúcho');
+    // 2. Mapear origem_regionalista (pode ter múltiplas)
+    if (dialectal.origemRegionalista && dialectal.origemRegionalista.length > 0) {
+      for (const origem of dialectal.origemRegionalista) {
+        const origemLower = origem.toLowerCase();
+        
+        // Verificar Nordestino
+        if (regionaisNordeste.some(r => origemLower.includes(r.toLowerCase()) || r.toLowerCase().includes(origemLower))) {
+          if (!insignias.includes('Nordestino')) {
+            insignias.push('Nordestino');
+          }
+        }
+        
+        // Verificar Gaúcho
+        if (regionaisGaucho.some(r => origemLower.includes(r.toLowerCase()) || r.toLowerCase().includes(origemLower))) {
+          if (!insignias.includes('Gaúcho')) {
+            insignias.push('Gaúcho');
+          }
+        }
+        
+        // Verificar Caipira
+        if (regionaisCaipira.some(r => origemLower.includes(r.toLowerCase()) || r.toLowerCase().includes(origemLower))) {
+          if (!insignias.includes('Caipira')) {
+            insignias.push('Caipira');
+          }
+        }
+        
+        // Verificar Platino via regionais
+        if (termosPlatinosRegionais.some(r => origemLower.includes(r.toLowerCase()))) {
+          if (!insignias.includes('Platino')) {
+            insignias.push('Platino');
+          }
+        }
+      }
     }
     
-    // Influência platina adicional
+    // 3. Influência platina explícita
     if (dialectal.influenciaPlatina && !insignias.includes('Platino')) {
       insignias.push('Platino');
     }
     
-    // Se está no dicionário gaúcho, sempre marcar como Gaúcho
-    if (!insignias.includes('Gaúcho')) {
-      insignias.push('Gaúcho');
-    }
+    // REMOVIDO: Não marcar automaticamente como Gaúcho só por estar no dicionário
+    // O dicionário dialectal contém palavras de múltiplas regiões
   }
   
-  // Corpus de origem
+  // 4. Insígnia do corpus de origem (sempre adicionar se não existir)
   const corpusInsignias: Record<string, string> = {
     'gaucho': 'Gaúcho',
     'nordestino': 'Nordestino',
