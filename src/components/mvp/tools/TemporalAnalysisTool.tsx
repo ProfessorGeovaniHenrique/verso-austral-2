@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
-import { useCorpusCache } from "@/contexts/CorpusContext";
+import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { generateTemporalAnalysis, exportTemporalAnalysisToCSV, TemporalAnalysis } from "@/services/temporalAnalysisService";
 import { CorpusCompleto } from "@/data/types/full-text-corpus.types";
 import { toast } from "sonner";
@@ -28,6 +28,9 @@ export function TemporalAnalysisTool() {
   const { studyCorpus } = useAnalysisTools();
   const corpusType = studyCorpus?.platformCorpus || 'gaucho';
   
+  // Usar SubcorpusContext (Sistema B) ao invés de CorpusContext (Sistema A)
+  const { loadedCorpus, isLoading: isSubcorpusLoading, getFilteredCorpus } = useSubcorpus();
+  
   const [palavras, setPalavras] = useState<string[]>(['']);
   const [analyses, setAnalyses] = useState<Map<string, TemporalAnalysis>>(new Map());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -36,45 +39,58 @@ export function TemporalAnalysisTool() {
   const [selectedAlbuns, setSelectedAlbuns] = useState<string[]>([]);
   const [anoInicio, setAnoInicio] = useState<string>('');
   const [anoFim, setAnoFim] = useState<string>('');
-
-  const filters = useMemo(() => ({
-    artistas: selectedArtistas.length > 0 ? selectedArtistas : undefined,
-    albuns: selectedAlbuns.length > 0 ? selectedAlbuns : undefined,
-    anoInicio: anoInicio ? parseInt(anoInicio) : undefined,
-    anoFim: anoFim ? parseInt(anoFim) : undefined,
-  }), [selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
-
-  const { getFullTextCache, isLoading: isCacheLoading } = useCorpusCache();
-  const [corpus, setCorpus] = useState<CorpusCompleto | null>(null);
   const [progress, setProgress] = useState(0);
 
+  // Carregar corpus via SubcorpusContext quando necessário
   useEffect(() => {
-    const loadCorpus = async () => {
-      try {
-        setProgress(30);
-        const cache = await getFullTextCache(corpusType, filters);
-        setCorpus(cache.corpus);
+    if (studyCorpus && !loadedCorpus && !isSubcorpusLoading) {
+      setProgress(30);
+      getFilteredCorpus().then(() => {
         setProgress(100);
-      } catch (error) {
+      }).catch(error => {
         console.error('Erro ao carregar corpus:', error);
         toast.error('Erro ao carregar corpus');
-      }
-    };
-
-    if (studyCorpus) {
-      loadCorpus();
+      });
+    } else if (loadedCorpus) {
+      setProgress(100);
     }
-  }, [corpusType, filters, getFullTextCache, studyCorpus]);
+  }, [studyCorpus, loadedCorpus, isSubcorpusLoading, getFilteredCorpus]);
+
+  // Filtrar corpus localmente se filtros avançados estiverem ativos
+  const corpus = useMemo<CorpusCompleto | null>(() => {
+    if (!loadedCorpus) return null;
+    
+    // Se não há filtros, usar corpus direto
+    const hasFilters = selectedArtistas.length > 0 || selectedAlbuns.length > 0 || anoInicio || anoFim;
+    if (!hasFilters) return loadedCorpus;
+    
+    // Aplicar filtros localmente
+    const filteredMusicas = loadedCorpus.musicas.filter(m => {
+      if (selectedArtistas.length > 0 && !selectedArtistas.includes(m.metadata.artista)) return false;
+      if (selectedAlbuns.length > 0 && !selectedAlbuns.includes(m.metadata.album)) return false;
+      const songYear = typeof m.metadata.ano === 'string' ? parseInt(m.metadata.ano) : m.metadata.ano;
+      if (anoInicio && songYear && songYear < parseInt(anoInicio)) return false;
+      if (anoFim && songYear && songYear > parseInt(anoFim)) return false;
+      return true;
+    });
+    
+    return {
+      ...loadedCorpus,
+      musicas: filteredMusicas,
+      totalMusicas: filteredMusicas.length,
+      totalPalavras: filteredMusicas.reduce((sum, m) => sum + m.palavras.length, 0)
+    };
+  }, [loadedCorpus, selectedArtistas, selectedAlbuns, anoInicio, anoFim]);
 
   const artistasDisponiveis = useMemo(() => {
-    if (!corpus) return [];
-    return Array.from(new Set(corpus.musicas.map(m => m.metadata.artista))).sort();
-  }, [corpus]);
+    if (!loadedCorpus) return [];
+    return Array.from(new Set(loadedCorpus.musicas.map(m => m.metadata.artista))).sort();
+  }, [loadedCorpus]);
 
   const albunsDisponiveis = useMemo(() => {
-    if (!corpus) return [];
-    return Array.from(new Set(corpus.musicas.map(m => m.metadata.album))).sort();
-  }, [corpus]);
+    if (!loadedCorpus) return [];
+    return Array.from(new Set(loadedCorpus.musicas.map(m => m.metadata.album))).sort();
+  }, [loadedCorpus]);
 
   const handleAddPalavra = () => {
     if (palavras.length < 5) {
@@ -178,6 +194,8 @@ export function TemporalAnalysisTool() {
     }
   };
 
+  const isLoading = isSubcorpusLoading || progress < 100;
+
   if (!studyCorpus) {
     return (
       <Alert>
@@ -198,7 +216,7 @@ export function TemporalAnalysisTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {isCacheLoading && (
+          {isLoading && (
             <div className="space-y-2">
               <Progress value={progress} className="w-full" />
               <p className="text-sm text-muted-foreground text-center">
@@ -315,7 +333,7 @@ export function TemporalAnalysisTool() {
           <div className="flex gap-2">
             <Button
               onClick={handleAnalyze}
-              disabled={isCacheLoading || isProcessing}
+              disabled={isLoading || isProcessing}
               className="flex-1"
             >
               {isProcessing ? (

@@ -11,27 +11,35 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { compareSubcorpora } from '@/utils/subcorpusAnalysis';
-import { useCorpusCache } from '@/contexts/CorpusContext';
 
 export function TabSubcorpus() {
   const { 
     selection, 
     subcorpora, 
-    isLoading: isSubcorpusLoading 
+    isLoading: isSubcorpusLoading,
+    loadedCorpus,
+    getFilteredCorpus
   } = useSubcorpus();
   
-  const { getFullTextCache } = useCorpusCache();
   const [comparison, setComparison] = useState<ComparativoSubcorpora | null>(null);
   const [isComparing, setIsComparing] = useState(false);
   
   // Trigger comparison when selection changes to 'compare' mode
+  // Usar loadedCorpus diretamente (Sistema B) ao invés de getFullTextCache (Sistema A)
   useEffect(() => {
     const performComparison = async () => {
       if (selection.mode === 'compare' && selection.artistaA && selection.artistaB) {
         setIsComparing(true);
         try {
-          const cache = await getFullTextCache(selection.corpusBase);
-          const result = compareSubcorpora(cache.corpus, selection.artistaA, selection.artistaB);
+          // Se não temos loadedCorpus, carregar primeiro
+          let corpus = loadedCorpus;
+          if (!corpus) {
+            await getFilteredCorpus();
+            // O corpus será atualizado via context, precisamos esperar
+            return;
+          }
+          
+          const result = compareSubcorpora(corpus, selection.artistaA, selection.artistaB);
           setComparison(result);
         } catch (error) {
           console.error('Erro ao comparar artistas:', error);
@@ -45,7 +53,7 @@ export function TabSubcorpus() {
     };
     
     performComparison();
-  }, [selection.mode, selection.artistaA, selection.artistaB, selection.corpusBase, getFullTextCache]);
+  }, [selection.mode, selection.artistaA, selection.artistaB, selection.corpusBase, loadedCorpus, getFilteredCorpus]);
   
   if (isSubcorpusLoading) {
     return (

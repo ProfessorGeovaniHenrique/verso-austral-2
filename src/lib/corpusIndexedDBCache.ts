@@ -108,7 +108,7 @@ async function compressAsync(data: string): Promise<string> {
     
     const timeout = setTimeout(() => {
       reject(new Error('Compression timeout'));
-    }, 30000); // 30s timeout
+    }, 120000); // 120s timeout (aumentado de 30s para evitar timeouts em corpus grandes)
     
     const handler = (e: MessageEvent) => {
       if (e.data.id === id) {
@@ -135,7 +135,7 @@ async function decompressAsync(data: string): Promise<string> {
     
     const timeout = setTimeout(() => {
       reject(new Error('Decompression timeout'));
-    }, 30000);
+    }, 120000); // 120s timeout (aumentado de 30s para evitar timeouts em corpus grandes)
     
     const handler = (e: MessageEvent) => {
       if (e.data.id === id) {

@@ -1,8 +1,12 @@
 /**
- * 🌉 CONTEXT BRIDGE
+ * 🌉 CONTEXT BRIDGE (Sprint R-1: Simplificado)
  * 
  * Sincroniza AnalysisToolsContext com os contextos legados (SubcorpusContext, ToolsContext)
  * Permite que as ferramentas existentes funcionem na nova página sem refatoração
+ * 
+ * ARQUITETURA UNIFICADA:
+ * - Usa APENAS SubcorpusContext (Sistema B) para carregamento de corpus
+ * - Evita CorpusContext (Sistema A) que causa timeouts de compressão
  */
 
 import React, { useEffect, useState, useRef, ReactNode } from 'react';
@@ -77,11 +81,16 @@ function corpusSelectionToStylistic(
 }
 
 /**
- * Hook para sincronização bidirecional de contextos
+ * Hook para sincronização unidirecional de contextos
+ * 
+ * FLUXO SIMPLIFICADO (Sprint R-1):
+ * 1. studyCorpus muda → setSelection()
+ * 2. selection muda no SubcorpusContext → getFilteredCorpus()
+ * 3. loadedCorpus disponível para ferramentas
  */
 export function useCorpusSyncEffect() {
   const { studyCorpus, referenceCorpus } = useAnalysisTools();
-  const { selection, setSelection, setStylisticSelection, getFilteredCorpus } = useSubcorpus();
+  const { selection, setSelection, setStylisticSelection, getFilteredCorpus, loadedCorpus } = useSubcorpus();
   const { setKeywordsState } = useTools();
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
   
@@ -90,62 +99,80 @@ export function useCorpusSyncEffect() {
   getFilteredCorpusRef.current = getFilteredCorpus;
 
   // Refs para verificar igualdade e evitar re-renders desnecessários
-  const prevSelectionRef = useRef<string | null>(null);
+  const prevStudyCorpusRef = useRef<string | null>(null);
   const prevStylisticRef = useRef<string | null>(null);
-  const prevKeywordsStudyRef = useRef<string | null>(null);
-  const prevKeywordsRefRef = useRef<string | null>(null);
+  const lastLoadedKeyRef = useRef<string | null>(null);
 
-  // Sincroniza studyCorpus → SubcorpusContext.selection (COM VERIFICAÇÃO)
+  // PASSO 1: Sincroniza studyCorpus → SubcorpusContext.selection
   useEffect(() => {
-    if (studyCorpus && studyCorpus.type === 'platform') {
-      const legacy = corpusSelectionToLegacy(studyCorpus);
-      const newValue = JSON.stringify(legacy);
-      
-      // Só atualiza se valores diferentes
-      if (prevSelectionRef.current !== newValue) {
-        prevSelectionRef.current = newValue;
-        setSelection({
-          corpusBase: legacy.corpusBase,
-          mode: legacy.mode,
-          artistaA: legacy.artistaA,
-          artistaB: legacy.artistaB
-        });
-      }
-    }
+    if (!studyCorpus || studyCorpus.type !== 'platform') return;
+    
+    const legacy = corpusSelectionToLegacy(studyCorpus);
+    const studyKey = JSON.stringify(legacy);
+    
+    // Só atualiza se valores diferentes
+    if (prevStudyCorpusRef.current === studyKey) return;
+    prevStudyCorpusRef.current = studyKey;
+    
+    console.log('[ContextBridge] Sincronizando selection:', legacy);
+    setSelection({
+      corpusBase: legacy.corpusBase,
+      mode: legacy.mode,
+      artistaA: legacy.artistaA,
+      artistaB: legacy.artistaB
+    });
   }, [studyCorpus, setSelection]);
 
-  // Ref para evitar múltiplos carregamentos da mesma seleção
-  const lastLoadedSelectionRef = useRef<string | null>(null);
-
-  // Carrega corpus APÓS selection mudar no SubcorpusContext (não studyCorpus!)
-  // Isso garante que getFilteredCorpus() usa valores atualizados
+  // PASSO 2: Carrega corpus quando selection muda E é válido
   useEffect(() => {
-    // Só carrega se há seleção válida de corpus de plataforma
-    if (!studyCorpus || studyCorpus.type !== 'platform') return;
+    // Só carrega se há seleção válida
     if (!selection.corpusBase) return;
     
-    const selectionKey = JSON.stringify({
+    // Gerar chave única para esta seleção
+    const loadKey = JSON.stringify({
       corpusBase: selection.corpusBase,
       mode: selection.mode,
       artistaA: selection.artistaA
     });
     
-    // Evita recarregamento se seleção não mudou
-    if (lastLoadedSelectionRef.current === selectionKey) return;
+    // Evita recarregamento se já carregou esta seleção
+    if (lastLoadedKeyRef.current === loadKey) return;
+    
+    // Evita carregar se loadedCorpus já existe e corresponde à seleção
+    if (loadedCorpus && loadedCorpus.musicas.length > 0) {
+      // Verificar se o corpus carregado corresponde à seleção atual
+      const isCorrectCorpus = selection.mode === 'complete' || 
+        (selection.mode === 'single' && selection.artistaA && 
+         loadedCorpus.musicas.some(m => m.metadata.artista === selection.artistaA));
+      
+      if (isCorrectCorpus) {
+        lastLoadedKeyRef.current = loadKey;
+        return;
+      }
+    }
     
     let cancelled = false;
     
     const loadCorpus = async () => {
       setIsLoadingCorpus(true);
+      console.log('[ContextBridge] Carregando corpus:', loadKey);
+      
       try {
         await getFilteredCorpusRef.current();
         if (!cancelled) {
-          lastLoadedSelectionRef.current = selectionKey;
+          lastLoadedKeyRef.current = loadKey;
+          console.log('[ContextBridge] Corpus carregado com sucesso');
         }
       } catch (error) {
-        console.error('Erro ao carregar corpus:', error);
+        console.error('[ContextBridge] Erro ao carregar corpus:', error);
         if (!cancelled) {
-          toast.error('Erro ao carregar corpus');
+          toast.error('Erro ao carregar corpus. Tentando novamente...');
+          // Fallback: tentar carregar corpus completo
+          try {
+            setSelection({ ...selection, mode: 'complete', artistaA: null });
+          } catch {
+            // Ignora erro do fallback
+          }
         }
       } finally {
         if (!cancelled) setIsLoadingCorpus(false);
@@ -155,15 +182,14 @@ export function useCorpusSyncEffect() {
     loadCorpus();
     
     return () => { cancelled = true; };
-  }, [selection, studyCorpus]); // Depende de SELECTION (após atualizado)
+  }, [selection.corpusBase, selection.mode, selection.artistaA, loadedCorpus, setSelection]);
 
-  // Sincroniza studyCorpus + referenceCorpus → SubcorpusContext.stylisticSelection (COM VERIFICAÇÃO)
+  // PASSO 3: Sincroniza studyCorpus + referenceCorpus → stylisticSelection
   useEffect(() => {
     const stylistic = corpusSelectionToStylistic(studyCorpus, referenceCorpus);
     if (stylistic) {
       const newValue = JSON.stringify(stylistic);
       
-      // Só atualiza se valores diferentes
       if (prevStylisticRef.current !== newValue) {
         prevStylisticRef.current = newValue;
         setStylisticSelection(stylistic);
@@ -171,39 +197,25 @@ export function useCorpusSyncEffect() {
     }
   }, [studyCorpus, referenceCorpus, setStylisticSelection]);
 
-  // Sincroniza referenceCorpus → ToolsContext.keywordsState (COM VERIFICAÇÃO)
+  // PASSO 4: Sincroniza referenceCorpus → ToolsContext.keywordsState
   useEffect(() => {
     if (referenceCorpus && referenceCorpus.type === 'platform') {
-      const newState = {
+      setKeywordsState({
         refCorpusBase: referenceCorpus.platformCorpus || 'nordestino',
         refMode: (referenceCorpus.platformArtist ? 'artist' : 'complete') as 'artist' | 'complete',
         refArtist: referenceCorpus.platformArtist || null
-      };
-      const newValue = JSON.stringify(newState);
-      
-      // Só atualiza se valores diferentes
-      if (prevKeywordsRefRef.current !== newValue) {
-        prevKeywordsRefRef.current = newValue;
-        setKeywordsState(newState);
-      }
+      });
     }
   }, [referenceCorpus, setKeywordsState]);
 
-  // Sincroniza studyCorpus → ToolsContext.keywordsState (COM VERIFICAÇÃO)
+  // PASSO 5: Sincroniza studyCorpus → ToolsContext.keywordsState
   useEffect(() => {
     if (studyCorpus && studyCorpus.type === 'platform') {
-      const newState = {
+      setKeywordsState({
         estudoCorpusBase: studyCorpus.platformCorpus || 'gaucho',
         estudoMode: (studyCorpus.platformArtist ? 'artist' : 'complete') as 'artist' | 'complete',
         estudoArtist: studyCorpus.platformArtist || null
-      };
-      const newValue = JSON.stringify(newState);
-      
-      // Só atualiza se valores diferentes
-      if (prevKeywordsStudyRef.current !== newValue) {
-        prevKeywordsStudyRef.current = newValue;
-        setKeywordsState(newState);
-      }
+      });
     }
   }, [studyCorpus, setKeywordsState]);
 
