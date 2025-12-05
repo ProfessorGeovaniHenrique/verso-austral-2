@@ -90,7 +90,7 @@ function corpusSelectionToStylistic(
  */
 export function useCorpusSyncEffect() {
   const { studyCorpus, referenceCorpus } = useAnalysisTools();
-  const { selection, setSelection, setStylisticSelection, getFilteredCorpus, loadedCorpus } = useSubcorpus();
+  const { selection, setSelection, setStylisticSelection, getFilteredCorpus, loadedCorpus, isReady } = useSubcorpus();
   const { setKeywordsState } = useTools();
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
   
@@ -130,7 +130,14 @@ export function useCorpusSyncEffect() {
   }, [studyCorpus, setSelection]);
 
   // PASSO 2: Carrega corpus quando selection muda E é válido
+  // CORREÇÃO R-1.2: Aguarda availableCorpora estar carregado
   useEffect(() => {
+    // Aguarda availableCorpora estar pronto antes de tentar carregar
+    if (!isReady) {
+      console.log('[ContextBridge] Aguardando availableCorpora...');
+      return;
+    }
+    
     // Só carrega se há seleção válida
     if (!selection.corpusBase) return;
     
@@ -188,7 +195,7 @@ export function useCorpusSyncEffect() {
     loadCorpus();
     
     return () => { cancelled = true; };
-  }, [selection.corpusBase, selection.mode, selection.artistaA, loadedCorpus, setSelection]);
+  }, [selection.corpusBase, selection.mode, selection.artistaA, loadedCorpus, setSelection, isReady]);
 
   // PASSO 3: Sincroniza studyCorpus + referenceCorpus → stylisticSelection
   useEffect(() => {

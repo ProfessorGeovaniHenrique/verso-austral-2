@@ -36,6 +36,9 @@ interface SubcorpusContextType {
   
   isLoading: boolean;
   
+  // NOVO R-1.2: Flag indicando que availableCorpora está carregado
+  isReady: boolean;
+  
   // NOVO: Seleção para Ferramentas Estilísticas
   stylisticSelection: any | null;
   setStylisticSelection: (selection: any | null) => void;
@@ -373,6 +376,9 @@ export function SubcorpusProvider({ children }: { children: ReactNode }) {
     throw new Error('Modo compare ainda não implementado');
   }, [selection, availableCorpora, fullCorpus]);
   
+  // NOVO R-1.2: Flag indicando que availableCorpora está carregado
+  const isReady = useMemo(() => availableCorpora.length > 0, [availableCorpora]);
+  
   return (
     <SubcorpusContext.Provider value={{
       selection,
@@ -383,6 +389,7 @@ export function SubcorpusProvider({ children }: { children: ReactNode }) {
       availableArtists,
       subcorpora,
       isLoading,
+      isReady,
       stylisticSelection,
       setStylisticSelection,
       activeAnnotationJobId,
