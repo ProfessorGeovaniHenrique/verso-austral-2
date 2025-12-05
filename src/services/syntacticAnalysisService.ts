@@ -9,19 +9,51 @@ import { SyntacticProfile } from '@/data/types/stylistic-analysis.types';
 export function calculateSyntacticProfile(annotatedCorpus: CorpusComPOS): SyntacticProfile {
   const allTokens = annotatedCorpus.musicas.flatMap(m => m.tokens);
   
-  // Calculate sentence lengths (approximate by splitting on punctuation)
+  // Calculate sentence lengths using LINE BREAKS (verses) for music lyrics
+  // Music lyrics rarely use traditional punctuation, so we use verses as "sentences"
   const sentences: number[] = [];
-  let currentSentenceLength = 0;
   
-  allTokens.forEach(token => {
-    currentSentenceLength++;
-    if (['.', '!', '?', ';'].includes(token.palavra)) {
-      if (currentSentenceLength > 1) {
-        sentences.push(currentSentenceLength);
-      }
-      currentSentenceLength = 0;
+  annotatedCorpus.musicas.forEach(musica => {
+    // Get lyrics from musica object (may be stored as 'letra' or need to reconstruct from tokens)
+    const letra = (musica as any).letra || '';
+    
+    if (letra) {
+      // Split by line breaks to get verses
+      const versos = letra
+        .split(/\n+/)
+        .filter((v: string) => v.trim().length > 0);
+      
+      versos.forEach((verso: string) => {
+        // Count words in each verse
+        const palavrasNoVerso = verso
+          .split(/\s+/)
+          .filter((p: string) => p.length > 1 && !/^[.,!?;:()"\-]+$/.test(p));
+        
+        if (palavrasNoVerso.length > 0) {
+          sentences.push(palavrasNoVerso.length);
+        }
+      });
     }
   });
+  
+  // Fallback: If no verses found, try punctuation-based detection (formal texts)
+  if (sentences.length === 0) {
+    let currentSentenceLength = 0;
+    allTokens.forEach(token => {
+      currentSentenceLength++;
+      if (['.', '!', '?', ';'].includes(token.palavra)) {
+        if (currentSentenceLength > 1) {
+          sentences.push(currentSentenceLength);
+        }
+        currentSentenceLength = 0;
+      }
+    });
+    
+    // Last fallback: treat entire corpus as one "sentence"
+    if (sentences.length === 0 && allTokens.length > 0) {
+      sentences.push(allTokens.length);
+    }
+  }
   
   // Calculate average and standard deviation
   const averageSentenceLength = sentences.length > 0 
