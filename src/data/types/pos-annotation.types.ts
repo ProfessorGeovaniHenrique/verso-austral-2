@@ -74,7 +74,8 @@ export interface POSAnnotationRequest {
 }
 
 export interface POSAnnotationResponse {
-  tokens: POSToken[];
-  statistics: POSStatistics;
+  success?: boolean;
+  annotations: POSToken[];
+  stats?: CoverageStats;
   error?: string;
 }

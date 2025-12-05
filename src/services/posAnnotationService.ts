@@ -36,7 +36,7 @@ export async function annotatePOS(texto: string, idioma: 'pt' | 'es' = 'pt'): Pr
       throw new Error(data.error);
     }
 
-    return data?.tokens || [];
+    return data?.annotations || [];
   } catch (error) {
     console.error('[POS] Erro na chamada do serviço:', error);
     throw error;
