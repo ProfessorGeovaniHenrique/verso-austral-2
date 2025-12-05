@@ -10,7 +10,6 @@
 
 import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   FileText, 
   Sparkles, 
@@ -21,55 +20,9 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { AnalysisToolsProvider, useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusUploader } from '@/components/analysis-tools/CorpusUploader';
-import { CorpusSelector } from '@/components/analysis-tools/CorpusSelector';
 import { BasicToolsTab } from '@/components/analysis-tools/BasicToolsTab';
 import { StyleAnalysisTab } from '@/components/analysis-tools/StyleAnalysisTab';
-
-function CulturalAnalysisTab() {
-  const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
-  
-  return (
-    <div className="space-y-6">
-      {/* Seletores de Corpus */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <CorpusSelector
-          label="Corpus de Estudo"
-          description="Corpus para análise cultural e dialetal"
-          value={studyCorpus}
-          onChange={setStudyCorpus}
-          showBalancing
-        />
-        <CorpusSelector
-          label="Corpus de Referência"
-          description="Corpus para comparação regional/temporal"
-          value={referenceCorpus}
-          onChange={setReferenceCorpus}
-        />
-      </div>
-
-      {/* Ferramentas Placeholder */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { name: 'Análise Temporal', desc: 'Evolução de palavras ao longo do tempo' },
-          { name: 'Análise Cultural', desc: 'Marcadores regionais e insígnias culturais' },
-          { name: 'Análise Dialetal', desc: 'Variações morfológicas, sintáticas e diacrônicas' },
-        ].map(tool => (
-          <Card key={tool.name} className="opacity-60">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{tool.name}</CardTitle>
-              <CardDescription className="text-xs">{tool.desc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground italic">
-                Sprint P3-3: Em desenvolvimento
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { CulturalAnalysisTab } from '@/components/analysis-tools/CulturalAnalysisTab';
 
 function AnalysisToolsContent() {
   const navigate = useNavigate();
