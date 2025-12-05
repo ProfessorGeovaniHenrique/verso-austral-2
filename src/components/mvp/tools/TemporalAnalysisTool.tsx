@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
 import { useCorpusCache } from "@/contexts/CorpusContext";
 import { generateTemporalAnalysis, exportTemporalAnalysisToCSV, TemporalAnalysis } from "@/services/temporalAnalysisService";
 import { CorpusCompleto } from "@/data/types/full-text-corpus.types";
@@ -23,7 +25,9 @@ const CHART_COLORS = [
 ];
 
 export function TemporalAnalysisTool() {
-  const [corpusType, setCorpusType] = useState<'gaucho' | 'nordestino'>('gaucho');
+  const { studyCorpus } = useAnalysisTools();
+  const corpusType = studyCorpus?.platformCorpus || 'gaucho';
+  
   const [palavras, setPalavras] = useState<string[]>(['']);
   const [analyses, setAnalyses] = useState<Map<string, TemporalAnalysis>>(new Map());
   const [isProcessing, setIsProcessing] = useState(false);
@@ -57,8 +61,10 @@ export function TemporalAnalysisTool() {
       }
     };
 
-    loadCorpus();
-  }, [corpusType, filters, getFullTextCache]);
+    if (studyCorpus) {
+      loadCorpus();
+    }
+  }, [corpusType, filters, getFullTextCache, studyCorpus]);
 
   const artistasDisponiveis = useMemo(() => {
     if (!corpus) return [];
@@ -172,13 +178,23 @@ export function TemporalAnalysisTool() {
     }
   };
 
+  if (!studyCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione um corpus no seletor acima para iniciar a análise temporal.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Análise Temporal</CardTitle>
           <CardDescription>
-            Visualize a evolução do uso de palavras ao longo dos anos
+            Visualize a evolução do uso de palavras ao longo dos anos no corpus {corpusType}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -190,19 +206,6 @@ export function TemporalAnalysisTool() {
               </p>
             </div>
           )}
-
-          <div className="space-y-2">
-            <Label>Corpus</Label>
-            <Select value={corpusType} onValueChange={(v) => setCorpusType(v as any)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="gaucho">🎸 Corpus Gaúcho</SelectItem>
-                <SelectItem value="nordestino">🪘 Corpus Nordestino</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">

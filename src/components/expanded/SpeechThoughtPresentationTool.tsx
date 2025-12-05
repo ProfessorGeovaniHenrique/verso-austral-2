@@ -7,16 +7,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
-import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeSpeechThoughtPresentation, exportSpeechThoughtToCSV, SpeechThoughtProfile } from "@/services/speechThoughtAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 export function SpeechThoughtPresentationTool() {
-  const subcorpusContext = useSubcorpus();
-  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
-  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
+  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<SpeechThoughtProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -83,6 +79,16 @@ export function SpeechThoughtPresentationTool() {
     NRTA: 'Atos Mentais Narrados'
   };
 
+  if (!loadedCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione um corpus no seletor acima para iniciar a análise de fala e pensamento.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -99,13 +105,6 @@ export function SpeechThoughtPresentationTool() {
               Detecta categorias nas escalas DS→NRSA (fala) e DT→NRTA (pensamento) usando padrões linguísticos.
             </AlertDescription>
           </Alert>
-
-          <CrossCorpusSelectorWithRatio
-            mode="study-only"
-            showRatioControl={false}
-            onSelectionChange={setCrossSelection}
-            availableArtists={subcorpusContext.availableArtists}
-          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
@@ -262,7 +261,7 @@ export function SpeechThoughtPresentationTool() {
           ) : (
             !isAnalyzing && (
               <div className="text-center text-muted-foreground py-8">
-                Selecione um corpus e clique em "Analisar Corpus" para detectar apresentação de fala e pensamento
+                Clique em "Analisar Corpus" para detectar apresentação de fala e pensamento
               </div>
             )
           )}

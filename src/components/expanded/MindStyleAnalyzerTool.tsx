@@ -6,8 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
-import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeMindStyle, exportMindStyleToCSV, MindStyleProfile } from "@/services/mindStyleAnalysisService";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -15,9 +13,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Ba
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
 export function MindStyleAnalyzerTool() {
-  const subcorpusContext = useSubcorpus();
-  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
-  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
+  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<MindStyleProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -78,6 +74,16 @@ export function MindStyleAnalyzerTool() {
     'balanced': 'Equilibrado'
   };
 
+  if (!loadedCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione um corpus no seletor acima para iniciar a análise de mind style.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -97,13 +103,6 @@ export function MindStyleAnalyzerTool() {
               Analisa padrões linguísticos que revelam a perspectiva cognitiva do texto através de processos verbais, modalidade e dêixis.
             </AlertDescription>
           </Alert>
-
-          <CrossCorpusSelectorWithRatio
-            mode="study-only"
-            showRatioControl={false}
-            onSelectionChange={setCrossSelection}
-            availableArtists={subcorpusContext.availableArtists}
-          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
@@ -267,7 +266,7 @@ export function MindStyleAnalyzerTool() {
           ) : (
             !isAnalyzing && (
               <div className="text-center text-muted-foreground py-8">
-                Selecione um corpus e clique em "Analisar Mind Style" para iniciar análise cognitiva
+                Clique em "Analisar Mind Style" para iniciar análise cognitiva
               </div>
             )
           )}

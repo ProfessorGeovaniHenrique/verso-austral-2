@@ -7,14 +7,11 @@ import { RhetoricalProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
-import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 
 export function RhetoricalFiguresTool() {
-  const subcorpusContext = useSubcorpus();
-  const { loadedCorpus } = subcorpusContext;
-  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
+  const { loadedCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<RhetoricalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
@@ -41,7 +38,7 @@ export function RhetoricalFiguresTool() {
   };
 
   const exportToCSV = () => {
-    if (!profile) return;
+    if (!profile || !loadedCorpus) return;
 
     const csv = [
       "Tipo,Exemplo,Contexto,Posição",
@@ -67,6 +64,16 @@ export function RhetoricalFiguresTool() {
     parallelism: "Paralelismo"
   };
 
+  if (!loadedCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione um corpus no seletor acima para iniciar a análise de figuras retóricas.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -77,13 +84,6 @@ export function RhetoricalFiguresTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <CrossCorpusSelectorWithRatio
-            mode="study-only"
-            showRatioControl={false}
-            onSelectionChange={setCrossSelection}
-            availableArtists={subcorpusContext.availableArtists}
-          />
-
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>
               <Play className="w-4 h-4 mr-2" />

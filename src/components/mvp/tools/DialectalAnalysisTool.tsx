@@ -13,13 +13,6 @@ import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
   Table,
   TableBody,
   TableCell,
@@ -28,6 +21,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Download, 
@@ -39,14 +33,12 @@ import {
   TrendingUp,
   Award,
   Sparkles,
-  Info,
   BarChart3,
   Calendar
 } from 'lucide-react';
 import { useKeywords } from '@/hooks/useKeywords';
-import { CorpusType, CORPUS_CONFIG } from '@/data/types/corpus-tools.types';
+import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { generateDialectalAnalysis } from '@/services/dialectalDictionaryService';
-import { EnrichedDialectalMark } from '@/data/types/dialectal-dictionary.types';
 import { toast } from 'sonner';
 import { DialectalWordCloud } from './DialectalWordCloud';
 
@@ -72,8 +64,10 @@ const TIPO_COLORS = {
 };
 
 export function DialectalAnalysisTool() {
-  const [corpusEstudo, setCorpusEstudo] = useState<CorpusType>('gaucho');
-  const [corpusReferencia, setCorpusReferencia] = useState<CorpusType>('nordestino');
+  const { studyCorpus, referenceCorpus } = useAnalysisTools();
+  const corpusEstudo = studyCorpus?.platformCorpus || 'gaucho';
+  const corpusReferencia = referenceCorpus?.platformCorpus || 'nordestino';
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategoria, setFilterCategoria] = useState<string>('todos');
   const [filterTipo, setFilterTipo] = useState<string>('todos');
@@ -130,6 +124,16 @@ export function DialectalAnalysisTool() {
     toast.success('Análise exportada com sucesso!');
   };
 
+  if (!studyCorpus || !referenceCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione os corpus de estudo e referência nos seletores acima para iniciar a análise dialetal.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header com seleção de corpus */}
@@ -140,44 +144,11 @@ export function DialectalAnalysisTool() {
             Análise Dialetal
           </CardTitle>
           <CardDescription>
-            Detecção automática de marcas linguísticas regionais usando o Dicionário da Cultura Pampeana
+            Detecção automática de marcas linguísticas regionais usando o Dicionário da Cultura Pampeana.
+            Comparando: {corpusEstudo} vs {corpusReferencia}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Corpus de Estudo</label>
-              <Select value={corpusEstudo} onValueChange={(v) => setCorpusEstudo(v as CorpusType)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {Object.entries(CORPUS_CONFIG).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.icon} {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Corpus de Referência</label>
-              <Select value={corpusReferencia} onValueChange={(v) => setCorpusReferencia(v as CorpusType)}>
-                <SelectTrigger className="bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
-                  {Object.entries(CORPUS_CONFIG).map(([key, config]) => (
-                    <SelectItem key={key} value={key}>
-                      {config.icon} {config.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <Button 
             onClick={handleAnalyze} 
             disabled={isLoading || corpusEstudo === corpusReferencia}
@@ -437,125 +408,55 @@ export function DialectalAnalysisTool() {
                 <CardHeader>
                   <CardTitle>Nuvem de Palavras Dialetais</CardTitle>
                   <CardDescription>
-                    Visualização interativa das marcas dialetais. Tamanho = Score de dialectalidade. 
-                    Passe o mouse sobre as palavras para ver detalhes.
+                    Tamanho proporcional ao score de relevância
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <DialectalWordCloud 
-                    marcas={analysis.marcasDialetais} 
-                    maxWords={60}
-                  />
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Heatmap de Categorias */}
-            <TabsContent value="heatmap">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Densidade Dialetal por Categoria</CardTitle>
-                  <CardDescription>
-                    Distribuição de marcas dialetais por categoria cultural
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {Object.entries(analysis.estatisticas.porCategoria)
-                    .sort(([, a], [, b]) => b - a)
-                    .map(([categoria, count]) => {
-                      const percentage = (count / analysis.estatisticas.totalMarcas) * 100;
-                      return (
-                        <div key={categoria} className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="font-medium">
-                              {CATEGORIA_LABELS[categoria as keyof typeof CATEGORIA_LABELS]}
-                            </span>
-                            <span className="text-muted-foreground">
-                              {count} termos ({percentage.toFixed(1)}%)
-                            </span>
-                          </div>
-                          <Progress value={percentage} className="h-3" />
-                        </div>
-                      );
-                    })}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Timeline de Arcaísmos */}
-            <TabsContent value="timeline">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Arcaísmos Detectados</CardTitle>
-                  <CardDescription>
-                    Palavras antigas preservadas na cultura gaúcha
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {analysis.estatisticas.arcaismos === 0 ? (
-                    <div className="text-center py-12">
-                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">
-                        Nenhum arcaísmo detectado neste corpus
-                      </p>
-                    </div>
+                  {analysis.marcasDialetais.length > 0 ? (
+                    <DialectalWordCloud marcas={analysis.marcasDialetais} />
                   ) : (
-                    <div className="space-y-3">
-                      {analysis.marcasDialetais
-                        .filter(m => m.tipo === 'arcaismo')
-                        .sort((a, b) => b.score - a.score)
-                        .slice(0, 20)
-                        .map((marca, idx) => (
-                          <div 
-                            key={idx} 
-                            className="flex items-start gap-4 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-                          >
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-amber-500/10 text-amber-700 font-bold text-sm flex-shrink-0">
-                              {idx + 1}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-bold text-lg">{marca.termo}</span>
-                                {marca.statusTemporal && (
-                                  <Badge variant="outline" className="text-xs">
-                                    {marca.statusTemporal}
-                                  </Badge>
-                                )}
-                                {marca.frequencia && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    {marca.frequencia}
-                                  </Badge>
-                                )}
-                              </div>
-                              {marca.definicao && (
-                                <p className="text-sm text-muted-foreground">
-                                  {marca.definicao}
-                                </p>
-                              )}
-                              <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                                <span>Score: {marca.score.toFixed(1)}</span>
-                                <span>LL: {marca.ll.toFixed(2)}</span>
-                                <span className="capitalize">{marca.categoria.replace('_', ' ')}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                    <div className="text-center text-muted-foreground py-12">
+                      Nenhuma marca dialetal para visualizar
                     </div>
                   )}
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
 
-          {/* Info Box */}
-          <Alert>
-            <Info className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Sobre a Análise:</strong> Esta ferramenta utiliza o Dicionário da Cultura Pampeana 
-              Sul-Rio-Grandense (Aldyr Garcia Schlee, 2019) para enriquecer a análise estatística de Keywords. 
-              Marcas com <strong>Score &gt; 50</strong> têm alta significância dialetal.
-            </AlertDescription>
-          </Alert>
+            {/* Placeholder para Heatmap */}
+            <TabsContent value="heatmap">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Heatmap de Categorias</CardTitle>
+                  <CardDescription>
+                    Visualização em construção
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center text-muted-foreground py-12">
+                    Visualização de heatmap em desenvolvimento
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Placeholder para Timeline */}
+            <TabsContent value="timeline">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Timeline de Arcaísmos</CardTitle>
+                  <CardDescription>
+                    Visualização em construção
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center text-muted-foreground py-12">
+                    Visualização de timeline em desenvolvimento
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>

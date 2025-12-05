@@ -7,8 +7,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
-import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { analyzeForegrounding, exportForegroundingToCSV, ForegroundingProfile } from "@/services/foregroundingAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -16,9 +14,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8'];
 
 export function ForegroundingDetectorTool() {
-  const subcorpusContext = useSubcorpus();
-  const { loadedCorpus, isLoading: loadingCorpus } = subcorpusContext;
-  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
+  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<ForegroundingProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -82,6 +78,16 @@ export function ForegroundingDetectorTool() {
     'parallelism': 'Paralelismo'
   };
 
+  if (!loadedCorpus) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Selecione um corpus no seletor acima para iniciar a detecção de foregrounding.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <Card>
@@ -101,13 +107,6 @@ export function ForegroundingDetectorTool() {
               Detecta desvio interno, desvio externo e paralelismo para identificar padrões proeminentes que chamam atenção do leitor.
             </AlertDescription>
           </Alert>
-
-          <CrossCorpusSelectorWithRatio
-            mode="study-only"
-            showRatioControl={false}
-            onSelectionChange={setCrossSelection}
-            availableArtists={subcorpusContext.availableArtists}
-          />
 
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
@@ -286,7 +285,7 @@ export function ForegroundingDetectorTool() {
           ) : (
             !isAnalyzing && (
               <div className="text-center text-muted-foreground py-8">
-                Selecione um corpus e clique em "Detectar Foregrounding" para identificar padrões proeminentes
+                Clique em "Detectar Foregrounding" para identificar padrões proeminentes
               </div>
             )
           )}
