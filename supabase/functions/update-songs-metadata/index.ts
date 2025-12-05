@@ -32,6 +32,24 @@ const extractDomain = (url: string): string | null => {
   }
 };
 
+// Mapear domínio extraído para valores permitidos pelo constraint songs_lyrics_source_check
+const mapToAllowedSource = (domain: string | null): string | null => {
+  if (!domain) return null;
+  
+  const domainMap: Record<string, string> = {
+    'letras.mus.br': 'letras.mus.br',
+    'letras.com.br': 'letras.mus.br',
+    'genius.com': 'genius',
+    'vagalume.com.br': 'web_search',
+    'cifraclub.com.br': 'web_search',
+    'letras.com': 'web_search',
+    'musica.com': 'web_search',
+    'kboing.com.br': 'web_search',
+  };
+  
+  return domainMap[domain] || 'web_search';
+};
+
 // Função para normalizar texto (minúsculas, sem acentos)
 const normalizeText = (text: string): string => {
   return text
@@ -165,7 +183,8 @@ serve(async (req) => {
         
         if (data.original.lyricsUrl) {
           updateData.lyrics_url = data.original.lyricsUrl;
-          updateData.lyrics_source = extractDomain(data.original.lyricsUrl);
+          const extractedDomain = extractDomain(data.original.lyricsUrl);
+          updateData.lyrics_source = mapToAllowedSource(extractedDomain);
         }
         
         if (data.original.letra) {
