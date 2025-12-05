@@ -47,6 +47,16 @@ function normalizeText(text: string): string {
 }
 
 /**
+ * Remove número de faixa do início do título
+ * Exemplos: "8 Mexe Mexe" → "Mexe Mexe", "15 Por Amor" → "Por Amor"
+ */
+function cleanTrackNumber(title: string): string {
+  if (!title) return '';
+  // Remove números seguidos de espaço no início (ex: "8 ", "15 ", "123 ")
+  return title.replace(/^\d+\s+/, '').trim();
+}
+
+/**
  * Normaliza compositor extraído para formato padrão
  */
 function normalizeComposer(rawComposer: string): string {
@@ -337,7 +347,8 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         continue;
       }
 
-      const titulo = String(row[columnMap.titulo] || '').trim();
+      const tituloRaw = String(row[columnMap.titulo] || '').trim();
+      const titulo = cleanTrackNumber(tituloRaw);
       if (!titulo) continue;
 
       const artista = row[columnMap.artista] 
