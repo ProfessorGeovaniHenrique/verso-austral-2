@@ -1,0 +1,144 @@
+/**
+ * 🧰 BASIC TOOLS TAB
+ * 
+ * Aba de ferramentas básicas de linguística de corpus
+ * Integra: Wordlist, Keywords, KWIC, Dispersão, N-grams, Nuvem de Keywords
+ */
+
+import React, { Suspense, lazy } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  List, 
+  Key, 
+  Search, 
+  BarChart3, 
+  Hash, 
+  Cloud,
+  Loader2
+} from 'lucide-react';
+import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
+import { CorpusSelector } from './CorpusSelector';
+import { StatisticsCards } from './StatisticsCards';
+import { KeywordsCloud } from './KeywordsCloud';
+import { AnalysisToolsBridge } from './ContextBridge';
+
+// Importar ferramentas existentes
+import { WordlistTool } from '@/components/mvp/tools/WordlistTool';
+import { KeywordsTool } from '@/components/mvp/tools/KeywordsTool';
+import { KWICTool } from '@/components/mvp/tools/KWICTool';
+import { DispersionTool } from '@/components/mvp/tools/DispersionTool';
+import { NGramsTool } from '@/components/mvp/tools/NGramsTool';
+
+// Loading fallback
+function ToolLoading() {
+  return (
+    <div className="flex items-center justify-center py-12">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <span className="ml-2 text-sm text-muted-foreground">Carregando ferramenta...</span>
+    </div>
+  );
+}
+
+interface BasicToolsTabProps {
+  className?: string;
+}
+
+export function BasicToolsTab({ className }: BasicToolsTabProps) {
+  const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
+  const [activeToolTab, setActiveToolTab] = React.useState('wordlist');
+  
+  return (
+    <div className="space-y-6">
+      {/* Seletores de Corpus */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <CorpusSelector
+          label="Corpus de Estudo"
+          description="Corpus principal para análise"
+          value={studyCorpus}
+          onChange={setStudyCorpus}
+          showBalancing
+        />
+        <CorpusSelector
+          label="Corpus de Referência"
+          description="Corpus para comparação estatística (Keywords, Log-Likelihood)"
+          value={referenceCorpus}
+          onChange={setReferenceCorpus}
+        />
+      </div>
+
+      {/* Cards de Estatísticas */}
+      <StatisticsCards />
+
+      {/* Ferramentas em Sub-Abas - Envolto no Bridge para sincronização */}
+      <AnalysisToolsBridge>
+        <Tabs value={activeToolTab} onValueChange={setActiveToolTab} className="space-y-4">
+          <TabsList className="grid grid-cols-3 md:grid-cols-6 w-full">
+            <TabsTrigger value="wordlist" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <List className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Wordlist</span>
+              <span className="sm:hidden">WL</span>
+            </TabsTrigger>
+            <TabsTrigger value="keywords" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <Key className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Keywords</span>
+              <span className="sm:hidden">KW</span>
+            </TabsTrigger>
+            <TabsTrigger value="kwic" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <Search className="h-3.5 w-3.5" />
+              <span>KWIC</span>
+            </TabsTrigger>
+            <TabsTrigger value="dispersion" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <BarChart3 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Dispersão</span>
+              <span className="sm:hidden">Disp</span>
+            </TabsTrigger>
+            <TabsTrigger value="ngrams" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <Hash className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">N-grams</span>
+              <span className="sm:hidden">NG</span>
+            </TabsTrigger>
+            <TabsTrigger value="cloud" className="flex items-center gap-1.5 text-xs md:text-sm">
+              <Cloud className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nuvem</span>
+              <span className="sm:hidden">☁️</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="wordlist" className="mt-4">
+            <Suspense fallback={<ToolLoading />}>
+              <WordlistTool />
+            </Suspense>
+          </TabsContent>
+          
+          <TabsContent value="keywords" className="mt-4">
+            <Suspense fallback={<ToolLoading />}>
+              <KeywordsTool />
+            </Suspense>
+          </TabsContent>
+          
+          <TabsContent value="kwic" className="mt-4">
+            <Suspense fallback={<ToolLoading />}>
+              <KWICTool />
+            </Suspense>
+          </TabsContent>
+          
+          <TabsContent value="dispersion" className="mt-4">
+            <Suspense fallback={<ToolLoading />}>
+              <DispersionTool />
+            </Suspense>
+          </TabsContent>
+          
+          <TabsContent value="ngrams" className="mt-4">
+            <Suspense fallback={<ToolLoading />}>
+              <NGramsTool />
+            </Suspense>
+          </TabsContent>
+          
+          <TabsContent value="cloud" className="mt-4">
+            <KeywordsCloud />
+          </TabsContent>
+        </Tabs>
+      </AnalysisToolsBridge>
+    </div>
+  );
+}

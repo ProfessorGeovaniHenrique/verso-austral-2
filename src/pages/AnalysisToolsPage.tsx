@@ -15,7 +15,6 @@ import {
   FileText, 
   Sparkles, 
   Globe, 
-  Upload,
   ArrowLeft 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,56 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnalysisToolsProvider, useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusUploader } from '@/components/analysis-tools/CorpusUploader';
 import { CorpusSelector } from '@/components/analysis-tools/CorpusSelector';
-
-// Placeholder para as abas (serão implementadas nos próximos sprints)
-function BasicToolsTab() {
-  const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
-  
-  return (
-    <div className="space-y-6">
-      {/* Seletores de Corpus */}
-      <div className="grid md:grid-cols-2 gap-4">
-        <CorpusSelector
-          label="Corpus de Estudo"
-          description="Corpus principal para análise"
-          value={studyCorpus}
-          onChange={setStudyCorpus}
-          showBalancing
-        />
-        <CorpusSelector
-          label="Corpus de Referência"
-          description="Corpus para comparação estatística (Keywords, Log-Likelihood)"
-          value={referenceCorpus}
-          onChange={setReferenceCorpus}
-        />
-      </div>
-
-      {/* Ferramentas Placeholder */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { name: 'Wordlist', desc: 'Lista de frequência de palavras' },
-          { name: 'Keywords', desc: 'Palavras-chave estatísticas (LL, MI)' },
-          { name: 'KWIC', desc: 'Concordância em contexto' },
-          { name: 'Dispersão', desc: 'Distribuição de palavras no corpus' },
-          { name: 'N-grams', desc: 'Sequências de palavras frequentes' },
-          { name: 'Nuvem de Keywords', desc: 'Visualização de palavras-chave' },
-        ].map(tool => (
-          <Card key={tool.name} className="opacity-60">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">{tool.name}</CardTitle>
-              <CardDescription className="text-xs">{tool.desc}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground italic">
-                Sprint P3-1: Em desenvolvimento
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { BasicToolsTab } from '@/components/analysis-tools/BasicToolsTab';
 
 function StyleAnalysisTab() {
   const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
