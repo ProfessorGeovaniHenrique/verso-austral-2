@@ -13,7 +13,7 @@ import {
   GraduationCap, Microscope, Sparkles, BookText,
   Library, Music, Activity, Tags, Database, BookOpen, FileQuestion,
   Key, Users, BarChart3, History, CircuitBoard, Telescope,
-  Upload, Gauge, LayoutDashboard, HelpCircle
+  Upload, Gauge, LayoutDashboard, HelpCircle, Wrench
 } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 
@@ -54,12 +54,23 @@ export const mainPages: NavItem[] = [
     url: "/dashboard-expandido", 
     icon: BookText 
   },
+  { 
+    title: "Ferramentas de EC", 
+    url: "/analysis-tools", 
+    icon: Wrench 
+  },
 ];
 
 // ============================================
 // DATA TOOLS - Admin only
 // ============================================
 export const dataTools: NavItem[] = [
+  { 
+    title: "Ferramentas de EC", 
+    shortTitle: "EC Tools",
+    url: "/analysis-tools", 
+    icon: Wrench 
+  },
   { 
     title: "Catálogo de Músicas", 
     shortTitle: "Catálogo",
@@ -218,6 +229,7 @@ export const adminSidebarGroups = [
   {
     label: "Desenvolvimento",
     items: [
+      { title: "Ferramentas de EC", url: "/analysis-tools", icon: Wrench },
       { title: "Dashboard MVP Definitivo", url: "/dashboard-mvp-definitivo", icon: LayoutDashboard },
       { title: "Dashboard Expandido", url: "/dashboard-expandido", icon: Gauge },
       { title: "Importação de Dicionários", url: "/admin/dictionary-import", icon: Upload },

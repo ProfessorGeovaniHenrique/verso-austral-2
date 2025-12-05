@@ -3,7 +3,7 @@ import { MVPFooter } from "@/components/mvp/MVPFooter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
-import { Activity, BarChart3, Network, Target, ArrowLeft, Brain } from "lucide-react";
+import { Activity, BarChart3, Network, Target, ArrowLeft, Brain, Wrench } from "lucide-react";
 import { TabProcessamento } from "@/components/mvp/TabProcessamento";
 import { TabDominios } from "@/components/analise/TabDominios";
 import { TabQuizInterpretacao } from "@/components/analise/TabQuizInterpretacao";
@@ -52,8 +52,8 @@ export default function DashboardAnalise() {
             <MVPHeader />
         
         <main className="container-academic py-4 md:py-8 mt-[180px]">
-          {/* Botão de Retorno */}
-          <div className="mb-4">
+          {/* Botões de Navegação */}
+          <div className="mb-4 flex flex-wrap gap-2">
             <Button
               variant="ghost"
               size="sm"
@@ -63,6 +63,17 @@ export default function DashboardAnalise() {
               <Link to="/dashboard-mvp-definitivo">
                 <ArrowLeft className="h-4 w-4" />
                 Retornar à Página Principal
+              </Link>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              asChild
+              className="gap-2"
+            >
+              <Link to="/analysis-tools">
+                <Wrench className="h-4 w-4" />
+                Ferramentas de EC
               </Link>
             </Button>
           </div>
