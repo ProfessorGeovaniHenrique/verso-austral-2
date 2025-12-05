@@ -237,6 +237,12 @@ export default function MusicCatalog() {
               onAnnotateArtist={state.annotateArtist}
               isAnnotatingArtist={state.isAnnotatingArtist}
               reload={state.reload}
+              selectedCorpusId={state.selectedCorpusFilter !== 'all' ? state.selectedCorpusFilter : undefined}
+              selectedCorpusName={
+                state.selectedCorpusFilter !== 'all'
+                  ? corpusOptions.find(c => c.id === state.selectedCorpusFilter)?.name
+                  : undefined
+              }
             />
           </TabsContent>
 

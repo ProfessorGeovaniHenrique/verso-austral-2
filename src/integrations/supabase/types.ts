@@ -790,6 +790,104 @@ export type Database = {
         }
         Relationships: []
       }
+      corpus_annotation_jobs: {
+        Row: {
+          corpus_id: string | null
+          corpus_name: string
+          created_at: string | null
+          current_artist_id: string | null
+          current_artist_job_id: string | null
+          current_artist_name: string | null
+          erro_mensagem: string | null
+          id: string
+          is_cancelling: boolean | null
+          last_artist_at: string | null
+          processed_artists: number | null
+          processed_songs: number | null
+          processed_words: number | null
+          status: string
+          tempo_fim: string | null
+          tempo_inicio: string | null
+          total_artists: number | null
+          total_songs: number | null
+          total_words_estimated: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          corpus_id?: string | null
+          corpus_name: string
+          created_at?: string | null
+          current_artist_id?: string | null
+          current_artist_job_id?: string | null
+          current_artist_name?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          is_cancelling?: boolean | null
+          last_artist_at?: string | null
+          processed_artists?: number | null
+          processed_songs?: number | null
+          processed_words?: number | null
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          total_artists?: number | null
+          total_songs?: number | null
+          total_words_estimated?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          corpus_id?: string | null
+          corpus_name?: string
+          created_at?: string | null
+          current_artist_id?: string | null
+          current_artist_job_id?: string | null
+          current_artist_name?: string | null
+          erro_mensagem?: string | null
+          id?: string
+          is_cancelling?: boolean | null
+          last_artist_at?: string | null
+          processed_artists?: number | null
+          processed_songs?: number | null
+          processed_words?: number | null
+          status?: string
+          tempo_fim?: string | null
+          tempo_inicio?: string | null
+          total_artists?: number | null
+          total_songs?: number | null
+          total_words_estimated?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "corpus_annotation_jobs_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
+            columns: ["current_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_stats_mv"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
+            columns: ["current_artist_id"]
+            isOneToOne: false
+            referencedRelation: "artists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corpus_annotation_jobs_current_artist_job_id_fkey"
+            columns: ["current_artist_job_id"]
+            isOneToOne: false
+            referencedRelation: "annotation_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cultural_insignia_attribution: {
         Row: {
           confianca: number | null

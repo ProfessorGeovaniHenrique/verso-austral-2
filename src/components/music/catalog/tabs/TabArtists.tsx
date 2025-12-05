@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArtistCard } from '@/components/music';
+import { CorpusAnnotationJobCard } from '@/components/music/CorpusAnnotationJobCard';
 import { Sparkles, Loader2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -40,6 +41,8 @@ interface TabArtistsProps {
   onDeleteArtist: (artistId: string, artistName: string) => Promise<void>;
   reload: () => Promise<void>;
   totalSongs: number;
+  selectedCorpusId?: string;
+  selectedCorpusName?: string;
 }
 
 const AlphabetFilter = memo(({ selectedLetter, onLetterChange }: { 
@@ -94,6 +97,8 @@ export function TabArtists({
   onDeleteArtist,
   reload,
   totalSongs,
+  selectedCorpusId,
+  selectedCorpusName,
 }: TabArtistsProps) {
   const { toast } = useToast();
   const { enrichYouTubeBatch } = useYouTubeEnrichment();
@@ -218,6 +223,14 @@ export function TabArtists({
 
   return (
     <div className="space-y-4">
+      {/* Card de Anotação de Corpus */}
+      {selectedCorpusId && selectedCorpusName && (
+        <CorpusAnnotationJobCard
+          corpusId={selectedCorpusId}
+          corpusName={selectedCorpusName}
+        />
+      )}
+
       {/* Alerta de Jobs Órfãos */}
       {orphanedJobs.length > 0 && (
         <Alert variant="destructive" className="border-amber-500 bg-amber-500/10">

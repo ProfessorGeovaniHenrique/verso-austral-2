@@ -186,3 +186,6 @@ verify_jwt = false
 
 [functions.refine-domain-batch]
 verify_jwt = false
+
+[functions.annotate-corpus]
+verify_jwt = false
