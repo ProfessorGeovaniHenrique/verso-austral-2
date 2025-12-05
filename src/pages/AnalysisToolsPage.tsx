@@ -2,10 +2,11 @@
  * 🔬 ANALYSIS TOOLS PAGE (Página 3 MVP)
  * 
  * Página principal de ferramentas de análise linguística
- * Organizada em 3 abas:
+ * Organizada em 4 abas:
  * - Ferramentas Básicas (Wordlist, Keywords, KWIC, etc.)
  * - Análise de Estilo (Leech & Short)
  * - Análise Cultural (Temporal, Dialetal)
+ * - Visualizações (Rede Semântica, Galáxia, etc.)
  */
 
 import React from 'react';
@@ -14,7 +15,8 @@ import {
   FileText, 
   Sparkles, 
   Globe, 
-  ArrowLeft 
+  ArrowLeft,
+  BarChart3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +25,7 @@ import { CorpusUploader } from '@/components/analysis-tools/CorpusUploader';
 import { BasicToolsTab } from '@/components/analysis-tools/BasicToolsTab';
 import { StyleAnalysisTab } from '@/components/analysis-tools/StyleAnalysisTab';
 import { CulturalAnalysisTab } from '@/components/analysis-tools/CulturalAnalysisTab';
+import { VisualizationsTab } from '@/components/analysis-tools/VisualizationsTab';
 
 function AnalysisToolsContent() {
   const navigate = useNavigate();
@@ -61,21 +64,26 @@ function AnalysisToolsContent() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="basic" className="flex items-center gap-2">
             <FileText className="h-4 w-4" />
-            <span className="hidden sm:inline">Ferramentas Básicas</span>
+            <span className="hidden sm:inline">Básicas</span>
             <span className="sm:hidden">Básicas</span>
           </TabsTrigger>
           <TabsTrigger value="style" className="flex items-center gap-2">
             <Sparkles className="h-4 w-4" />
-            <span className="hidden sm:inline">Análise de Estilo</span>
+            <span className="hidden sm:inline">Estilo</span>
             <span className="sm:hidden">Estilo</span>
           </TabsTrigger>
           <TabsTrigger value="cultural" className="flex items-center gap-2">
             <Globe className="h-4 w-4" />
-            <span className="hidden sm:inline">Análise Cultural</span>
+            <span className="hidden sm:inline">Cultural</span>
             <span className="sm:hidden">Cultural</span>
+          </TabsTrigger>
+          <TabsTrigger value="visualizations" className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4" />
+            <span className="hidden sm:inline">Visualizações</span>
+            <span className="sm:hidden">Visual</span>
           </TabsTrigger>
         </TabsList>
 
@@ -89,6 +97,10 @@ function AnalysisToolsContent() {
         
         <TabsContent value="cultural">
           <CulturalAnalysisTab />
+        </TabsContent>
+
+        <TabsContent value="visualizations">
+          <VisualizationsTab />
         </TabsContent>
       </Tabs>
     </div>
