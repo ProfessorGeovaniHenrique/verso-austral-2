@@ -20,12 +20,193 @@ interface WorkerResponse {
   error?: string;
 }
 
+interface ComposerExtractionResult {
+  composer: string | null;
+  cleanedLyrics: string;
+  extractionType: 'parentheses' | 'prefix' | 'name_line' | 'none';
+  confidence: number;
+}
+
+// Métricas de extração para logging
+const extractionStats = {
+  total: 0,
+  withParentheses: 0,
+  withPrefix: 0,
+  withNameLine: 0,
+  noExtraction: 0,
+  falsePositivesAvoided: 0,
+};
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+/**
+ * Normaliza compositor extraído para formato padrão
+ */
+function normalizeComposer(rawComposer: string): string {
+  return rawComposer
+    .replace(/<br\s*\/?>/gi, ' ')         // Remover quebras HTML
+    .replace(/\s+/g, ' ')                  // Normalizar espaços
+    .replace(/\s*[\/]\s*/g, ' / ')         // Normalizar separador /
+    .replace(/\s*[&]\s*/g, ' & ')          // Normalizar separador &
+    .replace(/\s+e\s+/gi, ' e ')           // Normalizar separador "e"
+    .replace(/^\s*[-–—]\s*/, '')           // Remover traço inicial
+    .replace(/[()]/g, '')                  // Remover parênteses residuais
+    .trim();
+}
+
+/**
+ * Verifica se texto parece ser nome de compositor (não início de verso)
+ */
+function looksLikeComposerName(text: string): boolean {
+  const normalized = text.trim();
+  
+  // Falsos positivos comuns - início de versos ou indicações
+  const falsePositivePatterns = [
+    /^declamad[ao]/i,
+    /^instrumental/i,
+    /^(vou|eu|se|quando|como|pra|que|um|uma|o|a|os|as|no|na|em|de|do|da)\s/i,
+    /^(era|foi|tem|tinha|estou|estava|sou|és|é)\s/i,
+    /^\d+/,                                // Começa com número
+    /[!?.,;:]$/,                           // Termina com pontuação de verso
+    /^[a-záéíóúàâêôãõç]+$/i,              // Palavra única minúscula (verso)
+  ];
+  
+  for (const pattern of falsePositivePatterns) {
+    if (pattern.test(normalized)) {
+      return false;
+    }
+  }
+  
+  // Padrão de nome: Palavra capitalizada, possivelmente com separadores
+  const namePattern = /^[A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*[\/&e]\s*[A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)*$/;
+  
+  // Também aceita nomes com iniciais: "J. Silva / M. Santos"
+  const nameWithInitialsPattern = /^[A-ZÀ-Ú]\.?\s*[A-ZÀ-Ú]?[a-zà-ú]*(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*(?:\s*[\/&e]\s*[A-ZÀ-Ú]\.?\s*[A-ZÀ-Ú]?[a-zà-ú]*(?:\s+[A-ZÀ-Ú][a-zà-ú]+)*)*$/;
+  
+  return namePattern.test(normalized) || nameWithInitialsPattern.test(normalized);
+}
+
+/**
+ * Extrai compositor de letra usando detecção de padrões
+ */
+function extractComposerFromLyrics(rawLyrics: string): ComposerExtractionResult {
+  extractionStats.total++;
+  
+  if (!rawLyrics || rawLyrics.length < 10) {
+    extractionStats.noExtraction++;
+    return { composer: null, cleanedLyrics: rawLyrics || '', extractionType: 'none', confidence: 0 };
+  }
+  
+  let lyrics = rawLyrics.trim();
+  
+  // === PADRÃO 1: Prefixo estruturado (maior confiança) ===
+  // Ex: "- Aut.: Leonir / Aristides", "- Autor: João Silva"
+  const prefixPatterns = [
+    /^-?\s*Aut\.?\s*:?\s*(.+?)(?:<br\s*\/?>|\n|$)/im,
+    /^-?\s*Autor(?:es)?\.?\s*:?\s*(.+?)(?:<br\s*\/?>|\n|$)/im,
+    /^-?\s*Compositor(?:es)?\.?\s*:?\s*(.+?)(?:<br\s*\/?>|\n|$)/im,
+    /^-?\s*Comp\.?\s*:?\s*(.+?)(?:<br\s*\/?>|\n|$)/im,
+  ];
+  
+  for (const pattern of prefixPatterns) {
+    const match = lyrics.match(pattern);
+    if (match && match[1]) {
+      const extracted = normalizeComposer(match[1]);
+      if (extracted.length > 2 && extracted.length < 200) {
+        extractionStats.withPrefix++;
+        const cleanedLyrics = lyrics.replace(pattern, '').trim();
+        return {
+          composer: extracted,
+          cleanedLyrics: cleanedLyrics.replace(/^(<br\s*\/?>|\n|\s)+/gi, '').trim(),
+          extractionType: 'prefix',
+          confidence: 0.95,
+        };
+      }
+    }
+  }
+  
+  // === PADRÃO 2: Compositor em parênteses no início ===
+  // Ex: "( Rogério Villagran / André Teixeira )", "(Juliano Borges)"
+  const parenthesesPattern = /^\s*\(\s*([^)]+)\s*\)/;
+  const parenthesesMatch = lyrics.match(parenthesesPattern);
+  
+  if (parenthesesMatch && parenthesesMatch[1]) {
+    const content = parenthesesMatch[1].trim();
+    
+    // Verificar se parece nome de compositor (não indicação como "declamada")
+    if (looksLikeComposerName(content)) {
+      const extracted = normalizeComposer(content);
+      if (extracted.length > 2 && extracted.length < 200) {
+        extractionStats.withParentheses++;
+        const cleanedLyrics = lyrics.replace(parenthesesPattern, '').trim();
+        return {
+          composer: extracted,
+          cleanedLyrics: cleanedLyrics.replace(/^(<br\s*\/?>|\n|\s)+/gi, '').trim(),
+          extractionType: 'parentheses',
+          confidence: 0.90,
+        };
+      }
+    } else {
+      extractionStats.falsePositivesAvoided++;
+    }
+  }
+  
+  // === PADRÃO 3: Nome(s) na primeira linha seguido de linha em branco ===
+  // Ex: "Leonir / Aristides dos Passos\n\nQuando o galo canta..."
+  // Detecta: Nome1 / Nome2 seguido de quebra dupla
+  const firstLineMatch = lyrics.match(/^([^\n<]+?)(?:\s*<br\s*\/?>|\n)(?:\s*<br\s*\/?>|\n)/i);
+  
+  if (firstLineMatch && firstLineMatch[1]) {
+    const firstLine = firstLineMatch[1].trim();
+    
+    // Verificar se primeira linha parece nomes de compositores
+    // Deve ter formato: "Nome1 / Nome2" ou "Nome1 e Nome2" ou "Nome Sobrenome"
+    if (looksLikeComposerName(firstLine) && firstLine.length < 150) {
+      const extracted = normalizeComposer(firstLine);
+      if (extracted.length > 2) {
+        extractionStats.withNameLine++;
+        const cleanedLyrics = lyrics.replace(/^[^\n<]+?(?:\s*<br\s*\/?>|\n)+/i, '').trim();
+        return {
+          composer: extracted,
+          cleanedLyrics: cleanedLyrics.replace(/^(<br\s*\/?>|\n|\s)+/gi, '').trim(),
+          extractionType: 'name_line',
+          confidence: 0.75,
+        };
+      }
+    }
+  }
+  
+  // === PADRÃO 4: Nome entre aspas no início ===
+  // Ex: "JP Batista/João Luiz Corrêa/Sandro Coelho" (aspas tipográficas)
+  const quotedPattern = /^[""]([^""]+)[""]\s*(?:;|\n|<br)/i;
+  const quotedMatch = lyrics.match(quotedPattern);
+  
+  if (quotedMatch && quotedMatch[1]) {
+    const content = quotedMatch[1].trim();
+    if (looksLikeComposerName(content)) {
+      const extracted = normalizeComposer(content);
+      if (extracted.length > 2 && extracted.length < 200) {
+        extractionStats.withNameLine++;
+        const cleanedLyrics = lyrics.replace(quotedPattern, '').trim();
+        return {
+          composer: extracted,
+          cleanedLyrics: cleanedLyrics.replace(/^(<br\s*\/?>|\n|\s|;)+/gi, '').trim(),
+          extractionType: 'name_line',
+          confidence: 0.80,
+        };
+      }
+    }
+  }
+  
+  // Nenhum compositor detectado
+  extractionStats.noExtraction++;
+  return { composer: null, cleanedLyrics: lyrics, extractionType: 'none', confidence: 0 };
 }
 
 function sanitizeLyrics(rawLyrics: string): string {
@@ -173,7 +354,26 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
       const letraRaw = row[columnMap.letra]
         ? String(row[columnMap.letra]).trim()
         : '';
-      const letra = sanitizeLyrics(letraRaw);
+      const letraSanitized = sanitizeLyrics(letraRaw);
+      
+      // Extrair compositor da letra se não vier da planilha
+      const { composer: extractedComposer, cleanedLyrics, extractionType, confidence } = 
+        extractComposerFromLyrics(letraSanitized);
+      
+      // Prioridade: compositor da planilha > compositor extraído da letra
+      const compositorFinal = compositor || extractedComposer || '';
+      
+      // Usar letra limpa (sem compositor no início)
+      const letraFinal = cleanedLyrics;
+      
+      // Log para debug das primeiras extrações
+      if (extractedComposer && i <= 5) {
+        console.log(`[Parser] Compositor extraído (${extractionType}, conf: ${confidence}):`, {
+          titulo,
+          compositor: extractedComposer,
+          original: letraSanitized.substring(0, 100) + '...',
+        });
+      }
 
       const lyricsUrl = row[columnMap.url]
         ? String(row[columnMap.url]).trim()
@@ -185,14 +385,24 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
         id: `${i}-${Date.now()}`,
         titulo,
         artista,
-        compositor,
+        compositor: compositorFinal,
         ano,
-        letra,
+        letra: letraFinal,
         lyricsUrl: lyricsUrl || undefined,
         fonte: file.name,
       });
     }
 
+    // Log de métricas de extração
+    console.log('[Parser] Extração de compositores:', {
+      total: extractionStats.total,
+      comPrefixo: extractionStats.withPrefix,
+      comParenteses: extractionStats.withParentheses,
+      comNomeLinha: extractionStats.withNameLine,
+      semExtracao: extractionStats.noExtraction,
+      falsosPositivosEvitados: extractionStats.falsePositivesAvoided,
+    });
+    
     console.log('[Parser] Primeiras 3 músicas parseadas:', parsedData.slice(0, 3));
 
     const response: WorkerResponse = {
