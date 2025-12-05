@@ -89,16 +89,28 @@ export function useCorpusSyncEffect() {
   const getFilteredCorpusRef = useRef(getFilteredCorpus);
   getFilteredCorpusRef.current = getFilteredCorpus;
 
-  // Sincroniza studyCorpus → SubcorpusContext.selection
+  // Refs para verificar igualdade e evitar re-renders desnecessários
+  const prevSelectionRef = useRef<string | null>(null);
+  const prevStylisticRef = useRef<string | null>(null);
+  const prevKeywordsStudyRef = useRef<string | null>(null);
+  const prevKeywordsRefRef = useRef<string | null>(null);
+
+  // Sincroniza studyCorpus → SubcorpusContext.selection (COM VERIFICAÇÃO)
   useEffect(() => {
     if (studyCorpus && studyCorpus.type === 'platform') {
       const legacy = corpusSelectionToLegacy(studyCorpus);
-      setSelection({
-        corpusBase: legacy.corpusBase,
-        mode: legacy.mode,
-        artistaA: legacy.artistaA,
-        artistaB: legacy.artistaB
-      });
+      const newValue = JSON.stringify(legacy);
+      
+      // Só atualiza se valores diferentes
+      if (prevSelectionRef.current !== newValue) {
+        prevSelectionRef.current = newValue;
+        setSelection({
+          corpusBase: legacy.corpusBase,
+          mode: legacy.mode,
+          artistaA: legacy.artistaA,
+          artistaB: legacy.artistaB
+        });
+      }
     }
   }, [studyCorpus, setSelection]);
 
@@ -127,33 +139,53 @@ export function useCorpusSyncEffect() {
     return () => { cancelled = true; };
   }, [studyCorpus]); // SEM getFilteredCorpus nas dependências!
 
-  // Sincroniza studyCorpus + referenceCorpus → SubcorpusContext.stylisticSelection
+  // Sincroniza studyCorpus + referenceCorpus → SubcorpusContext.stylisticSelection (COM VERIFICAÇÃO)
   useEffect(() => {
     const stylistic = corpusSelectionToStylistic(studyCorpus, referenceCorpus);
     if (stylistic) {
-      setStylisticSelection(stylistic);
+      const newValue = JSON.stringify(stylistic);
+      
+      // Só atualiza se valores diferentes
+      if (prevStylisticRef.current !== newValue) {
+        prevStylisticRef.current = newValue;
+        setStylisticSelection(stylistic);
+      }
     }
   }, [studyCorpus, referenceCorpus, setStylisticSelection]);
 
-  // Sincroniza referenceCorpus → ToolsContext.keywordsState
+  // Sincroniza referenceCorpus → ToolsContext.keywordsState (COM VERIFICAÇÃO)
   useEffect(() => {
     if (referenceCorpus && referenceCorpus.type === 'platform') {
-      setKeywordsState({
+      const newState = {
         refCorpusBase: referenceCorpus.platformCorpus || 'nordestino',
-        refMode: referenceCorpus.platformArtist ? 'artist' : 'complete',
+        refMode: (referenceCorpus.platformArtist ? 'artist' : 'complete') as 'artist' | 'complete',
         refArtist: referenceCorpus.platformArtist || null
-      });
+      };
+      const newValue = JSON.stringify(newState);
+      
+      // Só atualiza se valores diferentes
+      if (prevKeywordsRefRef.current !== newValue) {
+        prevKeywordsRefRef.current = newValue;
+        setKeywordsState(newState);
+      }
     }
   }, [referenceCorpus, setKeywordsState]);
 
-  // Sincroniza studyCorpus → ToolsContext.keywordsState (para estudoCorpus)
+  // Sincroniza studyCorpus → ToolsContext.keywordsState (COM VERIFICAÇÃO)
   useEffect(() => {
     if (studyCorpus && studyCorpus.type === 'platform') {
-      setKeywordsState({
+      const newState = {
         estudoCorpusBase: studyCorpus.platformCorpus || 'gaucho',
-        estudoMode: studyCorpus.platformArtist ? 'artist' : 'complete',
+        estudoMode: (studyCorpus.platformArtist ? 'artist' : 'complete') as 'artist' | 'complete',
         estudoArtist: studyCorpus.platformArtist || null
-      });
+      };
+      const newValue = JSON.stringify(newState);
+      
+      // Só atualiza se valores diferentes
+      if (prevKeywordsStudyRef.current !== newValue) {
+        prevKeywordsStudyRef.current = newValue;
+        setKeywordsState(newState);
+      }
     }
   }, [studyCorpus, setKeywordsState]);
 
