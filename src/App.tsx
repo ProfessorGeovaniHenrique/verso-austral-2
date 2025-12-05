@@ -44,6 +44,7 @@ import AdminSemanticTagsetValidation from "./pages/AdminSemanticTagsetValidation
 import AdminSemanticPipeline from "./pages/AdminSemanticPipeline";
 import ApiUsage from "./pages/ApiUsage";
 import DashboardExpandido from "./pages/DashboardExpandido";
+import AnalysisToolsPage from "./pages/AnalysisToolsPage";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import { lazy, Suspense } from "react";
@@ -83,6 +84,14 @@ const RouterContent = () => {
         {/* Rota independente para DashboardMVPDefinitivo (sem AppLayout para evitar duplo header) */}
         <Route path="/dashboard-mvp-definitivo" element={<DashboardMVPDefinitivo />} />
         <Route path="/dashboard-expandido" element={<DashboardExpandido />} />
+        <Route 
+          path="/analysis-tools" 
+          element={
+            <ProtectedRoute>
+              <AnalysisToolsPage />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/dashboard-analise" 
           element={
