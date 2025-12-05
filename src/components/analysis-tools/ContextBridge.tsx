@@ -5,11 +5,12 @@
  * Permite que as ferramentas existentes funcionem na nova página sem refatoração
  */
 
-import React, { useEffect, ReactNode } from 'react';
+import React, { useEffect, useState, ReactNode } from 'react';
 import { useAnalysisTools, CorpusSelection } from '@/contexts/AnalysisToolsContext';
 import { useSubcorpus } from '@/contexts/SubcorpusContext';
 import { useTools } from '@/contexts/ToolsContext';
 import { CorpusType } from '@/data/types/corpus-tools.types';
+import { toast } from 'sonner';
 
 interface ContextBridgeProps {
   children: ReactNode;
@@ -80,8 +81,9 @@ function corpusSelectionToStylistic(
  */
 export function useCorpusSyncEffect() {
   const { studyCorpus, referenceCorpus } = useAnalysisTools();
-  const { setSelection, setStylisticSelection } = useSubcorpus();
+  const { setSelection, setStylisticSelection, getFilteredCorpus } = useSubcorpus();
   const { setKeywordsState } = useTools();
+  const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
 
   // Sincroniza studyCorpus → SubcorpusContext.selection
   useEffect(() => {
@@ -95,6 +97,31 @@ export function useCorpusSyncEffect() {
       });
     }
   }, [studyCorpus, setSelection]);
+
+  // Carrega corpus automaticamente após seleção mudar
+  useEffect(() => {
+    if (!studyCorpus || studyCorpus.type !== 'platform') return;
+    
+    let cancelled = false;
+    
+    const loadCorpus = async () => {
+      setIsLoadingCorpus(true);
+      try {
+        await getFilteredCorpus();
+      } catch (error) {
+        console.error('Erro ao carregar corpus:', error);
+        if (!cancelled) {
+          toast.error('Erro ao carregar corpus');
+        }
+      } finally {
+        if (!cancelled) setIsLoadingCorpus(false);
+      }
+    };
+    
+    loadCorpus();
+    
+    return () => { cancelled = true; };
+  }, [studyCorpus, getFilteredCorpus]);
 
   // Sincroniza studyCorpus + referenceCorpus → SubcorpusContext.stylisticSelection
   useEffect(() => {
@@ -125,6 +152,8 @@ export function useCorpusSyncEffect() {
       });
     }
   }, [studyCorpus, setKeywordsState]);
+
+  return { isLoadingCorpus };
 }
 
 /**
@@ -142,12 +171,23 @@ export function useCorpusSyncStatus() {
   };
 }
 
+interface AnalysisToolsBridgeRenderProps {
+  isLoadingCorpus: boolean;
+}
+
+interface ContextBridgePropsWithRender {
+  children: ReactNode | ((props: AnalysisToolsBridgeRenderProps) => ReactNode);
+}
+
 /**
  * Provider wrapper que automaticamente sincroniza contextos
  */
-export function AnalysisToolsBridge({ children }: ContextBridgeProps) {
-  // Executa a sincronização automaticamente
-  useCorpusSyncEffect();
+export function AnalysisToolsBridge({ children }: ContextBridgePropsWithRender) {
+  const { isLoadingCorpus } = useCorpusSyncEffect();
+  
+  if (typeof children === 'function') {
+    return <>{children({ isLoadingCorpus })}</>;
+  }
   
   return <>{children}</>;
 }

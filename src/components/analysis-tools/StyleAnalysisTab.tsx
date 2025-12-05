@@ -15,6 +15,7 @@
 
 import React, { useState, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   BookOpen, 
   FileText, 
@@ -22,7 +23,8 @@ import {
   Link2, 
   MessageCircle, 
   Brain, 
-  Sparkles 
+  Sparkles,
+  Loader2 
 } from 'lucide-react';
 import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusSelector } from './CorpusSelector';
@@ -78,76 +80,87 @@ export function StyleAnalysisTab() {
 
       {/* Ferramentas em Sub-Abas */}
       <AnalysisToolsBridge>
-        <Tabs value={activeToolTab} onValueChange={setActiveToolTab}>
-          <TabsList className="grid grid-cols-4 md:grid-cols-7 w-full">
-            {styleTools.map(tool => (
-              <TabsTrigger 
-                key={tool.id} 
-                value={tool.id} 
-                className="flex items-center gap-1.5"
-              >
-                <tool.icon className="h-3.5 w-3.5" />
-                <span className="hidden md:inline">{tool.label}</span>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-          
-          <TabsContent value="lexical" className="mt-4">
-            <ToolErrorBoundary toolName="Perfil Léxico">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <TabLexicalProfile />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="syntactic" className="mt-4">
-            <ToolErrorBoundary toolName="Perfil Sintático">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <SyntacticProfileTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="rhetorical" className="mt-4">
-            <ToolErrorBoundary toolName="Figuras Retóricas">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <RhetoricalFiguresTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="cohesion" className="mt-4">
-            <ToolErrorBoundary toolName="Análise de Coesão">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <CohesionAnalysisTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="speech" className="mt-4">
-            <ToolErrorBoundary toolName="Fala e Pensamento">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <SpeechThoughtPresentationTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="mind" className="mt-4">
-            <ToolErrorBoundary toolName="Mind Style">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <MindStyleAnalyzerTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-          
-          <TabsContent value="foregrounding" className="mt-4">
-            <ToolErrorBoundary toolName="Foregrounding">
-              <Suspense fallback={<ToolLoadingSkeleton />}>
-                <ForegroundingDetectorTool />
-              </Suspense>
-            </ToolErrorBoundary>
-          </TabsContent>
-        </Tabs>
+        {({ isLoadingCorpus }) => (
+          <>
+            {isLoadingCorpus && (
+              <Alert className="mb-4">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <AlertDescription className="ml-2">Carregando corpus...</AlertDescription>
+              </Alert>
+            )}
+            
+            <Tabs value={activeToolTab} onValueChange={setActiveToolTab}>
+              <TabsList className="grid grid-cols-4 md:grid-cols-7 w-full">
+                {styleTools.map(tool => (
+                  <TabsTrigger 
+                    key={tool.id} 
+                    value={tool.id} 
+                    className="flex items-center gap-1.5"
+                  >
+                    <tool.icon className="h-3.5 w-3.5" />
+                    <span className="hidden md:inline">{tool.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+              
+              <TabsContent value="lexical" className="mt-4">
+                <ToolErrorBoundary toolName="Perfil Léxico">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <TabLexicalProfile />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="syntactic" className="mt-4">
+                <ToolErrorBoundary toolName="Perfil Sintático">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <SyntacticProfileTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="rhetorical" className="mt-4">
+                <ToolErrorBoundary toolName="Figuras Retóricas">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <RhetoricalFiguresTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="cohesion" className="mt-4">
+                <ToolErrorBoundary toolName="Análise de Coesão">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <CohesionAnalysisTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="speech" className="mt-4">
+                <ToolErrorBoundary toolName="Fala e Pensamento">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <SpeechThoughtPresentationTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="mind" className="mt-4">
+                <ToolErrorBoundary toolName="Mind Style">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <MindStyleAnalyzerTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+              
+              <TabsContent value="foregrounding" className="mt-4">
+                <ToolErrorBoundary toolName="Foregrounding">
+                  <Suspense fallback={<ToolLoadingSkeleton />}>
+                    <ForegroundingDetectorTool />
+                  </Suspense>
+                </ToolErrorBoundary>
+              </TabsContent>
+            </Tabs>
+          </>
+        )}
       </AnalysisToolsBridge>
     </div>
   );
