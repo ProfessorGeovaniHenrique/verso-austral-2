@@ -9,6 +9,8 @@ import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { analyzeMindStyle, exportMindStyleToCSV, MindStyleProfile } from "@/services/mindStyleAnalysisService";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { mindStyleTheory } from "@/data/theoretical/stylistic-theory";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
@@ -17,6 +19,7 @@ export function MindStyleAnalyzerTool() {
   const [profile, setProfile] = useState<MindStyleProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -97,6 +100,7 @@ export function MindStyleAnalyzerTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TheoryBriefCard framework={mindStyleTheory} onOpenDetail={() => setShowTheoryModal(true)} />
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -270,8 +274,15 @@ export function MindStyleAnalyzerTool() {
               </div>
             )
           )}
+          {profile && (
+            <div className="space-y-4 mt-4">
+              <AnalysisSuggestionsCard framework={mindStyleTheory} compact />
+              <BlauNunesConsultant framework={mindStyleTheory} analysisResults={profile} compact />
+            </div>
+          )}
         </CardContent>
       </Card>
+      <TheoryDetailModal open={showTheoryModal} onClose={() => setShowTheoryModal(false)} framework={mindStyleTheory} />
     </div>
   );
 }

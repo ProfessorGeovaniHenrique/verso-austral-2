@@ -8,11 +8,14 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { cohesionTheory } from "@/data/theoretical/stylistic-theory";
 
 export function CohesionAnalysisTool() {
   const { loadedCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<CohesionProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -87,12 +90,13 @@ export function CohesionAnalysisTool() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Análise de Coesão</CardTitle>
+          <CardTitle>{cohesionTheory.icon} Análise de Coesão</CardTitle>
           <CardDescription>
             Conectivos, cadeias lexicais e referências anafóricas
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TheoryBriefCard framework={cohesionTheory} onOpenDetail={() => setShowTheoryModal(true)} />
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>
               <Play className="w-4 h-4 mr-2" />
@@ -210,8 +214,15 @@ export function CohesionAnalysisTool() {
               </div>
             )
           )}
+          {profile && (
+            <div className="space-y-4 mt-4">
+              <AnalysisSuggestionsCard framework={cohesionTheory} compact />
+              <BlauNunesConsultant framework={cohesionTheory} analysisResults={profile} compact />
+            </div>
+          )}
         </CardContent>
       </Card>
+      <TheoryDetailModal open={showTheoryModal} onClose={() => setShowTheoryModal(false)} framework={cohesionTheory} />
     </div>
   );
 }

@@ -10,12 +10,15 @@ import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { analyzeSpeechThoughtPresentation, exportSpeechThoughtToCSV, SpeechThoughtProfile } from "@/services/speechThoughtAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { speechThoughtTheory } from "@/data/theoretical/stylistic-theory";
 
 export function SpeechThoughtPresentationTool() {
   const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<SpeechThoughtProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -93,12 +96,13 @@ export function SpeechThoughtPresentationTool() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Apresentação de Fala e Pensamento</CardTitle>
+          <CardTitle>{speechThoughtTheory.icon} Apresentação de Fala e Pensamento</CardTitle>
           <CardDescription>
             Análise de Speech & Thought Presentation (Leech & Short 2007, Cap. 10)
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TheoryBriefCard framework={speechThoughtTheory} onOpenDetail={() => setShowTheoryModal(true)} />
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -265,8 +269,15 @@ export function SpeechThoughtPresentationTool() {
               </div>
             )
           )}
+          {profile && (
+            <div className="space-y-4 mt-4">
+              <AnalysisSuggestionsCard framework={speechThoughtTheory} compact />
+              <BlauNunesConsultant framework={speechThoughtTheory} analysisResults={profile} compact />
+            </div>
+          )}
         </CardContent>
       </Card>
+      <TheoryDetailModal open={showTheoryModal} onClose={() => setShowTheoryModal(false)} framework={speechThoughtTheory} />
     </div>
   );
 }

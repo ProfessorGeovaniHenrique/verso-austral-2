@@ -3,9 +3,10 @@
  * 
  * Análise de estruturas sintáticas, comprimento de sentenças e distribuição de POS.
  * Refatorado para usar cache centralizado do AnalysisToolsContext.
+ * Inclui framework teórico baseado em Leech & Short (2007).
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -19,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { useToolCache } from "@/hooks/useToolCache";
 import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { syntacticTheory } from "@/data/theoretical/stylistic-theory";
 
 export function SyntacticProfileTool() {
   const { studyCorpus } = useAnalysisTools();
@@ -37,8 +40,8 @@ export function SyntacticProfileTool() {
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
-
   const [currentSong, setCurrentSong] = useState<string>('');
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -128,7 +131,9 @@ export function SyntacticProfileTool() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Perfil Sintático</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                {syntacticTheory.icon} Perfil Sintático
+              </CardTitle>
               <CardDescription>
                 Análise de estruturas sintáticas, comprimento de sentenças e distribuição de POS
               </CardDescription>
@@ -141,6 +146,11 @@ export function SyntacticProfileTool() {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Framework Teórico */}
+          <TheoryBriefCard 
+            framework={syntacticTheory} 
+            onOpenDetail={() => setShowTheoryModal(true)} 
+          />
           {/* Aviso se não há corpus selecionado */}
           {!studyCorpus && (
             <Alert>
@@ -257,8 +267,27 @@ export function SyntacticProfileTool() {
               </div>
             )
           )}
+
+          {/* Sugestões e Chat após análise */}
+          {profile && (
+            <div className="space-y-4 mt-6">
+              <AnalysisSuggestionsCard framework={syntacticTheory} compact />
+              <BlauNunesConsultant 
+                framework={syntacticTheory} 
+                analysisResults={profile}
+                compact
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Modal de Teoria Detalhada */}
+      <TheoryDetailModal 
+        open={showTheoryModal} 
+        onClose={() => setShowTheoryModal(false)}
+        framework={syntacticTheory}
+      />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { useSubcorpus } from "@/contexts/SubcorpusContext";
 import { analyzeForegrounding, exportForegroundingToCSV, ForegroundingProfile } from "@/services/foregroundingAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { foregroundingTheory } from "@/data/theoretical/stylistic-theory";
 
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8'];
 
@@ -18,6 +20,7 @@ export function ForegroundingDetectorTool() {
   const [profile, setProfile] = useState<ForegroundingProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -101,6 +104,7 @@ export function ForegroundingDetectorTool() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TheoryBriefCard framework={foregroundingTheory} onOpenDetail={() => setShowTheoryModal(true)} />
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
@@ -289,8 +293,15 @@ export function ForegroundingDetectorTool() {
               </div>
             )
           )}
+          {profile && (
+            <div className="space-y-4 mt-4">
+              <AnalysisSuggestionsCard framework={foregroundingTheory} compact />
+              <BlauNunesConsultant framework={foregroundingTheory} analysisResults={profile} compact />
+            </div>
+          )}
         </CardContent>
       </Card>
+      <TheoryDetailModal open={showTheoryModal} onClose={() => setShowTheoryModal(false)} framework={foregroundingTheory} />
     </div>
   );
 }

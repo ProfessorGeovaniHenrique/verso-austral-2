@@ -9,11 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { rhetoricalTheory } from "@/data/theoretical/stylistic-theory";
 
 export function RhetoricalFiguresTool() {
   const { loadedCorpus } = useSubcorpus();
   const [profile, setProfile] = useState<RhetoricalProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
@@ -78,12 +81,13 @@ export function RhetoricalFiguresTool() {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Figuras Retóricas</CardTitle>
+          <CardTitle>{rhetoricalTheory.icon} Figuras Retóricas</CardTitle>
           <CardDescription>
             Detecção de repetição, aliteração, assonância, anáfora e paralelismo
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <TheoryBriefCard framework={rhetoricalTheory} onOpenDetail={() => setShowTheoryModal(true)} />
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing}>
               <Play className="w-4 h-4 mr-2" />
@@ -178,8 +182,15 @@ export function RhetoricalFiguresTool() {
               </div>
             )
           )}
+          {profile && (
+            <div className="space-y-4 mt-4">
+              <AnalysisSuggestionsCard framework={rhetoricalTheory} compact />
+              <BlauNunesConsultant framework={rhetoricalTheory} analysisResults={profile} compact />
+            </div>
+          )}
         </CardContent>
       </Card>
+      <TheoryDetailModal open={showTheoryModal} onClose={() => setShowTheoryModal(false)} framework={rhetoricalTheory} />
     </div>
   );
 }
