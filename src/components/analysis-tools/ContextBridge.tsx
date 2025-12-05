@@ -81,7 +81,7 @@ function corpusSelectionToStylistic(
  */
 export function useCorpusSyncEffect() {
   const { studyCorpus, referenceCorpus } = useAnalysisTools();
-  const { setSelection, setStylisticSelection, getFilteredCorpus } = useSubcorpus();
+  const { selection, setSelection, setStylisticSelection, getFilteredCorpus } = useSubcorpus();
   const { setKeywordsState } = useTools();
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
   
@@ -114,9 +114,24 @@ export function useCorpusSyncEffect() {
     }
   }, [studyCorpus, setSelection]);
 
-  // Carrega corpus automaticamente após seleção mudar
+  // Ref para evitar múltiplos carregamentos da mesma seleção
+  const lastLoadedSelectionRef = useRef<string | null>(null);
+
+  // Carrega corpus APÓS selection mudar no SubcorpusContext (não studyCorpus!)
+  // Isso garante que getFilteredCorpus() usa valores atualizados
   useEffect(() => {
+    // Só carrega se há seleção válida de corpus de plataforma
     if (!studyCorpus || studyCorpus.type !== 'platform') return;
+    if (!selection.corpusBase) return;
+    
+    const selectionKey = JSON.stringify({
+      corpusBase: selection.corpusBase,
+      mode: selection.mode,
+      artistaA: selection.artistaA
+    });
+    
+    // Evita recarregamento se seleção não mudou
+    if (lastLoadedSelectionRef.current === selectionKey) return;
     
     let cancelled = false;
     
@@ -124,6 +139,9 @@ export function useCorpusSyncEffect() {
       setIsLoadingCorpus(true);
       try {
         await getFilteredCorpusRef.current();
+        if (!cancelled) {
+          lastLoadedSelectionRef.current = selectionKey;
+        }
       } catch (error) {
         console.error('Erro ao carregar corpus:', error);
         if (!cancelled) {
@@ -137,7 +155,7 @@ export function useCorpusSyncEffect() {
     loadCorpus();
     
     return () => { cancelled = true; };
-  }, [studyCorpus]); // SEM getFilteredCorpus nas dependências!
+  }, [selection, studyCorpus]); // Depende de SELECTION (após atualizado)
 
   // Sincroniza studyCorpus + referenceCorpus → SubcorpusContext.stylisticSelection (COM VERIFICAÇÃO)
   useEffect(() => {
