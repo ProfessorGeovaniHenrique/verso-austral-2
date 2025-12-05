@@ -132,7 +132,9 @@ function MusicEnrichmentContent() {
         
         // Pequeno delay antes de navegar
         await new Promise(resolve => setTimeout(resolve, 1500));
-        navigate('/music-catalog');
+        
+        // Usar window.location para forçar reload completo dos dados
+        window.location.href = '/music-catalog';
       } else {
         // Modo importação: criar novas músicas
         setImportTotal(validSongs.length);
