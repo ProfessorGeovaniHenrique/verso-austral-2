@@ -26,9 +26,6 @@ import { BasicToolsTab } from '@/components/analysis-tools/BasicToolsTab';
 import { StyleAnalysisTab } from '@/components/analysis-tools/StyleAnalysisTab';
 import { CulturalAnalysisTab } from '@/components/analysis-tools/CulturalAnalysisTab';
 import { VisualizationsTab } from '@/components/analysis-tools/VisualizationsTab';
-import { CorpusProvider } from '@/contexts/CorpusContext';
-import { SubcorpusProvider } from '@/contexts/SubcorpusContext';
-import { ToolsProvider } from '@/contexts/ToolsContext';
 
 function AnalysisToolsContent() {
   const navigate = useNavigate();
@@ -112,14 +109,8 @@ function AnalysisToolsContent() {
 
 export default function AnalysisToolsPage() {
   return (
-    <CorpusProvider>
-      <SubcorpusProvider>
-        <ToolsProvider>
-          <AnalysisToolsProvider>
-            <AnalysisToolsContent />
-          </AnalysisToolsProvider>
-        </ToolsProvider>
-      </SubcorpusProvider>
-    </CorpusProvider>
+    <AnalysisToolsProvider>
+      <AnalysisToolsContent />
+    </AnalysisToolsProvider>
   );
 }
