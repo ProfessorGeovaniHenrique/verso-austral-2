@@ -368,7 +368,30 @@ async function processChunk(
       }
     }
 
-    logger.info('Chunk coletado', { wordsCount: chunkWords.length });
+    logger.info('Chunk coletado', { wordsCount: chunkWords.length, currentSongIndex, totalSongs: songs.length });
+
+    // FIX: Se não há mais palavras e já processamos todas as músicas, finalizar job
+    if (chunkWords.length === 0) {
+      logger.info('Nenhuma palavra coletada - verificando se job deve ser concluído', {
+        jobId,
+        continueFromSongIndex: continueFrom.songIndex,
+        totalSongs: songs.length,
+      });
+
+      if (continueFrom.songIndex >= songs.length) {
+        logger.info('Todas as músicas processadas, finalizando job', { jobId });
+
+        await supabase
+          .from('semantic_annotation_jobs')
+          .update({
+            status: 'concluido',
+            tempo_fim: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+
+        return; // Job completo, não auto-invocar
+      }
+    }
 
     // ========== FASE 4: ENRIQUECIMENTO POS ==========
     // Enriquecer tokens com POS usando pipeline híbrido 4-layer
@@ -704,7 +727,10 @@ async function processChunk(
     const totalNew = job.new_words + newInChunk;
     const chunksProcessed = job.chunks_processed + 1;
 
-    const isCompleted = totalProcessed >= job.total_words;
+    // FIX: Múltiplas condições de conclusão para evitar loops infinitos
+    const isCompleted = totalProcessed >= job.total_words || 
+                        currentSongIndex >= songs.length ||
+                        (chunkWords.length === 0 && continueFrom.songIndex >= songs.length);
 
     logger.info('Salvando progresso', { 
       jobId, 
