@@ -44,15 +44,33 @@ export async function annotatePOS(texto: string, idioma: 'pt' | 'es' = 'pt'): Pr
 }
 
 /**
- * Annotate entire corpus with POS tags
+ * Progress callback type for corpus annotation
  */
-export async function annotatePOSForCorpus(corpus: CorpusCompleto): Promise<CorpusComPOS> {
+export type POSAnnotationProgressCallback = (processed: number, total: number, currentSong: string) => void;
+
+/**
+ * Annotate entire corpus with POS tags
+ * @param corpus - Corpus to annotate
+ * @param onProgress - Optional callback for progress updates
+ */
+export async function annotatePOSForCorpus(
+  corpus: CorpusCompleto,
+  onProgress?: POSAnnotationProgressCallback
+): Promise<CorpusComPOS> {
   console.log(`[POS] Anotando corpus ${corpus.tipo} com ${corpus.totalMusicas} músicas...`);
   
   const annotatedSongs: POSAnnotatedSong[] = [];
+  const total = corpus.musicas.length;
   
-  for (const musica of corpus.musicas) {
+  for (let i = 0; i < total; i++) {
+    const musica = corpus.musicas[i];
     const texto = musica.letra;
+    
+    // Report progress before processing
+    if (onProgress) {
+      onProgress(i, total, musica.metadata.musica);
+    }
+    
     const tokens = await annotatePOS(texto);
     
     annotatedSongs.push({
@@ -60,6 +78,11 @@ export async function annotatePOSForCorpus(corpus: CorpusCompleto): Promise<Corp
       metadata: musica.metadata,
       tokens
     });
+    
+    // Report progress after processing
+    if (onProgress) {
+      onProgress(i + 1, total, musica.metadata.musica);
+    }
   }
   
   const totalTokens = annotatedSongs.reduce((sum, song) => sum + song.tokens.length, 0);

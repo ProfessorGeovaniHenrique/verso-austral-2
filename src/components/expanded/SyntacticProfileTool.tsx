@@ -38,6 +38,8 @@ export function SyntacticProfileTool() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  const [currentSong, setCurrentSong] = useState<string>('');
+
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
       toast.error("Nenhum corpus carregado. Selecione um corpus no seletor acima.");
@@ -46,28 +48,45 @@ export function SyntacticProfileTool() {
 
     try {
       setIsAnalyzing(true);
-      setProgress(10);
-      toast.info("Processando corpus...");
+      setProgress(5);
+      setCurrentSong('');
       
-      setProgress(30);
+      // Callback de progresso real
+      const handleProgress = (processed: number, total: number, songName: string) => {
+        // Progresso de 5% a 85% durante anotação POS
+        const percent = 5 + Math.round((processed / total) * 80);
+        setProgress(percent);
+        setCurrentSong(songName);
+      };
       
-      toast.info("Anotando corpus com POS tags...");
-      const annotatedCorpus = await annotatePOSForCorpus(loadedCorpus);
-      setProgress(70);
+      const annotatedCorpus = await annotatePOSForCorpus(loadedCorpus, handleProgress);
       
-      toast.info("Calculando perfil sintático...");
+      setProgress(90);
+      setCurrentSong('Calculando métricas...');
+      
       const syntacticProfile = calculateSyntacticProfile(annotatedCorpus);
       
-      // Salvar no cache centralizado
+      // R-1.3: Validar dados antes de salvar no cache
+      const hasValidData = syntacticProfile.averageSentenceLength > 0 || 
+                           Object.keys(syntacticProfile.posDistribution).length > 0;
+      
+      if (!hasValidData) {
+        toast.error("Análise retornou dados vazios. Verifique se o corpus possui letras.");
+        console.warn('[SyntacticProfile] Dados vazios não foram salvos no cache');
+        return;
+      }
+      
+      // Salvar no cache centralizado apenas se dados válidos
       saveToCache(syntacticProfile);
       setProgress(100);
       
-      toast.success("Perfil sintático gerado e armazenado em cache!");
+      toast.success(`Perfil sintático gerado: ${Object.keys(syntacticProfile.posDistribution).length} categorias POS`);
     } catch (error) {
       console.error("Erro ao gerar perfil sintático:", error);
       toast.error("Erro ao gerar perfil sintático");
     } finally {
       setIsAnalyzing(false);
+      setCurrentSong('');
       setTimeout(() => setProgress(0), 1000);
     }
   };
@@ -169,6 +188,7 @@ export function SyntacticProfileTool() {
               <Progress value={progress} className="w-full" />
               <p className="text-sm text-muted-foreground text-center">
                 {progress}% concluído
+                {currentSong && <span className="block text-xs mt-1">Processando: {currentSong}</span>}
               </p>
             </div>
           )}

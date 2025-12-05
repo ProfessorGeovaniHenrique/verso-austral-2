@@ -35,11 +35,26 @@ export function useToolCache<T>(toolKey: ToolKey): UseToolCacheResult<T> {
   
   const cache = toolsCache[toolKey] as ToolCacheEntry<T> | null;
   
-  // Cache é válido se existe, tem o mesmo hash de corpus e não está stale
+  // Cache é válido se existe, tem o mesmo hash de corpus, não está stale e tem dados não-vazios
   const isValid = useMemo(() => {
     if (!cache) return false;
     if (cache.isStale) return false;
     if (cache.corpusHash !== currentCorpusHash) return false;
+    
+    // R-1.3: Verificar se dados não são vazios (específico para SyntacticProfile)
+    const data = cache.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      // Detecta SyntacticProfile com dados zerados
+      if ('averageSentenceLength' in data && 'posDistribution' in data) {
+        const avgLength = data.averageSentenceLength as number;
+        const posDistribution = data.posDistribution as Record<string, number>;
+        if (avgLength === 0 && Object.keys(posDistribution).length === 0) {
+          console.warn('[useToolCache] Cache com dados vazios detectado, invalidando');
+          return false;
+        }
+      }
+    }
+    
     return true;
   }, [cache, currentCorpusHash]);
   
