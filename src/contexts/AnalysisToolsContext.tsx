@@ -2,11 +2,12 @@
  * 🔬 ANALYSIS TOOLS CONTEXT
  * 
  * Estado compartilhado para todas as ferramentas de análise da Página 3
- * Gerencia seleção de corpus, corpus do usuário e configurações
+ * Gerencia seleção de corpus, corpus do usuário, cache de resultados e configurações
  */
 
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
 import { CorpusType } from '@/data/types/corpus-tools.types';
+import { LexicalProfile, SyntacticProfile, RhetoricalProfile, CohesionProfile } from '@/data/types/stylistic-analysis.types';
 
 // Tipos para corpus do usuário
 export interface UserCorpusFile {
@@ -26,9 +27,56 @@ export interface CorpusSelection {
 
 export interface CorpusBalancing {
   enabled: boolean;
-  ratio: number; // 1:1, 1:2, etc.
+  ratio: number;
   method: 'random' | 'proportional';
 }
+
+// ============================================
+// SISTEMA DE CACHE DE FERRAMENTAS
+// ============================================
+
+export interface ToolCacheEntry<T = unknown> {
+  data: T;
+  corpusHash: string;
+  timestamp: number;
+  isStale: boolean;
+}
+
+export type ToolKey = 
+  | 'lexical' 
+  | 'syntactic' 
+  | 'rhetorical' 
+  | 'cohesion' 
+  | 'speech' 
+  | 'mind' 
+  | 'foregrounding';
+
+export interface ToolsCache {
+  lexical: ToolCacheEntry<LexicalProfile> | null;
+  syntactic: ToolCacheEntry<SyntacticProfile> | null;
+  rhetorical: ToolCacheEntry<RhetoricalProfile> | null;
+  cohesion: ToolCacheEntry<CohesionProfile> | null;
+  speech: ToolCacheEntry<unknown> | null;
+  mind: ToolCacheEntry<unknown> | null;
+  foregrounding: ToolCacheEntry<unknown> | null;
+}
+
+const INITIAL_TOOLS_CACHE: ToolsCache = {
+  lexical: null,
+  syntactic: null,
+  rhetorical: null,
+  cohesion: null,
+  speech: null,
+  mind: null,
+  foregrounding: null,
+};
+
+const CACHE_STORAGE_KEY = 'verso-austral-tools-cache';
+const CACHE_VERSION = '1.0';
+
+// ============================================
+// CONTEXT TYPE
+// ============================================
 
 interface AnalysisToolsContextType {
   // Corpus de Estudo
@@ -58,14 +106,40 @@ interface AnalysisToolsContextType {
   
   // Limpar seleções
   clearSelections: () => void;
+  
+  // ============================================
+  // CACHE DE FERRAMENTAS
+  // ============================================
+  toolsCache: ToolsCache;
+  setToolCache: <K extends ToolKey>(tool: K, entry: ToolCacheEntry<ToolsCache[K] extends ToolCacheEntry<infer T> | null ? T : unknown> | null) => void;
+  invalidateToolCache: (tool?: ToolKey) => void;
+  clearAllToolsCache: () => void;
+  currentCorpusHash: string;
 }
 
 const AnalysisToolsContext = createContext<AnalysisToolsContextType | null>(null);
 
+// ============================================
+// HELPER: Gerar hash do corpus para detectar mudanças
+// ============================================
+function generateCorpusHash(study: CorpusSelection | null, reference: CorpusSelection | null): string {
+  const studyKey = study 
+    ? `${study.type}-${study.platformCorpus || ''}-${study.platformArtist || ''}-${study.userCorpus?.id || ''}`
+    : 'null';
+  const refKey = reference
+    ? `${reference.type}-${reference.platformCorpus || ''}-${reference.platformArtist || ''}-${reference.userCorpus?.id || ''}`
+    : 'null';
+  return `${studyKey}|${refKey}`;
+}
+
+// ============================================
+// PROVIDER
+// ============================================
+
 export function AnalysisToolsProvider({ children }: { children: ReactNode }) {
   // Corpus selections
-  const [studyCorpus, setStudyCorpus] = useState<CorpusSelection | null>(null);
-  const [referenceCorpus, setReferenceCorpus] = useState<CorpusSelection | null>(null);
+  const [studyCorpus, setStudyCorpusState] = useState<CorpusSelection | null>(null);
+  const [referenceCorpus, setReferenceCorpusState] = useState<CorpusSelection | null>(null);
   
   // User uploaded corpora
   const [userCorpora, setUserCorpora] = useState<UserCorpusFile[]>([]);
@@ -81,6 +155,112 @@ export function AnalysisToolsProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTab] = useState('basic');
   const [isProcessing, setIsProcessing] = useState(false);
   
+  // Tools cache
+  const [toolsCache, setToolsCache] = useState<ToolsCache>(INITIAL_TOOLS_CACHE);
+  
+  // Hash atual do corpus para validação de cache
+  const currentCorpusHash = useMemo(
+    () => generateCorpusHash(studyCorpus, referenceCorpus),
+    [studyCorpus, referenceCorpus]
+  );
+  
+  // ============================================
+  // CARREGAR CACHE DO LOCALSTORAGE
+  // ============================================
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(CACHE_STORAGE_KEY);
+      if (saved) {
+        const { version, data, corpusHash } = JSON.parse(saved);
+        if (version === CACHE_VERSION && corpusHash === currentCorpusHash) {
+          setToolsCache(data);
+        }
+      }
+    } catch {
+      // Ignorar erros de parsing
+    }
+  }, []);
+  
+  // ============================================
+  // SALVAR CACHE NO LOCALSTORAGE
+  // ============================================
+  useEffect(() => {
+    try {
+      localStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify({
+        version: CACHE_VERSION,
+        data: toolsCache,
+        corpusHash: currentCorpusHash
+      }));
+    } catch {
+      // Ignorar erros de storage
+    }
+  }, [toolsCache, currentCorpusHash]);
+  
+  // ============================================
+  // FUNÇÕES DE CACHE
+  // ============================================
+  
+  const setToolCache = useCallback(<K extends ToolKey>(
+    tool: K, 
+    entry: ToolCacheEntry<ToolsCache[K] extends ToolCacheEntry<infer T> | null ? T : unknown> | null
+  ) => {
+    setToolsCache(prev => ({
+      ...prev,
+      [tool]: entry
+    }));
+  }, []);
+  
+  const invalidateToolCache = useCallback((tool?: ToolKey) => {
+    if (tool) {
+      // Invalida apenas uma ferramenta
+      setToolsCache(prev => {
+        const entry = prev[tool];
+        if (!entry) return prev;
+        return {
+          ...prev,
+          [tool]: { ...entry, isStale: true }
+        };
+      });
+    } else {
+      // Invalida todas as ferramentas
+      setToolsCache(prev => {
+        const newCache = { ...prev } as ToolsCache;
+        (Object.keys(newCache) as ToolKey[]).forEach(key => {
+          const entry = newCache[key];
+          if (entry) {
+            (newCache[key] as ToolCacheEntry<unknown>) = { ...entry, isStale: true };
+          }
+        });
+        return newCache;
+      });
+    }
+  }, []);
+  
+  const clearAllToolsCache = useCallback(() => {
+    setToolsCache(INITIAL_TOOLS_CACHE);
+    localStorage.removeItem(CACHE_STORAGE_KEY);
+  }, []);
+  
+  // ============================================
+  // CORPUS SETTERS COM INVALIDAÇÃO AUTOMÁTICA
+  // ============================================
+  
+  const setStudyCorpus = useCallback((corpus: CorpusSelection | null) => {
+    setStudyCorpusState(corpus);
+    // Invalidar cache quando corpus muda
+    invalidateToolCache();
+  }, [invalidateToolCache]);
+  
+  const setReferenceCorpus = useCallback((corpus: CorpusSelection | null) => {
+    setReferenceCorpusState(corpus);
+    // Invalidar cache quando referência muda
+    invalidateToolCache();
+  }, [invalidateToolCache]);
+  
+  // ============================================
+  // USER CORPUS MANAGEMENT
+  // ============================================
+  
   const addUserCorpus = useCallback((file: UserCorpusFile) => {
     setUserCorpora(prev => [...prev, file]);
   }, []);
@@ -88,19 +268,21 @@ export function AnalysisToolsProvider({ children }: { children: ReactNode }) {
   const removeUserCorpus = useCallback((id: string) => {
     setUserCorpora(prev => prev.filter(f => f.id !== id));
     // Limpar seleções que usavam este corpus
-    setStudyCorpus(prev => 
+    setStudyCorpusState(prev => 
       prev?.type === 'user' && prev.userCorpus?.id === id ? null : prev
     );
-    setReferenceCorpus(prev => 
+    setReferenceCorpusState(prev => 
       prev?.type === 'user' && prev.userCorpus?.id === id ? null : prev
     );
-  }, []);
+    invalidateToolCache();
+  }, [invalidateToolCache]);
   
   const clearSelections = useCallback(() => {
-    setStudyCorpus(null);
-    setReferenceCorpus(null);
+    setStudyCorpusState(null);
+    setReferenceCorpusState(null);
     setBalancing({ enabled: false, ratio: 1, method: 'random' });
-  }, []);
+    clearAllToolsCache();
+  }, [clearAllToolsCache]);
   
   return (
     <AnalysisToolsContext.Provider value={{
@@ -117,7 +299,13 @@ export function AnalysisToolsProvider({ children }: { children: ReactNode }) {
       setActiveTab,
       isProcessing,
       setIsProcessing,
-      clearSelections
+      clearSelections,
+      // Cache
+      toolsCache,
+      setToolCache,
+      invalidateToolCache,
+      clearAllToolsCache,
+      currentCorpusHash
     }}>
       {children}
     </AnalysisToolsContext.Provider>

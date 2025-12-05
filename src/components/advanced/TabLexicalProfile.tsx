@@ -1,3 +1,10 @@
+/**
+ * 📚 TAB LEXICAL PROFILE
+ * 
+ * Análise de vocabulário e riqueza lexical.
+ * Refatorado para usar cache centralizado do AnalysisToolsContext.
+ */
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -5,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2 } from "lucide-react";
+import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2, RefreshCw } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LexicalProfile } from "@/data/types/stylistic-analysis.types";
 import { DominioSemantico } from "@/data/types/corpus.types";
@@ -17,7 +24,6 @@ import {
 } from "@/services/lexicalAnalysisService";
 import { useFullTextCorpus } from "@/hooks/useFullTextCorpus";
 import { sampleProportionalCorpus, validateCorpusSizes, calculateSignificance } from "@/services/proportionalSamplingService";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
 import { ComparisonRadarChart } from "@/components/visualization/ComparisonRadarChart";
 import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
 import { ProportionalSampleInfo } from "@/components/visualization/ProportionalSampleInfo";
@@ -30,14 +36,12 @@ import { useSemanticAnnotationJob } from "@/hooks/useSemanticAnnotationJob";
 import { useJobSongsProgress } from "@/hooks/useJobSongsProgress";
 import { SongsProgressList } from "@/components/visualization/SongsProgressList";
 import { ReprocessingPanel } from "@/components/expanded/ReprocessingPanel";
+import { useToolCache } from "@/hooks/useToolCache";
+import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
 
 const log = createLogger('TabLexicalProfile');
 
-interface TabLexicalProfileProps {
-  analyzeRef?: React.MutableRefObject<(() => void) | null>;
-}
-
-export function TabLexicalProfile({ analyzeRef }: TabLexicalProfileProps) {
+export function TabLexicalProfile() {
   const subcorpusContext = useSubcorpus();
   const { job, isProcessing, progress, eta, wordsPerSecond, startJob, resumeJob, cancelJob, checkExistingJob, isResuming } = useSemanticAnnotationJob();
   const { stylisticSelection, setStylisticSelection, activeAnnotationJobId, setActiveAnnotationJobId } = useSubcorpus();
@@ -51,13 +55,6 @@ export function TabLexicalProfile({ analyzeRef }: TabLexicalProfileProps) {
 
   const { corpus: gauchoCorpus, isLoading: loadingGaucho } = useFullTextCorpus('gaucho');
   const { corpus: nordestinoCorpus, isLoading: loadingNordestino } = useFullTextCorpus('nordestino');
-  
-  // Expor handleAnalyze via ref para uso externo
-  useEffect(() => {
-    if (analyzeRef) {
-      analyzeRef.current = handleAnalyze;
-    }
-  }, [analyzeRef, stylisticSelection, gauchoCorpus, nordestinoCorpus]);
   
   // Sincronizar existingJob com job do hook
   useEffect(() => {

@@ -10,17 +10,9 @@ import { ForegroundingDetectorTool } from "./ForegroundingDetectorTool";
 import { TabLexicalProfile } from "@/components/advanced/TabLexicalProfile";
 import { CrossCorpusSelectorWithRatio } from "@/components/corpus/CrossCorpusSelectorWithRatio";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
-import { useRef } from "react";
 
 export function TabFerramentasEstilisticas() {
   const { stylisticSelection, setStylisticSelection, availableArtists } = useSubcorpus();
-  const analyzeRef = useRef<(() => void) | null>(null);
-  
-  const handleAnalyze = () => {
-    if (analyzeRef.current) {
-      analyzeRef.current();
-    }
-  };
   
   return (
     <div className="space-y-6">
@@ -33,8 +25,6 @@ export function TabFerramentasEstilisticas() {
             onSelectionChange={setStylisticSelection}
             availableArtists={availableArtists}
             initialSelection={stylisticSelection}
-            onAnalyze={handleAnalyze}
-            canAnalyze={!!stylisticSelection}
           />
         </CardContent>
       </Card>
@@ -83,7 +73,7 @@ export function TabFerramentasEstilisticas() {
             </TabsList>
 
             <TabsContent value="lexical" className="mt-6">
-              <TabLexicalProfile analyzeRef={analyzeRef} />
+              <TabLexicalProfile />
             </TabsContent>
 
             <TabsContent value="syntactic" className="mt-6">

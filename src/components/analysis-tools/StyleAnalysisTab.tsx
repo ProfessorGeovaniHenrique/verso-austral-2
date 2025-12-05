@@ -9,9 +9,11 @@
  * - Fala e Pensamento
  * - Mind Style
  * - Foregrounding
+ * 
+ * Refatorado para usar cache centralizado e seletor único.
  */
 
-import React, { useRef, useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   BookOpen, 
@@ -24,6 +26,7 @@ import {
 } from 'lucide-react';
 import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusSelector } from './CorpusSelector';
+import { CacheStatusIndicator } from './CacheStatusIndicator';
 import { AnalysisToolsBridge } from './ContextBridge';
 import { ToolErrorBoundary } from './ToolErrorBoundary';
 import { ToolLoadingSkeleton } from './ToolLoadingSkeleton';
@@ -50,11 +53,10 @@ const styleTools = [
 export function StyleAnalysisTab() {
   const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
   const [activeToolTab, setActiveToolTab] = useState('lexical');
-  const analyzeRef = useRef<(() => void) | null>(null);
 
   return (
     <div className="space-y-6">
-      {/* Seletores de Corpus */}
+      {/* Seletores de Corpus - ÚNICO PONTO DE SELEÇÃO */}
       <div className="grid md:grid-cols-2 gap-4">
         <CorpusSelector
           label="Corpus de Estudo"
@@ -70,6 +72,9 @@ export function StyleAnalysisTab() {
           onChange={setReferenceCorpus}
         />
       </div>
+
+      {/* Indicador de Cache */}
+      <CacheStatusIndicator />
 
       {/* Ferramentas em Sub-Abas */}
       <AnalysisToolsBridge>
@@ -90,7 +95,7 @@ export function StyleAnalysisTab() {
           <TabsContent value="lexical" className="mt-4">
             <ToolErrorBoundary toolName="Perfil Léxico">
               <Suspense fallback={<ToolLoadingSkeleton />}>
-                <TabLexicalProfile analyzeRef={analyzeRef} />
+                <TabLexicalProfile />
               </Suspense>
             </ToolErrorBoundary>
           </TabsContent>

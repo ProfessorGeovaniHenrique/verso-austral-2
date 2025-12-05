@@ -1,28 +1,46 @@
-import { useState } from "react";
+/**
+ * 📊 SYNTACTIC PROFILE TOOL
+ * 
+ * Análise de estruturas sintáticas, comprimento de sentenças e distribuição de POS.
+ * Refatorado para usar cache centralizado do AnalysisToolsContext.
+ */
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Play, Download, Info, RefreshCw } from "lucide-react";
 import { annotatePOSForCorpus } from "@/services/posAnnotationService";
 import { calculateSyntacticProfile } from "@/services/syntacticAnalysisService";
 import { SyntacticProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
-import { CrossCorpusSelectorWithRatio, CrossCorpusSelection } from "@/components/corpus/CrossCorpusSelectorWithRatio";
-import { ComparisonRadarChart } from "@/components/visualization/ComparisonRadarChart";
-import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
+import { Badge } from "@/components/ui/badge";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useToolCache } from "@/hooks/useToolCache";
+import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
 
 export function SyntacticProfileTool() {
+  const { studyCorpus } = useAnalysisTools();
   const subcorpusContext = useSubcorpus();
   const { loadedCorpus } = subcorpusContext;
-  const [crossSelection, setCrossSelection] = useState<CrossCorpusSelection | null>(null);
+  
+  // Cache centralizado
+  const { 
+    cachedData: profile, 
+    hasCachedData, 
+    isStale,
+    cacheTimestamp,
+    saveToCache,
+    clearCache
+  } = useToolCache<SyntacticProfile>('syntactic');
+  
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [profile, setProfile] = useState<SyntacticProfile | null>(null);
 
   const handleAnalyze = async () => {
     if (!loadedCorpus) {
-      toast.error("Nenhum corpus selecionado");
+      toast.error("Nenhum corpus carregado. Selecione um corpus no seletor acima.");
       return;
     }
 
@@ -39,10 +57,12 @@ export function SyntacticProfileTool() {
       
       toast.info("Calculando perfil sintático...");
       const syntacticProfile = calculateSyntacticProfile(annotatedCorpus);
-      setProfile(syntacticProfile);
+      
+      // Salvar no cache centralizado
+      saveToCache(syntacticProfile);
       setProgress(100);
       
-      toast.success("Perfil sintático gerado com sucesso!");
+      toast.success("Perfil sintático gerado e armazenado em cache!");
     } catch (error) {
       console.error("Erro ao gerar perfil sintático:", error);
       toast.error("Erro ao gerar perfil sintático");
@@ -73,38 +93,74 @@ export function SyntacticProfileTool() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `perfil_sintatico_${loadedCorpus.tipo}.csv`;
+    a.download = `perfil_sintatico_${profile.corpusType}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  // Formatar timestamp do cache
+  const cacheTime = cacheTimestamp 
+    ? new Date(cacheTimestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : null;
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Perfil Sintático</CardTitle>
-          <CardDescription>
-            Análise de estruturas sintáticas, comprimento de sentenças e distribuição de POS
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Perfil Sintático</CardTitle>
+              <CardDescription>
+                Análise de estruturas sintáticas, comprimento de sentenças e distribuição de POS
+              </CardDescription>
+            </div>
+            {hasCachedData && cacheTime && (
+              <Badge variant="secondary" className="gap-1">
+                Cache: {cacheTime}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <CrossCorpusSelectorWithRatio
-            mode="study-only"
-            showRatioControl={false}
-            onSelectionChange={setCrossSelection}
-            availableArtists={subcorpusContext.availableArtists}
-          />
+          {/* Aviso se não há corpus selecionado */}
+          {!studyCorpus && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                Selecione um corpus de estudo no seletor acima para iniciar a análise.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Aviso de cache desatualizado */}
+          {isStale && (
+            <Alert className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
+              <RefreshCw className="h-4 w-4" />
+              <AlertDescription>
+                O cache está desatualizado. O corpus foi alterado desde a última análise.
+              </AlertDescription>
+            </Alert>
+          )}
 
           <div className="flex gap-2">
-            <Button onClick={handleAnalyze} disabled={isAnalyzing}>
+            <Button 
+              onClick={handleAnalyze} 
+              disabled={isAnalyzing || !studyCorpus}
+            >
               <Play className="w-4 h-4 mr-2" />
-              {isAnalyzing ? "Processando..." : "Analisar Corpus"}
+              {isAnalyzing ? "Processando..." : hasCachedData ? "Reanalisar" : "Analisar Corpus"}
             </Button>
             {profile && (
-              <Button variant="outline" onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar CSV
-              </Button>
+              <>
+                <Button variant="outline" onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar CSV
+                </Button>
+                <Button variant="ghost" onClick={clearCache}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Limpar Cache
+                </Button>
+              </>
             )}
           </div>
 
@@ -175,7 +231,7 @@ export function SyntacticProfileTool() {
               </Card>
             </div>
           ) : (
-            !isAnalyzing && (
+            !isAnalyzing && studyCorpus && (
               <div className="text-center text-muted-foreground py-8">
                 Clique em "Analisar Corpus" para gerar o perfil sintático
               </div>
