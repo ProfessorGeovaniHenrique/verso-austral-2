@@ -52,26 +52,68 @@ function splitTextIntoChunks(texto: string): string[] {
 }
 
 /**
- * Annotate a single chunk of text with POS tags
+ * Delay utility for throttling
  */
-async function annotateChunk(texto: string, idioma: 'pt' | 'es' = 'pt'): Promise<POSToken[]> {
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * Annotate a single chunk of text with POS tags (with retry and backoff)
+ */
+async function annotateChunk(
+  texto: string, 
+  idioma: 'pt' | 'es' = 'pt',
+  maxRetries: number = 3
+): Promise<POSToken[]> {
   const request: POSAnnotationRequest = { texto, idioma };
   
-  const { data, error } = await supabase.functions.invoke<POSAnnotationResponse>('annotate-pos', {
-    body: request
-  });
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const { data, error } = await supabase.functions.invoke<POSAnnotationResponse>('annotate-pos', {
+        body: request
+      });
 
-  if (error) {
-    console.error('[POS] Erro ao anotar chunk:', error);
-    throw new Error(`Erro na anotação POS: ${error.message}`);
+      if (error) {
+        // Check if rate limited (429)
+        if (error.message?.includes('429') || error.message?.includes('rate limit')) {
+          const backoffMs = Math.min(1000 * Math.pow(2, attempt), 8000);
+          console.warn(`[POS] Rate limited, retry ${attempt + 1}/${maxRetries} em ${backoffMs}ms`);
+          await delay(backoffMs);
+          lastError = new Error(`Erro na anotação POS: ${error.message}`);
+          continue;
+        }
+        console.error('[POS] Erro ao anotar chunk:', error);
+        throw new Error(`Erro na anotação POS: ${error.message}`);
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data?.annotations || [];
+    } catch (err) {
+      lastError = err as Error;
+      
+      // If rate limited, retry with backoff
+      if (lastError.message?.includes('429') || lastError.message?.includes('rate limit')) {
+        const backoffMs = Math.min(1000 * Math.pow(2, attempt), 8000);
+        console.warn(`[POS] Rate limited (exception), retry ${attempt + 1}/${maxRetries} em ${backoffMs}ms`);
+        await delay(backoffMs);
+        continue;
+      }
+      
+      throw err;
+    }
   }
-
-  if (data?.error) {
-    throw new Error(data.error);
-  }
-
-  return data?.annotations || [];
+  
+  throw lastError || new Error('Falha após múltiplas tentativas');
 }
+
+// Delay between chunks to avoid rate limiting (ms)
+const CHUNK_DELAY_MS = 1500;
 
 /**
  * Annotate a single text with POS tags (with automatic chunking for large texts)
@@ -95,6 +137,12 @@ export async function annotatePOS(texto: string, idioma: 'pt' | 'es' = 'pt'): Pr
       console.log(`[POS] Processando chunk ${i + 1}/${chunks.length}...`);
       const tokens = await annotateChunk(chunks[i], idioma);
       allTokens.push(...tokens);
+      
+      // Throttle: delay between chunks to avoid rate limiting
+      if (i < chunks.length - 1) {
+        console.log(`[POS] Aguardando ${CHUNK_DELAY_MS}ms antes do próximo chunk...`);
+        await delay(CHUNK_DELAY_MS);
+      }
     }
     
     console.log(`[POS] Todos os chunks processados: ${allTokens.length} tokens`);

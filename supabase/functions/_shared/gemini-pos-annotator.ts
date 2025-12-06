@@ -239,11 +239,24 @@ function extractSentence(fullText: string, targetWord: string): string {
 }
 
 /**
- * Anota um único token usando Gemini Flash
+ * Delay utility for throttling
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Delay between sequential API calls (ms)
+const GEMINI_CALL_DELAY_MS = 200;
+// Max retries for rate limited requests
+const MAX_RETRIES = 3;
+
+/**
+ * Anota um único token usando Gemini Flash (com retry e backoff para 429)
  */
 async function annotateTokenWithGemini(
   token: AnnotatedToken,
-  fullText: string
+  fullText: string,
+  retryCount: number = 0
 ): Promise<AnnotatedToken> {
   try {
     const sentenceContext = extractSentence(fullText, token.palavra);
@@ -296,9 +309,16 @@ async function annotateTokenWithGemini(
     if (!response.ok) {
       const errorText = await response.text();
       
-      // Tratamento específico de erros Lovable AI
+      // ✅ TRATAMENTO DE RATE LIMITING COM RETRY E BACKOFF
       if (response.status === 429) {
-        console.warn(`⚠️ Rate limit Lovable AI excedido - token: ${token.palavra}`);
+        if (retryCount < MAX_RETRIES) {
+          const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 8000);
+          console.warn(`⚠️ Rate limit 429 - token: ${token.palavra} - retry ${retryCount + 1}/${MAX_RETRIES} em ${backoffMs}ms`);
+          await sleep(backoffMs);
+          return annotateTokenWithGemini(token, fullText, retryCount + 1);
+        }
+        console.error(`❌ Rate limit excedido após ${MAX_RETRIES} retries - token: ${token.palavra}`);
+        return token; // Retornar inalterado após esgotamento de retries
       } else if (response.status === 402) {
         console.error(`❌ Créditos Lovable AI esgotados - verifique Settings → Workspace → Usage`);
       } else {
@@ -371,34 +391,34 @@ export async function annotateWithGemini(
   let tokensInput = 0;
   let tokensOutput = 0;
 
-  // Processar em batches de 3 para otimizar custo/latência
-  const BATCH_SIZE = 3;
-  for (let i = 0; i < unknownTokens.length; i += BATCH_SIZE) {
-    const batch = unknownTokens.slice(i, i + BATCH_SIZE);
+  // ✅ PROCESSAMENTO SEQUENCIAL COM DELAY para evitar rate limiting
+  // Mudança de Promise.all paralelo para processamento sequencial
+  for (let i = 0; i < unknownTokens.length; i++) {
+    const token = unknownTokens[i];
     
     try {
-      const batchPromises = batch.map(async token => {
-        const result = await annotateTokenWithGemini(token, fullText);
-        
-        // Contar métricas
-        if (result.source === 'cache') {
-          cachedHits++;
-        } else if (result.source === 'gemini') {
-          apiCalls++;
-          // Estimativa de tokens (palavra + contexto ≈ 50-100 tokens input)
-          tokensInput += 100;
-          tokensOutput += 50; // Resposta JSON ≈ 50 tokens
-        }
-        
-        return result;
-      });
+      const result = await annotateTokenWithGemini(token, fullText);
       
-      const batchResults = await Promise.all(batchPromises);
-      annotatedResults.push(...batchResults);
+      // Contar métricas
+      if (result.source === 'cache') {
+        cachedHits++;
+      } else if (result.source === 'gemini') {
+        apiCalls++;
+        // Estimativa de tokens (palavra + contexto ≈ 50-100 tokens input)
+        tokensInput += 100;
+        tokensOutput += 50; // Resposta JSON ≈ 50 tokens
+        
+        // ✅ THROTTLE: delay entre chamadas API (não cache hits)
+        if (i < unknownTokens.length - 1) {
+          await sleep(GEMINI_CALL_DELAY_MS);
+        }
+      }
+      
+      annotatedResults.push(result);
       
     } catch (error) {
-      console.error(`❌ Erro no batch ${i}-${i + BATCH_SIZE}:`, error);
-      annotatedResults.push(...batch);
+      console.error(`❌ Erro ao processar token ${i}:`, error);
+      annotatedResults.push(token); // Retornar token original em caso de erro
     }
   }
 
