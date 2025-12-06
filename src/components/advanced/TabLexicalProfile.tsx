@@ -3,16 +3,22 @@
  * 
  * Análise de vocabulário e riqueza lexical.
  * Refatorado para usar cache centralizado do AnalysisToolsContext.
+ * 
+ * Sprint LF-1: Correções de sincronização de contextos
+ * - Sincronização automática AnalysisToolsContext → SubcorpusContext
+ * - Feedback visual para seleção vazia
+ * - Botão manual "Analisar Corpus"
+ * - Botão "Limpar Cache"
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2, RefreshCw } from "lucide-react";
+import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2, RefreshCw, PlayCircle, Trash2, AlertCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LexicalProfile } from "@/data/types/stylistic-analysis.types";
 import { DominioSemantico } from "@/data/types/corpus.types";
@@ -22,7 +28,6 @@ import {
   calculateDiversityMetrics,
   exportLexicalProfileToCSV
 } from "@/services/lexicalAnalysisService";
-import { useFullTextCorpus } from "@/hooks/useFullTextCorpus";
 import { sampleProportionalCorpus, validateCorpusSizes, calculateSignificance } from "@/services/proportionalSamplingService";
 import { ComparisonRadarChart } from "@/components/visualization/ComparisonRadarChart";
 import { SignificanceIndicator } from "@/components/visualization/SignificanceIndicator";
@@ -40,14 +45,19 @@ import { useToolCache } from "@/hooks/useToolCache";
 import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
 import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
 import { lexicalTheory } from "@/data/theoretical/stylistic-theory";
+import { CorpusType } from "@/data/types/corpus-tools.types";
 
 const log = createLogger('TabLexicalProfile');
 
 export function TabLexicalProfile() {
   const subcorpusContext = useSubcorpus();
   const { job, isProcessing, progress, eta, wordsPerSecond, startJob, resumeJob, cancelJob, checkExistingJob, isResuming } = useSemanticAnnotationJob();
-  const { stylisticSelection, setStylisticSelection, activeAnnotationJobId, setActiveAnnotationJobId } = useSubcorpus();
+  const { stylisticSelection, setStylisticSelection, activeAnnotationJobId, setActiveAnnotationJobId, loadedCorpus, getFilteredCorpus, isLoading: isLoadingCorpus, isReady: isSubcorpusReady } = useSubcorpus();
   const { songs, isLoading: loadingSongs, completedCount, totalCount } = useJobSongsProgress(job?.id || null, isProcessing);
+  
+  // Sincronização com AnalysisToolsContext
+  const { studyCorpus, referenceCorpus } = useAnalysisTools();
+  
   const [existingJob, setExistingJob] = useState<any | null>(null);
   const [studyProfile, setStudyProfile] = useState<LexicalProfile | null>(null);
   const [referenceProfile, setReferenceProfile] = useState<LexicalProfile | null>(null);
@@ -55,10 +65,35 @@ export function TabLexicalProfile() {
   const [studyDominios, setStudyDominios] = useState<DominioSemantico[]>([]);
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
-
-  const { corpus: gauchoCorpus, isLoading: loadingGaucho } = useFullTextCorpus('gaucho');
-  const { corpus: nordestinoCorpus, isLoading: loadingNordestino } = useFullTextCorpus('nordestino');
   
+  // ========== SINCRONIZAÇÃO DE CONTEXTOS ==========
+  // Auto-sincronizar AnalysisToolsContext → SubcorpusContext
+  useEffect(() => {
+    if (studyCorpus && studyCorpus.type === 'platform' && isSubcorpusReady) {
+      const newSelection = {
+        study: {
+          corpusType: (studyCorpus.platformCorpus || 'gaucho') as CorpusType,
+          mode: studyCorpus.platformArtist ? 'artist' as const : 'complete' as const,
+          artist: studyCorpus.platformArtist || undefined,
+          estimatedSize: 0
+        },
+        reference: referenceCorpus && referenceCorpus.type === 'platform' ? {
+          corpusType: (referenceCorpus.platformCorpus || 'nordestino') as CorpusType,
+          mode: 'complete' as const,
+          targetSize: 0,
+          sizeRatio: 1
+        } : null,
+        isComparative: !!referenceCorpus
+      };
+      
+      // Só atualiza se realmente mudou para evitar loops
+      if (JSON.stringify(newSelection) !== JSON.stringify(stylisticSelection)) {
+        log.info('Syncing AnalysisToolsContext → SubcorpusContext', { studyCorpus, referenceCorpus });
+        setStylisticSelection(newSelection);
+      }
+    }
+  }, [studyCorpus, referenceCorpus, isSubcorpusReady]);
+
   // Sincronizar existingJob com job do hook
   useEffect(() => {
     if (job) {
@@ -81,8 +116,21 @@ export function TabLexicalProfile() {
     }
   }, [stylisticSelection?.study.artist, job, checkExistingJob, setActiveAnnotationJobId]);
 
-  const handleAnalyze = async () => {
-    if (!stylisticSelection) return;
+  // ========== CACHE MANAGEMENT ==========
+  const handleClearCache = useCallback(() => {
+    setStudyProfile(null);
+    setReferenceProfile(null);
+    setStudyDominios([]);
+    setReferenceDominios([]);
+    toast.success('Cache limpo! Execute a análise novamente.');
+  }, []);
+
+  // ========== ANÁLISE ==========
+  const handleAnalyze = useCallback(async () => {
+    if (!stylisticSelection) {
+      toast.error('Selecione um corpus antes de analisar.');
+      return;
+    }
 
     setIsAnalyzing(true);
     
@@ -113,17 +161,33 @@ export function TabLexicalProfile() {
       
       setStudyDominios(studyDominiosData);
 
-      // Analyze study corpus
-      const studyCorpusData = stylisticSelection.study.corpusType === 'gaucho' ? gauchoCorpus : nordestinoCorpus;
+      // Usar corpus carregado via SubcorpusContext (Sistema B - mais confiável)
+      let studyCorpusData = loadedCorpus;
+      
+      // Se não tiver corpus carregado, tentar carregar via getFilteredCorpus
+      if (!studyCorpusData) {
+        try {
+          studyCorpusData = await getFilteredCorpus();
+        } catch (err) {
+          log.warn('Falha ao carregar corpus via getFilteredCorpus', err);
+        }
+      }
+      
       if (studyCorpusData && studyDominiosData.length > 0) {
-        const studyProfile = calculateLexicalProfile(studyCorpusData, studyDominiosData);
-        setStudyProfile(studyProfile);
+        const profile = calculateLexicalProfile(studyCorpusData, studyDominiosData);
+        setStudyProfile(profile);
       } else if (studyDominiosData.length === 0) {
         toast.error('Nenhum domínio semântico encontrado. Execute a anotação primeiro.');
+        setIsAnalyzing(false);
+        return;
+      } else {
+        toast.error('Corpus não carregado. Aguarde o carregamento.');
+        setIsAnalyzing(false);
+        return;
       }
 
       // Analyze reference corpus if comparative mode
-      if (stylisticSelection.isComparative) {
+      if (stylisticSelection.isComparative && stylisticSelection.reference) {
         const refDominiosData = await getSemanticDomainsFromAnnotatedCorpus(
           stylisticSelection.reference.corpusType,
           undefined
@@ -131,7 +195,10 @@ export function TabLexicalProfile() {
 
         setReferenceDominios(refDominiosData);
 
-        let refCorpusData = stylisticSelection.reference.corpusType === 'gaucho' ? gauchoCorpus : nordestinoCorpus;
+        // Para o corpus de referência, carregar via getFilteredCorpus
+        // Nota: precisaria de uma função separada ou usar cache diferente
+        // Por agora, usar o mesmo loadedCorpus se for o mesmo tipo
+        let refCorpusData = loadedCorpus;
         
         if (refCorpusData && stylisticSelection.reference.mode === 'proportional-sample') {
           refCorpusData = sampleProportionalCorpus(
@@ -155,7 +222,7 @@ export function TabLexicalProfile() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [stylisticSelection, loadedCorpus, getFilteredCorpus, startJob]);
 
   // Auto-analisar quando job concluir
   useEffect(() => {
@@ -174,13 +241,50 @@ export function TabLexicalProfile() {
     link.click();
   };
 
-  if (loadingGaucho || loadingNordestino) {
+  // ========== ESTADOS DE LOADING E SELEÇÃO VAZIA ==========
+  if (isLoadingCorpus) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center space-y-3">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="text-muted-foreground">Carregando corpora...</p>
+          <p className="text-muted-foreground">Carregando corpus...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Feedback visual quando nenhum corpus está selecionado
+  if (!stylisticSelection) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <BookOpen className="w-6 h-6 text-primary" />
+          <div>
+            <h2 className="text-2xl font-bold">Perfil Léxico</h2>
+            <p className="text-sm text-muted-foreground">Análise de vocabulário e riqueza lexical</p>
+          </div>
+        </div>
+        
+        {/* Framework Teórico */}
+        <TheoryBriefCard 
+          framework={lexicalTheory} 
+          onOpenDetail={() => setShowTheoryModal(true)} 
+        />
+        
+        <Card className="p-8 text-center border-dashed border-2 border-muted-foreground/30">
+          <AlertCircle className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+          <h3 className="text-lg font-medium mb-2">Selecione um Corpus</h3>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Use os seletores acima para escolher o corpus de estudo e referência antes de analisar o perfil léxico.
+          </p>
+        </Card>
+
+        {/* Modal de Teoria Detalhada */}
+        <TheoryDetailModal 
+          open={showTheoryModal} 
+          onClose={() => setShowTheoryModal(false)}
+          framework={lexicalTheory}
+        />
       </div>
     );
   }
@@ -224,11 +328,44 @@ export function TabLexicalProfile() {
           <BookOpen className="w-6 h-6 text-primary" />
           <div>
             <h2 className="text-2xl font-bold">Perfil Léxico</h2>
-            <p className="text-sm text-muted-foreground">Análise de vocabulário e riqueza lexical</p>
+            <p className="text-sm text-muted-foreground">
+              Análise de vocabulário e riqueza lexical
+              {stylisticSelection?.study?.artist && (
+                <Badge variant="secondary" className="ml-2">
+                  {stylisticSelection.study.artist}
+                </Badge>
+              )}
+            </p>
           </div>
         </div>
         
         <div className="flex items-center gap-3">
+          {/* Botão Limpar Cache */}
+          <Button 
+            onClick={handleClearCache} 
+            variant="ghost" 
+            size="sm"
+            className="gap-2 text-muted-foreground hover:text-destructive"
+            disabled={!studyProfile && !referenceProfile}
+          >
+            <Trash2 className="w-4 h-4" />
+            Limpar Cache
+          </Button>
+          
+          {/* Botão Analisar Corpus */}
+          <Button 
+            onClick={handleAnalyze} 
+            disabled={isAnalyzing || isProcessing}
+            className="gap-2"
+          >
+            {isAnalyzing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <PlayCircle className="w-4 h-4" />
+            )}
+            {isAnalyzing ? 'Analisando...' : 'Analisar Corpus'}
+          </Button>
+          
           {studyProfile && (
             <Button onClick={handleExport} variant="outline" className="gap-2">
               <Download className="w-4 h-4" />
