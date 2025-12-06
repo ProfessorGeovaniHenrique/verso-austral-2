@@ -16,27 +16,89 @@ import type {
 } from '@/data/types/pos-annotation.types';
 import type { CorpusCompleto } from '@/data/types/full-text-corpus.types';
 
+// Maximum words per chunk to avoid Edge Function timeout
+const MAX_WORDS_PER_CHUNK = 300;
+
 /**
- * Annotate a single text with POS tags
+ * Split text into chunks of approximately MAX_WORDS_PER_CHUNK words
+ * Preserves line breaks as chunk boundaries when possible
+ */
+function splitTextIntoChunks(texto: string): string[] {
+  const lines = texto.split(/\r?\n/);
+  const chunks: string[] = [];
+  let currentChunk: string[] = [];
+  let currentWordCount = 0;
+
+  for (const line of lines) {
+    const lineWordCount = line.split(/\s+/).filter(w => w.trim()).length;
+    
+    if (currentWordCount + lineWordCount > MAX_WORDS_PER_CHUNK && currentChunk.length > 0) {
+      // Save current chunk and start new one
+      chunks.push(currentChunk.join('\n'));
+      currentChunk = [line];
+      currentWordCount = lineWordCount;
+    } else {
+      currentChunk.push(line);
+      currentWordCount += lineWordCount;
+    }
+  }
+
+  // Add remaining lines
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join('\n'));
+  }
+
+  return chunks;
+}
+
+/**
+ * Annotate a single chunk of text with POS tags
+ */
+async function annotateChunk(texto: string, idioma: 'pt' | 'es' = 'pt'): Promise<POSToken[]> {
+  const request: POSAnnotationRequest = { texto, idioma };
+  
+  const { data, error } = await supabase.functions.invoke<POSAnnotationResponse>('annotate-pos', {
+    body: request
+  });
+
+  if (error) {
+    console.error('[POS] Erro ao anotar chunk:', error);
+    throw new Error(`Erro na anotação POS: ${error.message}`);
+  }
+
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+
+  return data?.annotations || [];
+}
+
+/**
+ * Annotate a single text with POS tags (with automatic chunking for large texts)
  */
 export async function annotatePOS(texto: string, idioma: 'pt' | 'es' = 'pt'): Promise<POSToken[]> {
   try {
-    const request: POSAnnotationRequest = { texto, idioma };
+    const wordCount = texto.split(/\s+/).filter(w => w.trim()).length;
     
-    const { data, error } = await supabase.functions.invoke<POSAnnotationResponse>('annotate-pos', {
-      body: request
-    });
-
-    if (error) {
-      console.error('[POS] Erro ao anotar texto:', error);
-      throw new Error(`Erro na anotação POS: ${error.message}`);
+    // If text is small enough, process directly
+    if (wordCount <= MAX_WORDS_PER_CHUNK) {
+      return await annotateChunk(texto, idioma);
     }
 
-    if (data?.error) {
-      throw new Error(data.error);
+    // Split into chunks for large texts
+    const chunks = splitTextIntoChunks(texto);
+    console.log(`[POS] Texto grande (${wordCount} palavras) dividido em ${chunks.length} chunks`);
+    
+    const allTokens: POSToken[] = [];
+    
+    for (let i = 0; i < chunks.length; i++) {
+      console.log(`[POS] Processando chunk ${i + 1}/${chunks.length}...`);
+      const tokens = await annotateChunk(chunks[i], idioma);
+      allTokens.push(...tokens);
     }
-
-    return data?.annotations || [];
+    
+    console.log(`[POS] Todos os chunks processados: ${allTokens.length} tokens`);
+    return allTokens;
   } catch (error) {
     console.error('[POS] Erro na chamada do serviço:', error);
     throw error;
