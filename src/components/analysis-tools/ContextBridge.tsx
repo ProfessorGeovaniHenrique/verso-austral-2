@@ -130,7 +130,7 @@ export function useCorpusSyncEffect() {
   }, [studyCorpus, setSelection]);
 
   // PASSO 2: Carrega corpus quando selection muda E é válido
-  // CORREÇÃO R-1.2: Aguarda availableCorpora estar carregado
+  // CORREÇÃO LF-3: studyCorpus nas dependências para forçar reload quando seleção muda
   useEffect(() => {
     // Aguarda availableCorpora estar pronto antes de tentar carregar
     if (!isReady) {
@@ -138,8 +138,11 @@ export function useCorpusSyncEffect() {
       return;
     }
     
-    // Só carrega se há seleção válida
-    if (!selection.corpusBase) return;
+    // Só carrega se há seleção válida de plataforma
+    if (!studyCorpus || studyCorpus.type !== 'platform') {
+      console.log('[ContextBridge] Nenhuma seleção de plataforma válida');
+      return;
+    }
     
     // Gerar chave única para esta seleção
     const loadKey = JSON.stringify({
@@ -149,19 +152,9 @@ export function useCorpusSyncEffect() {
     });
     
     // Evita recarregamento se já carregou esta seleção
-    if (lastLoadedKeyRef.current === loadKey) return;
-    
-    // Evita carregar se loadedCorpus já existe e corresponde à seleção
-    if (loadedCorpus && loadedCorpus.musicas.length > 0) {
-      // Verificar se o corpus carregado corresponde à seleção atual
-      const isCorrectCorpus = selection.mode === 'complete' || 
-        (selection.mode === 'single' && selection.artistaA && 
-         loadedCorpus.musicas.some(m => m.metadata.artista === selection.artistaA));
-      
-      if (isCorrectCorpus) {
-        lastLoadedKeyRef.current = loadKey;
-        return;
-      }
+    if (lastLoadedKeyRef.current === loadKey && loadedCorpus && loadedCorpus.musicas.length > 0) {
+      console.log('[ContextBridge] Corpus já carregado para:', loadKey);
+      return;
     }
     
     let cancelled = false;
@@ -171,21 +164,15 @@ export function useCorpusSyncEffect() {
       console.log('[ContextBridge] Carregando corpus:', loadKey);
       
       try {
-        await getFilteredCorpusRef.current();
+        const result = await getFilteredCorpusRef.current();
         if (!cancelled) {
           lastLoadedKeyRef.current = loadKey;
-          console.log('[ContextBridge] Corpus carregado com sucesso');
+          console.log('[ContextBridge] Corpus carregado:', result?.totalMusicas || 0, 'músicas');
         }
       } catch (error) {
         console.error('[ContextBridge] Erro ao carregar corpus:', error);
         if (!cancelled) {
-          toast.error('Erro ao carregar corpus. Tentando novamente...');
-          // Fallback: tentar carregar corpus completo
-          try {
-            setSelection({ ...selection, mode: 'complete', artistaA: null });
-          } catch {
-            // Ignora erro do fallback
-          }
+          toast.error('Erro ao carregar corpus. Tente novamente.');
         }
       } finally {
         if (!cancelled) setIsLoadingCorpus(false);
@@ -195,7 +182,7 @@ export function useCorpusSyncEffect() {
     loadCorpus();
     
     return () => { cancelled = true; };
-  }, [selection.corpusBase, selection.mode, selection.artistaA, loadedCorpus, setSelection, isReady]);
+  }, [isReady, studyCorpus, selection.corpusBase, selection.mode, selection.artistaA, loadedCorpus]);
 
   // PASSO 3: Sincroniza studyCorpus + referenceCorpus → stylisticSelection
   useEffect(() => {

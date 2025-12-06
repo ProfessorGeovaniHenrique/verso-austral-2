@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Info, Brain, Trash2 } from "lucide-react";
+import { Play, Download, Info, Brain, Trash2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -15,7 +15,7 @@ import { mindStyleTheory } from "@/data/theoretical/stylistic-theory";
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
 export function MindStyleAnalyzerTool() {
-  const { loadedCorpus, isLoading: loadingCorpus } = useSubcorpus();
+  const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
   const [profile, setProfile] = useState<MindStyleProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -272,9 +272,19 @@ export function MindStyleAnalyzerTool() {
           ) : (
             !isAnalyzing && (
               <div className="text-center text-muted-foreground py-8">
-                {!loadedCorpus 
-                  ? "Selecione um corpus no seletor acima para iniciar a análise"
-                  : "Clique em \"Analisar Mind Style\" para iniciar análise cognitiva"}
+                {loadingCorpus ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Carregando corpus...</span>
+                  </div>
+                ) : !loadedCorpus ? (
+                  <span>
+                    Selecione um corpus no seletor acima para iniciar a análise
+                    {!isReady && <span className="text-xs ml-1">(Aguardando dados...)</span>}
+                  </span>
+                ) : (
+                  "Clique em \"Analisar Mind Style\" para iniciar análise cognitiva"
+                )}
               </div>
             )
           )}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Trash2 } from "lucide-react";
+import { Play, Download, Trash2, Loader2 } from "lucide-react";
 import { analyzeCohesion } from "@/services/cohesionAnalysisService";
 import { CohesionProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesC
 import { cohesionTheory } from "@/data/theoretical/stylistic-theory";
 
 export function CohesionAnalysisTool() {
-  const { loadedCorpus } = useSubcorpus();
+  const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
   const [profile, setProfile] = useState<CohesionProfile | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
@@ -212,9 +212,19 @@ export function CohesionAnalysisTool() {
           ) : (
             !isAnalyzing && (
               <div className="text-center text-muted-foreground py-8">
-                {!loadedCorpus 
-                  ? "Selecione um corpus no seletor acima para iniciar a análise"
-                  : "Clique em \"Analisar Coesão\" para identificar elementos coesivos"}
+                {loadingCorpus ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Carregando corpus...</span>
+                  </div>
+                ) : !loadedCorpus ? (
+                  <span>
+                    Selecione um corpus no seletor acima para iniciar a análise
+                    {!isReady && <span className="text-xs ml-1">(Aguardando dados...)</span>}
+                  </span>
+                ) : (
+                  "Clique em \"Analisar Coesão\" para identificar elementos coesivos"
+                )}
               </div>
             )
           )}
