@@ -34,13 +34,13 @@ export function CulturalAnalysisTab() {
           description="Corpus para análise cultural e dialetal"
           value={studyCorpus}
           onChange={setStudyCorpus}
-          showBalancing
         />
         <CorpusSelector
           label="Corpus de Referência"
           description="Corpus para comparação regional/temporal"
           value={referenceCorpus}
           onChange={setReferenceCorpus}
+          showBalancing
         />
       </div>
 

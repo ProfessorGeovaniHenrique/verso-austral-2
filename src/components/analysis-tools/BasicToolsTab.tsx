@@ -47,13 +47,13 @@ export function BasicToolsTab({ className }: BasicToolsTabProps) {
           description="Corpus principal para análise"
           value={studyCorpus}
           onChange={setStudyCorpus}
-          showBalancing
         />
         <CorpusSelector
           label="Corpus de Referência"
           description="Corpus para comparação estatística (Keywords, Log-Likelihood)"
           value={referenceCorpus}
           onChange={setReferenceCorpus}
+          showBalancing
         />
       </div>
 

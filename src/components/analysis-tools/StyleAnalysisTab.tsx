@@ -65,13 +65,13 @@ export function StyleAnalysisTab() {
           description="Corpus para análise estilística (preferencialmente anotado)"
           value={studyCorpus}
           onChange={setStudyCorpus}
-          showBalancing
         />
         <CorpusSelector
           label="Corpus de Referência"
           description="Corpus para comparação de perfis"
           value={referenceCorpus}
           onChange={setReferenceCorpus}
+          showBalancing
         />
       </div>
 
