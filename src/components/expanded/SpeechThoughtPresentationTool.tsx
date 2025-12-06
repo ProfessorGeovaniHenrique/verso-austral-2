@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Info } from "lucide-react";
+import { Play, Download, Info, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -116,10 +116,20 @@ export function SpeechThoughtPresentationTool() {
               {isAnalyzing ? "Analisando..." : "Analisar Corpus"}
             </Button>
             {profile && (
-              <Button variant="outline" onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar CSV
-              </Button>
+              <>
+                <Button variant="outline" onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar CSV
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  title="Limpar cache"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
             )}
           </div>
 

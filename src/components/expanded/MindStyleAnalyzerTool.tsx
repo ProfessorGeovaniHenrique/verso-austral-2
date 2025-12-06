@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Download, Info, Brain } from "lucide-react";
+import { Play, Download, Info, Brain, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -114,10 +114,20 @@ export function MindStyleAnalyzerTool() {
               {isAnalyzing ? "Analisando..." : "Analisar Mind Style"}
             </Button>
             {profile && (
-              <Button variant="outline" onClick={exportToCSV}>
-                <Download className="w-4 h-4 mr-2" />
-                Exportar CSV
-              </Button>
+              <>
+                <Button variant="outline" onClick={exportToCSV}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Exportar CSV
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  title="Limpar cache"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </>
             )}
           </div>
 
