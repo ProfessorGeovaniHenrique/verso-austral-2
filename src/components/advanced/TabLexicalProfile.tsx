@@ -38,6 +38,8 @@ import { SongsProgressList } from "@/components/visualization/SongsProgressList"
 import { ReprocessingPanel } from "@/components/expanded/ReprocessingPanel";
 import { useToolCache } from "@/hooks/useToolCache";
 import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
+import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
+import { lexicalTheory } from "@/data/theoretical/stylistic-theory";
 
 const log = createLogger('TabLexicalProfile');
 
@@ -52,6 +54,7 @@ export function TabLexicalProfile() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [studyDominios, setStudyDominios] = useState<DominioSemantico[]>([]);
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
+  const [showTheoryModal, setShowTheoryModal] = useState(false);
 
   const { corpus: gauchoCorpus, isLoading: loadingGaucho } = useFullTextCorpus('gaucho');
   const { corpus: nordestinoCorpus, isLoading: loadingNordestino } = useFullTextCorpus('nordestino');
@@ -278,13 +281,11 @@ export function TabLexicalProfile() {
         </Card>
       )}
 
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          O Perfil Léxico analisa a riqueza vocabular, densidade lexical e campos semânticos do corpus 
-          seguindo as técnicas de Leech & Short (2007).
-        </AlertDescription>
-      </Alert>
+      {/* Framework Teórico */}
+      <TheoryBriefCard 
+        framework={lexicalTheory} 
+        onOpenDetail={() => setShowTheoryModal(true)} 
+      />
 
       {/* Seletor movido para TabFerramentasEstilisticas */}
 
@@ -576,12 +577,29 @@ export function TabLexicalProfile() {
             )}
           </Tabs>
 
+          {/* Sugestões de Análise e Chat Blau Nunes */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-6">
+            <AnalysisSuggestionsCard framework={lexicalTheory} compact />
+            <BlauNunesConsultant 
+              framework={lexicalTheory} 
+              analysisResults={studyProfile}
+              compact
+            />
+          </div>
+
           {/* Painel de reprocessamento */}
           <div className="mt-8">
             <ReprocessingPanel />
           </div>
         </>
       )}
+
+      {/* Modal de Teoria Detalhada */}
+      <TheoryDetailModal 
+        open={showTheoryModal} 
+        onClose={() => setShowTheoryModal(false)}
+        framework={lexicalTheory}
+      />
     </div>
   );
 }
