@@ -10,12 +10,15 @@ import { CorpusType } from '@/data/types/corpus-tools.types';
 import { LexicalProfile, SyntacticProfile, RhetoricalProfile, CohesionProfile } from '@/data/types/stylistic-analysis.types';
 
 // Tipos para corpus do usuário
+export type TextType = 'poetry' | 'prose';
+
 export interface UserCorpusFile {
   id: string;
   name: string;
   content: string;
   wordCount: number;
   uploadedAt: Date;
+  textType: TextType; // Tipo do texto: poesia/música ou prosa
 }
 
 export interface CorpusSelection {
