@@ -141,7 +141,26 @@ export function TabLexicalProfile() {
 
       // Se selecionar artista, disparar job e aguardar conclusão via polling
       if (studyArtistFilter) {
-        toast.info(`Iniciando processamento de ${studyArtistFilter}...`);
+        // ========== SPRINT RAC-1: VERIFICAR JOB EXISTENTE PRIMEIRO ==========
+        const existingJobData = await checkExistingJob(studyArtistFilter);
+        
+        if (existingJobData) {
+          if (existingJobData.status === 'pausado') {
+            toast.info(`Retomando job pausado para ${studyArtistFilter}...`);
+            await resumeJob(existingJobData.id);
+            setIsAnalyzing(false);
+            return;
+          } else {
+            toast.info(`Job em andamento para ${studyArtistFilter}. Monitorando progresso...`);
+            setExistingJob(existingJobData);
+            setActiveAnnotationJobId(existingJobData.id);
+            setIsAnalyzing(false);
+            return;
+          }
+        }
+        
+        // Somente criar novo job se não existir
+        toast.info(`Iniciando novo processamento de ${studyArtistFilter}...`);
         const jobId = await startJob(studyArtistFilter);
         
         if (!jobId) {
@@ -149,7 +168,8 @@ export function TabLexicalProfile() {
         }
 
         // Aguardar conclusão do job (polling automático pelo hook)
-        toast.info('Processamento em andamento. Aguarde...');
+        toast.info('Processamento iniciado. Aguarde...');
+        setIsAnalyzing(false);
         return; // UI será atualizada automaticamente quando job concluir
       }
       

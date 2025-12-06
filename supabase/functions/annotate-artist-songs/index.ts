@@ -117,6 +117,39 @@ serve(async (req) => {
 
     logger.info('Artista identificado', { artistId: artist.id, artistName: artist.name });
 
+    // ========== SPRINT RAC-1: VERIFICAR JOB ATIVO EXISTENTE ==========
+    const { data: existingJob } = await supabaseClient
+      .from('semantic_annotation_jobs')
+      .select('id, status, processed_words, total_words')
+      .eq('artist_id', artist.id)
+      .in('status', ['processando', 'pendente', 'pausado'])
+      .order('tempo_inicio', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existingJob) {
+      logger.info('Job ativo encontrado, retornando existente', { 
+        existingJobId: existingJob.id, 
+        status: existingJob.status 
+      });
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          jobId: existingJob.id,
+          artistId: artist.id,
+          artistName: artist.name,
+          isExisting: true,
+          status: existingJob.status,
+          progress: existingJob.total_words > 0 
+            ? Math.round((existingJob.processed_words / existingJob.total_words) * 100) 
+            : 0,
+          message: `Job existente encontrado (${existingJob.status})`
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Buscar músicas com letra E corpus_id para detecção dinâmica de corpus
     const { data: songs, error: songsError } = await supabaseClient
       .from('songs')
