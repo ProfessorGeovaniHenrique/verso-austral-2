@@ -25,6 +25,9 @@ interface SubcorpusContextType {
   getFilteredCorpus: () => Promise<CorpusCompleto>;
   loadedCorpus: CorpusCompleto | null;
   
+  // NOVO UC-3: Injeção direta de corpus (para corpus do usuário)
+  setLoadedCorpusDirectly: (corpus: CorpusCompleto | null) => void;
+  
   // Metadados do subcorpus atual
   currentMetadata: SubcorpusMetadata | null;
   
@@ -157,6 +160,15 @@ export function SubcorpusProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Erro ao salvar job ativo:', error);
     }
+  }, []);
+  
+  // NOVO UC-3: Injeção direta de corpus (para corpus do usuário convertido)
+  const setLoadedCorpusDirectly = useCallback((corpus: CorpusCompleto | null) => {
+    log.info('Setting loaded corpus directly', { 
+      hasCorpus: !!corpus, 
+      totalMusicas: corpus?.totalMusicas || 0 
+    });
+    setLastLoadedCorpus(corpus);
   }, []);
   
   // Carregar corpora disponíveis ao montar
@@ -385,6 +397,7 @@ export function SubcorpusProvider({ children }: { children: ReactNode }) {
       setSelection,
       getFilteredCorpus,
       loadedCorpus: lastLoadedCorpus,
+      setLoadedCorpusDirectly,
       currentMetadata,
       availableArtists,
       subcorpora,

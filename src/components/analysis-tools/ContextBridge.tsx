@@ -15,6 +15,7 @@ import { useSubcorpus } from '@/contexts/SubcorpusContext';
 import { useTools } from '@/contexts/ToolsContext';
 import { CorpusType } from '@/data/types/corpus-tools.types';
 import { toast } from 'sonner';
+import { userCorpusToCorpusCompleto } from '@/utils/userCorpusConverter';
 
 interface ContextBridgeProps {
   children: ReactNode;
@@ -90,7 +91,7 @@ function corpusSelectionToStylistic(
  */
 export function useCorpusSyncEffect() {
   const { studyCorpus, referenceCorpus } = useAnalysisTools();
-  const { selection, setSelection, setStylisticSelection, getFilteredCorpus, loadedCorpus, isReady } = useSubcorpus();
+  const { selection, setSelection, setStylisticSelection, getFilteredCorpus, loadedCorpus, isReady, setLoadedCorpusDirectly } = useSubcorpus();
   const { setKeywordsState } = useTools();
   const [isLoadingCorpus, setIsLoadingCorpus] = useState(false);
   
@@ -108,8 +109,12 @@ export function useCorpusSyncEffect() {
   const prevKeywordsStudyRef = useRef<string | null>(null);
   const setKeywordsStateRef = useRef(setKeywordsState);
   setKeywordsStateRef.current = setKeywordsState;
+  
+  // Ref para setLoadedCorpusDirectly
+  const setLoadedCorpusDirectlyRef = useRef(setLoadedCorpusDirectly);
+  setLoadedCorpusDirectlyRef.current = setLoadedCorpusDirectly;
 
-  // PASSO 1: Sincroniza studyCorpus → SubcorpusContext.selection
+  // PASSO 1: Sincroniza studyCorpus → SubcorpusContext.selection (apenas para corpus de plataforma)
   useEffect(() => {
     if (!studyCorpus || studyCorpus.type !== 'platform') return;
     
@@ -129,9 +134,56 @@ export function useCorpusSyncEffect() {
     });
   }, [studyCorpus, setSelection]);
 
-  // PASSO 2: Carrega corpus quando selection muda E é válido
+  // PASSO 1.5 (UC-3): Converte e injeta corpus do usuário diretamente
+  useEffect(() => {
+    if (!studyCorpus || studyCorpus.type !== 'user' || !studyCorpus.userCorpus) {
+      return;
+    }
+    
+    // Gerar chave única para este corpus do usuário
+    const userCorpusKey = `user:${studyCorpus.userCorpus.id}:${studyCorpus.userCorpus.textType}`;
+    
+    // Evita reprocessamento se já carregou este corpus
+    if (lastLoadedKeyRef.current === userCorpusKey) {
+      console.log('[ContextBridge] Corpus do usuário já carregado:', userCorpusKey);
+      return;
+    }
+    
+    console.log('[ContextBridge] Convertendo corpus do usuário:', {
+      id: studyCorpus.userCorpus.id,
+      name: studyCorpus.userCorpus.name,
+      textType: studyCorpus.userCorpus.textType
+    });
+    
+    try {
+      // Converte UserCorpusFile → CorpusCompletoEnriquecido
+      const converted = userCorpusToCorpusCompleto(studyCorpus.userCorpus);
+      
+      // Injeta diretamente no SubcorpusContext
+      setLoadedCorpusDirectlyRef.current(converted);
+      lastLoadedKeyRef.current = userCorpusKey;
+      
+      console.log('[ContextBridge] Corpus do usuário injetado:', {
+        totalMusicas: converted.totalMusicas,
+        totalPalavras: converted.totalPalavras
+      });
+      
+      toast.success(`Corpus "${studyCorpus.userCorpus.name}" carregado com sucesso`);
+    } catch (error) {
+      console.error('[ContextBridge] Erro ao converter corpus do usuário:', error);
+      toast.error('Erro ao processar corpus do usuário');
+    }
+  }, [studyCorpus]);
+
+  // PASSO 2: Carrega corpus quando selection muda E é válido (apenas para plataforma)
   // CORREÇÃO LF-3: studyCorpus nas dependências para forçar reload quando seleção muda
   useEffect(() => {
+    // Corpus do usuário é tratado no PASSO 1.5
+    if (studyCorpus?.type === 'user') {
+      console.log('[ContextBridge] Corpus do usuário tratado no PASSO 1.5');
+      return;
+    }
+    
     // Aguarda availableCorpora estar pronto antes de tentar carregar
     if (!isReady) {
       console.log('[ContextBridge] Aguardando availableCorpora...');
