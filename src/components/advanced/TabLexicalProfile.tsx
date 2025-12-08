@@ -66,6 +66,14 @@ export function TabLexicalProfile() {
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
   
+  // ========== SPRINT LF-5: CÁLCULO DO TAMANHO DO CORPUS DE REFERÊNCIA ==========
+  const referenceCorpusSize = referenceProfile?.totalTokens || 
+    (referenceCorpus?.type === 'platform' ? 
+      // Estimativas de tamanho por corpus de plataforma (baseado em dados reais)
+      (referenceCorpus.platformCorpus === 'gaucho' ? 280000 :
+       referenceCorpus.platformCorpus === 'nordestino' ? 450000 :
+       referenceCorpus.platformCorpus === 'sertanejo' ? 320000 : 350000) : 0);
+  
   // ========== SINCRONIZAÇÃO DE CONTEXTOS ==========
   // Auto-sincronizar AnalysisToolsContext → SubcorpusContext
   useEffect(() => {
@@ -128,20 +136,45 @@ export function TabLexicalProfile() {
     }
   }, [job]);
 
-  // Detectar job existente ao montar ou quando seleção mudar
+  // ========== SPRINT LF-5: DETECTAR JOB EXISTENTE COM VALIDAÇÃO MELHORADA ==========
+  // Só mostrar jobs de artista quando seleção for de artista (não corpus de usuário)
   useEffect(() => {
+    // Limpar job existente se estiver usando corpus de usuário
+    if (studyCorpus?.type === 'user') {
+      setExistingJob(null);
+      return;
+    }
+    
     if (stylisticSelection?.study.mode === 'artist' && stylisticSelection?.study.artist && !job) {
       checkExistingJob(stylisticSelection.study.artist).then(existingJobData => {
         if (existingJobData) {
-          setExistingJob(existingJobData);
-          setActiveAnnotationJobId(existingJobData.id);
-          log.info('Existing job detected', { jobId: existingJobData.id, status: existingJobData.status });
+          // Só mostrar jobs ativos (não cancelados ou concluídos há muito tempo)
+          if (existingJobData.status === 'processando' || existingJobData.status === 'pausado') {
+            setExistingJob(existingJobData);
+            setActiveAnnotationJobId(existingJobData.id);
+            log.info('Existing job detected', { jobId: existingJobData.id, status: existingJobData.status });
+          } else {
+            // Job cancelado ou concluído - limpar
+            setExistingJob(null);
+          }
         } else {
           setExistingJob(null);
         }
       });
+    } else if (!stylisticSelection?.study.artist) {
+      // Limpar se não houver artista selecionado
+      setExistingJob(null);
     }
-  }, [stylisticSelection?.study.artist, job, checkExistingJob, setActiveAnnotationJobId]);
+  }, [stylisticSelection?.study.artist, studyCorpus?.type, job, checkExistingJob, setActiveAnnotationJobId]);
+  
+  // ========== SPRINT LF-5: LIMPAR JOBS ANTIGOS DO LOCALSTORAGE ==========
+  const handleClearOldJobs = useCallback(() => {
+    localStorage.removeItem('active-annotation-job-id');
+    setExistingJob(null);
+    setActiveAnnotationJobId(null);
+    toast.success('Jobs antigos removidos da interface!');
+    log.info('Old annotation jobs cleared from localStorage');
+  }, [setActiveAnnotationJobId]);
 
   // ========== CACHE MANAGEMENT ==========
   const handleClearCache = useCallback(() => {
@@ -460,8 +493,9 @@ export function TabLexicalProfile() {
         </div>
       </div>
       
-      {/* UI de Job Existente */}
-      {existingJob && !isProcessing && (
+      {/* ========== SPRINT LF-5: UI DE JOB EXISTENTE COM BOTÃO LIMPAR ========== */}
+      {/* Só mostrar para corpus de plataforma com artista selecionado */}
+      {existingJob && !isProcessing && studyCorpus?.type !== 'user' && (
         <Card className="border-amber-500/50 bg-amber-50 dark:bg-amber-950/20">
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
@@ -498,6 +532,15 @@ export function TabLexicalProfile() {
               disabled={isResuming}
             >
               🔄 Iniciar Novo
+            </Button>
+            <Button 
+              onClick={handleClearOldJobs} 
+              variant="ghost" 
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Limpar
             </Button>
           </CardContent>
         </Card>
@@ -573,14 +616,15 @@ export function TabLexicalProfile() {
         />
       )}
 
-      {stylisticSelection?.isComparative && validation && validation.warnings.length > 0 && (
+      {/* ========== SPRINT LF-5: PROPORTSIONAL SAMPLE INFO COM TAMANHO CORRETO ========== */}
+      {stylisticSelection?.isComparative && stylisticSelection.reference && (
         <ProportionalSampleInfo
-          studySize={stylisticSelection.study.estimatedSize}
-          referenceSize={stylisticSelection.reference.targetSize}
-          targetSize={stylisticSelection.reference.targetSize}
-          ratio={stylisticSelection.reference.sizeRatio}
+          studySize={studyProfile?.totalTokens || stylisticSelection.study.estimatedSize || 0}
+          referenceSize={referenceCorpusSize}
+          targetSize={stylisticSelection.reference.targetSize || referenceCorpusSize}
+          ratio={stylisticSelection.reference.sizeRatio || 1}
           samplingMethod={stylisticSelection.reference.mode}
-          warnings={validation.warnings}
+          warnings={validation?.warnings || []}
         />
       )}
 
