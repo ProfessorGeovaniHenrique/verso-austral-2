@@ -1,6 +1,7 @@
 /**
  * LexicalProsodyView - Visualização de Prosódia Semântica
  * Sprint LF-5 Fase 3: Distribuição de prosódia positiva/negativa/neutra
+ * Sprint LF-8: Integração KWIC Popover
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,10 +12,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Download, Smile, Frown, Minus } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { ProsodyDistribution, LexicalKeyword } from '@/hooks/useLexicalDomainsData';
+import { CorpusCompleto } from '@/data/types/full-text-corpus.types';
+import { KWICPopover } from './KWICPopover';
 
 interface LexicalProsodyViewProps {
   prosodyDistribution: ProsodyDistribution | null;
-  onWordClick?: (word: string) => void;
+  corpus?: CorpusCompleto | null;
+  onOpenKWICTool?: (word: string) => void;
 }
 
 const PROSODY_COLORS = {
@@ -23,7 +27,7 @@ const PROSODY_COLORS = {
   neutral: 'hsl(220, 8%, 46%)',
 };
 
-export function LexicalProsodyView({ prosodyDistribution, onWordClick }: LexicalProsodyViewProps) {
+export function LexicalProsodyView({ prosodyDistribution, corpus, onOpenKWICTool }: LexicalProsodyViewProps) {
   // SPRINT LF-7.2: Placeholder melhorado para dados indisponíveis
   if (!prosodyDistribution || 
       (prosodyDistribution.positive === 0 && 
@@ -92,15 +96,20 @@ export function LexicalProsodyView({ prosodyDistribution, onWordClick }: Lexical
         <ScrollArea className="h-[200px]">
           <div className="flex flex-wrap gap-1.5">
             {words.slice(0, 30).map((w, idx) => (
-              <Badge
+              <KWICPopover
                 key={`${w.word}-${idx}`}
-                variant="outline"
-                className="text-xs cursor-pointer hover:bg-muted"
-                style={{ borderColor: color }}
-                onClick={() => onWordClick?.(w.word)}
+                word={w.word}
+                corpus={corpus || null}
+                onOpenKWICTool={onOpenKWICTool}
               >
-                {w.word}
-              </Badge>
+                <Badge
+                  variant="outline"
+                  className="text-xs cursor-pointer hover:bg-muted"
+                  style={{ borderColor: color }}
+                >
+                  {w.word}
+                </Badge>
+              </KWICPopover>
             ))}
             {words.length > 30 && (
               <span className="text-xs text-muted-foreground px-2">

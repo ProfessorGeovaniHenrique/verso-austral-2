@@ -1,6 +1,7 @@
 /**
  * LexicalDomainCloud - Nuvem de Domínios Semânticos
  * Sprint LF-5 Fase 3: Visualização de nuvem de palavras por domínio
+ * Sprint LF-8: Integração KWIC Popover
  */
 
 import { useState, useMemo } from 'react';
@@ -11,12 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Download, Cloud, Tag } from 'lucide-react';
 import { DomainStats, LexicalCloudNode } from '@/hooks/useLexicalDomainsData';
+import { CorpusCompleto } from '@/data/types/full-text-corpus.types';
+import { KWICPopover } from './KWICPopover';
 
 interface LexicalDomainCloudProps {
   cloudData: LexicalCloudNode[];
   domains: DomainStats[];
+  corpus?: CorpusCompleto | null;
   onDomainClick?: (domain: string) => void;
-  onWordClick?: (word: string) => void;
+  onOpenKWICTool?: (word: string) => void;
 }
 
 // Paleta de cores para domínios
@@ -33,7 +37,7 @@ const COLORS = [
   'hsl(330, 81%, 60%)',
 ];
 
-export function LexicalDomainCloud({ cloudData, domains, onDomainClick, onWordClick }: LexicalDomainCloudProps) {
+export function LexicalDomainCloud({ cloudData, domains, corpus, onDomainClick, onOpenKWICTool }: LexicalDomainCloudProps) {
   const [viewMode, setViewMode] = useState<'domains' | 'words'>('domains');
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
 
@@ -167,29 +171,36 @@ export function LexicalDomainCloud({ cloudData, domains, onDomainClick, onWordCl
               wordCloudData.map((word, idx) => {
                 const fontSize = Math.round(10 + (word.frequency / wordCloudData[0].frequency) * 20);
                 return (
-                  <Tooltip key={`${word.word}-${idx}`}>
-                    <TooltipTrigger asChild>
-                      <button
-                        className="transition-all duration-200 hover:scale-110 hover:opacity-80"
-                        style={{
-                          fontSize: `${fontSize}px`,
-                          color: word.color,
-                          fontWeight: word.frequency > wordCloudData[10]?.frequency ? 600 : 400,
-                        }}
-                        onClick={() => onWordClick?.(word.word)}
-                      >
-                        {word.word}
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      <div className="text-xs space-y-1">
-                        <div className="font-semibold">{word.word}</div>
-                        <div>Domínio: {word.domainName}</div>
-                        <div>Frequência: {word.frequency}</div>
-                        {word.isHapax && <Badge variant="outline" className="text-[10px]">Hapax</Badge>}
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                  <KWICPopover
+                    key={`${word.word}-${idx}`}
+                    word={word.word}
+                    corpus={corpus || null}
+                    onOpenKWICTool={onOpenKWICTool}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          className="transition-all duration-200 hover:scale-110 hover:opacity-80"
+                          style={{
+                            fontSize: `${fontSize}px`,
+                            color: word.color,
+                            fontWeight: word.frequency > wordCloudData[10]?.frequency ? 600 : 400,
+                          }}
+                        >
+                          {word.word}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <div className="text-xs space-y-1">
+                          <div className="font-semibold">{word.word}</div>
+                          <div>Domínio: {word.domainName}</div>
+                          <div>Frequência: {word.frequency}</div>
+                          {word.isHapax && <Badge variant="outline" className="text-[10px]">Hapax</Badge>}
+                          <div className="text-muted-foreground">Clique para ver KWIC</div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </KWICPopover>
                 );
               })
             )}
@@ -231,14 +242,19 @@ export function LexicalDomainCloud({ cloudData, domains, onDomainClick, onWordCl
             </div>
             <div className="flex flex-wrap gap-1.5">
               {domains.find(d => d.domain === selectedDomain)?.keywords.slice(0, 20).map(kw => (
-                <Badge
+                <KWICPopover
                   key={kw.word}
-                  variant="secondary"
-                  className="text-xs cursor-pointer hover:bg-primary/20"
-                  onClick={() => onWordClick?.(kw.word)}
+                  word={kw.word}
+                  corpus={corpus || null}
+                  onOpenKWICTool={onOpenKWICTool}
                 >
-                  {kw.word} ({kw.frequency})
-                </Badge>
+                  <Badge
+                    variant="secondary"
+                    className="text-xs cursor-pointer hover:bg-primary/20"
+                  >
+                    {kw.word} ({kw.frequency})
+                  </Badge>
+                </KWICPopover>
               ))}
             </div>
           </div>

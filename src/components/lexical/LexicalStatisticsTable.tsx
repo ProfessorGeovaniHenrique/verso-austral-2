@@ -1,6 +1,7 @@
 /**
  * LexicalStatisticsTable - Tabela de Estatísticas de Palavras-Chave
  * Sprint LF-5 Fase 3: Tabela interativa com ordenação e paginação
+ * Sprint LF-8: Integração KWIC Popover
  */
 
 import { useState, useMemo } from 'react';
@@ -11,10 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Download, ArrowUpDown, ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LexicalKeyword } from '@/hooks/useLexicalDomainsData';
+import { CorpusCompleto } from '@/data/types/full-text-corpus.types';
+import { KWICPopover } from './KWICPopover';
 
 interface LexicalStatisticsTableProps {
   keywords: LexicalKeyword[];
-  onWordClick?: (word: string) => void;
+  corpus?: CorpusCompleto | null;
+  onOpenKWICTool?: (word: string) => void;
 }
 
 type SortField = 'word' | 'domain' | 'frequency' | 'frequencyPercent' | 'isHapax';
@@ -22,7 +26,7 @@ type SortDirection = 'asc' | 'desc';
 
 const ITEMS_PER_PAGE = 50;
 
-export function LexicalStatisticsTable({ keywords, onWordClick }: LexicalStatisticsTableProps) {
+export function LexicalStatisticsTable({ keywords, corpus, onOpenKWICTool }: LexicalStatisticsTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortField, setSortField] = useState<SortField>('frequency');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -198,31 +202,36 @@ export function LexicalStatisticsTable({ keywords, onWordClick }: LexicalStatist
             </TableHeader>
             <TableBody>
               {paginatedData.map((kw, idx) => (
-                <TableRow 
+                <KWICPopover 
                   key={`${kw.word}-${idx}`}
-                  className="cursor-pointer hover:bg-muted/30"
-                  onClick={() => onWordClick?.(kw.word)}
+                  word={kw.word}
+                  corpus={corpus || null}
+                  onOpenKWICTool={onOpenKWICTool}
                 >
-                  <TableCell className="font-medium">{kw.word}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs">
-                      {kw.domain}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {kw.frequency.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-muted-foreground">
-                    {kw.frequencyPercent.toFixed(3)}%
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {kw.isHapax && (
-                      <Badge variant="outline" className="text-xs">
-                        ✓
+                  <TableRow 
+                    className="cursor-pointer hover:bg-muted/30"
+                  >
+                    <TableCell className="font-medium">{kw.word}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs">
+                        {kw.domain}
                       </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {kw.frequency.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">
+                      {kw.frequencyPercent.toFixed(3)}%
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {kw.isHapax && (
+                        <Badge variant="outline" className="text-xs">
+                          ✓
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                </KWICPopover>
               ))}
             </TableBody>
           </Table>

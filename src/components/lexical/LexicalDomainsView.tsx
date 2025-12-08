@@ -1,6 +1,7 @@
 /**
  * LexicalDomainsView - Visualização de Domínios Semânticos
  * Sprint LF-5 Fase 3: Componente reutilizável para exibir cards de domínios
+ * Sprint LF-8: Integração KWIC Popover
  */
 
 import { useState } from 'react';
@@ -14,14 +15,17 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Search, Download, Layers } from 'lucide-react';
 import { DomainStats, LexicalKeyword } from '@/hooks/useLexicalDomainsData';
+import { CorpusCompleto } from '@/data/types/full-text-corpus.types';
+import { KWICPopover } from './KWICPopover';
 
 interface LexicalDomainsViewProps {
   domains: DomainStats[];
-  onWordClick?: (word: string) => void;
   totalWords: number;
+  corpus?: CorpusCompleto | null;
+  onOpenKWICTool?: (word: string) => void;
 }
 
-export function LexicalDomainsView({ domains, onWordClick, totalWords }: LexicalDomainsViewProps) {
+export function LexicalDomainsView({ domains, totalWords, corpus, onOpenKWICTool }: LexicalDomainsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showKeywords, setShowKeywords] = useState(true);
 
@@ -132,26 +136,33 @@ export function LexicalDomainsView({ domains, onWordClick, totalWords }: Lexical
                   <div className="flex flex-wrap gap-1.5">
                     <TooltipProvider delayDuration={200}>
                       {domain.keywords.slice(0, 8).map(kw => (
-                        <Tooltip key={kw.word}>
-                          <TooltipTrigger asChild>
-                            <Badge
-                              variant="outline"
-                              className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                              onClick={() => onWordClick?.(kw.word)}
-                            >
-                              {kw.word}
-                              <span className="ml-1 text-muted-foreground">
-                                ({kw.frequency})
-                              </span>
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent side="top" className="text-xs">
-                            <div className="space-y-1">
-                              <div>Frequência: {kw.frequency} ({kw.frequencyPercent.toFixed(2)}%)</div>
-                              {kw.isHapax && <div className="text-amber-500">Hapax Legomena</div>}
-                            </div>
-                          </TooltipContent>
-                        </Tooltip>
+                        <KWICPopover
+                          key={kw.word}
+                          word={kw.word}
+                          corpus={corpus || null}
+                          onOpenKWICTool={onOpenKWICTool}
+                        >
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                              >
+                                {kw.word}
+                                <span className="ml-1 text-muted-foreground">
+                                  ({kw.frequency})
+                                </span>
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              <div className="space-y-1">
+                                <div>Frequência: {kw.frequency} ({kw.frequencyPercent.toFixed(2)}%)</div>
+                                {kw.isHapax && <div className="text-amber-500">Hapax Legomena</div>}
+                                <div className="text-muted-foreground">Clique para ver KWIC</div>
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        </KWICPopover>
                       ))}
                       {domain.keywords.length > 8 && (
                         <span className="text-xs text-muted-foreground px-2">

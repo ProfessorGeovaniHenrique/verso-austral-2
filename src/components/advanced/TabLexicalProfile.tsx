@@ -47,7 +47,8 @@ import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesC
 import { lexicalTheory } from "@/data/theoretical/stylistic-theory";
 import { CorpusType } from "@/data/types/corpus-tools.types";
 import { useLexicalDomainsData } from "@/hooks/useLexicalDomainsData";
-import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView } from "@/components/lexical";
+import { useLexicalKWIC } from "@/hooks/useLexicalKWIC";
+import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView, KWICPopover } from "@/components/lexical";
 
 const log = createLogger('TabLexicalProfile');
 
@@ -71,6 +72,9 @@ export function TabLexicalProfile() {
   
   // ========== SPRINT LF-5 FASE 3: HOOK DE DADOS UNIFICADO ==========
   const lexicalData = useLexicalDomainsData(studyProfile, studyDominios, ignorarMG);
+  
+  // ========== SPRINT LF-8: KWIC INTEGRATION ==========
+  const { corpus: kwicCorpus, openKWICTool, isLoading: isLoadingKWICCorpus } = useLexicalKWIC();
   
   // ========== SPRINT LF-5: CÁLCULO DO TAMANHO DO CORPUS DE REFERÊNCIA ==========
   const referenceCorpusSize = referenceProfile?.totalTokens || 
@@ -863,7 +867,8 @@ export function TabLexicalProfile() {
               <LexicalDomainsView 
                 domains={lexicalData.domains}
                 totalWords={lexicalData.totalWords}
-                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+                corpus={kwicCorpus}
+                onOpenKWICTool={openKWICTool}
               />
             </TabsContent>
 
@@ -871,7 +876,8 @@ export function TabLexicalProfile() {
             <TabsContent value="statistics" className="space-y-4">
               <LexicalStatisticsTable 
                 keywords={lexicalData.keywords}
-                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+                corpus={kwicCorpus}
+                onOpenKWICTool={openKWICTool}
               />
             </TabsContent>
 
@@ -880,8 +886,9 @@ export function TabLexicalProfile() {
               <LexicalDomainCloud 
                 cloudData={lexicalData.cloudData}
                 domains={lexicalData.domains}
+                corpus={kwicCorpus}
                 onDomainClick={(domain) => toast.info(`Domínio: ${domain}`)}
-                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+                onOpenKWICTool={openKWICTool}
               />
             </TabsContent>
 
@@ -889,7 +896,8 @@ export function TabLexicalProfile() {
             <TabsContent value="prosody" className="space-y-4">
               <LexicalProsodyView 
                 prosodyDistribution={lexicalData.prosodyDistribution}
-                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+                corpus={kwicCorpus}
+                onOpenKWICTool={openKWICTool}
               />
             </TabsContent>
           </Tabs>
