@@ -49,7 +49,9 @@ import { CorpusType } from "@/data/types/corpus-tools.types";
 import { useLexicalDomainsData } from "@/hooks/useLexicalDomainsData";
 import { useLexicalKWIC } from "@/hooks/useLexicalKWIC";
 import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView, KWICPopover } from "@/components/lexical";
-
+import { annotatePOS, annotatePOSForCorpus, getPOSStatistics } from "@/services/posAnnotationService";
+import { analyzeSemanticDomains, SemanticAnnotation } from "@/services/semanticAnalysisService";
+import { supabase } from "@/integrations/supabase/client";
 const log = createLogger('TabLexicalProfile');
 
 export function TabLexicalProfile() {
@@ -70,6 +72,13 @@ export function TabLexicalProfile() {
   const [showTheoryModal, setShowTheoryModal] = useState(false);
   const [ignorarMG, setIgnorarMG] = useState(true);
   const [activeSubTab, setActiveSubTab] = useState("overview");
+  
+  // SPRINT LF-11: Estado de progresso de anotação para corpus de usuário
+  const [annotationProgress, setAnnotationProgress] = useState<{
+    step: 'idle' | 'pos' | 'semantic' | 'calculating';
+    progress: number;
+    message: string;
+  }>({ step: 'idle', progress: 0, message: '' });
   
   // ========== SPRINT LF-5 FASE 3: HOOK DE DADOS UNIFICADO ==========
   const lexicalData = useLexicalDomainsData(studyProfile, studyDominios, ignorarMG);
@@ -176,27 +185,156 @@ export function TabLexicalProfile() {
 
   // ========== ANÁLISE ==========
   const handleAnalyze = useCallback(async () => {
-    // ========== SPRINT LF-4: SUPORTE A CORPUS DO USUÁRIO ==========
+    // ========== SPRINT LF-11: SUPORTE COMPLETO A CORPUS DO USUÁRIO COM POS/SEMANTIC ==========
     // Verificar corpus do usuário primeiro (prioridade sobre plataforma)
     if (studyCorpus?.type === 'user' && loadedCorpus && loadedCorpus.musicas.length > 0) {
       setIsAnalyzing(true);
+      setAnnotationProgress({ step: 'idle', progress: 0, message: 'Iniciando análise...' });
       
       try {
-        // Para corpus do usuário, calcular perfil léxico diretamente sem anotação semântica
-        const emptyDominios: DominioSemantico[] = [];
-        const profile = calculateLexicalProfile(loadedCorpus, emptyDominios);
+        // 1. Extrair texto completo do corpus
+        const allText = loadedCorpus.musicas.map(m => m.letra).join('\n');
+        const allWords = allText.split(/\s+/).filter(w => w.trim().length > 0);
+        const uniqueWords = [...new Set(allWords.map(w => w.toLowerCase()))];
+        
+        log.info('User corpus prepared', { 
+          totalWords: allWords.length, 
+          uniqueWords: uniqueWords.length 
+        });
+        
+        // 2. Anotação POS (opcional, pode demorar)
+        setAnnotationProgress({ step: 'pos', progress: 15, message: 'Anotando classes gramaticais (POS)...' });
+        
+        let posStats = null;
+        try {
+          // Tentar anotação POS para corpus pequeno (< 5000 palavras)
+          if (allWords.length < 5000) {
+            const posCorpus = await annotatePOSForCorpus(loadedCorpus, (processed, total, currentSong) => {
+              const posProgress = 15 + Math.round((processed / total) * 25);
+              setAnnotationProgress({ 
+                step: 'pos', 
+                progress: posProgress, 
+                message: `Anotando POS: ${currentSong} (${processed}/${total})` 
+              });
+            });
+            posStats = getPOSStatistics(posCorpus);
+            log.info('POS annotation completed', { stats: posStats });
+          } else {
+            log.info('Corpus too large for POS annotation, skipping', { size: allWords.length });
+          }
+        } catch (posError) {
+          log.warn('POS annotation failed, continuing without it', posError);
+        }
+        
+        // 3. Anotação Semântica
+        setAnnotationProgress({ step: 'semantic', progress: 45, message: 'Classificando domínios semânticos...' });
+        
+        let userDominios: DominioSemantico[] = [];
+        try {
+          // Limitar para evitar timeout (máx 500 palavras únicas)
+          const wordsToAnnotate = uniqueWords.slice(0, 500);
+          
+          const semanticResult = await analyzeSemanticDomains(wordsToAnnotate, 'user_corpus_analysis');
+          
+          if (semanticResult.annotations && semanticResult.annotations.length > 0) {
+            // Calcular frequência de cada palavra
+            const wordFreqMap = new Map<string, number>();
+            allWords.forEach(w => {
+              const lower = w.toLowerCase();
+              wordFreqMap.set(lower, (wordFreqMap.get(lower) || 0) + 1);
+            });
+            
+            // Agrupar anotações por domínio para criar DominioSemantico[]
+            const dominiosMap = new Map<string, {
+              palavras: string[];
+              palavrasComFrequencia: Array<{ palavra: string; ocorrencias: number }>;
+              cor: string;
+              totalOcorrencias: number;
+            }>();
+            
+            semanticResult.annotations.forEach((ann: SemanticAnnotation) => {
+              const dominio = ann.dominio_nome || ann.tagset_primario || 'Não classificado';
+              const freq = wordFreqMap.get(ann.palavra.toLowerCase()) || 1;
+              
+              if (!dominiosMap.has(dominio)) {
+                dominiosMap.set(dominio, {
+                  palavras: [],
+                  palavrasComFrequencia: [],
+                  cor: ann.cor || '#888888',
+                  totalOcorrencias: 0
+                });
+              }
+              
+              const entry = dominiosMap.get(dominio)!;
+              entry.palavras.push(ann.palavra);
+              entry.palavrasComFrequencia.push({ palavra: ann.palavra, ocorrencias: freq });
+              entry.totalOcorrencias += freq;
+            });
+            
+            // Calcular totais para percentuais
+            const totalOcorrencias = Array.from(dominiosMap.values()).reduce((sum, d) => sum + d.totalOcorrencias, 0);
+            const totalPalavras = allWords.length;
+            
+            // Converter para DominioSemantico[]
+            userDominios = Array.from(dominiosMap.entries()).map(([dominio, data]) => ({
+              dominio,
+              descricao: '',
+              riquezaLexical: data.palavras.length,
+              ocorrencias: data.totalOcorrencias,
+              percentual: totalOcorrencias > 0 ? (data.totalOcorrencias / totalOcorrencias) * 100 : 0,
+              avgLL: 0,
+              avgMI: 0,
+              palavras: data.palavras,
+              palavrasComFrequencia: data.palavrasComFrequencia,
+              cor: data.cor,
+              corTexto: '#ffffff',
+              frequenciaNormalizada: totalPalavras > 0 ? (data.totalOcorrencias / totalPalavras) * 100 : 0,
+              percentualTematico: totalOcorrencias > 0 ? (data.totalOcorrencias / totalOcorrencias) * 100 : 0,
+              comparacaoCorpus: 'equilibrado' as const,
+              diferencaCorpus: 0,
+              percentualCorpusNE: 0
+            }));
+            
+            // Ordenar por ocorrências
+            userDominios.sort((a, b) => b.ocorrencias - a.ocorrencias);
+            
+            setStudyDominios(userDominios);
+            log.info('Semantic annotation completed', { 
+              annotated: semanticResult.annotations.length,
+              domains: userDominios.length 
+            });
+          }
+        } catch (semanticError) {
+          log.warn('Semantic annotation failed, continuing without it', semanticError);
+        }
+        
+        setAnnotationProgress({ step: 'semantic', progress: 75, message: 'Calculando métricas...' });
+        
+        // 4. Calcular perfil léxico
+        setAnnotationProgress({ step: 'calculating', progress: 85, message: 'Finalizando análise...' });
+        
+        const profile = calculateLexicalProfile(loadedCorpus, userDominios);
         setStudyProfile(profile);
         
         log.info('User corpus analysis completed', { 
           totalTokens: profile.totalTokens, 
           uniqueTokens: profile.uniqueTokens,
-          ttr: profile.ttr 
+          ttr: profile.ttr,
+          dominiosCount: userDominios.length,
+          hasPOS: !!posStats
         });
         
-        toast.success('Análise léxica do corpus do usuário concluída!');
+        setAnnotationProgress({ step: 'idle', progress: 100, message: 'Análise concluída!' });
+        
+        const successMsg = userDominios.length > 0 
+          ? `Análise léxica concluída! ${userDominios.length} palavras classificadas semanticamente.`
+          : 'Análise léxica básica concluída. Anotação semântica não disponível.';
+        toast.success(successMsg);
+        
       } catch (error) {
         log.error('Error analyzing user corpus', error as Error);
         toast.error('Erro ao analisar corpus do usuário.');
+        setAnnotationProgress({ step: 'idle', progress: 0, message: '' });
       } finally {
         setIsAnalyzing(false);
       }
@@ -505,6 +643,27 @@ export function TabLexicalProfile() {
           )}
         </div>
       </div>
+      
+      {/* SPRINT LF-11: Feedback de progresso para corpus de usuário */}
+      {isAnalyzing && annotationProgress.step !== 'idle' && studyCorpus?.type === 'user' && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-4 space-y-3">
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-5 h-5 animate-spin text-primary" />
+              <div className="flex-1">
+                <p className="text-sm font-medium">{annotationProgress.message}</p>
+                <Progress value={annotationProgress.progress} className="mt-2 h-2" />
+              </div>
+              <Badge variant="outline">{annotationProgress.progress}%</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {annotationProgress.step === 'pos' && 'Anotando classes gramaticais com IA...'}
+              {annotationProgress.step === 'semantic' && 'Classificando domínios semânticos...'}
+              {annotationProgress.step === 'calculating' && 'Finalizando cálculos de métricas...'}
+            </p>
+          </CardContent>
+        </Card>
+      )}
       
       {/* ========== SPRINT LF-5: UI DE JOB EXISTENTE COM BOTÃO LIMPAR ========== */}
       {/* Só mostrar para corpus de plataforma com artista selecionado */}
