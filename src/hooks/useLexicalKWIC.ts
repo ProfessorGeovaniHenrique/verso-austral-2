@@ -36,20 +36,12 @@ export function useLexicalKWIC() {
       if (stylisticSelection) {
         setIsLoading(true);
         try {
-          // SPRINT LF-11 FIX: Tratar erro "Modo compare não implementado"
-          // getFilteredCorpus pode lançar erro para modo 'compare'
-          const filtered = await getFilteredCorpus().catch((err) => {
-            // Se o erro é sobre modo compare, usar loadedCorpus como fallback
-            if (err?.message?.includes('compare')) {
-              console.warn('[KWIC] Modo compare não suportado, usando loadedCorpus como fallback');
-              return loadedCorpus;
-            }
-            throw err;
-          });
+          // SPRINT AUD-A: Modo compare agora implementado no SubcorpusContext
+          const filtered = await getFilteredCorpus();
           setCorpus(filtered);
         } catch (error) {
           console.error('Erro ao carregar corpus para KWIC:', error);
-          // Fallback para loadedCorpus em caso de qualquer erro
+          // Fallback para loadedCorpus em caso de erro
           if (loadedCorpus) {
             setCorpus(loadedCorpus);
           }

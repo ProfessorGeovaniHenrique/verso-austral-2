@@ -48,7 +48,7 @@ import { lexicalTheory } from "@/data/theoretical/stylistic-theory";
 import { CorpusType } from "@/data/types/corpus-tools.types";
 import { useLexicalDomainsData } from "@/hooks/useLexicalDomainsData";
 import { useLexicalKWIC } from "@/hooks/useLexicalKWIC";
-import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView, KWICPopover } from "@/components/lexical";
+import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView, KWICPopover, AnnotationQualityMetrics } from "@/components/lexical";
 import { annotatePOS, annotatePOSForCorpus, getPOSStatistics } from "@/services/posAnnotationService";
 import { analyzeSemanticDomains, SemanticAnnotation, SemanticAnalysisProgress } from "@/services/semanticAnalysisService";
 import { supabase } from "@/integrations/supabase/client";
@@ -910,6 +910,15 @@ export function TabLexicalProfile() {
               </CardContent>
             </Card>
           </div>
+
+          {/* ========== SPRINT AUD-A (A-4): MÉTRICAS DE QUALIDADE DA ANOTAÇÃO ========== */}
+          {studyDominios.length > 0 && (
+            <AnnotationQualityMetrics 
+              dominios={studyDominios}
+              totalWords={studyProfile.totalTokens}
+              annotationSource={studyCorpus?.type === 'user' ? 'user' : 'platform'}
+            />
+          )}
 
           {/* ========== SPRINT LF-10: QUICK STATS NO HEADER ========== */}
           <div className="flex items-center justify-between mb-4">

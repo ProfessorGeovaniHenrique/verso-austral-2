@@ -384,8 +384,119 @@ export function SubcorpusProvider({ children }: { children: ReactNode }) {
       return singleCorpus;
     }
     
-    // Modo compare: similar ao single, mas carrega dois artistas
-    throw new Error('Modo compare ainda não implementado');
+    // Modo compare: carregar dois artistas para comparação
+    if (selection.mode === 'compare' && selection.artistaA && selection.artistaB) {
+      log.info('Loading songs for comparison', { 
+        artistA: selection.artistaA, 
+        artistB: selection.artistaB 
+      });
+      
+      // Helper para processar músicas em SongEntry[]
+      const processSongsToEntries = (songs: any[], artistName: string, startPosition: number): { entries: SongEntry[], endPosition: number } => {
+        const entries: SongEntry[] = [];
+        let posicaoGlobal = startPosition;
+        
+        for (const song of songs || []) {
+          if (!song.lyrics || !song.artists) continue;
+          
+          const letra = song.lyrics.trim();
+          const linhas = letra.split('\n').filter((l: string) => l.trim());
+          const palavras = letra
+            .toLowerCase()
+            .replace(/[^\wáéíóúâêôãõàèìòùäëïöüçñ\s]/g, ' ')
+            .split(/\s+/)
+            .filter((p: string) => p.length > 0);
+          
+          if (palavras.length === 0) continue;
+          
+          entries.push({
+            metadata: {
+              artista: artistName,
+              compositor: undefined,
+              album: '',
+              musica: song.title,
+              ano: song.release_year || undefined,
+              fonte: (song.enrichment_source as any) || 'manual'
+            },
+            letra,
+            linhas,
+            palavras,
+            posicaoNoCorpus: posicaoGlobal
+          });
+          
+          posicaoGlobal += palavras.length;
+        }
+        
+        return { entries, endPosition: posicaoGlobal };
+      };
+      
+      // Carregar músicas do artista A
+      const { data: songsA, error: errorA } = await supabase
+        .from('songs')
+        .select(`
+          id,
+          title,
+          lyrics,
+          release_year,
+          enrichment_source,
+          artists!inner (
+            id,
+            name
+          )
+        `)
+        .eq('artists.name', selection.artistaA)
+        .eq('artists.corpus_id', corpus.id)
+        .not('lyrics', 'is', null);
+      
+      if (errorA) throw errorA;
+      
+      // Carregar músicas do artista B
+      const { data: songsB, error: errorB } = await supabase
+        .from('songs')
+        .select(`
+          id,
+          title,
+          lyrics,
+          release_year,
+          enrichment_source,
+          artists!inner (
+            id,
+            name
+          )
+        `)
+        .eq('artists.name', selection.artistaB)
+        .eq('artists.corpus_id', corpus.id)
+        .not('lyrics', 'is', null);
+      
+      if (errorB) throw errorB;
+      
+      // Processar e combinar corpus
+      const processedA = processSongsToEntries(songsA || [], selection.artistaA, 0);
+      const processedB = processSongsToEntries(songsB || [], selection.artistaB, processedA.endPosition);
+      
+      const combinedSongs = [...processedA.entries, ...processedB.entries];
+      const totalPalavras = combinedSongs.reduce((sum, s) => sum + s.palavras.length, 0);
+      
+      const compareCorpus: CorpusCompleto = {
+        tipo: selection.corpusBase,
+        totalMusicas: combinedSongs.length,
+        totalPalavras,
+        musicas: combinedSongs
+      };
+      
+      log.info('Compare corpus loaded', {
+        artistA: { name: selection.artistaA, songs: processedA.entries.length },
+        artistB: { name: selection.artistaB, songs: processedB.entries.length },
+        totalSongs: combinedSongs.length,
+        totalWords: totalPalavras
+      });
+      
+      setLastLoadedCorpus(compareCorpus);
+      return compareCorpus;
+    }
+    
+    // Fallback se modo compare mas faltando artistas
+    throw new Error('Modo compare requer dois artistas selecionados');
   }, [selection, availableCorpora, fullCorpus]);
   
   // NOVO R-1.2: Flag indicando que availableCorpora está carregado
