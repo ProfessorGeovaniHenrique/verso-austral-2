@@ -20,8 +20,26 @@ export function ProportionalSampleInfo({
   samplingMethod,
   warnings = []
 }: ProportionalSampleInfoProps) {
-  const actualRatio = referenceSize / studySize;
+  // SPRINT LF-11 FIX: Usar valores passados como props diretamente
+  // Esses valores já vêm calculados corretamente do TabLexicalProfile
+  const actualRatio = studySize > 0 ? referenceSize / studySize : 0;
   const isComplete = samplingMethod === 'complete';
+  
+  // Validar consistência de dados
+  const hasValidData = studySize > 0 && referenceSize > 0;
+  
+  // SPRINT LF-11 FIX: Validações usando os mesmos valores exibidos
+  const validationWarnings: string[] = [...warnings];
+  
+  if (hasValidData) {
+    if (referenceSize < studySize && !isComplete) {
+      validationWarnings.push(`Corpus de referência (${referenceSize.toLocaleString()}) menor que corpus de estudo (${studySize.toLocaleString()}). Considere aumentar a proporção.`);
+    }
+    
+    if (ratio > 0 && Math.abs(actualRatio - ratio) > 0.5 && !isComplete) {
+      validationWarnings.push(`Proporção real (${actualRatio.toFixed(2)}x) difere da configurada (${ratio}x). Corpus de referência pode ser limitado.`);
+    }
+  }
 
   return (
     <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
@@ -61,7 +79,7 @@ export function ProportionalSampleInfo({
           </div>
         </div>
 
-        {!isComplete && (
+        {!isComplete && hasValidData && (
           <div className="flex items-start gap-2 text-xs text-muted-foreground bg-muted/50 p-3 rounded-md">
             <Check className="h-3 w-3 mt-0.5 text-green-500 shrink-0" />
             <p>
@@ -71,12 +89,12 @@ export function ProportionalSampleInfo({
           </div>
         )}
 
-        {warnings.length > 0 && (
+        {validationWarnings.length > 0 && (
           <Alert variant="destructive" className="py-2">
             <AlertTriangle className="h-4 w-4" />
             <AlertDescription>
               <ul className="list-disc list-inside space-y-1 text-xs">
-                {warnings.map((warning, idx) => (
+                {validationWarnings.map((warning, idx) => (
                   <li key={idx}>{warning}</li>
                 ))}
               </ul>
