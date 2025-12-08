@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2, RefreshCw, PlayCircle, Trash2, AlertCircle } from "lucide-react";
+import { BookOpen, Download, Info, TrendingUp, TrendingDown, Minus, Loader2, RefreshCw, PlayCircle, Trash2, AlertCircle, Layers, BarChart3, Cloud, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { LexicalProfile } from "@/data/types/stylistic-analysis.types";
 import { DominioSemantico } from "@/data/types/corpus.types";
@@ -46,6 +46,8 @@ import { useAnalysisTools } from "@/contexts/AnalysisToolsContext";
 import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
 import { lexicalTheory } from "@/data/theoretical/stylistic-theory";
 import { CorpusType } from "@/data/types/corpus-tools.types";
+import { useLexicalDomainsData } from "@/hooks/useLexicalDomainsData";
+import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView } from "@/components/lexical";
 
 const log = createLogger('TabLexicalProfile');
 
@@ -65,6 +67,10 @@ export function TabLexicalProfile() {
   const [studyDominios, setStudyDominios] = useState<DominioSemantico[]>([]);
   const [referenceDominios, setReferenceDominios] = useState<DominioSemantico[]>([]);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
+  const [ignorarMG, setIgnorarMG] = useState(true);
+  
+  // ========== SPRINT LF-5 FASE 3: HOOK DE DADOS UNIFICADO ==========
+  const lexicalData = useLexicalDomainsData(studyProfile, studyDominios, ignorarMG);
   
   // ========== SPRINT LF-5: CÁLCULO DO TAMANHO DO CORPUS DE REFERÊNCIA ==========
   const referenceCorpusSize = referenceProfile?.totalTokens || 
@@ -716,14 +722,33 @@ export function TabLexicalProfile() {
             </Card>
           </div>
 
-          <Tabs defaultValue="semantic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="semantic">Campos Semânticos</TabsTrigger>
-              <TabsTrigger value="frequencies">Frequências</TabsTrigger>
-              {stylisticSelection?.isComparative && <TabsTrigger value="comparison">Comparação</TabsTrigger>}
+          {/* ========== SPRINT LF-5 FASE 3: 5 SUB-ABAS ========== */}
+          <Tabs defaultValue="overview" className="w-full">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="overview" className="gap-1.5">
+                <BarChart3 className="w-4 h-4" />
+                <span className="hidden sm:inline">Visão Geral</span>
+              </TabsTrigger>
+              <TabsTrigger value="domains" className="gap-1.5">
+                <Layers className="w-4 h-4" />
+                <span className="hidden sm:inline">Domínios</span>
+              </TabsTrigger>
+              <TabsTrigger value="statistics" className="gap-1.5">
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden sm:inline">Estatísticas</span>
+              </TabsTrigger>
+              <TabsTrigger value="cloud" className="gap-1.5">
+                <Cloud className="w-4 h-4" />
+                <span className="hidden sm:inline">Nuvem DS</span>
+              </TabsTrigger>
+              <TabsTrigger value="prosody" className="gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Prosódia</span>
+              </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="semantic" className="space-y-4">
+            {/* Sub-aba 1: Visão Geral (conteúdo original) */}
+            <TabsContent value="overview" className="space-y-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Top 10 Campos Semânticos</CardTitle>
@@ -742,22 +767,21 @@ export function TabLexicalProfile() {
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
-            </TabsContent>
 
-            <TabsContent value="frequencies" className="space-y-4">
+              {/* Frequências Top 50 */}
               <Card>
                 <CardHeader>
                   <CardTitle>Frequências de Palavras</CardTitle>
                   <CardDescription>Top 50 palavras mais frequentes</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="max-h-[500px] overflow-y-auto">
+                  <div className="max-h-[400px] overflow-y-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Palavra</TableHead>
                           <TableHead>Frequência</TableHead>
-                          <TableHead>Domínio Semântico</TableHead>
+                          <TableHead>Domínio</TableHead>
                           <TableHead>Hapax</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -783,64 +807,100 @@ export function TabLexicalProfile() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Comparação (se modo comparativo) */}
+              {stylisticSelection?.isComparative && comparison && referenceProfile && (
+                <>
+                  <ComparisonRadarChart
+                    data={radarData}
+                    studyLabel={`Estudo (${studyProfile.corpusType})`}
+                    referenceLabel={`Referência (${referenceProfile.corpusType})`}
+                    title="Comparação de Perfis Léxicos"
+                    description="Métricas normalizadas para comparação estatística"
+                  />
+
+                  {comparison.significantFields.length > 0 && (
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Diferenças Significativas</CardTitle>
+                        <CardDescription>Campos com diferença maior que 2 pontos percentuais</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Campo Semântico</TableHead>
+                              <TableHead>Estudo</TableHead>
+                              <TableHead>Referência</TableHead>
+                              <TableHead>Significância</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {comparison.significantFields.map((field, idx) => {
+                              const sig = calculateSignificance(
+                                field.studyPercentage,
+                                100,
+                                field.referencePercentage,
+                                100
+                              );
+                              return (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{field.field}</TableCell>
+                                  <TableCell>{field.studyPercentage.toFixed(2)}%</TableCell>
+                                  <TableCell>{field.referencePercentage.toFixed(2)}%</TableCell>
+                                  <TableCell>
+                                    <SignificanceIndicator
+                                      difference={field.difference}
+                                      significance={sig.significance}
+                                      pValue={sig.pValue}
+                                    />
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </>
+              )}
             </TabsContent>
 
-            {stylisticSelection?.isComparative && comparison && referenceProfile && (
-              <TabsContent value="comparison" className="space-y-4">
-                <ComparisonRadarChart
-                  data={radarData}
-                  studyLabel={`Estudo (${studyProfile.corpusType})`}
-                  referenceLabel={`Referência (${referenceProfile.corpusType})`}
-                  title="Comparação de Perfis Léxicos"
-                  description="Métricas normalizadas para comparação estatística"
-                />
+            {/* Sub-aba 2: Domínios Semânticos */}
+            <TabsContent value="domains" className="space-y-4">
+              <LexicalDomainsView 
+                domains={lexicalData.domains}
+                totalWords={lexicalData.totalWords}
+                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+              />
+            </TabsContent>
 
-                {comparison.significantFields.length > 0 && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Diferenças Significativas em Campos Semânticos</CardTitle>
-                      <CardDescription>Campos com diferença maior que 2 pontos percentuais</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Campo Semântico</TableHead>
-                            <TableHead>Estudo</TableHead>
-                            <TableHead>Referência</TableHead>
-                            <TableHead>Significância</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {comparison.significantFields.map((field, idx) => {
-                            const sig = calculateSignificance(
-                              field.studyPercentage,
-                              100,
-                              field.referencePercentage,
-                              100
-                            );
-                            return (
-                              <TableRow key={idx}>
-                                <TableCell className="font-medium">{field.field}</TableCell>
-                                <TableCell>{field.studyPercentage.toFixed(2)}%</TableCell>
-                                <TableCell>{field.referencePercentage.toFixed(2)}%</TableCell>
-                                <TableCell>
-                                  <SignificanceIndicator
-                                    difference={field.difference}
-                                    significance={sig.significance}
-                                    pValue={sig.pValue}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            )}
+            {/* Sub-aba 3: Estatísticas Detalhadas */}
+            <TabsContent value="statistics" className="space-y-4">
+              <LexicalStatisticsTable 
+                keywords={lexicalData.keywords}
+                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+              />
+            </TabsContent>
+
+            {/* Sub-aba 4: Nuvem de Domínios */}
+            <TabsContent value="cloud" className="space-y-4">
+              <LexicalDomainCloud 
+                cloudData={lexicalData.cloudData}
+                domains={lexicalData.domains}
+                onDomainClick={(domain) => toast.info(`Domínio: ${domain}`)}
+                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+              />
+            </TabsContent>
+
+            {/* Sub-aba 5: Prosódia Semântica */}
+            <TabsContent value="prosody" className="space-y-4">
+              <LexicalProsodyView 
+                prosodyDistribution={lexicalData.prosodyDistribution}
+                onWordClick={(word) => toast.info(`KWIC para "${word}" - em desenvolvimento`)}
+              />
+            </TabsContent>
           </Tabs>
 
           {/* Sugestões de Análise e Chat Blau Nunes */}
