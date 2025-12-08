@@ -50,7 +50,7 @@ import { useLexicalDomainsData } from "@/hooks/useLexicalDomainsData";
 import { useLexicalKWIC } from "@/hooks/useLexicalKWIC";
 import { LexicalDomainsView, LexicalStatisticsTable, LexicalDomainCloud, LexicalProsodyView, KWICPopover } from "@/components/lexical";
 import { annotatePOS, annotatePOSForCorpus, getPOSStatistics } from "@/services/posAnnotationService";
-import { analyzeSemanticDomains, SemanticAnnotation } from "@/services/semanticAnalysisService";
+import { analyzeSemanticDomains, SemanticAnnotation, SemanticAnalysisProgress } from "@/services/semanticAnalysisService";
 import { supabase } from "@/integrations/supabase/client";
 const log = createLogger('TabLexicalProfile');
 
@@ -226,15 +226,33 @@ export function TabLexicalProfile() {
           log.warn('POS annotation failed, continuing without it', posError);
         }
         
-        // 3. Anotação Semântica
+        // 3. Anotação Semântica - SPRINT AUD-P0 (A-1): Chunking progressivo SEM LIMITE
         setAnnotationProgress({ step: 'semantic', progress: 45, message: 'Classificando domínios semânticos...' });
         
         let userDominios: DominioSemantico[] = [];
         try {
-          // Limitar para evitar timeout (máx 500 palavras únicas)
-          const wordsToAnnotate = uniqueWords.slice(0, 500);
+          // SPRINT AUD-P0: Processar TODAS as palavras únicas com chunking progressivo
+          const wordsToAnnotate = uniqueWords;
           
-          const semanticResult = await analyzeSemanticDomains(wordsToAnnotate, 'user_corpus_analysis');
+          log.info('Starting semantic annotation with chunking', { 
+            totalUniqueWords: wordsToAnnotate.length 
+          });
+          
+          const semanticResult = await analyzeSemanticDomains(
+            wordsToAnnotate, 
+            'user_corpus_analysis',
+            // Callback de progresso para chunking
+            (chunkProgress: SemanticAnalysisProgress) => {
+              const baseProgress = 45; // Início da fase semântica
+              const semanticRange = 30; // 45% a 75%
+              const progressInRange = (chunkProgress.percentage / 100) * semanticRange;
+              setAnnotationProgress({ 
+                step: 'semantic', 
+                progress: baseProgress + progressInRange, 
+                message: `Classificando: ${chunkProgress.processed}/${chunkProgress.total} palavras (chunk ${chunkProgress.currentChunk}/${chunkProgress.totalChunks})`
+              });
+            }
+          );
           
           if (semanticResult.annotations && semanticResult.annotations.length > 0) {
             // Calcular frequência de cada palavra
