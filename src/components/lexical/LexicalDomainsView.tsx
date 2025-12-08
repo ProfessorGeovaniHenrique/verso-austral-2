@@ -52,16 +52,36 @@ export function LexicalDomainsView({ domains, totalWords, corpus, onOpenKWICTool
     link.click();
   };
 
-  // SPRINT LF-7.2: Placeholder para corpus sem domínios
+  // SPRINT AUD-P0 (U-1): Mensagem explicativa aprimorada para corpus sem domínios
   if (domains.length === 0) {
     return (
       <Card className="p-8 text-center border-dashed border-2 border-muted-foreground/20">
         <Layers className="w-12 h-12 mx-auto mb-4 text-muted-foreground/40" />
-        <h3 className="text-lg font-medium mb-2">Domínios Semânticos Indisponíveis</h3>
-        <p className="text-muted-foreground max-w-md mx-auto text-sm">
-          Este corpus não possui anotação semântica. Para corpus de usuário, utilize as abas 
-          "Visão Geral" e "Estatísticas" para análise de frequências e métricas léxicas.
-        </p>
+        <h3 className="text-lg font-medium mb-2">Classificação Semântica Pendente</h3>
+        <div className="text-muted-foreground max-w-lg mx-auto text-sm space-y-3">
+          <p>
+            <strong>Por que não há domínios semânticos?</strong>
+          </p>
+          <ul className="text-left list-disc list-inside space-y-1.5">
+            <li>
+              <strong>Corpus de usuário:</strong> A anotação semântica é processada automaticamente 
+              ao clicar em "Analisar Corpus". Palavras são classificadas em domínios como 
+              Natureza, Cultura, Sentimentos, etc.
+            </li>
+            <li>
+              <strong>Corpus de plataforma:</strong> Verifique se existe um job de anotação 
+              em andamento ou se o artista selecionado já foi processado.
+            </li>
+            <li>
+              <strong>Primeira análise:</strong> Execute a análise clicando no botão 
+              "Analisar Corpus" na barra de ferramentas acima.
+            </li>
+          </ul>
+          <p className="text-xs text-muted-foreground/70 pt-2 border-t border-muted-foreground/10">
+            💡 As abas "Visão Geral" e "Estatísticas" funcionam sem anotação semântica, 
+            exibindo métricas léxicas básicas (TTR, frequências, hapax legomena).
+          </p>
+        </div>
       </Card>
     );
   }
