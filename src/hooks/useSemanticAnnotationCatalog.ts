@@ -43,17 +43,20 @@ export function useSemanticAnnotationCatalog() {
         .filter(w => w.length > 1);
 
       const totalWords = words.length;
-
-      // Contar palavras no cache
+      
+      // BUG-1 FIX: Buscar palavras únicas no cache (não existe campo song_id)
+      const uniqueWords = [...new Set(words)];
+      
+      // Contar quantas palavras únicas estão no cache semântico
       const { count: cachedCount } = await supabase
         .from('semantic_disambiguation_cache')
         .select('*', { count: 'exact', head: true })
-        .eq('song_id', songId);
+        .in('palavra', uniqueWords);
 
       const cachedWords = cachedCount || 0;
-      const coverage = totalWords > 0 ? (cachedWords / totalWords) * 100 : 0;
+      const coverage = uniqueWords.length > 0 ? (cachedWords / uniqueWords.length) * 100 : 0;
 
-      log.info('Song coverage checked', { songId, totalWords, cachedWords, coverage });
+      log.info('Song coverage checked', { songId, totalWords, uniqueWords: uniqueWords.length, cachedWords, coverage });
 
       return {
         songId,

@@ -90,18 +90,34 @@ export function EnrichmentControlPanel() {
     loadData();
   }, []);
 
-  // Filtrar artistas por corpus ou letra
+  // BUG-2 FIX: Filtrar artistas por corpus E/OU letra
   useEffect(() => {
-    let filtered = [...artists];
-    
-    if (scope === 'letter' && selectedLetter) {
-      filtered = filtered.filter(a => 
-        a.name.toUpperCase().startsWith(selectedLetter)
-      );
+    async function filterArtists() {
+      let filtered = [...artists];
+      
+      // Filtrar por corpus quando escopo é 'corpus'
+      if (scope === 'corpus' && selectedCorpus) {
+        const { data: corpusArtists } = await supabase
+          .from('artists')
+          .select('id')
+          .eq('corpus_id', selectedCorpus);
+        
+        const corpusArtistIds = new Set(corpusArtists?.map(a => a.id) || []);
+        filtered = filtered.filter(a => corpusArtistIds.has(a.id));
+      }
+      
+      // Filtrar por letra inicial
+      if (scope === 'letter' && selectedLetter) {
+        filtered = filtered.filter(a => 
+          a.name.toUpperCase().startsWith(selectedLetter)
+        );
+      }
+      
+      setFilteredArtists(filtered);
     }
     
-    setFilteredArtists(filtered);
-  }, [artists, scope, selectedLetter]);
+    filterArtists();
+  }, [artists, scope, selectedLetter, selectedCorpus]);
 
   // Calcular músicas elegíveis
   useEffect(() => {

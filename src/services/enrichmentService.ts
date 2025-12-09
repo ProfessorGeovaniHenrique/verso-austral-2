@@ -35,7 +35,37 @@ export const enrichmentService = {
         };
       }
       
-      log.info(`Success for song ${songId}`, { data });
+      // BUG-3 FIX: Verificar persistência no banco ANTES de reportar sucesso
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('songs')
+        .select('status, youtube_url, composer, updated_at')
+        .eq('id', songId)
+        .single();
+      
+      if (verifyError) {
+        log.warn(`Could not verify persistence for song ${songId}`, { verifyError });
+        // Continuar mesmo sem verificação - edge function reportou sucesso
+      } else {
+        const wasUpdated = verifyData?.status === 'enriched' || 
+                           verifyData?.youtube_url || 
+                           verifyData?.composer;
+        
+        if (!wasUpdated) {
+          log.warn(`Enrichment reported success but no changes detected for song ${songId}`);
+          return {
+            success: false,
+            songId,
+            error: 'Enrichment reported success but no data was persisted'
+          };
+        }
+        
+        log.info(`Verified persistence for song ${songId}`, { 
+          status: verifyData?.status,
+          hasYoutube: !!verifyData?.youtube_url,
+          hasComposer: !!verifyData?.composer
+        });
+      }
+      
       return {
         success: true,
         songId,
