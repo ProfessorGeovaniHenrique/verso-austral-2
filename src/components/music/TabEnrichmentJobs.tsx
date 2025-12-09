@@ -36,7 +36,8 @@ import {
   Clock,
   Database,
   Brain,
-  ChevronDown
+  ChevronDown,
+  Sparkles
 } from 'lucide-react';
 import { useEnrichmentJobsList, EnrichmentJob, EnrichmentStatus, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
 import { useSemanticCoverage } from '@/hooks/useSemanticCoverage';
@@ -47,6 +48,7 @@ import { ptBR } from 'date-fns/locale';
 import { EnrichmentControlPanel } from './EnrichmentControlPanel';
 import { EnrichmentLiveCard } from './EnrichmentLiveCard';
 import { SemanticCoverageDashboard } from './SemanticCoverageDashboard';
+import { ProcessingPipelinePanel } from './ProcessingPipelinePanel';
 
 const JOB_TYPE_LABELS: Record<EnrichmentJobType, string> = {
   metadata: 'Metadados',
@@ -179,6 +181,9 @@ export function TabEnrichmentJobs() {
 
   return (
     <div className="space-y-6">
+      {/* Pipeline de Processamento Completo */}
+      <ProcessingPipelinePanel />
+
       {/* Dashboard de Cobertura Semântica (Collapsible) */}
       <Collapsible open={coverageOpen} onOpenChange={setCoverageOpen}>
         <Card>
