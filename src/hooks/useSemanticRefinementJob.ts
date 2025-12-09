@@ -2,15 +2,29 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+export interface RefinementSample {
+  palavra: string;
+  oldCode: string;
+  newCode: string;
+  level: number;
+  confianca: number;
+  kwic?: string;
+}
+
 export interface SemanticRefinementJob {
   id: string;
   status: 'pendente' | 'processando' | 'pausado' | 'concluido' | 'erro' | 'cancelado';
   domain_filter: 'MG' | 'DS' | null;
   model: 'gemini' | 'gpt5';
+  priority_mode: 'impact' | 'alphabetical' | 'random';
   total_words: number;
   processed: number;
   refined: number;
   errors: number;
+  n2_refined: number;
+  n3_refined: number;
+  n4_refined: number;
+  sample_refinements: RefinementSample[];
   current_offset: number;
   last_chunk_at: string | null;
   tempo_inicio: string | null;
@@ -23,7 +37,6 @@ export function useSemanticRefinementJob() {
   const [activeJob, setActiveJob] = useState<SemanticRefinementJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch active job on mount
   const fetchActiveJob = useCallback(async () => {
     try {
       const { data, error } = await supabase
@@ -35,7 +48,14 @@ export function useSemanticRefinementJob() {
         .maybeSingle();
 
       if (error) throw error;
-      setActiveJob(data as SemanticRefinementJob | null);
+      if (data) {
+        setActiveJob({
+          ...data,
+          sample_refinements: (data.sample_refinements as unknown as RefinementSample[]) || [],
+        } as SemanticRefinementJob);
+      } else {
+        setActiveJob(null);
+      }
     } catch (error) {
       console.error('[useSemanticRefinementJob] Error fetching job:', error);
     } finally {
@@ -62,7 +82,11 @@ export function useSemanticRefinementJob() {
           filter: `id=eq.${activeJob.id}`,
         },
         (payload) => {
-          setActiveJob(payload.new as SemanticRefinementJob);
+          const newData = payload.new as any;
+          setActiveJob({
+            ...newData,
+            sample_refinements: (newData.sample_refinements as unknown as RefinementSample[]) || [],
+          } as SemanticRefinementJob);
         }
       )
       .subscribe();
@@ -72,10 +96,11 @@ export function useSemanticRefinementJob() {
     };
   }, [activeJob?.id]);
 
-  // Start new job
+  // Start new job with priority mode
   const startJob = useCallback(async (
     domain_filter: 'MG' | 'DS' | null,
-    model: 'gemini' | 'gpt5' = 'gemini'
+    model: 'gemini' | 'gpt5' = 'gemini',
+    priority_mode: 'impact' | 'alphabetical' | 'random' = 'impact'
   ) => {
     try {
       setIsLoading(true);
@@ -112,18 +137,29 @@ export function useSemanticRefinementJob() {
         .insert({
           domain_filter,
           model,
+          priority_mode,
           total_words: count,
           status: 'processando',
           tempo_inicio: new Date().toISOString(),
           last_chunk_at: new Date().toISOString(),
+          n2_refined: 0,
+          n3_refined: 0,
+          n4_refined: 0,
+          sample_refinements: [],
         })
         .select()
         .single();
 
       if (error) throw error;
 
-      setActiveJob(newJob as SemanticRefinementJob);
-      toast.success(`Iniciando refinamento de ${count.toLocaleString()} palavras`);
+      setActiveJob({
+        ...newJob,
+        sample_refinements: [],
+      } as SemanticRefinementJob);
+      
+      const priorityLabel = priority_mode === 'impact' ? 'por impacto' :
+                           priority_mode === 'alphabetical' ? 'alfabético' : 'aleatório';
+      toast.success(`Iniciando refinamento de ${count.toLocaleString()} palavras (${priorityLabel})`);
 
       // Trigger first chunk
       const response = await supabase.functions.invoke('refine-domain-batch', {
@@ -180,7 +216,6 @@ export function useSemanticRefinementJob() {
       setActiveJob(prev => prev ? { ...prev, status: 'processando' } : null);
       toast.success('Refinamento retomado');
 
-      // Trigger next chunk
       await supabase.functions.invoke('refine-domain-batch', {
         body: { jobId: activeJob.id },
       });
@@ -219,6 +254,19 @@ export function useSemanticRefinementJob() {
     ? Math.min(100, Math.round((activeJob.processed / activeJob.total_words) * 100))
     : 0;
 
+  // Calculate depth distribution
+  const depthDistribution = activeJob ? {
+    n2: activeJob.n2_refined || 0,
+    n3: activeJob.n3_refined || 0,
+    n4: activeJob.n4_refined || 0,
+    n1Only: activeJob.refined - (activeJob.n2_refined || 0),
+  } : { n2: 0, n3: 0, n4: 0, n1Only: 0 };
+
+  // Calculate refinement rate
+  const refinementRate = activeJob && activeJob.processed > 0
+    ? Math.round((activeJob.refined / activeJob.processed) * 100)
+    : 0;
+
   // Calculate ETA
   const calculateEta = useCallback(() => {
     if (!activeJob || activeJob.processed === 0 || activeJob.status !== 'processando') {
@@ -229,7 +277,7 @@ export function useSemanticRefinementJob() {
       ? Date.now() - new Date(activeJob.tempo_inicio).getTime()
       : 0;
     
-    const rate = activeJob.processed / (elapsed / 1000); // words per second
+    const rate = activeJob.processed / (elapsed / 1000);
     const remaining = activeJob.total_words - activeJob.processed;
     const etaSeconds = remaining / rate;
 
@@ -242,6 +290,8 @@ export function useSemanticRefinementJob() {
     activeJob,
     isLoading,
     progress,
+    depthDistribution,
+    refinementRate,
     eta: calculateEta(),
     startJob,
     pauseJob,

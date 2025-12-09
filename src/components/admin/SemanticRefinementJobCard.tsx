@@ -5,6 +5,8 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
   RefreshCw, 
   Play, 
@@ -14,9 +16,13 @@ import {
   Zap, 
   CheckCircle,
   AlertTriangle,
-  Clock
+  Clock,
+  TrendingUp,
+  ArrowRight,
+  Layers,
+  Target
 } from 'lucide-react';
-import { useSemanticRefinementJob } from '@/hooks/useSemanticRefinementJob';
+import { useSemanticRefinementJob, RefinementSample } from '@/hooks/useSemanticRefinementJob';
 
 interface Props {
   mgCount: number;
@@ -28,6 +34,8 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
     activeJob,
     isLoading,
     progress,
+    depthDistribution,
+    refinementRate,
     eta,
     startJob,
     pauseJob,
@@ -37,6 +45,7 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
 
   const [selectedDomain, setSelectedDomain] = useState<'MG' | 'DS' | 'all'>('MG');
   const [selectedModel, setSelectedModel] = useState<'gemini' | 'gpt5'>('gemini');
+  const [priorityMode, setPriorityMode] = useState<'impact' | 'alphabetical' | 'random'>('impact');
 
   const totalCount = mgCount + dsCount;
 
@@ -48,7 +57,7 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
 
   const handleStart = () => {
     const filter = selectedDomain === 'all' ? null : selectedDomain;
-    startJob(filter, selectedModel);
+    startJob(filter, selectedModel, priorityMode);
   };
 
   const getStatusBadge = () => {
@@ -80,13 +89,108 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
     return 'Todos os domínios';
   };
 
+  const getPriorityLabel = (mode: string) => {
+    if (mode === 'impact') return 'Por Impacto';
+    if (mode === 'alphabetical') return 'Alfabético';
+    return 'Aleatório';
+  };
+
+  const renderDepthChart = () => {
+    const total = depthDistribution.n2 + depthDistribution.n3 + depthDistribution.n4;
+    if (total === 0) return null;
+
+    const n2Pct = Math.round((depthDistribution.n2 / total) * 100);
+    const n3Pct = Math.round((depthDistribution.n3 / total) * 100);
+    const n4Pct = Math.round((depthDistribution.n4 / total) * 100);
+
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-muted-foreground">Distribuição por Nível</div>
+        <div className="flex h-4 rounded-full overflow-hidden bg-muted">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="bg-amber-500 transition-all" 
+                  style={{ width: `${n2Pct}%` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent>N2: {depthDistribution.n2} ({n2Pct}%)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="bg-orange-500 transition-all" 
+                  style={{ width: `${n3Pct}%` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent>N3: {depthDistribution.n3} ({n3Pct}%)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div 
+                  className="bg-green-500 transition-all" 
+                  style={{ width: `${n4Pct}%` }}
+                />
+              </TooltipTrigger>
+              <TooltipContent>N4: {depthDistribution.n4} ({n4Pct}%)</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="flex justify-between text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-amber-500" /> N2
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-orange-500" /> N3
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="w-2 h-2 rounded-full bg-green-500" /> N4
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSampleRefinements = (samples: RefinementSample[]) => {
+    if (!samples || samples.length === 0) return null;
+
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+          <Sparkles className="h-3 w-3" /> Últimos Refinamentos
+        </div>
+        <div className="space-y-1.5">
+          {samples.slice(0, 5).map((sample, i) => (
+            <div 
+              key={i} 
+              className="flex items-center gap-2 text-xs bg-muted/50 rounded px-2 py-1.5"
+            >
+              <span className="font-medium text-foreground">"{sample.palavra}"</span>
+              <span className="text-muted-foreground">{sample.oldCode}</span>
+              <ArrowRight className="h-3 w-3 text-green-600" />
+              <span className="text-green-600 font-medium">{sample.newCode}</span>
+              <Badge variant="outline" className="text-[10px] h-4">
+                {(sample.confianca * 100).toFixed(0)}%
+              </Badge>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            Refinamento Automático
+            <Layers className="h-5 w-5" />
+            Refinamento N1→N2+
           </CardTitle>
           {getStatusBadge()}
         </div>
@@ -95,8 +199,10 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
         {/* Active Job Display */}
         {activeJob && activeJob.status !== 'concluido' && activeJob.status !== 'cancelado' ? (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              {getDomainLabel(activeJob.domain_filter)} • {activeJob.model === 'gpt5' ? 'GPT-5' : 'Gemini'}
+            {/* Job Info */}
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>{getDomainLabel(activeJob.domain_filter)}</span>
+              <span>{activeJob.model === 'gpt5' ? 'GPT-5' : 'Gemini'} • {getPriorityLabel(activeJob.priority_mode || 'impact')}</span>
             </div>
 
             {/* Progress Bar */}
@@ -108,11 +214,15 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
               <Progress value={progress} className="h-2" />
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 text-center text-sm">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-4 gap-2 text-center text-sm">
               <div className="p-2 bg-muted/50 rounded">
                 <div className="font-medium text-green-600">{activeJob.refined.toLocaleString()}</div>
                 <div className="text-xs text-muted-foreground">Refinados</div>
+              </div>
+              <div className="p-2 bg-muted/50 rounded">
+                <div className="font-medium text-amber-600">{refinementRate}%</div>
+                <div className="text-xs text-muted-foreground">Taxa</div>
               </div>
               <div className="p-2 bg-muted/50 rounded">
                 <div className="font-medium text-red-600">{activeJob.errors}</div>
@@ -120,9 +230,15 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
               </div>
               <div className="p-2 bg-muted/50 rounded">
                 <div className="font-medium">{eta || '-'}</div>
-                <div className="text-xs text-muted-foreground">Tempo restante</div>
+                <div className="text-xs text-muted-foreground">ETA</div>
               </div>
             </div>
+
+            {/* Depth Distribution */}
+            {renderDepthChart()}
+
+            {/* Sample Refinements */}
+            {renderSampleRefinements(activeJob.sample_refinements || [])}
 
             {/* Controls */}
             <div className="flex gap-2">
@@ -175,6 +291,38 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
               </RadioGroup>
             </div>
 
+            {/* Priority Mode */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-1">
+                <Target className="h-4 w-4" /> Priorização
+              </Label>
+              <Select value={priorityMode} onValueChange={(v) => setPriorityMode(v as any)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="impact">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      Por Impacto (frequência alta primeiro)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="alphabetical">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🔤</span>
+                      Alfabético (A-Z)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="random">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">🎲</span>
+                      Aleatório (amostragem)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Model Selection */}
             <div className="space-y-2">
               <Label className="text-sm font-medium">Modelo de IA</Label>
@@ -202,8 +350,15 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
 
             {/* Estimation */}
             <div className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
-              Tempo estimado: ~{Math.ceil(getCountForDomain(selectedDomain) / 50 * 2)} minutos 
-              ({Math.ceil(getCountForDomain(selectedDomain) / 50)} chunks de 50 palavras)
+              <div className="flex items-center gap-1 mb-1">
+                <Clock className="h-3 w-3" />
+                Tempo estimado: ~{Math.ceil(getCountForDomain(selectedDomain) / 50 * 2)} minutos
+              </div>
+              <div className="text-[10px]">
+                {Math.ceil(getCountForDomain(selectedDomain) / 50)} chunks • 50 palavras/chunk • 
+                {priorityMode === 'impact' ? ' Palavras mais frequentes primeiro' : 
+                 priorityMode === 'alphabetical' ? ' Ordem A-Z' : ' Amostragem aleatória'}
+              </div>
             </div>
 
             {/* Start Button */}
@@ -213,7 +368,7 @@ export function SemanticRefinementJobCard({ mgCount, dsCount }: Props) {
               className="w-full"
             >
               <Play className="h-4 w-4 mr-2" />
-              Iniciar Refinamento Automático
+              Iniciar Refinamento N1→N2+
             </Button>
           </div>
         )}

@@ -2658,8 +2658,13 @@ export type Database = {
           last_chunk_at: string | null
           metadata: Json | null
           model: string
+          n2_refined: number | null
+          n3_refined: number | null
+          n4_refined: number | null
+          priority_mode: string | null
           processed: number
           refined: number
+          sample_refinements: Json | null
           status: string
           tempo_fim: string | null
           tempo_inicio: string | null
@@ -2677,8 +2682,13 @@ export type Database = {
           last_chunk_at?: string | null
           metadata?: Json | null
           model?: string
+          n2_refined?: number | null
+          n3_refined?: number | null
+          n4_refined?: number | null
+          priority_mode?: string | null
           processed?: number
           refined?: number
+          sample_refinements?: Json | null
           status?: string
           tempo_fim?: string | null
           tempo_inicio?: string | null
@@ -2696,8 +2706,13 @@ export type Database = {
           last_chunk_at?: string | null
           metadata?: Json | null
           model?: string
+          n2_refined?: number | null
+          n3_refined?: number | null
+          n4_refined?: number | null
+          priority_mode?: string | null
           processed?: number
           refined?: number
+          sample_refinements?: Json | null
           status?: string
           tempo_fim?: string | null
           tempo_inicio?: string | null
