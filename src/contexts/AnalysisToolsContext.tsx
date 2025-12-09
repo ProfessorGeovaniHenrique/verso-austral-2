@@ -48,7 +48,8 @@ export interface ToolCacheEntry<T = unknown> {
   isStale: boolean;
 }
 
-export type ToolKey = 
+// Ferramentas Estilísticas (7)
+export type StyleToolKey = 
   | 'lexical' 
   | 'syntactic' 
   | 'rhetorical' 
@@ -57,7 +58,48 @@ export type ToolKey =
   | 'mind' 
   | 'foregrounding';
 
+// Ferramentas Básicas (5)
+export type BasicToolKey =
+  | 'wordlist'
+  | 'keywords'
+  | 'kwic'
+  | 'dispersion'
+  | 'ngrams';
+
+// União de todas as ferramentas
+export type ToolKey = StyleToolKey | BasicToolKey;
+
+// Tipos de dados das ferramentas básicas
+export interface WordlistEntry {
+  palavra: string;
+  frequencia: number;
+  frequenciaNormalizada: number;
+}
+
+export interface KeywordEntry {
+  palavra: string;
+  freqEstudo: number;
+  freqReferencia: number;
+  ll: number;
+  efeito: 'super-representado' | 'sub-representado';
+  significancia: 'Alta' | 'Média' | 'Baixa';
+}
+
+export interface DispersionEntry {
+  palavra: string;
+  totalOcorrencias: number;
+  coeficienteDispersao: number;
+  densidade: 'Alta' | 'Média' | 'Baixa';
+}
+
+export interface NGramEntry {
+  ngram: string;
+  frequencia: number;
+  n: number;
+}
+
 export interface ToolsCache {
+  // Ferramentas Estilísticas
   lexical: ToolCacheEntry<LexicalProfile> | null;
   syntactic: ToolCacheEntry<SyntacticProfile> | null;
   rhetorical: ToolCacheEntry<RhetoricalProfile> | null;
@@ -65,9 +107,16 @@ export interface ToolsCache {
   speech: ToolCacheEntry<SpeechThoughtProfile> | null;
   mind: ToolCacheEntry<MindStyleProfile> | null;
   foregrounding: ToolCacheEntry<ForegroundingProfile> | null;
+  // Ferramentas Básicas
+  wordlist: ToolCacheEntry<WordlistEntry[]> | null;
+  keywords: ToolCacheEntry<KeywordEntry[]> | null;
+  kwic: ToolCacheEntry<{ palavra: string; results: unknown[] }> | null;
+  dispersion: ToolCacheEntry<DispersionEntry> | null;
+  ngrams: ToolCacheEntry<NGramEntry[]> | null;
 }
 
 const INITIAL_TOOLS_CACHE: ToolsCache = {
+  // Estilísticas
   lexical: null,
   syntactic: null,
   rhetorical: null,
@@ -75,6 +124,12 @@ const INITIAL_TOOLS_CACHE: ToolsCache = {
   speech: null,
   mind: null,
   foregrounding: null,
+  // Básicas
+  wordlist: null,
+  keywords: null,
+  kwic: null,
+  dispersion: null,
+  ngrams: null,
 };
 
 const CACHE_STORAGE_KEY = 'verso-austral-tools-cache';

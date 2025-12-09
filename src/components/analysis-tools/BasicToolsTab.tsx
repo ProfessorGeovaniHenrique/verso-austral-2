@@ -5,10 +5,12 @@
  * Integra: Wordlist, Keywords, KWIC, Dispersão, N-grams, Nuvem de Keywords
  * 
  * Sprint AUD-U: Added breadcrumb navigation and compare mode alert
+ * Sprint BASIC-PERSIST: Added BasicAnalysisModal for batch processing
  */
 
-import React, { Suspense, useMemo } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { 
   List, 
   Key, 
@@ -16,7 +18,8 @@ import {
   BarChart3, 
   Hash, 
   Cloud,
-  FileText
+  FileText,
+  Play
 } from 'lucide-react';
 import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusSelector } from './CorpusSelector';
@@ -27,6 +30,8 @@ import { ToolErrorBoundary } from './ToolErrorBoundary';
 import { ToolLoadingSkeleton } from './ToolLoadingSkeleton';
 import { SubTabBreadcrumb } from '@/components/ui/sub-tab-breadcrumb';
 import { CompareModeAlert } from '@/components/ui/compare-mode-alert';
+import { BasicAnalysisModal } from './BasicAnalysisModal';
+import { CacheStatusIndicator } from './CacheStatusIndicator';
 
 // Importar ferramentas existentes
 import { WordlistTool } from '@/components/mvp/tools/WordlistTool';
@@ -51,6 +56,7 @@ interface BasicToolsTabProps {
 export function BasicToolsTab({ className }: BasicToolsTabProps) {
   const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
   const [activeToolTab, setActiveToolTab] = React.useState('wordlist');
+  const [showProcessModal, setShowProcessModal] = useState(false);
   
   // Detectar modo compare
   const isCompareMode = useMemo(() => {
@@ -87,8 +93,23 @@ export function BasicToolsTab({ className }: BasicToolsTabProps) {
         />
       )}
 
-      {/* Cards de Estatísticas */}
-      <StatisticsCards />
+      {/* Cards de Estatísticas + Botão de Processamento */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Button 
+              onClick={() => setShowProcessModal(true)}
+              className="gap-2"
+              disabled={!studyCorpus}
+            >
+              <Play className="h-4 w-4" />
+              Processar Análise Básica
+            </Button>
+            <CacheStatusIndicator />
+          </div>
+        </div>
+        <StatisticsCards />
+      </div>
 
       {/* Ferramentas em Sub-Abas - Envolto no Bridge para sincronização */}
       <AnalysisToolsBridge>
@@ -182,6 +203,12 @@ export function BasicToolsTab({ className }: BasicToolsTabProps) {
           </Tabs>
         </div>
       </AnalysisToolsBridge>
+
+      {/* Modal de Processamento */}
+      <BasicAnalysisModal 
+        open={showProcessModal} 
+        onOpenChange={setShowProcessModal} 
+      />
     </div>
   );
 }

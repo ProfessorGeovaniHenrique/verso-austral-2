@@ -17,13 +17,20 @@ import { Database, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { useAnalysisTools, ToolKey } from '@/contexts/AnalysisToolsContext';
 
 const TOOL_LABELS: Record<ToolKey, string> = {
+  // Ferramentas Estilísticas
   lexical: 'Léxico',
   syntactic: 'Sintaxe',
   rhetorical: 'Retórica',
   cohesion: 'Coesão',
   speech: 'Fala',
   mind: 'Mind',
-  foregrounding: 'Desvio'
+  foregrounding: 'Desvio',
+  // Ferramentas Básicas
+  wordlist: 'Wordlist',
+  keywords: 'Keywords',
+  kwic: 'KWIC',
+  dispersion: 'Dispersão',
+  ngrams: 'N-grams'
 };
 
 export function CacheStatusIndicator() {
