@@ -11,9 +11,10 @@
  * - Foregrounding
  * 
  * Refatorado para usar cache centralizado e seletor único.
+ * Sprint AUD-U: Added breadcrumb navigation
  */
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
@@ -32,6 +33,8 @@ import { CacheStatusIndicator } from './CacheStatusIndicator';
 import { AnalysisToolsBridge } from './ContextBridge';
 import { ToolErrorBoundary } from './ToolErrorBoundary';
 import { ToolLoadingSkeleton } from './ToolLoadingSkeleton';
+import { SubTabBreadcrumb } from '@/components/ui/sub-tab-breadcrumb';
+import { CompareModeAlert } from '@/components/ui/compare-mode-alert';
 
 // Ferramentas existentes
 import { TabLexicalProfile } from '@/components/advanced/TabLexicalProfile';
@@ -43,18 +46,26 @@ import { MindStyleAnalyzerTool } from '@/components/expanded/MindStyleAnalyzerTo
 import { ForegroundingDetectorTool } from '@/components/expanded/ForegroundingDetectorTool';
 
 const styleTools = [
-  { id: 'lexical', label: 'Léxico', icon: BookOpen },
-  { id: 'syntactic', label: 'Sintaxe', icon: FileText },
-  { id: 'rhetorical', label: 'Retórica', icon: Palette },
-  { id: 'cohesion', label: 'Coesão', icon: Link2 },
-  { id: 'speech', label: 'Fala', icon: MessageCircle },
-  { id: 'mind', label: 'Mind', icon: Brain },
-  { id: 'foregrounding', label: 'Desvio', icon: Sparkles },
+  { id: 'lexical', label: 'Léxico', fullLabel: 'Perfil Léxico', icon: BookOpen },
+  { id: 'syntactic', label: 'Sintaxe', fullLabel: 'Perfil Sintático', icon: FileText },
+  { id: 'rhetorical', label: 'Retórica', fullLabel: 'Figuras Retóricas', icon: Palette },
+  { id: 'cohesion', label: 'Coesão', fullLabel: 'Análise de Coesão', icon: Link2 },
+  { id: 'speech', label: 'Fala', fullLabel: 'Fala e Pensamento', icon: MessageCircle },
+  { id: 'mind', label: 'Mind', fullLabel: 'Mind Style', icon: Brain },
+  { id: 'foregrounding', label: 'Desvio', fullLabel: 'Foregrounding', icon: Sparkles },
 ];
 
 export function StyleAnalysisTab() {
   const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
   const [activeToolTab, setActiveToolTab] = useState('lexical');
+
+  // Detectar modo compare
+  const isCompareMode = useMemo(() => {
+    return studyCorpus && referenceCorpus && studyCorpus.type !== 'user' && referenceCorpus.type !== 'user';
+  }, [studyCorpus, referenceCorpus]);
+  
+  const currentTool = styleTools.find(t => t.id === activeToolTab) || styleTools[0];
+  const CurrentIcon = currentTool.icon;
 
   return (
     <div className="space-y-6">
@@ -75,19 +86,36 @@ export function StyleAnalysisTab() {
         />
       </div>
 
+      {/* Alerta de modo compare */}
+      {isCompareMode && (
+        <CompareModeAlert
+          corpusA="Corpus de Estudo"
+          corpusB="Corpus de Referência"
+          variant="compact"
+        />
+      )}
+
       {/* Indicador de Cache */}
       <CacheStatusIndicator />
 
       {/* Ferramentas em Sub-Abas */}
       <AnalysisToolsBridge>
         {({ isLoadingCorpus }) => (
-          <>
+          <div className="space-y-4">
             {isLoadingCorpus && (
               <Alert className="mb-4">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <AlertDescription className="ml-2">Carregando corpus...</AlertDescription>
               </Alert>
             )}
+            
+            {/* Breadcrumb de contexto */}
+            <SubTabBreadcrumb
+              parentLabel="Análise de Estilo"
+              currentLabel={currentTool.fullLabel}
+              parentIcon={<Sparkles className="h-4 w-4" />}
+              currentIcon={<CurrentIcon className="h-3.5 w-3.5" />}
+            />
             
             <Tabs value={activeToolTab} onValueChange={setActiveToolTab}>
               <TabsList className="grid grid-cols-4 md:grid-cols-7 w-full">
@@ -159,7 +187,7 @@ export function StyleAnalysisTab() {
                 </ToolErrorBoundary>
               </TabsContent>
             </Tabs>
-          </>
+          </div>
         )}
       </AnalysisToolsBridge>
     </div>
