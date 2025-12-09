@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Sheet,
@@ -22,6 +23,7 @@ import {
   RefreshCw,
   Search,
   Briefcase,
+  Microscope,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { SongCard, Song } from './SongCard';
@@ -70,6 +72,7 @@ export function ArtistDetailsSheet({
   annotatingSongIds,
   onBioEnriched,
 }: ArtistDetailsSheetProps) {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<'list' | 'timeline'>('list');
   const [isEnrichingBio, setIsEnrichingBio] = useState(false);
   const [recentlyEnrichedIds, setRecentlyEnrichedIds] = useState<Set<string>>(new Set());
@@ -292,6 +295,19 @@ export function ArtistDetailsSheet({
               )}
             </CardContent>
           </Card>
+
+          {/* Sprint CAT-AUDIT-P1: Botão Analisar Músicas do Artista */}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => {
+              onOpenChange(false);
+              navigate(`/analysis-tools?artist=${artist.id}&artistName=${encodeURIComponent(artist.name)}`);
+            }}
+          >
+            <Microscope className="h-4 w-4" />
+            🔬 Analisar Músicas de {artist.name}
+          </Button>
 
           {/* Card de Job de Enriquecimento do Artista */}
           {artistEnrichmentJob.activeJob ? (

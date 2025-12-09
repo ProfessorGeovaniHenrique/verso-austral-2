@@ -6,9 +6,12 @@
  * - Ferramentas Básicas (Wordlist, Keywords, KWIC, etc.)
  * - Análise de Estilo (Leech & Short)
  * - Análise Cultural (Temporal, Dialetal)
+ * 
+ * Sprint CAT-AUDIT-P1: Pré-seleção via query params
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   FileText, 
@@ -17,7 +20,7 @@ import {
   ArrowLeft 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { SubcorpusProvider } from '@/contexts/SubcorpusContext';
 import { ToolsProvider } from '@/contexts/ToolsContext';
 import { AnalysisToolsProvider, useAnalysisTools } from '@/contexts/AnalysisToolsContext';
@@ -28,7 +31,38 @@ import { CulturalAnalysisTab } from '@/components/analysis-tools/CulturalAnalysi
 
 function AnalysisToolsContent() {
   const navigate = useNavigate();
-  const { activeTab, setActiveTab, userCorpora } = useAnalysisTools();
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const { activeTab, setActiveTab, userCorpora, setStudyCorpus } = useAnalysisTools();
+
+  // Sprint CAT-AUDIT-P1: Pré-selecionar corpus/artista via query params
+  useEffect(() => {
+    const corpusParam = searchParams.get('corpus');
+    const artistParam = searchParams.get('artist');
+    const artistNameParam = searchParams.get('artistName');
+    
+    if (artistParam && artistNameParam) {
+      // Pré-selecionar artista
+      setStudyCorpus({
+        type: 'platform',
+        platformArtist: artistParam,
+      });
+      toast({
+        title: "Artista Carregado",
+        description: `Corpus de ${decodeURIComponent(artistNameParam)} pronto para análise.`,
+      });
+    } else if (corpusParam && corpusParam !== 'all') {
+      // Pré-selecionar corpus
+      setStudyCorpus({
+        type: 'platform',
+        platformCorpus: corpusParam as any,
+      });
+      toast({
+        title: "Corpus Carregado",
+        description: `Corpus "${corpusParam}" pronto para análise.`,
+      });
+    }
+  }, [searchParams, setStudyCorpus, toast]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">

@@ -2,12 +2,14 @@
  * Toolbar do MusicCatalog
  * Sprint F2.1 - Refatoração
  * Sprint CAT-AUDIT-P0 - Ação destrutiva movida para dropdown
+ * Sprint CAT-AUDIT-P1 - Autocomplete + botão Analisar Corpus
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { AdvancedExportMenu } from '@/components/music';
+import { CatalogSearchAutocomplete } from './CatalogSearchAutocomplete';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -25,8 +27,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LayoutGrid, LayoutList, Search, RefreshCw, Trash2, Loader2, MoreVertical, Settings } from 'lucide-react';
+import { LayoutGrid, LayoutList, RefreshCw, Trash2, Loader2, MoreVertical, Settings, Microscope } from 'lucide-react';
 import type { ViewMode } from '@/hooks/music-catalog';
+
+interface Artist {
+  id: string;
+  name: string;
+  genre?: string | null;
+}
+
+interface Song {
+  id: string;
+  title: string;
+  artistName: string;
+}
 
 interface MusicCatalogToolbarProps {
   searchQuery: string;
@@ -38,6 +52,13 @@ interface MusicCatalogToolbarProps {
   isClearingCatalog: boolean;
   totalSongs: number;
   totalArtists: number;
+  // Sprint CAT-AUDIT-P1: Autocomplete
+  artists?: Artist[];
+  songs?: Song[];
+  onSelectArtist?: (artistId: string) => void;
+  onSelectSong?: (songId: string) => void;
+  // Sprint CAT-AUDIT-P1: Analisar Corpus
+  selectedCorpusFilter?: string;
 }
 
 export function MusicCatalogToolbar({
@@ -50,30 +71,53 @@ export function MusicCatalogToolbar({
   isClearingCatalog,
   totalSongs,
   totalArtists,
+  artists = [],
+  songs = [],
+  onSelectArtist,
+  onSelectSong,
+  selectedCorpusFilter,
 }: MusicCatalogToolbarProps) {
+  const navigate = useNavigate();
   const [showClearDialog, setShowClearDialog] = useState(false);
+
+  const handleAnalyzeCorpus = () => {
+    const params = new URLSearchParams();
+    if (selectedCorpusFilter && selectedCorpusFilter !== 'all') {
+      params.set('corpus', selectedCorpusFilter);
+    }
+    navigate(`/analysis-tools${params.toString() ? `?${params.toString()}` : ''}`);
+  };
 
   return (
     <>
       <div className="border-b bg-muted/30 backdrop-blur-sm">
         <div className="container mx-auto px-6 py-3">
           <div className="flex items-center justify-between gap-4">
-            {/* Search */}
+            {/* Search with Autocomplete */}
             <div className="flex items-center gap-2 flex-1">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Buscar músicas, artistas, compositores..."
-                  className="pl-9 h-9 bg-background/50"
-                  value={searchQuery}
-                  onChange={(e) => onSearchChange(e.target.value)}
-                />
-              </div>
+              <CatalogSearchAutocomplete
+                searchQuery={searchQuery}
+                onSearchChange={onSearchChange}
+                artists={artists}
+                songs={songs}
+                onSelectArtist={onSelectArtist || (() => {})}
+                onSelectSong={onSelectSong || (() => {})}
+              />
             </div>
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              {/* Sprint CAT-AUDIT-P1: Botão Analisar Corpus */}
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="h-9 gap-2"
+                onClick={handleAnalyzeCorpus}
+              >
+                <Microscope className="h-4 w-4" />
+                <span className="hidden sm:inline">Analisar Corpus</span>
+              </Button>
+              
               <Button variant="ghost" size="sm" className="h-9 gap-2" onClick={onRefresh}>
                 <RefreshCw className="h-4 w-4" />
                 <span className="hidden sm:inline">Atualizar</span>

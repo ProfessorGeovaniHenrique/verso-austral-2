@@ -1,9 +1,10 @@
 /**
  * MusicCatalog - Componente principal refatorado
  * Sprint F2.1 - Reduzido de 1830 para ~350 linhas
+ * Sprint CAT-AUDIT-P1 - Breadcrumb + integração com análise
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { createLogger } from '@/lib/loggerFactory';
 import { supabase } from '@/integrations/supabase/client';
 import { enrichmentService } from '@/services/enrichmentService';
@@ -13,7 +14,7 @@ import { YouTubeEnrichmentModal } from '@/components/music/YouTubeEnrichmentModa
 import { TabEnrichmentJobs } from '@/components/music/TabEnrichmentJobs';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Briefcase } from 'lucide-react';
+import { Sparkles, Briefcase, FlaskConical, Copy } from 'lucide-react';
 
 // Hooks refatorados
 import { 
@@ -28,6 +29,7 @@ import {
   MusicCatalogFilters,
   MusicCatalogAlerts,
   CatalogStatsOverview,
+  CatalogBreadcrumb,
   TabSongs,
   TabArtists,
   TabStats,
@@ -117,6 +119,55 @@ export default function MusicCatalog() {
     }
   };
 
+  // Handler para navegar para artista via autocomplete
+  const handleSelectArtistFromSearch = useCallback((artistId: string) => {
+    state.setSelectedArtistId(artistId);
+    state.setIsSheetOpen(true);
+  }, [state]);
+
+  // Dados para autocomplete
+  const autocompleteArtists = useMemo(() => 
+    state.artistsWithStats.map(a => ({ id: a.id, name: a.name, genre: a.genre })),
+    [state.artistsWithStats]
+  );
+  
+  const autocompleteSongs = useMemo(() => 
+    state.allSongs.slice(0, 1000).map(s => ({
+      id: s.id,
+      title: s.title,
+      artistName: (s.artists as any)?.name || 'Desconhecido'
+    })),
+    [state.allSongs]
+  );
+
+  // Handler para navegação via breadcrumb
+  const handleBreadcrumbNavigate = useCallback((path: { tab?: string; letter?: string; artist?: string }) => {
+    if (path.tab) {
+      state.setView(path.tab as any);
+    }
+    if (path.letter !== undefined) {
+      state.setSelectedLetter(path.letter || 'all');
+    }
+    if (path.artist === undefined) {
+      state.setSelectedArtistId(null);
+      state.setIsSheetOpen(false);
+    }
+  }, [state]);
+
+  // Artista selecionado para breadcrumb
+  const selectedArtistForBreadcrumb = useMemo(() => {
+    if (!state.selectedArtistId || !state.isSheetOpen) return undefined;
+    const artist = state.artistsWithStats.find(a => a.id === state.selectedArtistId);
+    return artist ? { id: artist.id, name: artist.name } : undefined;
+  }, [state.selectedArtistId, state.isSheetOpen, state.artistsWithStats]);
+
+  // Corpus selecionado para breadcrumb
+  const selectedCorpusForBreadcrumb = useMemo(() => {
+    if (state.selectedCorpusFilter === 'all') return undefined;
+    const corpus = corpusOptions.find(c => c.id === state.selectedCorpusFilter);
+    return corpus ? { id: corpus.id, name: corpus.name } : undefined;
+  }, [state.selectedCorpusFilter, corpusOptions]);
+
   return (
     <div className="space-y-0">
       {/* Toolbar */}
@@ -130,10 +181,24 @@ export default function MusicCatalog() {
         onClearCatalog={handlers.handleClearCatalog}
         totalSongs={state.catalogStats?.totalSongs || 0}
         totalArtists={state.catalogStats?.totalArtists || 0}
+        artists={autocompleteArtists}
+        songs={autocompleteSongs}
+        onSelectArtist={handleSelectArtistFromSearch}
+        onSelectSong={(songId) => log.info('Song selected', { songId })}
+        selectedCorpusFilter={state.selectedCorpusFilter}
       />
 
       {/* Main content */}
       <div className="container mx-auto py-8 space-y-6">
+        {/* Breadcrumb Navigation - Sprint CAT-AUDIT-P1 */}
+        <CatalogBreadcrumb
+          currentTab={state.view as 'songs' | 'artists' | 'enrichment-jobs' | 'stats' | 'metrics' | 'validation' | 'deduplication'}
+          selectedLetter={state.selectedLetter}
+          selectedArtist={selectedArtistForBreadcrumb}
+          selectedCorpus={selectedCorpusForBreadcrumb}
+          onNavigate={handleBreadcrumbNavigate}
+        />
+        
         <div className="flex justify-between items-start">
           <div className="space-y-4">
             <div>
@@ -187,8 +252,14 @@ export default function MusicCatalog() {
             </TabsTrigger>
             <TabsTrigger value="stats">Estatísticas</TabsTrigger>
             <TabsTrigger value="metrics">Métricas</TabsTrigger>
-            <TabsTrigger value="validation">🧪 Validação</TabsTrigger>
-            <TabsTrigger value="deduplication">🗑️ Deduplicação</TabsTrigger>
+            <TabsTrigger value="validation" className="flex items-center gap-1">
+              <FlaskConical className="h-3 w-3" />
+              Validação
+            </TabsTrigger>
+            <TabsTrigger value="deduplication" className="flex items-center gap-1">
+              <Copy className="h-3 w-3" />
+              Deduplicação
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="songs">
