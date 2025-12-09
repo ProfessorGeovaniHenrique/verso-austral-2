@@ -85,6 +85,10 @@ class DevOpsCacheManager {
     return this.get(key) !== null;
   }
 
+  size(): number {
+    return this.memoryCache.size;
+  }
+
   setDefaultTTL(ttl: number): void {
     this.defaultTTL = ttl;
   }

@@ -1,44 +1,33 @@
 /**
  * Painel de gerenciamento de cache persistente
+ * Exibe estatísticas consolidadas e ações de limpeza
  */
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-import { HardDrive, Trash, X, AlertTriangle, Database, Zap, CloudOff } from 'lucide-react';
-import { getCacheStats, invalidateCache, cleanExpiredCache } from '@/lib/corpusIndexedDBCache';
+import { HardDrive, Trash, X, AlertTriangle, Database, Zap, CloudOff, RefreshCw } from 'lucide-react';
+import { 
+  getConsolidatedCacheStats, 
+  cleanAllExpiredCaches, 
+  clearAllCaches,
+  formatBytes,
+  type ConsolidatedCacheStats 
+} from '@/lib/cacheUtils';
 import { cacheMetrics } from '@/lib/cacheMetrics';
 import { useToast } from '@/hooks/use-toast';
 
-interface CacheStats {
-  totalSize: number;
-  entries: number;
-  compressionRatio: number;
-  oldestEntry: Date | null;
-  newestEntry: Date | null;
-}
-
 export function CacheManagementPanel() {
-  const [stats, setStats] = useState<CacheStats | null>(null);
-  const [quotaPercentage, setQuotaPercentage] = useState(0);
+  const [stats, setStats] = useState<ConsolidatedCacheStats | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   
   const loadStats = async () => {
     setIsLoading(true);
     try {
-      const cacheStats = await getCacheStats();
-      setStats(cacheStats);
-      
-      // Verificar quota
-      if (navigator.storage && navigator.storage.estimate) {
-        const estimate = await navigator.storage.estimate();
-        const percentage = estimate.usage && estimate.quota 
-          ? (estimate.usage / estimate.quota) * 100 
-          : 0;
-        setQuotaPercentage(percentage);
-      }
+      const consolidatedStats = await getConsolidatedCacheStats();
+      setStats(consolidatedStats);
     } catch (error) {
       console.error('Erro ao carregar stats:', error);
     } finally {
@@ -51,8 +40,9 @@ export function CacheManagementPanel() {
   }, []);
   
   const handleCleanExpired = async () => {
+    setIsLoading(true);
     try {
-      const removed = await cleanExpiredCache();
+      const removed = await cleanAllExpiredCaches();
       toast({
         title: 'Cache limpo',
         description: `${removed} ${removed === 1 ? 'entrada expirada removida' : 'entradas expiradas removidas'}`,
@@ -64,6 +54,8 @@ export function CacheManagementPanel() {
         description: 'Falha ao limpar cache expirado',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -72,8 +64,9 @@ export function CacheManagementPanel() {
       return;
     }
     
+    setIsLoading(true);
     try {
-      await invalidateCache();
+      await clearAllCaches();
       toast({
         title: 'Cache limpo',
         description: 'Todo o cache foi removido com sucesso',
@@ -85,36 +78,43 @@ export function CacheManagementPanel() {
         description: 'Falha ao limpar cache',
         variant: 'destructive'
       });
+    } finally {
+      setIsLoading(false);
     }
-  };
-  
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`;
   };
   
   const metrics = cacheMetrics.getMetrics();
   const hitRate = cacheMetrics.getCacheHitRate();
   
+  // Calcular tamanho total
+  const totalSize = stats 
+    ? stats.localStorage.totalSizeBytes + stats.sessionStorage.totalSizeBytes + stats.indexedDB.totalSizeBytes
+    : 0;
+  
   return (
     <Card className="border-border/50">
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <HardDrive className="w-5 h-5 text-primary" />
           Cache Persistente
         </CardTitle>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={loadStats}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+        </Button>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Alerta de quota baixa */}
-        {quotaPercentage > 80 && (
+        {stats && stats.quotaUsagePercent > 80 && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Espaço de armazenamento baixo</AlertTitle>
             <AlertDescription>
-              {quotaPercentage.toFixed(1)}% do espaço usado. Considere limpar caches antigos.
+              {stats.quotaUsagePercent.toFixed(1)}% do espaço usado. Considere limpar caches antigos.
             </AlertDescription>
           </Alert>
         )}
@@ -123,25 +123,34 @@ export function CacheManagementPanel() {
         {stats && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Entradas</p>
-              <p className="text-2xl font-bold text-foreground">{stats.entries}</p>
+              <p className="text-sm text-muted-foreground">IndexedDB</p>
+              <p className="text-xl font-bold text-foreground">
+                {stats.indexedDB.entries} <span className="text-sm font-normal">entradas</span>
+              </p>
+              <p className="text-xs text-muted-foreground">{formatBytes(stats.indexedDB.totalSizeBytes)}</p>
             </div>
             
             <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Tamanho Total</p>
-              <p className="text-2xl font-bold text-foreground">{formatBytes(stats.totalSize)}</p>
-            </div>
-            
-            <div className="space-y-1">
-              <p className="text-sm text-muted-foreground">Compressão</p>
-              <p className="text-2xl font-bold text-primary">
-                {((1 - stats.compressionRatio) * 100).toFixed(0)}%
+              <p className="text-sm text-muted-foreground">LocalStorage</p>
+              <p className="text-xl font-bold text-foreground">
+                {stats.localStorage.totalKeys} <span className="text-sm font-normal">chaves</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatBytes(stats.localStorage.totalSizeBytes)}
+                {stats.localStorage.expiredEntries > 0 && (
+                  <span className="text-warning ml-1">({stats.localStorage.expiredEntries} expiradas)</span>
+                )}
               </p>
             </div>
             
             <div className="space-y-1">
+              <p className="text-sm text-muted-foreground">Tamanho Total</p>
+              <p className="text-xl font-bold text-foreground">{formatBytes(totalSize)}</p>
+            </div>
+            
+            <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Cache Hit Rate</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-xl font-bold text-green-600 dark:text-green-400">
                 {hitRate.toFixed(0)}%
               </p>
             </div>
@@ -169,7 +178,7 @@ export function CacheManagementPanel() {
             <div>
               <span className="text-muted-foreground">Quota:</span>
               <span className="ml-2 font-medium text-foreground">
-                {quotaPercentage.toFixed(1)}%
+                {stats?.quotaUsagePercent.toFixed(1) ?? 0}%
               </span>
             </div>
           </div>
@@ -179,7 +188,7 @@ export function CacheManagementPanel() {
         <div className="flex flex-wrap gap-2">
           <Badge variant="default" className="gap-1">
             <Zap className="w-3 h-3" />
-            Memória
+            Memória ({stats?.memory.entries ?? 0})
           </Badge>
           <Badge variant="secondary" className="gap-1">
             <Database className="w-3 h-3" />
@@ -187,7 +196,7 @@ export function CacheManagementPanel() {
           </Badge>
           <Badge variant="outline" className="gap-1">
             <CloudOff className="w-3 h-3" />
-            Rede
+            Session ({stats?.sessionStorage.totalKeys ?? 0})
           </Badge>
         </div>
         
