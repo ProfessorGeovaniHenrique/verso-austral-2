@@ -9,6 +9,8 @@ import { getLexiconClassification, getLexiconBase } from "../_shared/semantic-le
 import { applyMorphologicalRules, hasMorphologicalPattern } from "../_shared/morphological-rules.ts";
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 
+// ============= INTERFACES =============
+
 interface AnnotationRequest {
   palavra: string;
   lema?: string;
@@ -17,11 +19,39 @@ interface AnnotationRequest {
   contexto_direito?: string;
 }
 
+interface BatchAnnotationRequest {
+  words: string[];
+  context?: string;
+}
+
 interface SemanticDomainResult {
   tagset_codigo: string;
   confianca: number;
   fonte: 'cache' | 'gemini_flash' | 'rule_based';
   justificativa?: string;
+}
+
+interface SemanticAnnotation {
+  palavra: string;
+  tagset_primario: string;
+  tagset_codigo: string;
+  dominio_nome: string;
+  cor: string;
+  confianca: number;
+  prosody: 'Positiva' | 'Negativa' | 'Neutra';
+}
+
+// ============= N1 COLORS (mirrors frontend) =============
+const N1_COLORS: Record<string, string> = {
+  'NA': '#268BC8', 'SE': '#8B5CF6', 'AB': '#A855F7',
+  'AC': '#FF9500', 'AP': '#24A65B', 'CC': '#F59E0B',
+  'EL': '#6366F1', 'EQ': '#EC4899', 'MG': '#64748B',
+  'NC': '#94A3B8', 'OA': '#14B8A6', 'SB': '#10B981',
+  'SH': '#DC2626', 'SP': '#8B5CF6'
+};
+
+function getColorForDomain(n1Code: string): string {
+  return N1_COLORS[n1Code] || '#94A3B8';
 }
 
 serve(async (req) => {
@@ -38,10 +68,24 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const requestBody: AnnotationRequest = await req.json();
-    const { palavra, lema, pos, contexto_esquerdo = '', contexto_direito = '' } = requestBody;
+    const requestBody = await req.json();
 
-    logger.info('Iniciando anotação semântica', { palavra, lema, pos });
+    // 🆕 MODO BATCH: Detectar array de palavras
+    if (Array.isArray(requestBody.words)) {
+      return await handleBatchMode(requestBody as BatchAnnotationRequest, supabaseClient, logger, startTime);
+    }
+
+    // Modo singular existente continua funcionando
+    const { palavra, lema, pos, contexto_esquerdo = '', contexto_direito = '' } = requestBody as AnnotationRequest;
+
+    if (!palavra) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Campo "palavra" é obrigatório' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    logger.info('Iniciando anotação semântica (modo singular)', { palavra, lema, pos });
 
     // 0️⃣ FASE 1: Verificar stopwords "safe" PRIMEIRO (0ms, confiança 0.99)
     const safeStopword = classifySafeStopword(palavra);
@@ -889,4 +933,310 @@ async function saveToCache(
     fonte: result.fonte,
     justificativa: result.justificativa,
   });
+}
+
+// ============================================================================
+// 🆕 BATCH MODE HANDLER - Processa array de palavras
+// ============================================================================
+
+/**
+ * Busca informações do tagset (nome) do banco
+ */
+async function getTagsetInfo(supabase: any, codigo: string): Promise<{ nome: string } | null> {
+  try {
+    const { data, error } = await supabase
+      .from('semantic_tagset')
+      .select('nome')
+      .eq('codigo', codigo)
+      .eq('status', 'ativo')
+      .maybeSingle();
+
+    if (error || !data) {
+      // Tentar buscar pelo N1 se N2 não encontrado
+      const n1Code = codigo.split('.')[0];
+      if (n1Code !== codigo) {
+        const { data: n1Data } = await supabase
+          .from('semantic_tagset')
+          .select('nome')
+          .eq('codigo', n1Code)
+          .eq('status', 'ativo')
+          .maybeSingle();
+        return n1Data;
+      }
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Processa uma única palavra via pipeline rule-based (cache → lexicon → rules)
+ * Retorna resultado ou null se precisa Gemini
+ */
+async function processWordWithRules(
+  supabase: any,
+  palavra: string,
+  logger: any
+): Promise<SemanticDomainResult | null> {
+  const palavraNorm = palavra.toLowerCase();
+
+  // 1. Verificar stopwords "safe" (0ms, confiança 0.99)
+  const safeStopword = classifySafeStopword(palavraNorm);
+  if (safeStopword) {
+    return {
+      tagset_codigo: safeStopword.tagset_codigo,
+      confianca: safeStopword.confianca,
+      fonte: 'rule_based',
+      justificativa: safeStopword.justificativa,
+    };
+  }
+
+  // 2. Cache Nível 1: palavra apenas (alta confiança)
+  const wordOnlyCache = await checkWordOnlyCache(supabase, palavraNorm);
+  if (wordOnlyCache) {
+    await supabase.rpc('increment_semantic_cache_hit', { cache_id: wordOnlyCache.id });
+    return {
+      tagset_codigo: wordOnlyCache.tagset_codigo,
+      confianca: wordOnlyCache.confianca,
+      fonte: 'cache',
+      justificativa: wordOnlyCache.justificativa,
+    };
+  }
+
+  // 3. Semantic Lexicon (pré-classificado)
+  const lexiconResult = await getLexiconClassification(palavraNorm);
+  if (lexiconResult) {
+    return {
+      tagset_codigo: lexiconResult.tagset_n1,
+      confianca: lexiconResult.confianca,
+      fonte: 'rule_based',
+      justificativa: `Lexicon pré-classificado (${lexiconResult.fonte})`,
+    };
+  }
+
+  // 4. Regras morfológicas
+  if (hasMorphologicalPattern(palavraNorm)) {
+    const morphResult = await applyMorphologicalRules(palavraNorm, undefined, getLexiconBase);
+    if (morphResult) {
+      return {
+        tagset_codigo: morphResult.tagset_n1,
+        confianca: morphResult.confianca,
+        fonte: 'rule_based',
+        justificativa: `Regra morfológica: ${morphResult.rule_description}`,
+      };
+    }
+  }
+
+  // 5. Lexicon dialetal
+  const lexiconRule = await getLexiconRule(palavraNorm);
+  if (lexiconRule) {
+    return {
+      tagset_codigo: lexiconRule.tagset_codigo,
+      confianca: lexiconRule.confianca,
+      fonte: 'rule_based' as const,
+      justificativa: lexiconRule.justificativa,
+    };
+  }
+
+  // 6. Herança de sinônimos
+  const inheritedDomain = await inheritDomainFromSynonyms(palavraNorm);
+  if (inheritedDomain) {
+    return {
+      tagset_codigo: inheritedDomain.tagset_codigo,
+      confianca: inheritedDomain.confianca,
+      fonte: 'rule_based' as const,
+      justificativa: inheritedDomain.justificativa,
+    };
+  }
+
+  // 7. Regras contextuais (fallback rápido)
+  const ruleBasedResult = applyContextualRules(palavraNorm, palavraNorm, undefined);
+  if (ruleBasedResult) {
+    return ruleBasedResult;
+  }
+
+  // 8. Gutenberg POS
+  const gutenbergPOS = await getGutenbergPOS(palavraNorm);
+  if (gutenbergPOS) {
+    const gutenbergMapping = GUTENBERG_POS_TO_DOMAIN[gutenbergPOS.pos];
+    if (gutenbergMapping) {
+      return {
+        tagset_codigo: gutenbergMapping.codigo,
+        confianca: gutenbergMapping.confianca,
+        fonte: 'rule_based',
+        justificativa: `Mapeado via Gutenberg: ${gutenbergPOS.pos}`,
+      };
+    }
+  }
+
+  // Nenhuma regra aplicada → precisa Gemini
+  return null;
+}
+
+/**
+ * 🆕 BATCH MODE HANDLER
+ * Processa array de palavras e retorna array de SemanticAnnotation
+ */
+async function handleBatchMode(
+  requestBody: BatchAnnotationRequest,
+  supabaseClient: any,
+  logger: any,
+  startTime: number
+): Promise<Response> {
+  const { words, context = '' } = requestBody;
+
+  if (!words || words.length === 0) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Array "words" vazio ou ausente' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  logger.info('Iniciando anotação semântica (modo batch)', { 
+    wordsCount: words.length,
+    hasContext: !!context 
+  });
+
+  const annotations: SemanticAnnotation[] = [];
+  const wordsNeedingGemini: string[] = [];
+  const processedByRules = new Map<string, SemanticDomainResult>();
+
+  // ========== FASE 1: Processar cada palavra via pipeline rule-based ==========
+  for (const palavra of words) {
+    const palavraNorm = palavra.toLowerCase().trim();
+    if (!palavraNorm) continue;
+
+    const result = await processWordWithRules(supabaseClient, palavraNorm, logger);
+
+    if (result) {
+      processedByRules.set(palavraNorm, result);
+      
+      // Buscar nome do domínio
+      const tagsetInfo = await getTagsetInfo(supabaseClient, result.tagset_codigo);
+      const n1Code = result.tagset_codigo.split('.')[0];
+
+      annotations.push({
+        palavra: palavraNorm,
+        tagset_primario: n1Code,
+        tagset_codigo: result.tagset_codigo,
+        dominio_nome: tagsetInfo?.nome || result.tagset_codigo,
+        cor: getColorForDomain(n1Code),
+        confianca: result.confianca,
+        prosody: 'Neutra'
+      });
+
+      // Salvar no cache
+      const contextoHash = await hashContext('', '');
+      await saveToCache(supabaseClient, palavraNorm, contextoHash, undefined, undefined, result);
+    } else {
+      wordsNeedingGemini.push(palavraNorm);
+    }
+  }
+
+  logger.info('Fase 1 (rules) completa', {
+    processedByRules: processedByRules.size,
+    needingGemini: wordsNeedingGemini.length
+  });
+
+  // ========== FASE 2: Processar palavras restantes via Gemini Batch ==========
+  if (wordsNeedingGemini.length > 0) {
+    const BATCH_SIZE = 15; // Gemini batch size
+    
+    for (let i = 0; i < wordsNeedingGemini.length; i += BATCH_SIZE) {
+      const batch = wordsNeedingGemini.slice(i, i + BATCH_SIZE);
+      
+      // Preparar payload para batch
+      const batchPayload = batch.map(palavra => ({
+        palavra,
+        lema: palavra,
+        pos: 'UNKNOWN',
+        contextoEsquerdo: context,
+        contextoDireito: ''
+      }));
+
+      try {
+        const geminiResults = await batchClassifyWithGemini(batchPayload, logger);
+
+        for (const palavra of batch) {
+          const result = geminiResults.get(palavra.toLowerCase());
+          
+          if (result) {
+            const tagsetInfo = await getTagsetInfo(supabaseClient, result.tagset_codigo);
+            const n1Code = result.tagset_codigo.split('.')[0];
+
+            annotations.push({
+              palavra,
+              tagset_primario: n1Code,
+              tagset_codigo: result.tagset_codigo,
+              dominio_nome: tagsetInfo?.nome || result.tagset_codigo,
+              cor: getColorForDomain(n1Code),
+              confianca: result.confianca,
+              prosody: 'Neutra'
+            });
+
+            // Salvar no cache
+            const contextoHash = await hashContext(context, '');
+            await saveToCache(supabaseClient, palavra, contextoHash, undefined, undefined, result);
+          } else {
+            // Fallback: NC (Não Classificado)
+            annotations.push({
+              palavra,
+              tagset_primario: 'NC',
+              tagset_codigo: 'NC',
+              dominio_nome: 'Não Classificado',
+              cor: getColorForDomain('NC'),
+              confianca: 0.5,
+              prosody: 'Neutra'
+            });
+          }
+        }
+      } catch (geminiError) {
+        logger.warn('Gemini batch failed, using fallback', { 
+          batch: batch.length,
+          error: geminiError instanceof Error ? geminiError.message : String(geminiError)
+        });
+        
+        // Fallback para todas as palavras do batch
+        for (const palavra of batch) {
+          annotations.push({
+            palavra,
+            tagset_primario: 'NC',
+            tagset_codigo: 'NC',
+            dominio_nome: 'Não Classificado',
+            cor: getColorForDomain('NC'),
+            confianca: 0.5,
+            prosody: 'Neutra'
+          });
+        }
+      }
+      
+      // Rate limiting delay between batches
+      if (i + BATCH_SIZE < wordsNeedingGemini.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+  }
+
+  const dominiosUnicos = new Set(annotations.map(a => a.tagset_primario));
+
+  logger.info('Anotação semântica (modo batch) concluída', {
+    totalPalavras: words.length,
+    palavrasClassificadas: annotations.length,
+    dominiosEncontrados: dominiosUnicos.size,
+    processingTime: Date.now() - startTime
+  });
+
+  return new Response(
+    JSON.stringify({
+      success: true,
+      annotations,
+      totalPalavras: words.length,
+      palavrasClassificadas: annotations.length,
+      dominiosEncontrados: dominiosUnicos.size,
+      processingTime: Date.now() - startTime
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
