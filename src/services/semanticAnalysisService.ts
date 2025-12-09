@@ -142,7 +142,29 @@ export async function analyzeSemanticDomains(
 }
 
 /**
- * Processa um único chunk de palavras
+ * Interface para resposta da edge function
+ */
+interface EdgeFunctionResponse {
+  success?: boolean;
+  annotations?: SemanticAnnotation[];
+  totalPalavras?: number;
+  palavrasClassificadas?: number;
+  dominiosEncontrados?: number;
+  error?: string;
+}
+
+/**
+ * Valida se uma annotation tem estrutura válida
+ */
+function isValidAnnotation(ann: unknown): ann is SemanticAnnotation {
+  if (!ann || typeof ann !== 'object') return false;
+  const a = ann as Record<string, unknown>;
+  return typeof a.palavra === 'string' && a.palavra.length > 0 &&
+         typeof a.tagset_codigo === 'string' && a.tagset_codigo.length > 0;
+}
+
+/**
+ * Processa um único chunk de palavras com validação robusta
  */
 async function processChunk(
   words: string[],
@@ -152,22 +174,57 @@ async function processChunk(
     body: { words, context }
   });
 
+  // Fase 2.1: Validação de erro de invocação
   if (error) {
-    log.error('Error calling annotate-semantic-domain', error);
-    throw error;
+    log.error('Edge function invocation error', error);
+    throw new Error(`Erro de comunicação com servidor: ${error.message || 'Falha na invocação'}`);
   }
 
-  if (!data || !data.annotations) {
-    throw new Error('Resposta inválida da edge function');
+  // Fase 2.1: Validação de resposta nula
+  if (!data) {
+    log.error('Edge function returned null data');
+    throw new Error('Servidor retornou resposta vazia');
   }
 
-  const annotations: SemanticAnnotation[] = data.annotations;
-  const dominiosUnicos = new Set(annotations.map(a => a.dominio_nome));
+  const response = data as EdgeFunctionResponse;
+
+  // Fase 2.1: Validação de sucesso explícito
+  if (response.success === false) {
+    const errorMessage = response.error || 'Falha no processamento semântico';
+    log.error(`Edge function returned success=false: ${errorMessage}`);
+    throw new Error(errorMessage);
+  }
+
+  // Fase 2.1: Validação de annotations como array
+  if (!response.annotations || !Array.isArray(response.annotations)) {
+    log.error(`Invalid annotations structure - hasField: ${!!response.annotations}, isArray: ${Array.isArray(response.annotations)}`);
+    throw new Error('Resposta inválida: annotations não é um array');
+  }
+
+  // Fase 2.1: Filtrar annotations inválidas
+  const validAnnotations = response.annotations.filter(isValidAnnotation);
+  const invalidCount = response.annotations.length - validAnnotations.length;
+  
+  if (invalidCount > 0) {
+    log.warn('Filtered invalid annotations', { 
+      total: response.annotations.length, 
+      valid: validAnnotations.length, 
+      invalid: invalidCount 
+    });
+  }
+
+  const dominiosUnicos = new Set(validAnnotations.map(a => a.dominio_nome));
+
+  log.debug('Chunk processed successfully', {
+    requested: words.length,
+    classified: validAnnotations.length,
+    domains: dominiosUnicos.size
+  });
 
   return {
-    annotations,
+    annotations: validAnnotations,
     totalPalavras: words.length,
-    palavrasClassificadas: annotations.length,
+    palavrasClassificadas: validAnnotations.length,
     dominiosEncontrados: dominiosUnicos.size
   };
 }
