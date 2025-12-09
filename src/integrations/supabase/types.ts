@@ -2104,6 +2104,87 @@ export type Database = {
           },
         ]
       }
+      processing_jobs: {
+        Row: {
+          avg_quality_score: number | null
+          chunk_size: number | null
+          chunks_processed: number | null
+          completed_at: string | null
+          created_at: string | null
+          created_by: string | null
+          current_song_index: number | null
+          error_message: string | null
+          id: string
+          is_cancelling: boolean | null
+          last_chunk_at: string | null
+          metadata: Json | null
+          quality_distribution: Json | null
+          scope: string
+          scope_filter: string | null
+          songs_annotated: number | null
+          songs_enriched: number | null
+          songs_failed: number | null
+          songs_processed: number | null
+          started_at: string | null
+          status: string
+          total_quality_points: number | null
+          total_songs: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          avg_quality_score?: number | null
+          chunk_size?: number | null
+          chunks_processed?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_song_index?: number | null
+          error_message?: string | null
+          id?: string
+          is_cancelling?: boolean | null
+          last_chunk_at?: string | null
+          metadata?: Json | null
+          quality_distribution?: Json | null
+          scope?: string
+          scope_filter?: string | null
+          songs_annotated?: number | null
+          songs_enriched?: number | null
+          songs_failed?: number | null
+          songs_processed?: number | null
+          started_at?: string | null
+          status?: string
+          total_quality_points?: number | null
+          total_songs?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          avg_quality_score?: number | null
+          chunk_size?: number | null
+          chunks_processed?: number | null
+          completed_at?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          current_song_index?: number | null
+          error_message?: string | null
+          id?: string
+          is_cancelling?: boolean | null
+          last_chunk_at?: string | null
+          metadata?: Json | null
+          quality_distribution?: Json | null
+          scope?: string
+          scope_filter?: string | null
+          songs_annotated?: number | null
+          songs_enriched?: number | null
+          songs_failed?: number | null
+          songs_processed?: number | null
+          started_at?: string | null
+          status?: string
+          total_quality_points?: number | null
+          total_songs?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       quiz_questions: {
         Row: {
           category: string
@@ -2845,6 +2926,7 @@ export type Database = {
           lyrics_source: string | null
           lyrics_url: string | null
           normalized_title: string | null
+          quality_score: number | null
           raw_data: Json | null
           release_year: string | null
           releases: Json | null
@@ -2868,6 +2950,7 @@ export type Database = {
           lyrics_source?: string | null
           lyrics_url?: string | null
           normalized_title?: string | null
+          quality_score?: number | null
           raw_data?: Json | null
           release_year?: string | null
           releases?: Json | null
@@ -2891,6 +2974,7 @@ export type Database = {
           lyrics_source?: string | null
           lyrics_url?: string | null
           normalized_title?: string | null
+          quality_score?: number | null
           raw_data?: Json | null
           release_year?: string | null
           releases?: Json | null

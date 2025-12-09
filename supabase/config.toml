@@ -190,3 +190,10 @@ verify_jwt = false
 
 [functions.annotate-corpus]
 verify_jwt = false
+
+[functions.process-song-complete]
+verify_jwt = false
+
+[functions.process-catalog-batch]
+verify_jwt = false
+timeout = 240
