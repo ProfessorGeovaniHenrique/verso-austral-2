@@ -395,8 +395,8 @@ export function InsigniaCurationTable() {
             </div>
             <ScrollArea className="h-40">
               <div className="space-y-2">
-                {batchAnalysisResults.map((result, i) => (
-                  <div key={i} className="flex items-center justify-between p-2 bg-background rounded">
+                {batchAnalysisResults.map((result, idx) => (
+                  <div key={`${result.palavra}-${idx}`} className="flex items-center justify-between p-2 bg-background rounded">
                     <span className="font-medium">{result.palavra}</span>
                     <div className="flex items-center gap-2">
                       {result.insignias_sugeridas.length > 0 ? (
@@ -508,7 +508,7 @@ export function InsigniaCurationTable() {
               const pageNum = Math.max(0, Math.min(page - 2 + i, totalPages - 1));
               return (
                 <Button
-                  key={pageNum}
+                  key={`page-${i}-${pageNum}`}
                   variant={pageNum === page ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setPage(pageNum)}
