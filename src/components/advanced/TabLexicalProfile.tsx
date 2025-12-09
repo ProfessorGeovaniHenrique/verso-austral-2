@@ -139,7 +139,10 @@ export function TabLexicalProfile() {
             await annotatePOSForCorpus(loadedCorpus, (processed, total, currentSong) => {
               setAnnotationProgress({ step: 'pos', progress: 15 + Math.round((processed / total) * 25), message: `Anotando POS: ${currentSong} (${processed}/${total})` });
             });
-          } catch { /* continue without POS */ }
+          } catch (posError) {
+            log.warn('POS annotation failed, continuing with basic analysis', { error: String(posError) });
+            toast.info('Anotação gramatical indisponível, continuando análise básica.');
+          }
         }
         
         setAnnotationProgress({ step: 'semantic', progress: 45, message: 'Classificando domínios semânticos...' });
@@ -186,7 +189,10 @@ export function TabLexicalProfile() {
             
             setStudyDominios(userDominios);
           }
-        } catch { /* continue without semantic */ }
+        } catch (semanticError) {
+          log.warn('Semantic annotation failed', { error: String(semanticError) });
+          toast.warning('Classificação semântica indisponível. Exibindo métricas básicas.');
+        }
         
         setAnnotationProgress({ step: 'calculating', progress: 85, message: 'Finalizando análise...' });
         

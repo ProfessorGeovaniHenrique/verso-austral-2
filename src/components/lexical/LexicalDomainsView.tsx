@@ -164,15 +164,18 @@ export function LexicalDomainsView({ domains, totalWords, corpus, onOpenKWICTool
                         >
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Badge
-                                variant="outline"
-                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                              >
-                                {kw.word}
-                                <span className="ml-1 text-muted-foreground">
-                                  ({kw.frequency})
-                                </span>
-                              </Badge>
+                              {/* Fase 2.3: Wrapper span para evitar forwardRef warning */}
+                              <span className="inline-flex">
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                >
+                                  {kw.word}
+                                  <span className="ml-1 text-muted-foreground">
+                                    ({kw.frequency})
+                                  </span>
+                                </Badge>
+                              </span>
                             </TooltipTrigger>
                             <TooltipContent side="top" className="text-xs">
                               <div className="space-y-1">
