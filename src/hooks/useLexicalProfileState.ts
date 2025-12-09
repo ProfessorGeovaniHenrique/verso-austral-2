@@ -8,10 +8,15 @@ import { LexicalProfile } from '@/data/types/stylistic-analysis.types';
 import { DominioSemantico } from '@/data/types/corpus.types';
 import { toast } from 'sonner';
 
+// Sprint BUG-SEM-3: Enhanced progress state with chunk info
 export interface AnnotationProgressState {
   step: 'idle' | 'pos' | 'semantic' | 'calculating';
   progress: number;
   message: string;
+  startedAt?: Date;
+  processedItems?: number;
+  currentChunk?: number;
+  totalChunks?: number;
 }
 
 export interface LexicalProfileState {

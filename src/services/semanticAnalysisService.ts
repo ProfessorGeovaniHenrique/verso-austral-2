@@ -29,10 +29,12 @@ export interface SemanticAnalysisResult {
 
 /**
  * SPRINT AUD-P0 (A-1): Chunking progressivo para >500 palavras
- * Processa palavras em chunks para evitar timeout da edge function
+ * Sprint BUG-SEM-3: Configurações otimizadas + retry com backoff
  */
 const CHUNK_SIZE = 100; // Palavras por chunk para evitar timeout
 const CHUNK_DELAY_MS = 500; // Delay entre chunks para rate limiting
+const MAX_RETRIES = 3; // Máximo de tentativas por chunk
+const RETRY_BASE_DELAY_MS = 1000; // Delay base para retry (exponential backoff)
 
 export interface SemanticAnalysisProgress {
   processed: number;
@@ -40,6 +42,7 @@ export interface SemanticAnalysisProgress {
   currentChunk: number;
   totalChunks: number;
   percentage: number;
+  startedAt?: Date;
 }
 
 /**
@@ -74,33 +77,58 @@ export async function analyzeSemanticDomains(
     const allAnnotations: SemanticAnnotation[] = [];
     let processedWords = 0;
 
+    const startedAt = new Date();
+    
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
       
-      // Report progress
+      // Report progress with startedAt for ETA calculation
       if (onProgress) {
         onProgress({
           processed: processedWords,
           total: words.length,
           currentChunk: i + 1,
           totalChunks: chunks.length,
-          percentage: Math.round((processedWords / words.length) * 100)
+          percentage: Math.round((processedWords / words.length) * 100),
+          startedAt
         });
       }
 
-      try {
-        const result = await processChunk(chunk, context);
-        allAnnotations.push(...result.annotations);
+      // Sprint BUG-SEM-3: Retry with exponential backoff
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const result = await processChunk(chunk, context);
+          allAnnotations.push(...result.annotations);
+          processedWords += chunk.length;
+          
+          log.debug(`Chunk ${i + 1}/${chunks.length} completed`, {
+            chunkSize: chunk.length,
+            annotated: result.annotations.length,
+            attempt
+          });
+          
+          lastError = null;
+          break; // Success, exit retry loop
+        } catch (chunkError) {
+          lastError = chunkError as Error;
+          const isRateLimited = String(chunkError).includes('429') || String(chunkError).includes('rate');
+          
+          if (attempt < MAX_RETRIES) {
+            const delay = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+            log.warn(`Chunk ${i + 1} attempt ${attempt} failed, retrying in ${delay}ms`, { 
+              error: String(chunkError),
+              isRateLimited 
+            });
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+      
+      // If all retries failed, log and continue
+      if (lastError) {
+        log.error(`Chunk ${i + 1} failed after ${MAX_RETRIES} attempts`, lastError);
         processedWords += chunk.length;
-        
-        log.debug(`Chunk ${i + 1}/${chunks.length} completed`, {
-          chunkSize: chunk.length,
-          annotated: result.annotations.length
-        });
-      } catch (chunkError) {
-        log.warn(`Chunk ${i + 1} failed, continuing with remaining chunks`, chunkError);
-        processedWords += chunk.length;
-        // Continue with remaining chunks instead of failing entirely
       }
 
       // Rate limiting delay between chunks (skip after last chunk)
@@ -116,7 +144,8 @@ export async function analyzeSemanticDomains(
         total: words.length,
         currentChunk: chunks.length,
         totalChunks: chunks.length,
-        percentage: 100
+        percentage: 100,
+        startedAt
       });
     }
 
@@ -126,7 +155,8 @@ export async function analyzeSemanticDomains(
       totalWords: words.length,
       annotated: allAnnotations.length,
       domains: dominiosUnicos.size,
-      chunks: chunks.length
+      chunks: chunks.length,
+      durationMs: Date.now() - startedAt.getTime()
     });
 
     return {

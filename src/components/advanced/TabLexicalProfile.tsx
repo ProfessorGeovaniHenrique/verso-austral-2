@@ -123,8 +123,9 @@ export function TabLexicalProfile() {
   const handleAnalyze = useCallback(async () => {
     // User corpus analysis
     if (studyCorpus?.type === 'user' && loadedCorpus && loadedCorpus.musicas.length > 0) {
+      const analysisStartedAt = new Date();
       setIsAnalyzing(true);
-      setAnnotationProgress({ step: 'idle', progress: 0, message: 'Iniciando análise...' });
+      setAnnotationProgress({ step: 'idle', progress: 0, message: 'Iniciando análise...', startedAt: analysisStartedAt });
       
       try {
         const allText = loadedCorpus.musicas.map(m => m.letra).join('\n');
@@ -153,7 +154,11 @@ export function TabLexicalProfile() {
             setAnnotationProgress({ 
               step: 'semantic', 
               progress: 45 + (chunkProgress.percentage / 100) * 30, 
-              message: `Classificando: ${chunkProgress.processed}/${chunkProgress.total} palavras`
+              message: `Classificando: ${chunkProgress.processed}/${chunkProgress.total} palavras`,
+              startedAt: chunkProgress.startedAt || analysisStartedAt,
+              processedItems: chunkProgress.processed,
+              currentChunk: chunkProgress.currentChunk,
+              totalChunks: chunkProgress.totalChunks
             });
           });
           
@@ -368,7 +373,15 @@ export function TabLexicalProfile() {
       />
       
       {isAnalyzing && studyCorpus?.type === 'user' && (
-        <AnnotationProgressCard step={annotationProgress.step} progress={annotationProgress.progress} message={annotationProgress.message} />
+        <AnnotationProgressCard 
+          step={annotationProgress.step} 
+          progress={annotationProgress.progress} 
+          message={annotationProgress.message}
+          startedAt={annotationProgress.startedAt}
+          processedItems={annotationProgress.processedItems}
+          currentChunk={annotationProgress.currentChunk}
+          totalChunks={annotationProgress.totalChunks}
+        />
       )}
       
       {existingJob && !isProcessing && studyCorpus?.type !== 'user' && (

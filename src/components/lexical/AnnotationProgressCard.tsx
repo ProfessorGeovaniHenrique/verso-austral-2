@@ -2,12 +2,13 @@
  * AnnotationProgressCard
  * Sprint AUD-C1: Progress display for user corpus annotation
  * Sprint AUD-U: Added ETA display
+ * Sprint BUG-SEM-3: Enhanced chunk progress with speed metrics
  */
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Clock } from "lucide-react";
+import { Loader2, Clock, Zap, Layers } from "lucide-react";
 import { useProgressWithETA } from "@/hooks/useProgressWithETA";
 
 interface AnnotationProgressCardProps {
@@ -16,6 +17,8 @@ interface AnnotationProgressCardProps {
   message: string;
   startedAt?: Date | string | null;
   processedItems?: number;
+  currentChunk?: number;
+  totalChunks?: number;
 }
 
 export function AnnotationProgressCard({ 
@@ -23,7 +26,9 @@ export function AnnotationProgressCard({
   progress, 
   message,
   startedAt,
-  processedItems
+  processedItems,
+  currentChunk,
+  totalChunks
 }: AnnotationProgressCardProps) {
   const eta = useProgressWithETA(progress, startedAt, processedItems);
   
@@ -40,18 +45,39 @@ export function AnnotationProgressCard({
           </div>
           <Badge variant="outline">{progress.toFixed(0)}%</Badge>
         </div>
-        <div className="flex justify-between items-center">
+        
+        <div className="flex flex-wrap justify-between items-center gap-2">
           <p className="text-xs text-muted-foreground">
             {step === 'pos' && 'Anotando classes gramaticais com IA...'}
             {step === 'semantic' && 'Classificando domínios semânticos...'}
             {step === 'calculating' && 'Finalizando cálculos de métricas...'}
           </p>
-          {eta && (
-            <div className="flex items-center gap-1.5 text-xs text-primary">
-              <Clock className="h-3 w-3" />
-              <span>{eta.remainingFormatted}</span>
-            </div>
-          )}
+          
+          <div className="flex items-center gap-3 text-xs">
+            {/* Chunk progress for semantic annotation */}
+            {step === 'semantic' && currentChunk && totalChunks && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Layers className="h-3 w-3" />
+                <span>Chunk {currentChunk}/{totalChunks}</span>
+              </div>
+            )}
+            
+            {/* Speed metric */}
+            {eta?.wordsPerSecond && eta.wordsPerSecond > 0 && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Zap className="h-3 w-3" />
+                <span>{eta.wordsPerSecond.toFixed(1)} pal/s</span>
+              </div>
+            )}
+            
+            {/* ETA */}
+            {eta && (
+              <div className="flex items-center gap-1.5 text-primary">
+                <Clock className="h-3 w-3" />
+                <span>{eta.remainingFormatted}</span>
+              </div>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
