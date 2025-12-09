@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useToolCache } from "@/hooks/useToolCache";
 import { analyzeForegrounding, exportForegroundingToCSV, ForegroundingProfile } from "@/services/foregroundingAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
@@ -17,7 +18,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export function ForegroundingDetectorTool() {
   const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
-  const [profile, setProfile] = useState<ForegroundingProfile | null>(null);
+  const { cachedData: profile, saveToCache, clearCache, hasCachedData } = useToolCache<ForegroundingProfile>('foregrounding');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
@@ -35,7 +36,7 @@ export function ForegroundingDetectorTool() {
       
       setProgress(60);
       const foregroundingProfile = analyzeForegrounding(loadedCorpus);
-      setProfile(foregroundingProfile);
+      saveToCache(foregroundingProfile);
       setProgress(100);
       
       toast.success(`${foregroundingProfile.totalDeviations} desvios detectados!`);
@@ -46,6 +47,11 @@ export function ForegroundingDetectorTool() {
       setIsAnalyzing(false);
       setTimeout(() => setProgress(0), 1000);
     }
+  };
+
+  const handleClearCache = () => {
+    clearCache();
+    toast.success("Cache limpo!");
   };
 
   const exportToCSV = () => {
@@ -81,8 +87,6 @@ export function ForegroundingDetectorTool() {
     'parallelism': 'Paralelismo'
   };
 
-  // Removido early return para sempre exibir TheoryBriefCard e botão
-
   return (
     <div className="space-y-4">
       <Card>
@@ -107,7 +111,7 @@ export function ForegroundingDetectorTool() {
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
               <Play className="w-4 h-4 mr-2" />
-              {isAnalyzing ? "Analisando..." : "Detectar Foregrounding"}
+              {isAnalyzing ? "Analisando..." : hasCachedData ? "Reanalisar" : "Detectar Foregrounding"}
             </Button>
             {profile && (
               <>
@@ -118,7 +122,7 @@ export function ForegroundingDetectorTool() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  onClick={handleClearCache}
                   title="Limpar cache"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -148,19 +152,19 @@ export function ForegroundingDetectorTool() {
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-blue-500">{profile.internalDeviations}</div>
+                    <div className="text-2xl font-bold text-primary">{profile.internalDeviations}</div>
                     <div className="text-sm text-muted-foreground">Desvio Interno</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-green-500">{profile.externalDeviations}</div>
+                    <div className="text-2xl font-bold text-accent-foreground">{profile.externalDeviations}</div>
                     <div className="text-sm text-muted-foreground">Desvio Externo</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-purple-500">{profile.parallelisms}</div>
+                    <div className="text-2xl font-bold text-secondary-foreground">{profile.parallelisms}</div>
                     <div className="text-sm text-muted-foreground">Paralelismo</div>
                   </CardContent>
                 </Card>

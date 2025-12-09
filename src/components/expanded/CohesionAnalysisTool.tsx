@@ -6,14 +6,14 @@ import { analyzeCohesion } from "@/services/cohesionAnalysisService";
 import { CohesionProfile } from "@/data/types/stylistic-analysis.types";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useToolCache } from "@/hooks/useToolCache";
 import { TheoryBriefCard, TheoryDetailModal, AnalysisSuggestionsCard, BlauNunesConsultant } from "@/components/theory";
 import { cohesionTheory } from "@/data/theoretical/stylistic-theory";
 
 export function CohesionAnalysisTool() {
   const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
-  const [profile, setProfile] = useState<CohesionProfile | null>(null);
+  const { cachedData: profile, saveToCache, clearCache, hasCachedData } = useToolCache<CohesionProfile>('cohesion');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
 
@@ -28,7 +28,7 @@ export function CohesionAnalysisTool() {
       toast.info("Analisando elementos de coesão...");
       
       const cohesionProfile = analyzeCohesion(loadedCorpus);
-      setProfile(cohesionProfile);
+      saveToCache(cohesionProfile);
       
       toast.success("Análise de coesão concluída!");
     } catch (error) {
@@ -37,6 +37,11 @@ export function CohesionAnalysisTool() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleClearCache = () => {
+    clearCache();
+    toast.success("Cache limpo!");
   };
 
   const exportToCSV = () => {
@@ -69,14 +74,12 @@ export function CohesionAnalysisTool() {
   };
 
   const connectiveTypeColors: Record<string, string> = {
-    additive: "bg-blue-100 text-blue-800",
-    adversative: "bg-red-100 text-red-800",
-    causal: "bg-green-100 text-green-800",
-    temporal: "bg-purple-100 text-purple-800",
-    conclusive: "bg-yellow-100 text-yellow-800"
+    additive: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+    adversative: "bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300",
+    causal: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+    temporal: "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300",
+    conclusive: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300"
   };
-
-  // Removido early return para sempre exibir TheoryBriefCard e botão
 
   return (
     <div className="space-y-4">
@@ -92,7 +95,7 @@ export function CohesionAnalysisTool() {
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
               <Play className="w-4 h-4 mr-2" />
-              {isAnalyzing ? "Analisando..." : "Analisar Coesão"}
+              {isAnalyzing ? "Analisando..." : hasCachedData ? "Reanalisar" : "Analisar Coesão"}
             </Button>
             {profile && (
               <>
@@ -103,7 +106,7 @@ export function CohesionAnalysisTool() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  onClick={handleClearCache}
                   title="Limpar cache"
                 >
                   <Trash2 className="w-4 h-4" />

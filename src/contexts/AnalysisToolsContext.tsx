@@ -8,6 +8,9 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode, useMemo } from 'react';
 import { CorpusType } from '@/data/types/corpus-tools.types';
 import { LexicalProfile, SyntacticProfile, RhetoricalProfile, CohesionProfile } from '@/data/types/stylistic-analysis.types';
+import { SpeechThoughtProfile } from '@/services/speechThoughtAnalysisService';
+import { MindStyleProfile } from '@/services/mindStyleAnalysisService';
+import { ForegroundingProfile } from '@/services/foregroundingAnalysisService';
 
 // Tipos para corpus do usuário
 export type TextType = 'poetry' | 'prose';
@@ -59,9 +62,9 @@ export interface ToolsCache {
   syntactic: ToolCacheEntry<SyntacticProfile> | null;
   rhetorical: ToolCacheEntry<RhetoricalProfile> | null;
   cohesion: ToolCacheEntry<CohesionProfile> | null;
-  speech: ToolCacheEntry<unknown> | null;
-  mind: ToolCacheEntry<unknown> | null;
-  foregrounding: ToolCacheEntry<unknown> | null;
+  speech: ToolCacheEntry<SpeechThoughtProfile> | null;
+  mind: ToolCacheEntry<MindStyleProfile> | null;
+  foregrounding: ToolCacheEntry<ForegroundingProfile> | null;
 }
 
 const INITIAL_TOOLS_CACHE: ToolsCache = {

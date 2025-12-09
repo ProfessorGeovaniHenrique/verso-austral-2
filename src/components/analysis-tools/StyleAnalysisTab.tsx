@@ -10,13 +10,13 @@
  * - Mind Style
  * - Foregrounding
  * 
- * Refatorado para usar cache centralizado e seletor único.
- * Sprint AUD-U: Added breadcrumb navigation
+ * Sprint PERSIST-1: Adicionado botão "Processar Análise Completa"
  */
 
 import React, { useState, Suspense, useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { 
   BookOpen, 
   FileText, 
@@ -25,7 +25,8 @@ import {
   MessageCircle, 
   Brain, 
   Sparkles,
-  Loader2 
+  Loader2,
+  Microscope
 } from 'lucide-react';
 import { useAnalysisTools } from '@/contexts/AnalysisToolsContext';
 import { CorpusSelector } from './CorpusSelector';
@@ -35,6 +36,7 @@ import { ToolErrorBoundary } from './ToolErrorBoundary';
 import { ToolLoadingSkeleton } from './ToolLoadingSkeleton';
 import { SubTabBreadcrumb } from '@/components/ui/sub-tab-breadcrumb';
 import { CompareModeAlert } from '@/components/ui/compare-mode-alert';
+import { FullAnalysisModal } from './FullAnalysisModal';
 
 // Ferramentas existentes
 import { TabLexicalProfile } from '@/components/advanced/TabLexicalProfile';
@@ -58,6 +60,7 @@ const styleTools = [
 export function StyleAnalysisTab() {
   const { studyCorpus, setStudyCorpus, referenceCorpus, setReferenceCorpus } = useAnalysisTools();
   const [activeToolTab, setActiveToolTab] = useState('lexical');
+  const [showFullAnalysisModal, setShowFullAnalysisModal] = useState(false);
 
   // Detectar modo compare
   const isCompareMode = useMemo(() => {
@@ -66,6 +69,8 @@ export function StyleAnalysisTab() {
   
   const currentTool = styleTools.find(t => t.id === activeToolTab) || styleTools[0];
   const CurrentIcon = currentTool.icon;
+
+  const hasCorpusSelected = !!studyCorpus;
 
   return (
     <div className="space-y-6">
@@ -95,8 +100,26 @@ export function StyleAnalysisTab() {
         />
       )}
 
-      {/* Indicador de Cache */}
-      <CacheStatusIndicator />
+      {/* Indicador de Cache + Botão Análise Completa */}
+      <div className="flex items-center justify-between gap-4">
+        <CacheStatusIndicator />
+        
+        <Button
+          variant="outline"
+          onClick={() => setShowFullAnalysisModal(true)}
+          disabled={!hasCorpusSelected}
+          className="shrink-0"
+        >
+          <Microscope className="h-4 w-4 mr-2" />
+          Processar Análise Completa
+        </Button>
+      </div>
+
+      {/* Modal de Análise Completa */}
+      <FullAnalysisModal 
+        open={showFullAnalysisModal} 
+        onOpenChange={setShowFullAnalysisModal} 
+      />
 
       {/* Ferramentas em Sub-Abas */}
       <AnalysisToolsBridge>

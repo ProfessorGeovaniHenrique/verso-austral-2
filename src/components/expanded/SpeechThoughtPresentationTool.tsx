@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useToolCache } from "@/hooks/useToolCache";
 import { analyzeSpeechThoughtPresentation, exportSpeechThoughtToCSV, SpeechThoughtProfile } from "@/services/speechThoughtAnalysisService";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
@@ -15,7 +16,7 @@ import { speechThoughtTheory } from "@/data/theoretical/stylistic-theory";
 
 export function SpeechThoughtPresentationTool() {
   const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
-  const [profile, setProfile] = useState<SpeechThoughtProfile | null>(null);
+  const { cachedData: profile, saveToCache, clearCache, hasCachedData } = useToolCache<SpeechThoughtProfile>('speech');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
@@ -33,7 +34,7 @@ export function SpeechThoughtPresentationTool() {
       
       setProgress(60);
       const speechThoughtProfile = analyzeSpeechThoughtPresentation(loadedCorpus);
-      setProfile(speechThoughtProfile);
+      saveToCache(speechThoughtProfile);
       setProgress(100);
       
       toast.success(`${speechThoughtProfile.totalInstances} instâncias detectadas!`);
@@ -44,6 +45,11 @@ export function SpeechThoughtPresentationTool() {
       setIsAnalyzing(false);
       setTimeout(() => setProgress(0), 1000);
     }
+  };
+
+  const handleClearCache = () => {
+    clearCache();
+    toast.success("Cache limpo!");
   };
 
   const exportToCSV = () => {
@@ -82,8 +88,6 @@ export function SpeechThoughtPresentationTool() {
     NRTA: 'Atos Mentais Narrados'
   };
 
-  // Removido early return para sempre exibir TheoryBriefCard e botão
-
   return (
     <div className="space-y-4">
       <Card>
@@ -105,7 +109,7 @@ export function SpeechThoughtPresentationTool() {
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
               <Play className="w-4 h-4 mr-2" />
-              {isAnalyzing ? "Analisando..." : "Analisar Corpus"}
+              {isAnalyzing ? "Analisando..." : hasCachedData ? "Reanalisar" : "Analisar Corpus"}
             </Button>
             {profile && (
               <>
@@ -116,7 +120,7 @@ export function SpeechThoughtPresentationTool() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  onClick={handleClearCache}
                   title="Limpar cache"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -146,13 +150,13 @@ export function SpeechThoughtPresentationTool() {
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-blue-500">{profile.speechInstances}</div>
+                    <div className="text-2xl font-bold text-primary">{profile.speechInstances}</div>
                     <div className="text-sm text-muted-foreground">Fala</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-purple-500">{profile.thoughtInstances}</div>
+                    <div className="text-2xl font-bold text-secondary-foreground">{profile.thoughtInstances}</div>
                     <div className="text-sm text-muted-foreground">Pensamento</div>
                   </CardContent>
                 </Card>
