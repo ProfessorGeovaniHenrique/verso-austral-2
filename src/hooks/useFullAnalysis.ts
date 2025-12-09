@@ -98,7 +98,7 @@ export function useFullAnalysis() {
 
         switch (tool.key) {
           case 'lexical':
-            result = calculateLexicalProfile(loadedCorpus);
+            result = calculateLexicalProfile(loadedCorpus, []);
             break;
             
           case 'syntactic':

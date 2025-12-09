@@ -82,7 +82,8 @@ export function FullAnalysisModal({ open, onOpenChange }: FullAnalysisModalProps
     hasResults 
   } = useFullAnalysis();
   
-  const { formattedETA } = useProgressWithETA(progress, state.startedAt);
+  const progressETA = useProgressWithETA(progress, state.startedAt);
+  const formattedETA = progressETA?.remainingFormatted;
 
   const handleStart = () => {
     processAnalysis();
