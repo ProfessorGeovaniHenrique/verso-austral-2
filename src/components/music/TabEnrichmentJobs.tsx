@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   Table, 
   TableBody, 
@@ -33,15 +34,19 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Database
+  Database,
+  Brain,
+  ChevronDown
 } from 'lucide-react';
 import { useEnrichmentJobsList, EnrichmentJob, EnrichmentStatus, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
+import { useSemanticCoverage } from '@/hooks/useSemanticCoverage';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { EnrichmentControlPanel } from './EnrichmentControlPanel';
 import { EnrichmentLiveCard } from './EnrichmentLiveCard';
+import { SemanticCoverageDashboard } from './SemanticCoverageDashboard';
 
 const JOB_TYPE_LABELS: Record<EnrichmentJobType, string> = {
   metadata: 'Metadados',
@@ -65,9 +70,11 @@ const IDLE_REFRESH_INTERVAL = 30000;
 
 export function TabEnrichmentJobs() {
   const { jobs, isLoading, refetch } = useEnrichmentJobsList();
+  const { globalCoveragePercent } = useSemanticCoverage({ autoRefreshInterval: 60000 });
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [coverageOpen, setCoverageOpen] = useState(true);
 
   // Jobs ativos (processando ou pausado)
   const activeJobs = jobs.filter(j => ['processando', 'pausado'].includes(j.status));
@@ -172,6 +179,38 @@ export function TabEnrichmentJobs() {
 
   return (
     <div className="space-y-6">
+      {/* Dashboard de Cobertura Semântica (Collapsible) */}
+      <Collapsible open={coverageOpen} onOpenChange={setCoverageOpen}>
+        <Card>
+          <CollapsibleTrigger asChild>
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Brain className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle className="text-lg">Cobertura Semântica</CardTitle>
+                    <CardDescription>
+                      Visibilidade completa da anotação por corpus e artista
+                    </CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={globalCoveragePercent >= 50 ? 'default' : 'secondary'}>
+                    {globalCoveragePercent}% anotado
+                  </Badge>
+                  <ChevronDown className={`h-5 w-5 transition-transform ${coverageOpen ? 'rotate-180' : ''}`} />
+                </div>
+              </div>
+            </CardHeader>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <CardContent className="pt-0">
+              <SemanticCoverageDashboard />
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
+
       {/* Cards de jobs ativos com monitoramento em tempo real */}
       {activeJobs.map((job) => (
         <EnrichmentLiveCard

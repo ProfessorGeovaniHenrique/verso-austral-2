@@ -26,9 +26,11 @@ import {
   Music,
   User,
   Globe,
-  LetterText
+  LetterText,
+  Brain
 } from 'lucide-react';
 import { useEnrichmentJob, EnrichmentJobType, EnrichmentScope } from '@/hooks/useEnrichmentJob';
+import { useSemanticCoverage, getCoverageLevel, CoverageLevel } from '@/hooks/useSemanticCoverage';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -68,6 +70,7 @@ export function EnrichmentControlPanel() {
   const [forceReenrich, setForceReenrich] = useState(false);
   const [eligibleCount, setEligibleCount] = useState<number | null>(null);
   const [isCountLoading, setIsCountLoading] = useState(false);
+  const [coverageFilter, setCoverageFilter] = useState<CoverageLevel | 'all'>('all');
 
   // Data
   const [corpora, setCorpora] = useState<Corpus[]>([]);
@@ -75,6 +78,7 @@ export function EnrichmentControlPanel() {
   const [filteredArtists, setFilteredArtists] = useState<Artist[]>([]);
 
   const { startJob, isStarting, hasActiveJob } = useEnrichmentJob();
+  const { artistCoverage } = useSemanticCoverage({ enabled: coverageFilter !== 'all' });
 
   // Carregar corpora e artistas
   useEffect(() => {
@@ -90,7 +94,7 @@ export function EnrichmentControlPanel() {
     loadData();
   }, []);
 
-  // BUG-2 FIX: Filtrar artistas por corpus E/OU letra
+  // BUG-2 FIX: Filtrar artistas por corpus, letra E cobertura semântica
   useEffect(() => {
     async function filterArtists() {
       let filtered = [...artists];
@@ -113,11 +117,21 @@ export function EnrichmentControlPanel() {
         );
       }
       
+      // Filtrar por cobertura semântica
+      if (coverageFilter !== 'all' && artistCoverage.length > 0) {
+        const coverageMap = new Map(artistCoverage.map(ac => [ac.artistId, ac.coveragePercent]));
+        filtered = filtered.filter(a => {
+          const coverage = coverageMap.get(a.id) ?? 0;
+          const level = getCoverageLevel(coverage);
+          return level === coverageFilter;
+        });
+      }
+      
       setFilteredArtists(filtered);
     }
     
     filterArtists();
-  }, [artists, scope, selectedLetter, selectedCorpus]);
+  }, [artists, scope, selectedLetter, selectedCorpus, coverageFilter, artistCoverage]);
 
   // Calcular músicas elegíveis
   useEffect(() => {
@@ -319,6 +333,31 @@ export function EnrichmentControlPanel() {
             </Select>
           </div>
         )}
+
+        {/* Filtro por cobertura semântica */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Filtrar por Cobertura Semântica
+          </Label>
+          <Select value={coverageFilter} onValueChange={(v) => setCoverageFilter(v as CoverageLevel | 'all')}>
+            <SelectTrigger>
+              <SelectValue placeholder="Todos os artistas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="none">Sem anotação (0%)</SelectItem>
+              <SelectItem value="partial">Parcial (&lt;50%)</SelectItem>
+              <SelectItem value="good">Boa (50-99%)</SelectItem>
+              <SelectItem value="complete">Completa (100%)</SelectItem>
+            </SelectContent>
+          </Select>
+          {coverageFilter !== 'all' && (
+            <p className="text-xs text-muted-foreground">
+              {filteredArtists.length} artistas com cobertura "{coverageFilter}"
+            </p>
+          )}
+        </div>
 
         {scope === 'letter' && (
           <div className="space-y-2">
