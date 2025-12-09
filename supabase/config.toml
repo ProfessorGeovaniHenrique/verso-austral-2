@@ -171,6 +171,7 @@ verify_jwt = false
 
 [functions.enrich-songs-batch]
 verify_jwt = false
+timeout = 240
 
 [functions.backfill-insignia-attribution]
 verify_jwt = false

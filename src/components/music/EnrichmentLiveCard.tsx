@@ -1,6 +1,8 @@
 /**
  * Card de monitoramento em tempo real para job de enriquecimento ativo
  * Exibe métricas live: música atual, taxa, ETA, heartbeat
+ * 
+ * SPRINT 1: Adicionadas métricas de velocidade (s/música) e ETA calculado
  */
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,9 +21,12 @@ import {
   Timer,
   Loader2,
   RefreshCw,
+  Zap,
+  Gauge,
 } from 'lucide-react';
 import { useEnrichmentLiveMetrics } from '@/hooks/useEnrichmentLiveMetrics';
 import { EnrichmentJob } from '@/hooks/useEnrichmentJob';
+import { useProgressWithETA } from '@/hooks/useProgressWithETA';
 import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -49,6 +54,9 @@ export function EnrichmentLiveCard({
     ? Math.round((job.songs_processed / job.total_songs) * 100)
     : 0;
   
+  // SPRINT 1: ETA calculado baseado em progresso real
+  const etaInfo = useProgressWithETA(progress, job.tempo_inicio, job.songs_processed);
+  
   // Tempo decorrido
   const elapsedSeconds = job.tempo_inicio
     ? differenceInSeconds(new Date(), new Date(job.tempo_inicio))
@@ -65,6 +73,16 @@ export function EnrichmentLiveCard({
     const m = Math.floor((seconds % 3600) / 60);
     return `${h}h ${m}m`;
   };
+  
+  // SPRINT 1: Calcular velocidade (segundos por música)
+  const secondsPerSong = job.songs_processed > 0 && elapsedSeconds > 0
+    ? (elapsedSeconds / job.songs_processed).toFixed(1)
+    : '-';
+  
+  // SPRINT 1: Músicas por minuto baseado em dados reais
+  const songsPerMinute = job.songs_processed > 0 && elapsedSeconds > 0
+    ? Math.round((job.songs_processed / elapsedSeconds) * 60)
+    : 0;
   
   const isProcessing = job.status === 'processando';
   const isPaused = job.status === 'pausado';
@@ -156,31 +174,47 @@ export function EnrichmentLiveCard({
           </div>
         </div>
         
-        {/* Métricas em tempo real */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* SPRINT 1: Métricas em tempo real otimizadas */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
           {/* Tempo decorrido */}
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <Timer className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
             <div className="text-lg font-bold">{formatElapsed(elapsedSeconds)}</div>
-            <div className="text-xs text-muted-foreground">Tempo</div>
+            <div className="text-xs text-muted-foreground">Decorrido</div>
+          </div>
+          
+          {/* SPRINT 1: Velocidade (s/música) */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <Zap className="h-4 w-4 mx-auto mb-1 text-yellow-500" />
+            <div className="text-lg font-bold">{secondsPerSong}s</div>
+            <div className="text-xs text-muted-foreground">por música</div>
           </div>
           
           {/* Taxa de processamento */}
           <div className="bg-muted/50 rounded-lg p-3 text-center">
-            <TrendingUp className="h-4 w-4 mx-auto mb-1 text-blue-500" />
+            <TrendingUp className="h-4 w-4 mx-auto mb-1 text-green-500" />
             <div className="text-lg font-bold">
-              {metrics.processingRate || '-'}
+              {songsPerMinute || metrics.processingRate || '-'}
             </div>
             <div className="text-xs text-muted-foreground">músicas/min</div>
           </div>
           
-          {/* ETA */}
+          {/* ETA calculado */}
           <div className="bg-muted/50 rounded-lg p-3 text-center">
             <Clock className="h-4 w-4 mx-auto mb-1 text-orange-500" />
-            <div className="text-lg font-bold">
-              {formattedEta || '-'}
+            <div className="text-lg font-bold truncate">
+              {etaInfo?.remainingFormatted || formattedEta || '-'}
             </div>
             <div className="text-xs text-muted-foreground">ETA</div>
+          </div>
+          
+          {/* SPRINT 1: Throughput Gauge */}
+          <div className="bg-muted/50 rounded-lg p-3 text-center">
+            <Gauge className="h-4 w-4 mx-auto mb-1 text-purple-500" />
+            <div className="text-lg font-bold">
+              {job.chunks_processed || 0}
+            </div>
+            <div className="text-xs text-muted-foreground">chunks</div>
           </div>
           
           {/* Heartbeat */}
