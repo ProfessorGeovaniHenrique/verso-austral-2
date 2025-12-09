@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
 import { useSubcorpus } from "@/contexts/SubcorpusContext";
+import { useToolCache } from "@/hooks/useToolCache";
 import { analyzeMindStyle, exportMindStyleToCSV, MindStyleProfile } from "@/services/mindStyleAnalysisService";
 import { toast } from "sonner";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
@@ -16,7 +17,7 @@ const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accen
 
 export function MindStyleAnalyzerTool() {
   const { loadedCorpus, isLoading: loadingCorpus, isReady } = useSubcorpus();
-  const [profile, setProfile] = useState<MindStyleProfile | null>(null);
+  const { cachedData: profile, saveToCache, clearCache, hasCachedData } = useToolCache<MindStyleProfile>('mind');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [showTheoryModal, setShowTheoryModal] = useState(false);
@@ -34,7 +35,7 @@ export function MindStyleAnalyzerTool() {
       
       setProgress(60);
       const mindStyleProfile = analyzeMindStyle(loadedCorpus);
-      setProfile(mindStyleProfile);
+      saveToCache(mindStyleProfile);
       setProgress(100);
       
       toast.success("Análise de mind style concluída!");
@@ -45,6 +46,11 @@ export function MindStyleAnalyzerTool() {
       setIsAnalyzing(false);
       setTimeout(() => setProgress(0), 1000);
     }
+  };
+
+  const handleClearCache = () => {
+    clearCache();
+    toast.success("Cache limpo!");
   };
 
   const exportToCSV = () => {
@@ -77,8 +83,6 @@ export function MindStyleAnalyzerTool() {
     'balanced': 'Equilibrado'
   };
 
-  // Removido early return para sempre exibir TheoryBriefCard e botão
-
   return (
     <div className="space-y-4">
       <Card>
@@ -103,7 +107,7 @@ export function MindStyleAnalyzerTool() {
           <div className="flex gap-2">
             <Button onClick={handleAnalyze} disabled={isAnalyzing || !loadedCorpus}>
               <Play className="w-4 h-4 mr-2" />
-              {isAnalyzing ? "Analisando..." : "Analisar Mind Style"}
+              {isAnalyzing ? "Analisando..." : hasCachedData ? "Reanalisar" : "Analisar Mind Style"}
             </Button>
             {profile && (
               <>
@@ -114,7 +118,7 @@ export function MindStyleAnalyzerTool() {
                 <Button 
                   variant="ghost" 
                   size="icon"
-                  onClick={() => { setProfile(null); toast.success("Cache limpo!"); }}
+                  onClick={handleClearCache}
                   title="Limpar cache"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -156,19 +160,19 @@ export function MindStyleAnalyzerTool() {
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-blue-500">{profile.perceptionVsAction.actionVerbs}</div>
+                    <div className="text-2xl font-bold text-primary">{profile.perceptionVsAction.actionVerbs}</div>
                     <div className="text-sm text-muted-foreground">Verbos Ação</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-green-500">{profile.perceptionVsAction.ratio.toFixed(2)}</div>
+                    <div className="text-2xl font-bold text-accent-foreground">{profile.perceptionVsAction.ratio.toFixed(2)}</div>
                     <div className="text-sm text-muted-foreground">Razão P/A</div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardContent className="pt-4 text-center">
-                    <div className="text-2xl font-bold text-purple-500">{profile.deixis.personal}</div>
+                    <div className="text-2xl font-bold text-secondary-foreground">{profile.deixis.personal}</div>
                     <div className="text-sm text-muted-foreground">Dêixis Pessoal</div>
                   </CardContent>
                 </Card>
