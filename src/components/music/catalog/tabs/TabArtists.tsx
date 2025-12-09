@@ -45,32 +45,69 @@ interface TabArtistsProps {
   selectedCorpusName?: string;
 }
 
+const LETTERS = ['all', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')];
+
 const AlphabetFilter = memo(({ selectedLetter, onLetterChange }: { 
   selectedLetter: string; 
   onLetterChange: (letter: string) => void;
-}) => (
-  <div className="flex flex-wrap gap-1 p-4 bg-card rounded-lg border mb-4">
-    <Button
-      size="sm"
-      variant={selectedLetter === 'all' ? 'default' : 'outline'}
-      onClick={() => onLetterChange('all')}
-      className="h-8 px-3 text-xs"
+}) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, letter: string, index: number) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onLetterChange(letter);
+      return;
+    }
+
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
+      if (!buttons) return;
+      
+      const currentIndex = index;
+      const nextIndex = e.key === 'ArrowRight' 
+        ? Math.min(currentIndex + 1, buttons.length - 1)
+        : Math.max(currentIndex - 1, 0);
+      
+      (buttons[nextIndex] as HTMLButtonElement)?.focus();
+    }
+
+    if (e.key === 'Home') {
+      e.preventDefault();
+      const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
+      (buttons?.[0] as HTMLButtonElement)?.focus();
+    }
+
+    if (e.key === 'End') {
+      e.preventDefault();
+      const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
+      if (buttons) (buttons[buttons.length - 1] as HTMLButtonElement)?.focus();
+    }
+  };
+
+  return (
+    <div 
+      className="flex flex-wrap gap-1 p-4 bg-card rounded-lg border mb-4"
+      role="group"
+      aria-label="Filtro alfabético de artistas"
     >
-      Todos
-    </Button>
-    {'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(letter => (
-      <Button
-        key={letter}
-        size="sm"
-        variant={selectedLetter === letter ? 'default' : 'outline'}
-        onClick={() => onLetterChange(letter)}
-        className="h-8 w-8 p-0 text-xs font-mono"
-      >
-        {letter}
-      </Button>
-    ))}
-  </div>
-));
+      {LETTERS.map((letter, index) => (
+        <Button
+          key={letter}
+          size="sm"
+          variant={selectedLetter === letter ? 'default' : 'outline'}
+          onClick={() => onLetterChange(letter)}
+          onKeyDown={(e) => handleKeyDown(e, letter, index)}
+          tabIndex={selectedLetter === letter ? 0 : -1}
+          aria-pressed={selectedLetter === letter}
+          aria-label={letter === 'all' ? 'Mostrar todos os artistas' : `Filtrar por letra ${letter}`}
+          className={letter === 'all' ? 'h-8 px-3 text-xs' : 'h-8 w-8 p-0 text-xs font-mono'}
+        >
+          {letter === 'all' ? 'Todos' : letter}
+        </Button>
+      ))}
+    </div>
+  );
+});
 
 AlphabetFilter.displayName = 'AlphabetFilter';
 

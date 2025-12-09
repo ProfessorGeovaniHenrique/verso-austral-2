@@ -98,7 +98,7 @@ export function DuplicateAnalysisDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-blue-600">{analysis.uniqueEntries}</div>
+                <div className="text-2xl font-bold text-purple-600">{analysis.uniqueEntries}</div>
               </CardContent>
             </Card>
 
@@ -145,9 +145,9 @@ export function DuplicateAnalysisDashboard() {
                   </AlertDescription>
                 </Alert>
               ) : analysis.duplicateRate < 5 ? (
-                <Alert className="border-blue-500 bg-blue-50">
-                  <Info className="h-4 w-4 text-blue-600" />
-                  <AlertTitle className="text-blue-600">Boa Qualidade</AlertTitle>
+                <Alert className="border-purple-500 bg-purple-50">
+                  <Info className="h-4 w-4 text-purple-600" />
+                  <AlertTitle className="text-purple-600">Boa Qualidade</AlertTitle>
                   <AlertDescription>
                     Taxa de duplicação baixa ({analysis.duplicateRate}%). 
                     Alguns verbetes possuem múltiplas entradas, possivelmente por acepções diferentes.
