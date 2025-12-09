@@ -1,13 +1,15 @@
 /**
  * ProcessingJobCard
  * Sprint AUD-C1: UI for in-progress annotation job
+ * Sprint AUD-U: Enhanced ETA display with visual indicators
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Loader2 } from "lucide-react";
+import { Loader2, Clock, Zap } from "lucide-react";
+import { useProgressWithETA } from "@/hooks/useProgressWithETA";
 
 interface ProcessingJobCardProps {
   job: {
@@ -19,6 +21,7 @@ interface ProcessingJobCardProps {
     total_words: number;
     new_words: number;
     cached_words: number;
+    tempo_inicio?: string | null;
   };
   progress: number;
   eta?: string;
@@ -29,10 +32,17 @@ interface ProcessingJobCardProps {
 export function ProcessingJobCard({
   job,
   progress,
-  eta,
-  wordsPerSecond,
+  eta: etaProp,
+  wordsPerSecond: wpsFromProp,
   onCancel,
 }: ProcessingJobCardProps) {
+  // Calcular ETA automaticamente se não fornecido
+  const calculatedEta = useProgressWithETA(progress, job.tempo_inicio, job.processed_words);
+  
+  // Usar props se fornecidos, senão usar calculados
+  const displayEta = etaProp || calculatedEta?.remainingFormatted;
+  const displayWps = wpsFromProp ?? calculatedEta?.wordsPerSecond;
+  
   return (
     <Card className="border-primary/50 bg-primary/5">
       <CardHeader className="pb-3">
@@ -64,19 +74,25 @@ export function ProcessingJobCard({
               <span>{job.new_words.toLocaleString()} novas</span>
               <span className="text-muted-foreground/60">•</span>
               <span>{job.cached_words.toLocaleString()} em cache</span>
-              {wordsPerSecond && (
+              {displayWps && displayWps > 0 && (
                 <>
                   <span className="text-muted-foreground/60">•</span>
-                  <span>{wordsPerSecond.toFixed(1)} palavras/s</span>
+                  <span className="flex items-center gap-1">
+                    <Zap className="h-3 w-3" />
+                    {displayWps.toFixed(1)} palavras/s
+                  </span>
                 </>
               )}
             </div>
             <div className="flex items-center gap-3">
-              <span>{progress.toFixed(1)}%</span>
-              {eta && (
+              <span className="font-medium">{progress.toFixed(1)}%</span>
+              {displayEta && (
                 <>
                   <span className="text-muted-foreground/60">•</span>
-                  <span className="text-primary font-medium">ETA: {eta}</span>
+                  <span className="text-primary font-medium flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    {displayEta}
+                  </span>
                 </>
               )}
             </div>
