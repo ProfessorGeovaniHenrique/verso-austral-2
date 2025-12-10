@@ -3,7 +3,7 @@ import { mvpEpics, postMvpEpics, v2Epics } from '@/data/developer-logs/product-r
 import { constructionLog } from '@/data/developer-logs/construction-log';
 
 export interface SearchResult {
-  type: 'epic' | 'story' | 'decision' | 'phase';
+  type: 'epic' | 'story' | 'decision' | 'phase' | 'audit' | 'finding';
   id: string;
   title: string;
   description: string;

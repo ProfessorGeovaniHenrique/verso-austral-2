@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,7 @@ import { SyncStatusDashboard } from "@/components/dev-history/SyncStatusDashboar
 import { ToolsMethodologies } from "@/components/dev-history/ToolsMethodologies";
 import { USASMethodologyViewer } from "@/components/dev-history/USASMethodologyViewer";
 import { StylisticsMethodologyViewer } from "@/components/dev-history/StylisticsMethodologyViewer";
+import { AuditsTab } from "@/components/dev-history/AuditsTab";
 import type { SearchResult } from "@/hooks/useDevHistorySearch";
 
 export default function DeveloperHistory() {
@@ -35,6 +36,10 @@ export default function DeveloperHistory() {
       case 'decision':
       case 'phase':
         setActiveTab('timeline');
+        break;
+      case 'audit':
+      case 'finding':
+        setActiveTab('audits');
         break;
     }
     
@@ -94,13 +99,17 @@ export default function DeveloperHistory() {
 
         {/* Main Content Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className="grid w-full grid-cols-8">
             <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="velocity">Velocidade</TabsTrigger>
             <TabsTrigger value="scientific">Evolução</TabsTrigger>
             <TabsTrigger value="corrections">Correções</TabsTrigger>
             <TabsTrigger value="methodologies">Metodologias</TabsTrigger>
             <TabsTrigger value="tools">Ferramentas</TabsTrigger>
+            <TabsTrigger value="audits" className="gap-1">
+              <Shield className="h-3.5 w-3.5" />
+              Auditorias
+            </TabsTrigger>
             <TabsTrigger value="roadmap">Roadmap</TabsTrigger>
           </TabsList>
 
@@ -144,6 +153,10 @@ export default function DeveloperHistory() {
 
           <TabsContent value="tools" className="space-y-4 mt-6">
             <ToolsMethodologies />
+          </TabsContent>
+
+          <TabsContent value="audits" className="space-y-4 mt-6">
+            <AuditsTab />
           </TabsContent>
 
           <TabsContent value="roadmap" className="space-y-4 mt-6">
