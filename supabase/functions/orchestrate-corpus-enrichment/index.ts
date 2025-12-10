@@ -15,10 +15,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Ordem de processamento dos corpora
+// Ordem de processamento dos corpora (IDs corretos do banco)
 const CORPUS_SEQUENCE = [
-  { id: '48f63a82-d7d5-479a-bb31-8a493c4cd7e0', name: 'Gaúcho', type: 'gaucho' },
-  { id: 'a3c57b5a-0d99-4bb0-aad0-3c3f80d6c1e2', name: 'Sertanejo', type: 'sertanejo' },
+  { id: '0f6e39d6-2f4d-4b6a-9a14-c122abc64f8c', name: 'Gaúcho', type: 'gaucho' },
+  { id: 'fcc48703-d291-421c-b3a3-e2c3c6c8cfe0', name: 'Sertanejo', type: 'sertanejo' },
   { id: '1e7256cd-5adf-4196-85f9-4af7031f098a', name: 'Nordestino', type: 'nordestino' },
 ];
 

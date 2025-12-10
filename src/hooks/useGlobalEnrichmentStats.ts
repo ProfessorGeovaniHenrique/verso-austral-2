@@ -48,11 +48,11 @@ export interface GlobalEnrichmentStats {
   isLoading: boolean;
 }
 
-// Mapeamento de corpus_id para tipo
+// Mapeamento de corpus_id para tipo (IDs corretos do banco)
 const CORPUS_TYPE_MAP: Record<string, string> = {
-  '9e6b0c4a-7d8e-4f9a-b1c2-3d4e5f6a7b8c': 'gaucho',
+  '0f6e39d6-2f4d-4b6a-9a14-c122abc64f8c': 'gaucho',
   '1e7256cd-5adf-4196-85f9-4af7031f098a': 'nordestino',
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'sertanejo',
+  'fcc48703-d291-421c-b3a3-e2c3c6c8cfe0': 'sertanejo',
 };
 
 export function useGlobalEnrichmentStats(): GlobalEnrichmentStats & {
