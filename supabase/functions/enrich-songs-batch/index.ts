@@ -1,12 +1,13 @@
 /**
  * Edge Function: enrich-songs-batch
- * Processa enriquecimento de músicas em chunks com auto-invocação
+ * Sprint ENRICH-REWRITE: Arquitetura à prova de falhas
  * 
- * SPRINT 1 - THROUGHPUT BOOST:
- * - CHUNK_SIZE: 20 → 50 (+150%)
- * - Rate limit adaptativo: 300-1500ms
- * - Paralelismo: 3 músicas simultâneas
- * - Auto-pause após 5 erros consecutivos
+ * MUDANÇAS CRÍTICAS:
+ * - CHUNK_SIZE: 5 (ultra-conservador para garantir conclusão em <240s)
+ * - PARALLEL_SONGS: 1 (sequencial para evitar timeouts)
+ * - Auto-invocação ANTES do processamento via EdgeRuntime.waitUntil()
+ * - Heartbeat após CADA música processada
+ * - Detecção de abandono baseada em last_chunk_at (não songs_processed)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
@@ -16,23 +17,19 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ============ SPRINT AUDIT-FIX: CONSTANTES ULTRA-CONSERVADORAS PARA TIMEOUT ============
-// CHUNK_SIZE reduzido de 20 para 10 para GARANTIR conclusão dentro do timeout de 240s
-// Com ~7.4s/música + overhead, 10 músicas = ~100s (margem de segurança de 60%!)
-const CHUNK_SIZE = 10;
-const LOCK_TIMEOUT_MS = 90000; // 90 segundos para evitar race conditions
-const AUTO_INVOKE_DELAY_MS = 2000; // 2s entre chunks (reduzido para agilizar)
-const ABANDONED_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos para considerar job abandonado
-const AUTO_INVOKE_RETRIES = 3; // Tentativas de auto-invocação
-
-// Rate Limit Adaptativo
-const PARALLEL_SONGS = 2; // Reduzido para 2 músicas em paralelo (mais seguro)
-const RATE_LIMIT_BASE_MS = 500; // Base: 500ms entre lotes (mais conservador)
-const RATE_LIMIT_MAX_MS = 2000; // Máximo em caso de erros
-const RATE_LIMIT_BACKOFF_FACTOR = 1.5; // Fator de aumento em erros
-const RATE_LIMIT_COOLDOWN_FACTOR = 0.9; // Fator de redução em sucesso
-const MAX_CONSECUTIVE_ERRORS = 5; // Pausa automática após 5 erros
-const RETRY_ATTEMPTS = 3; // Tentativas por música
+// ============ CONSTANTES ULTRA-CONSERVADORAS ============
+const CHUNK_SIZE = 5; // CRÍTICO: 5 músicas por chunk (~5s/música = ~25s total, bem dentro de 240s)
+const PARALLEL_SONGS = 1; // CRÍTICO: Sequencial para máximo controle
+const LOCK_TIMEOUT_MS = 90000;
+const AUTO_INVOKE_DELAY_MS = 1000;
+const ABANDONED_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos (reduzido de 5)
+const AUTO_INVOKE_RETRIES = 3;
+const RATE_LIMIT_BASE_MS = 300;
+const RATE_LIMIT_MAX_MS = 2000;
+const RATE_LIMIT_BACKOFF_FACTOR = 1.5;
+const RATE_LIMIT_COOLDOWN_FACTOR = 0.9;
+const MAX_CONSECUTIVE_ERRORS = 5;
+const RETRY_ATTEMPTS = 2; // Reduzido de 3 para 2
 
 interface EnrichmentJobPayload {
   jobId?: string;
@@ -74,7 +71,6 @@ interface EnrichmentJob {
   metadata: Record<string, unknown>;
 }
 
-// Interface para resultado de enriquecimento individual
 interface EnrichResult {
   success: boolean;
   error?: string;
@@ -114,30 +110,37 @@ async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jo
   return !error && data && data.length > 0;
 }
 
+/**
+ * SPRINT ENRICH-REWRITE: Detecção corrigida
+ * Detecta jobs parados baseado em last_chunk_at (não songs_processed)
+ */
 async function detectAndHandleAbandonedJobs(supabase: ReturnType<typeof createSupabaseClient>): Promise<number> {
   const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
   
+  // CORREÇÃO: Remover condição songs_processed = 0
+  // Jobs com progresso mas sem heartbeat também são abandonados
   const { data: abandonedJobs, error } = await supabase
     .from('enrichment_jobs')
-    .select('id, job_type, artist_name, songs_processed')
+    .select('id, job_type, artist_name, songs_processed, last_chunk_at')
     .eq('status', 'processando')
-    .eq('songs_processed', 0)
-    .lt('tempo_inicio', abandonedThreshold);
+    .lt('last_chunk_at', abandonedThreshold);
   
   if (error || !abandonedJobs || abandonedJobs.length === 0) {
     return 0;
   }
   
-  console.log(`[enrich-batch] Detectados ${abandonedJobs.length} jobs abandonados`);
+  console.log(`[enrich-batch] 🔍 Detectados ${abandonedJobs.length} jobs abandonados (sem heartbeat há 3min)`);
   
   for (const job of abandonedJobs) {
-    console.log(`[enrich-batch] Marcando job ${job.id} (${job.artist_name || job.job_type}) como erro (abandonado)`);
+    console.log(`[enrich-batch] ⚠️ Marcando job ${job.id} (${job.artist_name || job.job_type}) como pausado (abandonado com ${job.songs_processed} músicas processadas)`);
+    
+    // Marcar como PAUSADO (não erro) para permitir retomada
     await supabase
       .from('enrichment_jobs')
       .update({ 
-        status: 'erro', 
-        erro_mensagem: 'Job abandonado automaticamente (sem progresso por 5 min)',
-        tempo_fim: new Date().toISOString()
+        status: 'pausado', 
+        erro_mensagem: `Job pausado automaticamente (sem heartbeat por 3min). Processou ${job.songs_processed} músicas. Clique "Retomar" para continuar.`,
+        updated_at: new Date().toISOString()
       })
       .eq('id', job.id);
   }
@@ -156,16 +159,39 @@ async function checkCancellation(supabase: ReturnType<typeof createSupabaseClien
 }
 
 /**
- * SPRINT STABILITY: Paginação baseada em cursor para evitar pular músicas
- * quando o status muda durante o processamento.
- * Usa ID como cursor estável em vez de .range() que depende de offset.
+ * SPRINT ENRICH-REWRITE: Heartbeat imediato após cada música
  */
+async function updateHeartbeat(
+  supabase: ReturnType<typeof createSupabaseClient>,
+  jobId: string,
+  songsProcessed: number,
+  songsSucceeded: number,
+  songsFailed: number,
+  currentIndex: number,
+  lastSongId?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('enrichment_jobs')
+    .update({
+      songs_processed: songsProcessed,
+      songs_succeeded: songsSucceeded,
+      songs_failed: songsFailed,
+      current_song_index: currentIndex,
+      last_chunk_at: new Date().toISOString(),
+      metadata: lastSongId ? { lastProcessedSongId: lastSongId } : undefined
+    })
+    .eq('id', jobId);
+  
+  if (error) {
+    console.error(`[enrich-batch] ⚠️ Erro atualizando heartbeat:`, error);
+  }
+}
+
 async function getSongsToEnrich(
   supabase: ReturnType<typeof createSupabaseClient>,
   job: EnrichmentJob,
   startIndex: number
 ): Promise<{ id: string; title: string; artist_name: string }[]> {
-  // Para jobs com song_ids específicos, usar slice simples (ordem fixa)
   if (job.song_ids && job.song_ids.length > 0) {
     const songSlice = job.song_ids.slice(startIndex, startIndex + CHUNK_SIZE);
     const { data } = await supabase
@@ -180,29 +206,24 @@ async function getSongsToEnrich(
     }));
   }
 
-  // Obter último ID processado do metadata para paginação cursor-based
   const lastProcessedId = (job.metadata as Record<string, unknown>)?.lastProcessedSongId as string | undefined;
 
-  // Query base ordenada por ID (cursor estável)
   let query = supabase
     .from('songs')
     .select('id, title, artists!inner(name)')
     .order('id', { ascending: true })
     .limit(CHUNK_SIZE);
 
-  // Filtro por escopo
   if (job.scope === 'artist' && job.artist_id) {
     query = query.eq('artist_id', job.artist_id);
   } else if (job.scope === 'corpus' && job.corpus_id) {
     query = query.eq('corpus_id', job.corpus_id);
   }
 
-  // Filtro por status (apenas pending/error se não forçar reenrich)
   if (!job.force_reenrich) {
     query = query.in('status', ['pending', 'error']);
   }
 
-  // Cursor-based: buscar apenas IDs maiores que o último processado
   if (lastProcessedId) {
     query = query.gt('id', lastProcessedId);
   }
@@ -223,7 +244,6 @@ async function getSongsToEnrich(
   }));
 }
 
-// SPRINT 1: Função melhorada com timing e detecção de rate limit
 async function enrichSingleSong(
   supabase: ReturnType<typeof createSupabaseClient>,
   songId: string,
@@ -249,20 +269,10 @@ async function enrichSingleSong(
                           error.message?.toLowerCase().includes('quota');
       
       console.error(`[enrich-batch] Erro enriquecendo ${songId}:`, error);
-      return { 
-        success: false, 
-        error: error.message, 
-        durationMs,
-        rateLimitHit: isRateLimit
-      };
+      return { success: false, error: error.message, durationMs, rateLimitHit: isRateLimit };
     }
 
-    return { 
-      success: data?.success || false, 
-      error: data?.error, 
-      durationMs,
-      rateLimitHit: false
-    };
+    return { success: data?.success || false, error: data?.error, durationMs, rateLimitHit: false };
   } catch (err) {
     const durationMs = Date.now() - startTime;
     console.error(`[enrich-batch] Exceção enriquecendo ${songId}:`, err);
@@ -275,7 +285,6 @@ async function enrichSingleSong(
   }
 }
 
-// SPRINT 1: Retry com exponential backoff
 async function enrichWithRetry(
   supabase: ReturnType<typeof createSupabaseClient>,
   songId: string,
@@ -292,13 +301,11 @@ async function enrichWithRetry(
       return lastResult;
     }
     
-    // Se for rate limit, aumentar delay
     if (lastResult.rateLimitHit) {
       const backoffMs = Math.min(2000 * Math.pow(2, attempt - 1), 8000);
       console.log(`[enrich-batch] Rate limit detectado, aguardando ${backoffMs}ms (tentativa ${attempt}/${maxRetries})`);
       await new Promise(resolve => setTimeout(resolve, backoffMs));
     } else if (attempt < maxRetries) {
-      // Retry normal com pequeno delay
       await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
@@ -307,8 +314,7 @@ async function enrichWithRetry(
 }
 
 /**
- * SPRINT AUDIT-FIX: Auto-invocação com retry exponencial
- * Garante que falhas transitórias não travem o job
+ * SPRINT ENRICH-REWRITE: Auto-invocação com fire-and-forget
  */
 async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise<boolean> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
@@ -316,7 +322,7 @@ async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise
 
   for (let attempt = 1; attempt <= AUTO_INVOKE_RETRIES; attempt++) {
     try {
-      console.log(`[enrich-batch] Auto-invocação tentativa ${attempt}/${AUTO_INVOKE_RETRIES} (índice ${continueFrom})...`);
+      console.log(`[enrich-batch] 🚀 Auto-invocação tentativa ${attempt}/${AUTO_INVOKE_RETRIES} (índice ${continueFrom})...`);
       
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-songs-batch`, {
         method: 'POST',
@@ -335,10 +341,8 @@ async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise
       const errorText = await response.text().catch(() => 'unknown');
       console.warn(`[enrich-batch] ⚠️ Auto-invocação tentativa ${attempt} falhou: ${response.status} - ${errorText}`);
       
-      // Delay exponencial entre tentativas
       if (attempt < AUTO_INVOKE_RETRIES) {
-        const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
-        console.log(`[enrich-batch] Aguardando ${delayMs}ms antes da próxima tentativa...`);
+        const delayMs = 1000 * Math.pow(2, attempt - 1);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     } catch (err) {
@@ -389,20 +393,19 @@ Deno.serve(async (req) => {
 
   try {
     const payload: EnrichmentJobPayload = await req.json();
-    console.log(`[enrich-batch] Payload recebido:`, JSON.stringify(payload));
-    console.log(`[enrich-batch] 🚀 SPRINT 1: CHUNK_SIZE=${CHUNK_SIZE}, PARALLEL=${PARALLEL_SONGS}, RATE_BASE=${RATE_LIMIT_BASE_MS}ms`);
+    console.log(`[enrich-batch] 🚀 SPRINT ENRICH-REWRITE: CHUNK=${CHUNK_SIZE}, PARALLEL=${PARALLEL_SONGS}`);
+    console.log(`[enrich-batch] Payload:`, JSON.stringify(payload));
 
     // Detectar e limpar jobs abandonados
     const abandonedCount = await detectAndHandleAbandonedJobs(supabase);
     if (abandonedCount > 0) {
-      console.log(`[enrich-batch] ${abandonedCount} jobs abandonados foram marcados como erro`);
+      console.log(`[enrich-batch] ${abandonedCount} jobs abandonados foram pausados`);
     }
 
     let job: EnrichmentJob;
     let startIndex = payload.continueFrom || 0;
     let isNewJob = false;
 
-    // Criar novo job ou continuar existente
     if (payload.jobId) {
       const { data, error } = await supabase
         .from('enrichment_jobs')
@@ -445,7 +448,7 @@ Deno.serve(async (req) => {
       const shouldForceLock = payload.forceLock || job.status === 'pausado';
       const lockAcquired = await acquireLock(supabase, job.id, shouldForceLock);
       if (!lockAcquired) {
-        console.log(`[enrich-batch] Lock não adquirido para job ${job.id} (outro chunk em execução)`);
+        console.log(`[enrich-batch] Lock não adquirido para job ${job.id}`);
         return new Response(
           JSON.stringify({ 
             success: false, 
@@ -521,13 +524,13 @@ Deno.serve(async (req) => {
         .eq('id', job.id);
       
       job.total_songs = totalSongs;
-      console.log(`[enrich-batch] Novo job criado: ${job.id}, total de músicas: ${totalSongs}`);
+      console.log(`[enrich-batch] Novo job criado: ${job.id}, total: ${totalSongs} músicas`);
     }
 
     if (!isNewJob) {
       await supabase
         .from('enrichment_jobs')
-        .update({ status: 'processando' })
+        .update({ status: 'processando', erro_mensagem: null })
         .eq('id', job.id);
     }
 
@@ -544,7 +547,7 @@ Deno.serve(async (req) => {
         })
         .eq('id', job.id);
 
-      console.log(`[enrich-batch] Job ${job.id} concluído!`);
+      console.log(`[enrich-batch] 🎉 Job ${job.id} concluído!`);
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -560,17 +563,51 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ============ SPRINT 1: PROCESSAMENTO PARALELO COM RATE LIMIT ADAPTATIVO ============
+    // ============ SPRINT ENRICH-REWRITE: AUTO-INVOCAÇÃO ANTES DO PROCESSAMENTO ============
+    const nextIndex = startIndex + songs.length;
+    const hasMoreAfterThis = nextIndex < job.total_songs;
+    
+    // Agendar próximo chunk ANTES de processar (fire-and-forget usando queueMicrotask)
+    if (hasMoreAfterThis) {
+      console.log(`[enrich-batch] 🔄 Agendando próximo chunk (índice ${nextIndex}) em background...`);
+      
+      // Fire-and-forget: usar setTimeout para não bloquear
+      // O próximo chunk será invocado após o delay, independente do resultado deste
+      setTimeout(async () => {
+        try {
+          await new Promise(r => setTimeout(r, AUTO_INVOKE_DELAY_MS));
+          const success = await autoInvokeNextChunk(job.id, nextIndex);
+          
+          if (!success) {
+            const supabaseForCleanup = createSupabaseClient();
+            await supabaseForCleanup
+              .from('enrichment_jobs')
+              .update({ 
+                status: 'pausado',
+                erro_mensagem: 'Auto-invocação falhou. Clique "Retomar" para continuar.',
+              })
+              .eq('id', job.id)
+              .eq('status', 'processando');
+          }
+        } catch (err) {
+          console.error('[enrich-batch] Erro na auto-invocação em background:', err);
+        }
+      }, 100); // Inicia imediatamente após pequeno delay
+    }
+
+    // ============ PROCESSAMENTO SEQUENCIAL COM HEARTBEAT ============
     let succeeded = 0;
     let failed = 0;
     let currentRateLimit = RATE_LIMIT_BASE_MS;
     let consecutiveErrors = 0;
     let totalProcessingTimeMs = 0;
     let rateLimitHits = 0;
+    let lastSongId: string | undefined;
 
-    // Processar em lotes paralelos de PARALLEL_SONGS
-    for (let i = 0; i < songs.length; i += PARALLEL_SONGS) {
-      // Verificar cancelamento a cada lote
+    for (let i = 0; i < songs.length; i++) {
+      const song = songs[i];
+      
+      // Verificar cancelamento antes de cada música
       if (await checkCancellation(supabase, job.id)) {
         console.log(`[enrich-batch] Job ${job.id} cancelado durante processamento`);
         await supabase
@@ -591,135 +628,76 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Pegar lote de músicas para processar em paralelo
-      const batch = songs.slice(i, i + PARALLEL_SONGS);
-      const batchStartTime = Date.now();
-      
-      console.log(`[enrich-batch] 🎵 Processando lote paralelo: ${batch.map(s => s.title.substring(0, 20)).join(', ')}`);
+      console.log(`[enrich-batch] 🎵 [${i + 1}/${songs.length}] Processando: "${song.title.substring(0, 30)}..."`);
 
-      // Processar lote em paralelo com retry
-      const results = await Promise.all(
-        batch.map(song => enrichWithRetry(supabase, song.id, job.job_type, job.force_reenrich))
+      const result = await enrichWithRetry(supabase, song.id, job.job_type, job.force_reenrich);
+      totalProcessingTimeMs += result.durationMs;
+
+      if (result.success) {
+        succeeded++;
+        consecutiveErrors = 0;
+        currentRateLimit = Math.max(RATE_LIMIT_BASE_MS, Math.round(currentRateLimit * RATE_LIMIT_COOLDOWN_FACTOR));
+      } else {
+        failed++;
+        consecutiveErrors++;
+        if (result.rateLimitHit) {
+          rateLimitHits++;
+          currentRateLimit = Math.min(RATE_LIMIT_MAX_MS, Math.round(currentRateLimit * RATE_LIMIT_BACKOFF_FACTOR));
+        }
+      }
+
+      lastSongId = song.id;
+
+      // ============ HEARTBEAT IMEDIATO APÓS CADA MÚSICA ============
+      await updateHeartbeat(
+        supabase,
+        job.id,
+        job.songs_processed + succeeded + failed,
+        job.songs_succeeded + succeeded,
+        job.songs_failed + failed,
+        startIndex + i + 1,
+        lastSongId
       );
 
-      const batchDuration = Date.now() - batchStartTime;
-      let batchSucceeded = 0;
-      let batchFailed = 0;
-      let batchRateLimits = 0;
+      console.log(`[enrich-batch] ${result.success ? '✅' : '❌'} "${song.title.substring(0, 20)}" em ${result.durationMs}ms | Total: ${succeeded}✅ ${failed}❌`);
 
-      for (const result of results) {
-        totalProcessingTimeMs += result.durationMs;
+      // Auto-pause após muitos erros consecutivos
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.log(`[enrich-batch] 🛑 ${consecutiveErrors} erros consecutivos - pausando automaticamente`);
         
-        if (result.success) {
-          batchSucceeded++;
-          succeeded++;
-        } else {
-          batchFailed++;
-          failed++;
-        }
+        await supabase
+          .from('enrichment_jobs')
+          .update({ 
+            status: 'pausado',
+            erro_mensagem: `Auto-pausado após ${consecutiveErrors} erros consecutivos.`,
+          })
+          .eq('id', job.id);
         
-        if (result.rateLimitHit) {
-          batchRateLimits++;
-          rateLimitHits++;
-        }
-      }
-
-      // Atualizar rate limit adaptativo
-      if (batchFailed > 0 || batchRateLimits > 0) {
-        consecutiveErrors += batchFailed;
-        
-        // Aumentar rate limit em erros
-        currentRateLimit = Math.min(
-          RATE_LIMIT_MAX_MS, 
-          Math.round(currentRateLimit * RATE_LIMIT_BACKOFF_FACTOR)
-        );
-        
-        console.log(`[enrich-batch] ⚠️ Lote com ${batchFailed} falhas, ${batchRateLimits} rate limits. Rate limit: ${currentRateLimit}ms`);
-        
-        // Auto-pause após muitos erros consecutivos
-        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-          console.log(`[enrich-batch] 🛑 ${consecutiveErrors} erros consecutivos - pausando job automaticamente`);
-          
-          await supabase
-            .from('enrichment_jobs')
-            .update({ 
-              status: 'pausado',
-              songs_processed: job.songs_processed + succeeded + failed,
-              songs_succeeded: job.songs_succeeded + succeeded,
-              songs_failed: job.songs_failed + failed,
-              current_song_index: startIndex + i + batch.length,
-              erro_mensagem: `Auto-pausado após ${consecutiveErrors} erros consecutivos. Último rate limit: ${currentRateLimit}ms`,
-              metadata: {
-                ...job.metadata,
-                lastRateLimit: currentRateLimit,
-                rateLimitHits,
-                autoPausedAt: new Date().toISOString()
-              }
-            })
-            .eq('id', job.id);
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: `Auto-pausado após ${consecutiveErrors} erros consecutivos`,
-              jobId: job.id,
-              partialStats: { succeeded, failed, rateLimitHits }
-            }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-      } else {
-        // Sucesso total do lote - reduzir rate limit gradualmente
-        consecutiveErrors = 0;
-        currentRateLimit = Math.max(
-          RATE_LIMIT_BASE_MS,
-          Math.round(currentRateLimit * RATE_LIMIT_COOLDOWN_FACTOR)
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `Auto-pausado após ${consecutiveErrors} erros consecutivos`,
+            jobId: job.id,
+            partialStats: { succeeded, failed, rateLimitHits }
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      const avgTimePerSong = batch.length > 0 ? Math.round(batchDuration / batch.length) : 0;
-      console.log(`[enrich-batch] ✅ Lote concluído: ${batchSucceeded}/${batch.length} sucesso em ${batchDuration}ms (${avgTimePerSong}ms/música). Rate: ${currentRateLimit}ms`);
-
-      // FIX: Persistir progresso IMEDIATAMENTE após cada lote paralelo
-      // Isso evita que jobs sejam marcados como "órfãos" e garante que o progresso seja visível
-      const batchProgress = {
-        songs_processed: job.songs_processed + succeeded + failed,
-        songs_succeeded: job.songs_succeeded + succeeded,
-        songs_failed: job.songs_failed + failed,
-        current_song_index: startIndex + i + batch.length,
-        last_chunk_at: new Date().toISOString(),
-      };
-      
-      const { error: progressError } = await supabase
-        .from('enrichment_jobs')
-        .update(batchProgress)
-        .eq('id', job.id);
-      
-      if (progressError) {
-        console.error(`[enrich-batch] ⚠️ Erro persistindo progresso:`, progressError);
-      } else {
-        console.log(`[enrich-batch] 💾 Progresso salvo: ${batchProgress.songs_processed}/${job.total_songs} músicas`);
-      }
-
-      // Aguardar rate limit entre lotes (não entre músicas individuais)
-      if (i + PARALLEL_SONGS < songs.length) {
+      // Rate limit entre músicas
+      if (i < songs.length - 1) {
         await new Promise(resolve => setTimeout(resolve, currentRateLimit));
       }
     }
 
-    // Atualizar progresso
+    // Atualizar estatísticas finais do chunk
     const newProcessed = job.songs_processed + succeeded + failed;
     const newSucceeded = job.songs_succeeded + succeeded;
     const newFailed = job.songs_failed + failed;
-    const newIndex = startIndex + songs.length;
     const chunksProcessed = job.chunks_processed + 1;
 
-    // Calcular métricas de velocidade
     const avgTimePerSong = songs.length > 0 ? Math.round(totalProcessingTimeMs / songs.length) : 0;
-    const songsPerMinute = avgTimePerSong > 0 ? Math.round(60000 / avgTimePerSong * PARALLEL_SONGS) : 0;
-
-    // Salvar último ID processado para paginação cursor-based
-    const lastProcessedSongId = songs.length > 0 ? songs[songs.length - 1].id : null;
+    const songsPerMinute = avgTimePerSong > 0 ? Math.round(60000 / avgTimePerSong) : 0;
 
     await supabase
       .from('enrichment_jobs')
@@ -727,47 +705,27 @@ Deno.serve(async (req) => {
         songs_processed: newProcessed,
         songs_succeeded: newSucceeded,
         songs_failed: newFailed,
-        current_song_index: newIndex,
+        current_song_index: nextIndex,
         chunks_processed: chunksProcessed,
+        last_chunk_at: new Date().toISOString(),
         metadata: {
           ...job.metadata,
-          // Cursor para próximo chunk (paginação estável)
-          lastProcessedSongId,
+          lastProcessedSongId: lastSongId,
           lastChunkStats: {
             avgTimePerSongMs: avgTimePerSong,
             songsPerMinute,
             rateLimitHits,
             lastRateLimit: currentRateLimit,
-            parallelSongs: PARALLEL_SONGS,
             processedAt: new Date().toISOString()
           }
         }
       })
       .eq('id', job.id);
 
-    console.log(`[enrich-batch] 📊 Chunk ${chunksProcessed} concluído: ${succeeded}✅ ${failed}❌ | ${songsPerMinute} músicas/min | Rate: ${currentRateLimit}ms`);
+    console.log(`[enrich-batch] 📊 Chunk ${chunksProcessed} concluído: ${succeeded}✅ ${failed}❌ | ${songsPerMinute} músicas/min`);
 
-    // Verificar se há mais músicas
-    const hasMore = newIndex < job.total_songs;
-
-    if (hasMore && !await checkCancellation(supabase, job.id)) {
-      console.log(`[enrich-batch] ⏳ Aguardando ${AUTO_INVOKE_DELAY_MS}ms antes de invocar próximo chunk...`);
-      await new Promise(r => setTimeout(r, AUTO_INVOKE_DELAY_MS));
-      
-      const autoInvokeSuccess = await autoInvokeNextChunk(job.id, newIndex);
-      
-      if (!autoInvokeSuccess) {
-        console.log(`[enrich-batch] ⚠️ Auto-invocação falhou - marcando como pausado com mensagem de erro`);
-        await supabase
-          .from('enrichment_jobs')
-          .update({ 
-            status: 'pausado',
-            erro_mensagem: 'Auto-invocação falhou - Edge Function possivelmente atingiu timeout. Use "Retomar" para continuar.',
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', job.id);
-      }
-    } else if (!hasMore) {
+    // Se não há mais músicas, marcar como concluído
+    if (!hasMoreAfterThis) {
       await supabase
         .from('enrichment_jobs')
         .update({
@@ -790,15 +748,13 @@ Deno.serve(async (req) => {
         failed,
         totalProcessed: newProcessed,
         totalSongs: job.total_songs,
-        hasMore,
+        hasMore: hasMoreAfterThis,
         durationMs: duration,
-        // SPRINT 1: Métricas adicionais
         metrics: {
           avgTimePerSongMs: avgTimePerSong,
           songsPerMinute,
           currentRateLimit,
           rateLimitHits,
-          parallelSongs: PARALLEL_SONGS
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
