@@ -1,18 +1,19 @@
 /**
  * Tab de Estatísticas do MusicCatalog - Expandido
  * Sprint 2 - Integração Backend Completa
+ * Sprint AUDIT-P2 - Skeleton loader específico
  */
 
 import { useCatalogExtendedStats } from '@/hooks/useCatalogExtendedStats';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { SectionLoading } from '@/components/ui/loading-spinner';
 import { 
   Music, Users, TrendingUp, FileText, Clock, CheckCircle, 
   AlertCircle, Youtube, PenTool, RefreshCw, BarChart3 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { StatsCardsSkeleton } from '../skeletons/CatalogSkeletons';
 
 interface TabStatsProps {
   totalSongs: number;
@@ -23,8 +24,9 @@ interface TabStatsProps {
 export function TabStats({ totalSongs, totalArtists, avgConfidence }: TabStatsProps) {
   const { data: stats, isLoading, refetch } = useCatalogExtendedStats();
 
+  // Sprint AUDIT-P2: Skeleton específico
   if (isLoading) {
-    return <SectionLoading text="Carregando estatísticas..." />;
+    return <StatsCardsSkeleton />;
   }
 
   // Use hook data or fallback to props

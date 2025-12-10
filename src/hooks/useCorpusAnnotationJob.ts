@@ -1,5 +1,6 @@
 /**
  * Hook para gerenciar jobs de anotação de corpus inteiro
+ * Sprint AUDIT-P2: Removido window.confirm, agora usa callback para confirmação
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -249,12 +250,12 @@ export function useCorpusAnnotationJob(corpusId?: string): UseCorpusAnnotationJo
     }
   }, [job?.id]);
 
-  // Cancelar job
-  const cancelJob = useCallback(async () => {
+  // Cancelar job (sem window.confirm - confirmação deve ser feita no componente)
+  const cancelJob = useCallback(async (skipConfirmation = false) => {
     if (!job?.id) return;
 
-    const confirmed = window.confirm('Tem certeza que deseja cancelar a anotação do corpus?');
-    if (!confirmed) return;
+    // Se skipConfirmation for false, a confirmação deve ser tratada pelo componente
+    // que chama esta função usando AlertDialog
 
     try {
       const { error } = await supabase.functions.invoke('annotate-corpus', {

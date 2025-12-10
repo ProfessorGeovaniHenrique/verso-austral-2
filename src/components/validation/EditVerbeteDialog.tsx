@@ -7,6 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -178,14 +188,20 @@ export function EditVerbeteDialog({ entry, open, onOpenChange, onSuccess }: Edit
     setHasChanges(true);
   };
 
+  // Sprint AUDIT-P2: AlertDialog ao invés de window.confirm
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
+
   const handleClose = () => {
     if (hasChanges) {
-      if (window.confirm('Descartar alterações não salvas?')) {
-        onOpenChange(false);
-      }
+      setShowDiscardDialog(true);
     } else {
       onOpenChange(false);
     }
+  };
+
+  const handleConfirmDiscard = () => {
+    setShowDiscardDialog(false);
+    onOpenChange(false);
   };
 
   if (!entry) return null;
@@ -424,6 +440,24 @@ export function EditVerbeteDialog({ entry, open, onOpenChange, onSuccess }: Edit
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* AlertDialog para descartar alterações */}
+      <AlertDialog open={showDiscardDialog} onOpenChange={setShowDiscardDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Descartar alterações?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem alterações não salvas. Tem certeza que deseja descartá-las?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Continuar editando</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDiscard} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Descartar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

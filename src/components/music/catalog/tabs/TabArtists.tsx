@@ -1,21 +1,33 @@
 /**
  * Tab de Artistas do MusicCatalog
  * Sprint F2.1 - Refatoração
+ * Sprint AUDIT-P2 - Removido window.confirm, adicionado AlertDialog
  */
 
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ArtistCard } from '@/components/music';
 import { CorpusAnnotationJobCard } from '@/components/music/CorpusAnnotationJobCard';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Sparkles, Loader2, RefreshCw, AlertCircle, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useYouTubeEnrichment } from '@/hooks/useYouTubeEnrichment';
 import { useOrphanedEnrichmentJobs } from '@/hooks/useEnrichmentJob';
 import { createLogger } from '@/lib/loggerFactory';
+import { ArtistGridSkeleton } from '../skeletons/CatalogSkeletons';
 
 const log = createLogger('TabArtists');
 
@@ -180,6 +192,13 @@ export function TabArtists({
   const { enrichYouTubeBatch } = useYouTubeEnrichment();
   const { orphanedJobs, cleanupOrphanedJobs, isLoading: loadingOrphaned } = useOrphanedEnrichmentJobs();
 
+  // Sprint AUDIT-P2: Estado para AlertDialog de re-anotação
+  const [reAnnotateDialog, setReAnnotateDialog] = useState<{
+    open: boolean;
+    artist: any | null;
+    wordCount: number;
+  }>({ open: false, artist: null, wordCount: 0 });
+
   const handleEnrichArtist = useCallback(async (artist: any) => {
     try {
       const { data: pendingSongsData, error } = await supabase
@@ -288,13 +307,9 @@ export function TabArtists({
     }
   }, [reload, toast]);
 
+  // Sprint AUDIT-P2: Usar skeleton específico
   if (loading) {
-    return (
-      <div className="text-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
-        <p className="text-muted-foreground">Carregando artistas...</p>
-      </div>
-    );
+    return <ArtistGridSkeleton count={12} />;
   }
 
   return (
@@ -414,11 +429,14 @@ export function TabArtists({
                         .select('*', { count: 'exact', head: true })
                         .eq('artist_id', artist.id);
                       
+                      // Sprint AUDIT-P2: AlertDialog ao invés de window.confirm
                       if (totalWords && totalWords > 0) {
-                        const confirmed = window.confirm(
-                          `${artist.name} já possui ${totalWords} palavras anotadas.\n\nDeseja continuar?`
-                        );
-                        if (!confirmed) return;
+                        setReAnnotateDialog({
+                          open: true,
+                          artist,
+                          wordCount: totalWords,
+                        });
+                        return;
                       }
                       
                       await onAnnotateArtist(artist.id, artist.name);
@@ -469,6 +487,36 @@ export function TabArtists({
           )}
         </>
       )}
+
+      {/* Sprint AUDIT-P2: AlertDialog para re-anotação */}
+      <AlertDialog 
+        open={reAnnotateDialog.open} 
+        onOpenChange={(open) => setReAnnotateDialog(prev => ({ ...prev, open }))}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Re-anotar artista?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {reAnnotateDialog.artist?.name} já possui {reAnnotateDialog.wordCount.toLocaleString()} palavras anotadas.
+              <br /><br />
+              Deseja continuar com a anotação semântica?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (reAnnotateDialog.artist) {
+                  await onAnnotateArtist(reAnnotateDialog.artist.id, reAnnotateDialog.artist.name);
+                }
+                setReAnnotateDialog({ open: false, artist: null, wordCount: 0 });
+              }}
+            >
+              Continuar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

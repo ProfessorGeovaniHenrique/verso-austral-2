@@ -3,6 +3,7 @@
  * Sprint F2.1 - Reduzido de 1830 para ~350 linhas
  * Sprint CAT-AUDIT-P1 - Breadcrumb + integração com análise + ErrorBoundary + Seções de abas
  * Sprint CAT-AUDIT-P3 - Onboarding Shepherd.js
+ * Sprint AUDIT-P2 - Role-based visibility para abas admin
  */
 
 import { useMemo, useState, useCallback } from 'react';
@@ -17,7 +18,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { useMusicCatalogTour } from '@/hooks/useMusicCatalogTour';
-import { Sparkles, Briefcase, FlaskConical, Copy, HelpCircle, Music, BarChart3 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Sparkles, Briefcase, FlaskConical, Copy, HelpCircle, Music, BarChart3, Shield } from 'lucide-react';
 import { TabErrorBoundary } from '@/components/ui/tab-error-boundary';
 
 // Hooks refatorados
@@ -46,6 +48,10 @@ const log = createLogger('MusicCatalog');
 
 export default function MusicCatalog() {
   const { toast } = useToast();
+  
+  // Sprint AUDIT-P2: Role-based visibility
+  const { isAdmin, isEvaluator } = useAuth();
+  const canAccessAdminTabs = isAdmin() || isEvaluator();
   
   // Hook centralizado de estados
   const state = useMusicCatalogState();
@@ -287,16 +293,21 @@ export default function MusicCatalog() {
                   <span className="hidden md:inline">Enriquecimento</span>
                   <span className="md:hidden">Enrich</span>
                 </TabsTrigger>
-                <TabsTrigger value="validation" className="flex items-center gap-1 text-xs">
-                  <FlaskConical className="h-3 w-3" />
-                  <span className="hidden md:inline">Validação</span>
-                  <span className="md:hidden">Valid</span>
-                </TabsTrigger>
-                <TabsTrigger value="deduplication" className="flex items-center gap-1 text-xs">
-                  <Copy className="h-3 w-3" />
-                  <span className="hidden md:inline">Deduplicação</span>
-                  <span className="md:hidden">Dedup</span>
-                </TabsTrigger>
+                {/* Sprint AUDIT-P2: Role-based visibility - apenas admin/evaluator */}
+                {canAccessAdminTabs && (
+                  <>
+                    <TabsTrigger value="validation" className="flex items-center gap-1 text-xs">
+                      <FlaskConical className="h-3 w-3" />
+                      <span className="hidden md:inline">Validação</span>
+                      <span className="md:hidden">Valid</span>
+                    </TabsTrigger>
+                    <TabsTrigger value="deduplication" className="flex items-center gap-1 text-xs">
+                      <Copy className="h-3 w-3" />
+                      <span className="hidden md:inline">Deduplicação</span>
+                      <span className="md:hidden">Dedup</span>
+                    </TabsTrigger>
+                  </>
+                )}
               </div>
               
               {/* GRUPO 3: Analytics */}
@@ -410,17 +421,22 @@ export default function MusicCatalog() {
             </TabErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="validation">
-            <TabErrorBoundary tabName="Validação" onRetry={state.reload}>
-              <TabValidation />
-            </TabErrorBoundary>
-          </TabsContent>
+          {/* Sprint AUDIT-P2: Role-based visibility - apenas renderiza se tem acesso */}
+          {canAccessAdminTabs && (
+            <>
+              <TabsContent value="validation">
+                <TabErrorBoundary tabName="Validação" onRetry={state.reload}>
+                  <TabValidation />
+                </TabErrorBoundary>
+              </TabsContent>
 
-          <TabsContent value="deduplication">
-            <TabErrorBoundary tabName="Deduplicação" onRetry={state.reload}>
-              <TabDeduplication />
-            </TabErrorBoundary>
-          </TabsContent>
+              <TabsContent value="deduplication">
+                <TabErrorBoundary tabName="Deduplicação" onRetry={state.reload}>
+                  <TabDeduplication />
+                </TabErrorBoundary>
+              </TabsContent>
+            </>
+          )}
         </Tabs>
 
         {/* Modais */}

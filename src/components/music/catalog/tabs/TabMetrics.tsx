@@ -3,11 +3,11 @@
  * Sprint F2.1 - Refatoração
  * Sprint F4 - Loading States Padronizados
  * Sprint 5 - Correção de limite 1000 entradas e filtro por corpus
+ * Sprint AUDIT-P2 - Skeleton loader específico
  */
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { SectionLoading } from '@/components/ui/loading-spinner';
 import { EnrichmentMetricsDashboard } from '@/components/music/EnrichmentMetricsDashboard';
 import { useCatalogExtendedStats } from '@/hooks/useCatalogExtendedStats';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { RefreshCw, Filter, Music, Users, FileText, CheckCircle, AlertCircle, Clock, Youtube, PenTool } from 'lucide-react';
+import { MetricsDashboardSkeleton } from '../skeletons/CatalogSkeletons';
 
 interface TabMetricsProps {
   metrics: any;
@@ -29,8 +30,9 @@ export function TabMetrics({ metrics, loading, onRefresh, onExportReport }: TabM
 
   const isLoading = loading || extendedLoading;
 
+  // Sprint AUDIT-P2: Skeleton específico
   if (isLoading) {
-    return <SectionLoading text="Carregando métricas de qualidade..." />;
+    return <MetricsDashboardSkeleton />;
   }
 
   // Usa extendedStats como fonte primária (sem limite de 1000)
