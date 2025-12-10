@@ -175,19 +175,19 @@ export default function AdminSemanticPipeline() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">POS Coverage</CardTitle>
+            <CardTitle className="text-sm font-medium">Léxico Semântico</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {stats.posStats.coverage.toFixed(1)}%
+              {stats.semanticLexicon.totalEntries.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {stats.posStats.totalAnnotated.toLocaleString()} tokens anotados
+              entradas no léxico
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              VA: {((stats.posStats.sourceDistribution.va_grammar / stats.posStats.totalAnnotated) * 100).toFixed(0)}% | 
-              spaCy: {((stats.posStats.sourceDistribution.spacy / stats.posStats.totalAnnotated) * 100).toFixed(0)}%
+              Status: {stats.semanticLexicon.status === 'complete' ? '✅ Completo' : 
+                       stats.semanticLexicon.status === 'partial' ? '🔄 Parcial' : '❌ Vazio'}
             </p>
           </CardContent>
         </Card>

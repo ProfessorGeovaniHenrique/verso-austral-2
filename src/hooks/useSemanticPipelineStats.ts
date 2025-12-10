@@ -17,11 +17,6 @@ export interface PipelineStats {
     totalEntries: number;
     status: 'empty' | 'partial' | 'complete';
   };
-  posStats: {
-    totalAnnotated: number;
-    coverage: number;
-    sourceDistribution: Record<string, number>;
-  };
   domainDistribution: Array<{
     tagset: string;
     count: number;
@@ -42,51 +37,66 @@ export interface PipelineStats {
   }>;
 }
 
+interface MVStats {
+  total_words: number;
+  unique_tagsets: number;
+  nc_words: number;
+  avg_confidence: number;
+  total_entries: number;
+  gemini_percentage: number;
+  rule_based_percentage: number;
+  pos_based_percentage: number;
+  words_with_insignias: number;
+  polysemous_words: number;
+  lexicon_entries: number;
+  domain_distribution: Array<{ tagset: string; count: number }> | null;
+}
+
 export function useSemanticPipelineStats() {
   return useQuery({
     queryKey: ['semantic-pipeline-stats'],
     queryFn: async (): Promise<PipelineStats> => {
-      // 1. Cache stats
-      const { data: cacheData, error: cacheError } = await supabase
-        .from('semantic_disambiguation_cache')
-        .select('palavra, tagset_codigo, confianca, fonte, insignias_culturais, is_polysemous');
+      // 1. Fetch aggregated stats from materialized view (single row, <100ms)
+      const { data: mvData, error: mvError } = await supabase
+        .from('semantic_pipeline_stats_mv')
+        .select('*')
+        .maybeSingle();
 
-      if (cacheError) throw cacheError;
+      if (mvError) throw mvError;
 
-      const uniqueWords = new Set(cacheData.map(d => d.palavra)).size;
-      const uniqueTagsets = new Set(cacheData.map(d => d.tagset_codigo)).size;
-      const ncWords = cacheData.filter(d => d.tagset_codigo === 'NC').length;
-      const avgConfidence = cacheData.reduce((sum, d) => sum + (d.confianca || 0), 0) / cacheData.length;
-      const geminiCount = cacheData.filter(d => d.fonte === 'gemini').length;
-      const ruleBasedCount = cacheData.filter(d => d.fonte === 'rule_based' || d.fonte === 'mwe_rule').length;
-      const posBasedCount = cacheData.filter(d => d.fonte === 'pos_based').length;
-      const wordsWithInsignias = cacheData.filter(d => 
-        d.insignias_culturais && Array.isArray(d.insignias_culturais) && d.insignias_culturais.length > 0
-      ).length;
-      const polysemousWords = cacheData.filter(d => d.is_polysemous === true).length;
+      // Parse domain_distribution from JSONB (comes as Json type from Supabase)
+      const rawDomainDist = mvData?.domain_distribution;
+      const parsedDomainDist: Array<{ tagset: string; count: number }> = 
+        Array.isArray(rawDomainDist) 
+          ? (rawDomainDist as Array<{ tagset: string; count: number }>)
+          : [];
 
-      // 2. Semantic lexicon stats
-      const { count: lexiconCount, error: lexiconError } = await supabase
-        .from('semantic_lexicon')
-        .select('*', { count: 'exact', head: true });
+      // Default values if MV is empty
+      const stats: MVStats = {
+        total_words: mvData?.total_words ?? 0,
+        unique_tagsets: mvData?.unique_tagsets ?? 0,
+        nc_words: mvData?.nc_words ?? 0,
+        avg_confidence: mvData?.avg_confidence ?? 0,
+        total_entries: mvData?.total_entries ?? 0,
+        gemini_percentage: mvData?.gemini_percentage ?? 0,
+        rule_based_percentage: mvData?.rule_based_percentage ?? 0,
+        pos_based_percentage: mvData?.pos_based_percentage ?? 0,
+        words_with_insignias: mvData?.words_with_insignias ?? 0,
+        polysemous_words: mvData?.polysemous_words ?? 0,
+        lexicon_entries: mvData?.lexicon_entries ?? 0,
+        domain_distribution: parsedDomainDist
+      };
 
-      if (lexiconError) throw lexiconError;
+      // 2. Parse domain distribution from JSONB
+      const domainDistribution = (stats.domain_distribution || []).map(d => ({
+        tagset: d.tagset,
+        count: d.count,
+        percentage: stats.total_entries > 0 
+          ? (d.count / stats.total_entries) * 100 
+          : 0
+      }));
 
-      // 3. Domain distribution
-      const domainCounts = cacheData.reduce((acc, d) => {
-        acc[d.tagset_codigo] = (acc[d.tagset_codigo] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const domainDistribution = Object.entries(domainCounts)
-        .map(([tagset, count]) => ({
-          tagset,
-          count,
-          percentage: (count / cacheData.length) * 100
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      // 4. Active jobs
+      // 3. Fetch active jobs (small query, max 10 rows)
       const { data: jobsData, error: jobsError } = await supabase
         .from('semantic_annotation_jobs')
         .select('*')
@@ -96,46 +106,45 @@ export function useSemanticPipelineStats() {
 
       if (jobsError) throw jobsError;
 
-      const activeJobs = jobsData.map(job => ({
+      const activeJobs = (jobsData || []).map(job => ({
         ...job,
         progress: job.total_words > 0 ? (job.processed_words / job.total_words) * 100 : 0
       }));
 
-      // 5. POS stats - estimativa baseada em cobertura esperada
-      // Nota: campos pos_detalhada, pos_source ainda não persistidos no schema
-      const totalWords = cacheData.length;
-      const posStats = {
-        totalAnnotated: Math.floor(totalWords * 0.75),
-        coverage: 75,
-        sourceDistribution: {
-          va_grammar: Math.floor(totalWords * 0.45),
-          spacy: Math.floor(totalWords * 0.20),
-          gutenberg: Math.floor(totalWords * 0.05),
-          gemini: Math.floor(totalWords * 0.05),
-        },
-      };
-
       return {
         cacheStats: {
-          totalWords: uniqueWords,
-          uniqueTagsets,
-          ncWords,
-          avgConfidence: Math.round(avgConfidence * 100) / 100,
-          geminiPercentage: (geminiCount / cacheData.length) * 100,
-          ruleBasedPercentage: (ruleBasedCount / cacheData.length) * 100,
-          posBasedPercentage: (posBasedCount / cacheData.length) * 100,
-          wordsWithInsignias,
-          polysemousWords
+          totalWords: stats.total_words,
+          uniqueTagsets: stats.unique_tagsets,
+          ncWords: stats.nc_words,
+          avgConfidence: Number(stats.avg_confidence) || 0,
+          geminiPercentage: Number(stats.gemini_percentage) || 0,
+          ruleBasedPercentage: Number(stats.rule_based_percentage) || 0,
+          posBasedPercentage: Number(stats.pos_based_percentage) || 0,
+          wordsWithInsignias: stats.words_with_insignias,
+          polysemousWords: stats.polysemous_words
         },
         semanticLexicon: {
-          totalEntries: lexiconCount || 0,
-          status: (lexiconCount || 0) === 0 ? 'empty' : (lexiconCount || 0) < 1000 ? 'partial' : 'complete'
+          totalEntries: stats.lexicon_entries,
+          status: stats.lexicon_entries === 0 
+            ? 'empty' 
+            : stats.lexicon_entries < 1000 
+              ? 'partial' 
+              : 'complete'
         },
-        posStats,
         domainDistribution,
         activeJobs
       };
     },
     refetchInterval: 30000, // Refresh every 30s
   });
+}
+
+// Hook para forçar refresh da MV
+export function useRefreshPipelineStats() {
+  const refreshMV = async () => {
+    const { error } = await supabase.rpc('refresh_semantic_pipeline_stats_mv');
+    if (error) throw error;
+  };
+
+  return { refreshMV };
 }
