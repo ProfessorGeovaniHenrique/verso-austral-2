@@ -25,7 +25,7 @@ interface FormattedTagset {
 // Cache em memória para evitar queries repetidas
 let tagsetsCache: TagsetEntry[] | null = null;
 let cacheLoadedAt: number | null = null;
-const CACHE_TTL_MS = 1000 * 60 * 30; // 30 minutos
+const CACHE_TTL_MS = 1000 * 60 * 5; // 5 minutos - permite atualizações rápidas
 
 /**
  * Carrega todos os tagsets ativos do banco
@@ -88,6 +88,20 @@ export async function getN2Tagsets(): Promise<TagsetEntry[]> {
 }
 
 /**
+ * Obtém tagsets N3 (sub-subdomínios)
+ */
+export async function getN3Tagsets(): Promise<TagsetEntry[]> {
+  return getTagsetsByLevel(3);
+}
+
+/**
+ * Obtém tagsets N4 (nível mais específico)
+ */
+export async function getN4Tagsets(): Promise<TagsetEntry[]> {
+  return getTagsetsByLevel(4);
+}
+
+/**
  * Formata tagsets para uso em prompts de IA
  * @param tagsets Lista de tagsets
  * @param includeExamples Se deve incluir exemplos
@@ -129,6 +143,97 @@ ${n1Section}
 
 **SUBDOMÍNIOS N2 (USE PREFERENCIALMENTE):**
 ${n2Section}`;
+}
+
+/**
+ * Gera prompt completo com N1, N2, N3 e N4
+ */
+export async function generateFullDomainPromptSection(options: {
+  includeN3?: boolean;
+  includeN4?: boolean;
+  maxExamples?: number;
+} = {}): Promise<string> {
+  const { includeN3 = true, includeN4 = false, maxExamples = 4 } = options;
+  
+  const n1Tagsets = await getN1Tagsets();
+  const n2Tagsets = await getN2Tagsets();
+
+  const n1Section = n1Tagsets.map(t => {
+    const desc = t.descricao ? `: ${t.descricao}` : '';
+    return `- ${t.codigo} (${t.nome})${desc}`;
+  }).join('\n');
+
+  const n2Section = n2Tagsets.map(t => {
+    const exemplos = t.exemplos?.length 
+      ? `: ${t.exemplos.slice(0, maxExamples).join(', ')}`
+      : '';
+    return `- ${t.codigo} (${t.nome})${exemplos}`;
+  }).join('\n');
+
+  let prompt = `**DOMÍNIOS SEMÂNTICOS N1:**
+${n1Section}
+
+**SUBDOMÍNIOS N2 (USE PREFERENCIALMENTE):**
+${n2Section}`;
+
+  if (includeN3) {
+    const n3Tagsets = await getN3Tagsets();
+    const n3Section = n3Tagsets.map(t => {
+      const exemplos = t.exemplos?.length 
+        ? `: ${t.exemplos.slice(0, maxExamples).join(', ')}`
+        : '';
+      return `- ${t.codigo} (${t.nome})${exemplos}`;
+    }).join('\n');
+    
+    prompt += `\n\n**SUBCATEGORIAS N3 (PARA MAIOR PRECISÃO):**
+${n3Section}`;
+  }
+
+  if (includeN4) {
+    const n4Tagsets = await getN4Tagsets();
+    const n4Section = n4Tagsets.map(t => {
+      const exemplos = t.exemplos?.length 
+        ? `: ${t.exemplos.slice(0, maxExamples).join(', ')}`
+        : '';
+      return `- ${t.codigo} (${t.nome})${exemplos}`;
+    }).join('\n');
+    
+    prompt += `\n\n**CATEGORIAS ESPECÍFICAS N4 (MÁXIMA PRECISÃO):**
+${n4Section}`;
+  }
+
+  return prompt;
+}
+
+/**
+ * Gera prompt otimizado para classificação em batch
+ * Inclui apenas N1 e N2 para manter prompt conciso
+ */
+export async function generateBatchClassificationPrompt(): Promise<string> {
+  const n1Tagsets = await getN1Tagsets();
+  const n2Tagsets = await getN2Tagsets();
+  
+  // Agrupa N2 por domínio N1
+  const n2ByN1: Record<string, TagsetEntry[]> = {};
+  for (const t of n2Tagsets) {
+    const n1Code = t.codigo.split('.')[0];
+    if (!n2ByN1[n1Code]) n2ByN1[n1Code] = [];
+    n2ByN1[n1Code].push(t);
+  }
+
+  // Gera seção compacta por domínio
+  const sections = n1Tagsets.map(n1 => {
+    const subdomains = n2ByN1[n1.codigo] || [];
+    const subdomainList = subdomains.map(s => {
+      const ex = s.exemplos?.slice(0, 3).join(', ') || '';
+      return `  - ${s.codigo} (${s.nome})${ex ? `: ${ex}` : ''}`;
+    }).join('\n');
+    
+    return `- **${n1.codigo} (${n1.nome})**: ${n1.descricao || ''}
+${subdomainList}`;
+  }).join('\n\n');
+
+  return sections;
 }
 
 /**

@@ -658,77 +658,29 @@ async function batchClassifyWithGemini(
     return `${i + 1}. Palavra: "${p.palavra}" | Lema: "${p.lema}" | POS: ${p.pos} | Contexto: "${sentenca}"`;
   }).join('\n');
 
-  const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra abaixo em um dos 14 domínios semânticos.
+  // Carrega domínios dinamicamente do banco de dados
+  const { generateBatchClassificationPrompt } = await import('../_shared/tagset-loader.ts');
+  const dynamicDomains = await generateBatchClassificationPrompt();
+
+  const prompt = `Você é um especialista em análise semântica de texto. Classifique CADA palavra abaixo nos domínios semânticos listados.
 
 **INSTRUÇÕES CRÍTICAS:**
-1. **PRIORIZE códigos N2 (subcategorias) sempre que o contexto permitir**
+1. **PRIORIZE códigos N2 ou superior (subcategorias) sempre que o contexto permitir**
 2. Use códigos N1 APENAS quando a classificação for ambígua ou não houver N2 apropriado
 3. Exemplo: "cavalgar" → AP.DES (Transporte), NÃO "AP" genérico
-4. Exemplo: "saudade" → SE.SA (Saudade específica), NÃO "SE" genérico
+4. Exemplo: "saudade" → SE.TRI (Tristeza/Saudade), NÃO "SE" genérico
 5. Exemplo: "chimarrão" → AP.ALI (Alimentação), NÃO "AP" genérico
 
-**14 DOMÍNIOS SEMÂNTICOS N1:**
-- AB (Abstrações): ideias abstratas, conceitos filosóficos, valores morais
-- AC (Ações e Processos): verbos de ação física concreta (andar, pegar, construir, olhar, falar)
-- AP (Atividades e Práticas Sociais): trabalho, alimentação, vestuário, lazer, transporte
-- CC (Cultura e Conhecimento): arte, educação, religião, ciência, comunicação
-- EL (Estruturas e Lugares): construções, locais físicos, espaços arquitetônicos
-- EQ (Estados, Qualidades e Medidas): adjetivos, características, tempo, dimensões
-- MG (Marcadores Gramaticais): artigos, preposições, conjunções, palavras funcionais
-- NA (Natureza e Paisagem): flora, fauna, clima, geografia, elementos naturais
-- NC (Não Classificado): use apenas se nenhum domínio se aplica
-- OA (Objetos e Artefatos): ferramentas, utensílios, equipamentos, vestimenta
-- SB (Saúde e Bem-Estar): doenças humanas/animais, tratamentos, bem-estar, saúde mental
-- SE (Sentimentos): amor, saudade, alegria, tristeza, emoções
-- SH (Indivíduo): pessoa, corpo humano, características humanas, identidade
-- SP (Sociedade e Organização Política): governo, lei, relações sociais, política
-
-**SUBDOMÍNIOS IMPORTANTES N2 (USE ESTES PREFERENCIALMENTE - CÓDIGOS ATUALIZADOS):**
-- AC.MD (Movimento): andar, correr, pular, sentar, virar, cavalgar
-- AC.MI (Manipulação): pegar, segurar, empurrar, amarrar, abrir, fechar
-- AC.TR (Transformação): construir, quebrar, cortar, limpar, escrever, criar
-- AC.PS (Percepção): olhar, ver, escutar, cheirar, provar, sentir
-- AC.EC (Expressão): falar, cantar, gritar, acenar, abraçar, sussurrar
-- AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude, honra
-- AB.SOC (Social/Político): poder, direito, democracia, cidadania, paz
-- AB.EXI (Existencial/Metafísico): destino, vida, morte, eternidade, sorte, sonho
-- AB.LOG (Lógico/Matemático): lógica, razão, infinito, proporção
-- AP.TRA (Trabalho/Economia): plantar, colher, comprar, vender, médico, tropeiro
-- AP.ALI (Alimentação/Culinária): cozinhar, churrasco, chimarrão, mate, cuia
-- AP.VES (Vestuário/Moda): vestir, costurar, bombacha, bota, poncho
-- AP.LAZ (Lazer/Esportes): festa, fandango, rodeio, futebol, dança
-- AP.DES (Transporte/Deslocamento): cavalgar, viajar, rota, destino
-- CC.ART (Arte/Expressão): poesia, música, pintura, dança, literatura, verso
-- CC.EDU (Educação/Aprendizado): estudar, escola, professor, ensinar
-- CC.REL (Religiosidade/Espiritualidade): Deus, fé, alma, reza, igreja
-- CC.COM (Comunicação/Mídia): jornal, mensagem, conversa, notícia
-- NA.FA (Fauna): cavalo, gado, pássaro, peixe, animal, boi
-- NA.FL (Flora): árvore, flor, planta, erva, mato
-- NA.GE (Geografia): campo, pampa, coxilha, rio, várzea, cerro, serra
-- NA.FN (Fenômenos Naturais): chuva, vento, tempestade, neve, neblina
-- NA.EC (Elementos Celestes): sol, lua, estrela, céu, aurora
-- SB.DOE (Doenças/Condições): gripe, diabetes, febre, dor, ferida
-- SB.TRA (Tratamentos/Cuidados): remédio, cirurgia, hospital, médico, vacina
-- SB.BEM (Bem-Estar/Estilo de Vida): dieta, exercício, higiene, descanso
-- SB.MEN (Saúde Mental): depressão, ansiedade, memória, personalidade
-- SE.ALE (Alegria): alegria, felicidade, esperança, contentamento
-- SE.AMO (Amor): amor, paixão, carinho, afeto
-- SE.TRI (Tristeza/Saudade): tristeza, saudade, nostalgia, melancolia, dor emocional
-- SE.MED (Medo): medo, temor, receio, pavor
-- SE.RAI (Raiva): raiva, ódio, ira, frustração
-- SP.GOV (Governo/Estado): democracia, ministério, imposto, eleição
-- SP.LEI (Lei/Justiça): lei, julgamento, crime, polícia, prisão
-- SP.GUE (Guerra/Conflito): guerra, batalha, atacar, defender
-- SP.POL (Processos Políticos): voto, protesto, cidadania
-- SP.EST (Estrutura Social): elite, classe, desigualdade
+**DOMÍNIOS SEMÂNTICOS (CARREGADOS DINAMICAMENTE):**
+${dynamicDomains}
 
 **IMPORTANTE - SAÚDE ANIMAL:**
-Use SB ou SB.05 para termos veterinários relacionados à saúde de animais (veterinário, vermífugo, castração de animais, cinomose, raiva, febre aftosa).
+Use SB.DOE ou SB.VET para termos veterinários relacionados à saúde de animais (veterinário, vermífugo, castração de animais, cinomose, raiva, febre aftosa).
 
 **PALAVRAS A CLASSIFICAR:**
 ${palavrasList}
 
-**RETORNE JSON ARRAY (ordem idêntica) COM CÓDIGOS N2 SEMPRE QUE POSSÍVEL:**
+**RETORNE JSON ARRAY (ordem idêntica) COM CÓDIGOS N2+ SEMPRE QUE POSSÍVEL:**
 [
   {"palavra": "palavra1", "tagset_codigo": "XX.YY", "confianca": 0.95, "justificativa": "razão"},
   {"palavra": "palavra2", "tagset_codigo": "ZZ.WW", "confianca": 0.90, "justificativa": "razão"},
