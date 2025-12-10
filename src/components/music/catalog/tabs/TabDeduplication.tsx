@@ -19,8 +19,8 @@ export function TabDeduplication() {
       
       <DuplicateMonitoringCard />
       
-      <Alert className="border-blue-500/50 bg-blue-50/50 dark:bg-blue-950/20">
-        <AlertCircle className="h-4 w-4 text-blue-500" />
+      <Alert className="border-purple-500/50 bg-purple-50/50 dark:bg-purple-950/20">
+        <AlertCircle className="h-4 w-4 text-purple-500" />
         <AlertDescription>
           <strong>Como funciona:</strong>
           <ul className="list-disc list-inside mt-2 space-y-1">
