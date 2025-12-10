@@ -37,10 +37,12 @@ import {
   Database,
   Brain,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  AlertTriangle
 } from 'lucide-react';
 import { useEnrichmentJobsList, EnrichmentJob, EnrichmentStatus, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
 import { useSemanticCoverage } from '@/hooks/useSemanticCoverage';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -49,6 +51,7 @@ import { EnrichmentControlPanel } from './EnrichmentControlPanel';
 import { EnrichmentLiveCard } from './EnrichmentLiveCard';
 import { SemanticCoverageDashboard } from './SemanticCoverageDashboard';
 import { ProcessingPipelinePanel } from './ProcessingPipelinePanel';
+import { NCCurationPanel } from '@/components/admin/NCCurationPanel';
 
 const JOB_TYPE_LABELS: Record<EnrichmentJobType, string> = {
   metadata: 'Metadados',
@@ -183,6 +186,9 @@ export function TabEnrichmentJobs() {
     <div className="space-y-6">
       {/* Pipeline de Processamento Completo */}
       <ProcessingPipelinePanel />
+
+      {/* Painel de Curadoria NC */}
+      <NCCurationPanel />
 
       {/* Dashboard de Cobertura Semântica (Collapsible) */}
       <Collapsible open={coverageOpen} onOpenChange={setCoverageOpen}>
