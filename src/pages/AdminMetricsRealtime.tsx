@@ -338,6 +338,8 @@ export default function AdminMetricsRealtime() {
           </Card>
         </TabsContent>
       </Tabs>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
