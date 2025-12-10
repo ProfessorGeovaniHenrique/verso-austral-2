@@ -35,11 +35,13 @@ export interface SemanticRefinementJob {
 
 export function useSemanticRefinementJob() {
   const [activeJob, setActiveJob] = useState<SemanticRefinementJob | null>(null);
+  const [lastCompletedJob, setLastCompletedJob] = useState<SemanticRefinementJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchActiveJob = useCallback(async () => {
     try {
-      const { data, error } = await supabase
+      // Buscar job ativo (pendente, processando, pausado)
+      const { data: activeData, error: activeError } = await supabase
         .from('semantic_refinement_jobs')
         .select('*')
         .in('status', ['pendente', 'processando', 'pausado'])
@@ -47,14 +49,31 @@ export function useSemanticRefinementJob() {
         .limit(1)
         .maybeSingle();
 
-      if (error) throw error;
-      if (data) {
+      if (activeError) throw activeError;
+      
+      if (activeData) {
         setActiveJob({
-          ...data,
-          sample_refinements: (data.sample_refinements as unknown as RefinementSample[]) || [],
+          ...activeData,
+          sample_refinements: (activeData.sample_refinements as unknown as RefinementSample[]) || [],
         } as SemanticRefinementJob);
       } else {
         setActiveJob(null);
+      }
+
+      // Buscar último job concluído (para mostrar resumo)
+      const { data: completedData, error: completedError } = await supabase
+        .from('semantic_refinement_jobs')
+        .select('*')
+        .eq('status', 'concluido')
+        .order('tempo_fim', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!completedError && completedData) {
+        setLastCompletedJob({
+          ...completedData,
+          sample_refinements: (completedData.sample_refinements as unknown as RefinementSample[]) || [],
+        } as SemanticRefinementJob);
       }
     } catch (error) {
       console.error('[useSemanticRefinementJob] Error fetching job:', error);
@@ -288,6 +307,7 @@ export function useSemanticRefinementJob() {
 
   return {
     activeJob,
+    lastCompletedJob,
     isLoading,
     progress,
     depthDistribution,

@@ -37,6 +37,7 @@ interface UseSemanticAnnotationJobResult {
   resumeJob: (jobId: string) => Promise<void>;
   cancelJob: (jobId: string) => Promise<void>;
   checkExistingJob: (artistName: string) => Promise<SemanticAnnotationJob | null>;
+  checkRecentlyCompleted: (artistName: string) => Promise<SemanticAnnotationJob | null>;
   isResuming: boolean;
 }
 
@@ -190,26 +191,57 @@ export function useSemanticAnnotationJob(): UseSemanticAnnotationJobResult {
   }, [pollingIntervalId]);
   
   /**
-   * Verificar se há job existente para o artista
+   * Verificar se há job existente para o artista (ativo ou recentemente concluído)
    */
   const checkExistingJob = useCallback(async (artistName: string): Promise<SemanticAnnotationJob | null> => {
     try {
-      const { data, error } = await supabase
+      // Primeiro: buscar job ativo (processando/pausado)
+      const { data: activeJob, error: activeError } = await supabase
         .from('semantic_annotation_jobs')
         .select('*')
         .eq('artist_name', artistName)
         .in('status', ['processando', 'pausado'])
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
       
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows
+      if (activeError && activeError.code !== 'PGRST116') {
+        throw activeError;
+      }
+      
+      if (activeJob) return activeJob;
+      
+      return null;
+    } catch (err) {
+      log.error('Error checking existing job', err as Error);
+      return null;
+    }
+  }, []);
+  
+  /**
+   * Verificar se artista foi anotado recentemente (últimos 7 dias)
+   */
+  const checkRecentlyCompleted = useCallback(async (artistName: string): Promise<SemanticAnnotationJob | null> => {
+    try {
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      
+      const { data, error } = await supabase
+        .from('semantic_annotation_jobs')
+        .select('*')
+        .eq('artist_name', artistName)
+        .eq('status', 'concluido')
+        .gte('tempo_fim', sevenDaysAgo)
+        .order('tempo_fim', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
       
       return data || null;
     } catch (err) {
-      log.error('Error checking existing job', err as Error);
+      log.error('Error checking recently completed job', err as Error);
       return null;
     }
   }, []);
@@ -340,6 +372,7 @@ export function useSemanticAnnotationJob(): UseSemanticAnnotationJobResult {
     resumeJob,
     cancelJob,
     checkExistingJob,
+    checkRecentlyCompleted,
     isResuming,
   };
 }

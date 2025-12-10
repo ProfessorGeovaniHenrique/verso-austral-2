@@ -550,11 +550,28 @@ Responda APENAS com JSON válido:
 
     let code = result.tagset_codigo;
     
-    // Validar código usando tagset-loader (mais robusto que set local)
+    // Validar código usando tagset-loader com fallback para código pai
     const isValid = await isValidTagset(code);
-    if (!isValid) {
-      console.warn(`[refine-domain-batch] Invalid tagset code "${code}" for word "${word.palavra}", keeping original`);
-      code = word.tagset_codigo;
+    if (!isValid && code) {
+      // Tentar fallback para código pai (N4 -> N3 -> N2)
+      const parts = code.split('.');
+      let fallbackFound = false;
+      
+      for (let i = parts.length - 1; i >= 2; i--) {
+        const parentCode = parts.slice(0, i).join('.');
+        const parentValid = await isValidTagset(parentCode);
+        if (parentValid) {
+          console.warn(`[refine-domain-batch] Invalid code "${code}" for "${word.palavra}", using parent "${parentCode}"`);
+          code = parentCode;
+          fallbackFound = true;
+          break;
+        }
+      }
+      
+      if (!fallbackFound) {
+        console.warn(`[refine-domain-batch] Invalid code "${code}" for "${word.palavra}", no valid parent found, keeping original`);
+        code = word.tagset_codigo;
+      }
     }
 
     // Only update if refined (code has a dot = N2+)
