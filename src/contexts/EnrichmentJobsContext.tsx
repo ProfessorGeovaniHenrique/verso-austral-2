@@ -112,11 +112,11 @@ export function EnrichmentJobsProvider({ children }: { children: React.ReactNode
     failed: jobs.filter(j => j.status === 'erro').length,
   }), [jobs]);
   
-  // Fetch jobs
-  const fetchJobs = useCallback(async () => {
+  // Fetch jobs (force ignora debounce para ações manuais do usuário)
+  const fetchJobs = useCallback(async (force = false) => {
     const now = Date.now();
-    // Debounce de 3s
-    if (now - lastFetchRef.current < 3000) return;
+    // Debounce de 3s (ignorado se force=true)
+    if (!force && now - lastFetchRef.current < 3000) return;
     lastFetchRef.current = now;
     
     try {
@@ -136,6 +136,11 @@ export function EnrichmentJobsProvider({ children }: { children: React.ReactNode
       setIsLoading(false);
     }
   }, []);
+  
+  // Refetch manual (sempre força atualização)
+  const manualRefetch = useCallback(async () => {
+    await fetchJobs(true);
+  }, [fetchJobs]);
   
   // Fetch métricas live
   const fetchLiveMetrics = useCallback(async (activeJobId?: string) => {
@@ -382,7 +387,7 @@ export function EnrichmentJobsProvider({ children }: { children: React.ReactNode
     liveMetrics,
     formattedEta,
     stats,
-    refetch: fetchJobs,
+    refetch: manualRefetch,
     pauseJob,
     resumeJob,
     cancelJob,
