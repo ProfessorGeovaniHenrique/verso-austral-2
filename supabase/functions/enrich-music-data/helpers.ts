@@ -1,4 +1,10 @@
 // Helper functions for music enrichment
+// SPRINT ENRICH-REWRITE: Adicionados timeouts agressivos para APIs externas
+
+// ============ TIMEOUTS CONFIGURÁVEIS ============
+const YOUTUBE_TIMEOUT_MS = 8000;  // 8s máximo para YouTube
+const GEMINI_TIMEOUT_MS = 15000;  // 15s máximo para Gemini/GPT
+const GPT5_TIMEOUT_MS = 20000;    // 20s máximo para GPT-5
 
 interface YouTubeSearchResult {
   videoTitle: string;
@@ -33,6 +39,21 @@ function extractJsonFromText(text: string): object | null {
   }
   
   return null;
+}
+
+/**
+ * SPRINT ENRICH-REWRITE: Wrapper com timeout para qualquer Promise
+ */
+export async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string
+): Promise<T> {
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`${operationName} timeout após ${timeoutMs}ms`)), timeoutMs);
+  });
+  
+  return Promise.race([promise, timeoutPromise]);
 }
 
 // Rate Limiter para controlar chamadas de API
@@ -138,7 +159,8 @@ Retorne APENAS um objeto JSON válido:
     console.log(`[GPT5] 🔍 Searching: "${songTitle}" - "${artistName}"`);
     const requestStart = Date.now();
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // SPRINT ENRICH-REWRITE: Adicionar timeout
+    const fetchPromise = fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
@@ -150,9 +172,11 @@ Retorne APENAS um objeto JSON válido:
           { role: 'system', content: 'Você é um especialista em música brasileira que retorna apenas JSON válido.' },
           { role: 'user', content: prompt }
         ],
-        max_completion_tokens: 800  // Aumentado de 300 para 800 - GPT-5 usa tokens internamente para raciocínio
+        max_completion_tokens: 800
       })
     });
+
+    const response = await withTimeout(fetchPromise, GPT5_TIMEOUT_MS, 'GPT5 API');
 
     const duration = Date.now() - requestStart;
     console.log(`[GPT5] ⏱️ API Response: ${response.status} in ${duration}ms`);
@@ -166,35 +190,25 @@ Retorne APENAS um objeto JSON válido:
     const data = await response.json();
     const rawText = data.choices?.[0]?.message?.content;
 
-    // Verificar se GPT-5 usou todos os tokens para raciocínio interno (resposta vazia)
     if (!rawText || rawText.trim() === '') {
       const usage = data.usage || {};
-      console.warn('[GPT5] ⚠️ Empty content - possible token exhaustion for reasoning');
+      console.warn('[GPT5] ⚠️ Empty content - possible token exhaustion');
       console.warn(`[GPT5] 📊 Token usage: completion=${usage.completion_tokens}, reasoning=${usage.reasoning_tokens || 'N/A'}`);
-      console.log('[GPT5] 📄 Full response:', JSON.stringify(data, null, 2));
-      return null;  // Força fallback para Gemini
+      return null;
     }
 
-    console.log('[GPT5] 📝 Raw Response Text (first 500 chars):', rawText.substring(0, 500));
+    console.log('[GPT5] 📝 Raw Response (first 300 chars):', rawText.substring(0, 300));
 
-    // Try to parse as direct JSON first
     let parsed;
     try {
       parsed = JSON.parse(rawText);
-      console.log('[GPT5] ✅ Direct JSON parse successful');
     } catch (parseError) {
-      console.log('[GPT5] ⚠️ Direct JSON parse failed, trying extractJsonFromText...');
       parsed = extractJsonFromText(rawText);
-      
       if (!parsed) {
-        console.error('[GPT5] ❌ All JSON parsing attempts failed');
-        console.error('[GPT5] 📄 Failed raw text:', rawText);
+        console.error('[GPT5] ❌ JSON parsing failed');
         return null;
       }
-      console.log('[GPT5] ✅ JSON extracted from text successfully');
     }
-
-    console.log('[GPT5] ✅ Final Parsed Data:', JSON.stringify(parsed, null, 2));
 
     return {
       compositor: parsed.compositor || undefined,
@@ -204,8 +218,7 @@ Retorne APENAS um objeto JSON válido:
     };
 
   } catch (error) {
-    console.error('[GPT5] 💥 Fatal Error:', error);
-    console.error('[GPT5] 📚 Stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('[GPT5] 💥 Error:', error instanceof Error ? error.message : error);
     return null;
   }
 }
@@ -259,15 +272,17 @@ export async function searchYouTube(
 
     console.log(`[YouTube] Cache MISS - Searching API: "${searchQuery}"`);
 
-    // Search YouTube API
+    // SPRINT ENRICH-REWRITE: Search YouTube API com timeout
     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(searchQuery)}&type=video&maxResults=1&key=${apiKey}`;
-    const response = await fetch(url);
+    
+    const fetchPromise = fetch(url);
+    const response = await withTimeout(fetchPromise, YOUTUBE_TIMEOUT_MS, 'YouTube API');
 
     if (response.status === 403) {
       const errorData = await response.json().catch(() => ({}));
       if (errorData?.error?.errors?.[0]?.reason === 'quotaExceeded') {
-        console.error('[YouTube] Daily quota exceeded - No fallback available');
-        throw new Error('YOUTUBE_QUOTA_EXCEEDED'); // ✅ FIX: Propaga erro ao invés de return null
+        console.error('[YouTube] Daily quota exceeded');
+        throw new Error('YOUTUBE_QUOTA_EXCEEDED');
       }
     }
 
@@ -353,12 +368,12 @@ Retorne APENAS um objeto JSON válido:
   "fonte": "Base de Conhecimento Digital"
 }`;
 
-  // Use Google API directly
+  // Use Google API directly with timeout
   if (geminiApiKey) {
     try {
       console.log(`[searchWithAI] 🔍 Searching: "${titulo}" - "${artista}"`);
       
-      const response = await fetch(
+      const fetchPromise = fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${geminiApiKey}`,
         {
           method: 'POST',
@@ -374,13 +389,16 @@ Retorne APENAS um objeto JSON válido:
         }
       );
 
+      // SPRINT ENRICH-REWRITE: Timeout para Gemini
+      const response = await withTimeout(fetchPromise, GEMINI_TIMEOUT_MS, 'Gemini API');
+
       if (response.ok) {
         const data = await response.json();
         const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text;
         
         if (rawText) {
           const parsedData = JSON.parse(rawText);
-          console.log('[searchWithAI] ✅ Google API (Gemini Pro) success:', parsedData);
+          console.log('[searchWithAI] ✅ Gemini success');
           return {
             compositor: parsedData.compositor || null,
             ano: parsedData.ano ? validateYear(parsedData.ano) : null,
@@ -391,7 +409,7 @@ Retorne APENAS um objeto JSON válido:
         console.error('[searchWithAI] ❌ API error:', response.status);
       }
     } catch (error) {
-      console.error('[searchWithAI] 💥 Google API failed:', error);
+      console.error('[searchWithAI] 💥 Gemini failed:', error instanceof Error ? error.message : error);
     }
   }
 

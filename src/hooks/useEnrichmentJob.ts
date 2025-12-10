@@ -49,10 +49,11 @@ export interface UseEnrichmentJobOptions {
   refreshInterval?: number;
 }
 
-const ABANDONED_TIMEOUT_MINUTES = 5;
+// SPRINT ENRICH-REWRITE: Reduzido de 5 para 3 minutos
+const ABANDONED_TIMEOUT_MINUTES = 3;
 
 export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
-  const { artistId, corpusId, jobType, autoRefresh = true, refreshInterval = 30000 } = options;
+  const { artistId, corpusId, jobType, autoRefresh = true, refreshInterval = 15000 } = options; // Refresh mais frequente
 
   const [activeJob, setActiveJob] = useState<EnrichmentJob | null>(null);
   const [lastCompletedJob, setLastCompletedJob] = useState<EnrichmentJob | null>(null);
@@ -313,20 +314,20 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     return forceRestartJob(params);
   }, [forceRestartJob]);
 
-  // Limpar jobs órfãos/abandonados
+  // SPRINT ENRICH-REWRITE: Limpar jobs órfãos baseado em last_chunk_at (não songs_processed)
   const cleanupAbandonedJobs = useCallback(async () => {
     const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MINUTES * 60 * 1000).toISOString();
     
+    // Buscar jobs que estão "processando" mas sem heartbeat recente
     const { data, error } = await supabase
       .from('enrichment_jobs')
       .update({ 
-        status: 'erro',
-        erro_mensagem: 'Marcado como abandonado pelo usuário',
-        tempo_fim: new Date().toISOString()
+        status: 'pausado', // Pausado para permitir retomada, não erro
+        erro_mensagem: 'Job pausado automaticamente (sem heartbeat). Clique "Retomar" para continuar.',
+        updated_at: new Date().toISOString()
       })
       .eq('status', 'processando')
-      .eq('songs_processed', 0)
-      .lt('tempo_inicio', abandonedThreshold)
+      .lt('last_chunk_at', abandonedThreshold) // Baseado em heartbeat, não songs_processed
       .select();
 
     if (error) {
@@ -336,7 +337,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
 
     const count = data?.length || 0;
     if (count > 0) {
-      toast.success(`${count} job(s) abandonado(s) limpo(s)`);
+      toast.success(`${count} job(s) abandonado(s) pausado(s)`);
     }
     
     await fetchActiveJob();
@@ -348,10 +349,13 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     ? Math.round((activeJob.songs_processed / activeJob.total_songs) * 100)
     : 0;
 
-  // Verificar se job está abandonado
+  // SPRINT ENRICH-REWRITE: Verificar se job está abandonado baseado em heartbeat
   const isAbandoned = activeJob && activeJob.status === 'processando' && activeJob.last_chunk_at
     ? new Date().getTime() - new Date(activeJob.last_chunk_at).getTime() > ABANDONED_TIMEOUT_MINUTES * 60 * 1000
     : false;
+
+  // Verificar se job precisa de atenção (pausado ou abandonado)
+  const needsAttention = isAbandoned || activeJob?.status === 'pausado';
 
   // Setup inicial e realtime
   useEffect(() => {
