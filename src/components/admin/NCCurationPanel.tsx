@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -36,7 +36,8 @@ import { NCWordDetailModal } from './NCWordDetailModal';
 
 type FilterType = 'all' | 'with_suggestion' | 'high_confidence' | 'no_suggestion';
 
-export function NCCurationPanel() {
+// Componente memoizado para evitar re-renders
+export const NCCurationPanel = React.memo(function NCCurationPanel() {
   const {
     ncWords,
     stats,
@@ -357,4 +358,4 @@ export function NCCurationPanel() {
       />
     </>
   );
-}
+});

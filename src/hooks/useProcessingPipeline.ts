@@ -84,54 +84,59 @@ export function useProcessingPipeline(autoRefreshInterval = 5000) {
     }
   }, []);
 
-  // Ref para controlar se já há jobs ativos (evita loop infinito)
-  const hasActiveJobRef = useRef(false);
-  const lastFetchRef = useRef<number>(0);
+  // Refs para controle de interval e debounce (estáveis, não causam re-render)
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Fetch com debounce
-  const debouncedFetch = useCallback(async () => {
-    const now = Date.now();
-    if (now - lastFetchRef.current < 3000) return; // Skip se fetched há menos de 3s
-    lastFetchRef.current = now;
-    await fetchJobs();
-  }, [fetchJobs]);
+  const lastFetchRef = useRef<number>(0);
+  const hasActiveJobRef = useRef(false);
+  const fetchJobsRef = useRef(fetchJobs);
+  fetchJobsRef.current = fetchJobs;
 
   // Fetch inicial apenas uma vez
   useEffect(() => {
-    fetchJobs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchJobsRef.current();
   }, []);
 
-  // Auto-refresh controlado
+  // Verificar mudança de estado de jobs ativos e configurar interval
+  // Usando useEffect separado que só depende de primitivos
   useEffect(() => {
-    const hasActiveJob = jobs.some(j => 
-      j.status === 'processando' || j.status === 'pausado'
-    );
-
-    // Só reconfigura interval se estado mudou
-    if (hasActiveJob !== hasActiveJobRef.current) {
-      hasActiveJobRef.current = hasActiveJob;
+    const checkActiveStatus = () => {
+      const hasActive = jobs.some(j => 
+        j.status === 'processando' || j.status === 'pausado'
+      );
       
-      // Limpar interval anterior
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
+      if (hasActive !== hasActiveJobRef.current) {
+        hasActiveJobRef.current = hasActive;
+        
+        // Limpar interval anterior
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+          intervalRef.current = null;
+        }
+        
+        // Criar novo interval se há jobs ativos
+        if (hasActive) {
+          intervalRef.current = setInterval(() => {
+            const now = Date.now();
+            if (now - lastFetchRef.current >= 5000) {
+              lastFetchRef.current = now;
+              fetchJobsRef.current();
+            }
+          }, autoRefreshInterval);
+        }
       }
+    };
+    
+    checkActiveStatus();
+  }, [jobs.length, autoRefreshInterval]); // Depende apenas do length, não do array inteiro
 
-      // Criar novo interval se há jobs ativos
-      if (hasActiveJob) {
-        intervalRef.current = setInterval(debouncedFetch, autoRefreshInterval);
-      }
-    }
-
+  // Cleanup ao desmontar
+  useEffect(() => {
     return () => {
       if (intervalRef.current) {
         clearInterval(intervalRef.current);
-        intervalRef.current = null;
       }
     };
-  }, [jobs, autoRefreshInterval, debouncedFetch]);
+  }, []);
 
   // Calcular progresso
   const progress = job 

@@ -1,9 +1,10 @@
 /**
  * Painel de visualização da Pipeline de Processamento Completo
  * Sprint 3: Pipeline Unificada
+ * Memoizado para evitar re-renders
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +53,7 @@ interface PhaseCardProps {
   subtext?: string;
 }
 
-function PhaseCard({ icon, title, status, value, subtext }: PhaseCardProps) {
+const PhaseCard = React.memo(function PhaseCard({ icon, title, status, value, subtext }: PhaseCardProps) {
   const statusColors = {
     pending: 'border-muted bg-muted/30',
     active: 'border-primary bg-primary/10',
@@ -68,9 +69,10 @@ function PhaseCard({ icon, title, status, value, subtext }: PhaseCardProps) {
       {subtext && <div className="text-xs text-muted-foreground">{subtext}</div>}
     </div>
   );
-}
+});
 
-export function ProcessingPipelinePanel() {
+// Componente principal memoizado
+export const ProcessingPipelinePanel = React.memo(function ProcessingPipelinePanel() {
   const {
     job,
     jobs,
@@ -332,4 +334,4 @@ export function ProcessingPipelinePanel() {
       </CardContent>
     </Card>
   );
-}
+});

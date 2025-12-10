@@ -1,9 +1,10 @@
 /**
  * Dashboard de Cobertura Semântica
  * Exibe métricas de cobertura por corpus e artista com ações rápidas
+ * Memoizado para evitar re-renders desnecessários
  */
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +72,8 @@ interface Props {
   onAnnotateArtists?: (artistIds: string[]) => void;
 }
 
-export function SemanticCoverageDashboard({ corpusFilter, onAnnotateArtists }: Props) {
+// Componente memoizado para evitar re-renders
+export const SemanticCoverageDashboard = React.memo(function SemanticCoverageDashboard({ corpusFilter, onAnnotateArtists }: Props) {
   const { 
     corpusCoverage, 
     artistCoverage, 
@@ -544,4 +546,4 @@ export function SemanticCoverageDashboard({ corpusFilter, onAnnotateArtists }: P
       </Card>
     </div>
   );
-}
+});

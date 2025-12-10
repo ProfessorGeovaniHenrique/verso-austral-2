@@ -75,33 +75,34 @@ const IDLE_REFRESH_INTERVAL = 30000;
 
 export function TabEnrichmentJobs() {
   const { jobs, isLoading, refetch } = useEnrichmentJobsList();
-  const { globalCoveragePercent } = useSemanticCoverage({ autoRefreshInterval: 120000 }); // 2 min
+  const { globalCoveragePercent } = useSemanticCoverage({ autoRefreshInterval: false }); // Desabilitado
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [coverageOpen, setCoverageOpen] = useState(true);
 
-  // Refs para controle de interval
+  // Refs para controle de interval estável
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const hasActiveJobsRef = useRef(false);
+  const refetchRef = useRef(refetch);
+  refetchRef.current = refetch;
 
   // Jobs ativos (processando ou pausado) - memoizado
   const activeJobs = useMemo(() => 
     jobs.filter(j => ['processando', 'pausado'].includes(j.status)),
     [jobs]
   );
-  const hasActiveJobs = activeJobs.length > 0;
+  
+  // Verificar se há jobs ativos baseado no length dos activeJobs
+  const activeJobsCount = activeJobs.length;
 
-  // Refetch memoizado
-  const stableRefetch = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  // Auto-refresh com controle para evitar re-creates
+  // Auto-refresh com controle estável - depende apenas de primitivos
   useEffect(() => {
+    const hasActive = activeJobsCount > 0;
+    
     // Só reconfigura interval se estado mudou
-    if (hasActiveJobs !== hasActiveJobsRef.current) {
-      hasActiveJobsRef.current = hasActiveJobs;
+    if (hasActive !== hasActiveJobsRef.current) {
+      hasActiveJobsRef.current = hasActive;
       
       // Limpar interval anterior
       if (intervalRef.current) {
@@ -110,8 +111,10 @@ export function TabEnrichmentJobs() {
       }
       
       // Criar novo interval
-      const newInterval = hasActiveJobs ? ACTIVE_REFRESH_INTERVAL : IDLE_REFRESH_INTERVAL;
-      intervalRef.current = setInterval(stableRefetch, newInterval);
+      const newInterval = hasActive ? ACTIVE_REFRESH_INTERVAL : IDLE_REFRESH_INTERVAL;
+      intervalRef.current = setInterval(() => {
+        refetchRef.current();
+      }, newInterval);
     }
     
     return () => {
@@ -120,7 +123,7 @@ export function TabEnrichmentJobs() {
         intervalRef.current = null;
       }
     };
-  }, [hasActiveJobs, stableRefetch]);
+  }, [activeJobsCount]); // Depende apenas do count, não do array
 
   // Filtrar jobs
   const filteredJobs = jobs.filter(job => {

@@ -1,10 +1,12 @@
 /**
  * Card de monitoramento em tempo real para job de enriquecimento ativo
  * Exibe métricas live: música atual, taxa, ETA, heartbeat
+ * Memoizado para evitar re-renders
  * 
  * SPRINT 1: Adicionadas métricas de velocidade (s/música) e ETA calculado
  */
 
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -38,7 +40,8 @@ interface EnrichmentLiveCardProps {
   isActionLoading?: boolean;
 }
 
-export function EnrichmentLiveCard({ 
+// Componente memoizado
+export const EnrichmentLiveCard = React.memo(function EnrichmentLiveCard({ 
   job, 
   onPause, 
   onResume,
@@ -332,4 +335,4 @@ export function EnrichmentLiveCard({
       </CardContent>
     </Card>
   );
-}
+});

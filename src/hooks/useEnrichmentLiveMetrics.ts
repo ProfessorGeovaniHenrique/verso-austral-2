@@ -61,16 +61,24 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
   
   const [isLoading, setIsLoading] = useState(true);
   const [totalRemaining, setTotalRemaining] = useState<number | null>(null);
+  
+  // Refs estáveis para evitar re-renders
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastFetchRef = useRef<number>(0);
+  const jobIdRef = useRef(jobId);
+  jobIdRef.current = jobId;
   
+  // Função de fetch usando ref para jobId
   const fetchMetrics = useCallback(async () => {
-    if (!enabled) return;
+    // Debounce de 3s
+    const now = Date.now();
+    if (now - lastFetchRef.current < 3000) return;
+    lastFetchRef.current = now;
     
     try {
-      const now = new Date();
-      const oneMinuteAgo = new Date(now.getTime() - 60 * 1000);
-      const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
+      const currentTime = new Date();
+      const oneMinuteAgo = new Date(currentTime.getTime() - 60 * 1000);
+      const fiveMinutesAgo = new Date(currentTime.getTime() - 5 * 60 * 1000);
       
       // Buscar músicas atualizadas recentemente (com dados de enriquecimento)
       const { data: recentUpdates, error: recentError } = await supabase
@@ -111,11 +119,12 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
       let etaMinutes: number | null = null;
       let remaining: number | null = null;
       
-      if (jobId) {
+      const currentJobId = jobIdRef.current;
+      if (currentJobId) {
         const { data: job } = await supabase
           .from('enrichment_jobs')
           .select('total_songs, songs_processed')
-          .eq('id', jobId)
+          .eq('id', currentJobId)
           .maybeSingle();
         
         if (job) {
@@ -150,7 +159,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
       
       // Verificar se está vivo (atualização nos últimos 2 minutos)
       const isAlive = lastSong 
-        ? new Date(lastSong.updated_at) >= new Date(now.getTime() - 2 * 60 * 1000)
+        ? new Date(lastSong.updated_at) >= new Date(currentTime.getTime() - 2 * 60 * 1000)
         : false;
       
       setMetrics({
@@ -160,7 +169,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
         estimatedEtaMinutes: etaMinutes,
         lastProcessedSong,
         recentSongs,
-        lastUpdateAt: now,
+        lastUpdateAt: currentTime,
         isAlive,
       });
       
@@ -169,17 +178,9 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
     } finally {
       setIsLoading(false);
     }
-  }, [enabled, jobId]);
+  }, []); // Sem dependências - usa refs para valores mutáveis
   
-  // Fetch com debounce
-  const debouncedFetch = useCallback(async () => {
-    const now = Date.now();
-    if (now - lastFetchRef.current < 3000) return;
-    lastFetchRef.current = now;
-    await fetchMetrics();
-  }, [fetchMetrics]);
-
-  // Setup do intervalo com controle
+  // Setup do intervalo - depende apenas de primitivos
   useEffect(() => {
     // Limpar interval anterior
     if (intervalRef.current) {
@@ -193,7 +194,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
     fetchMetrics();
     
     // Criar novo interval
-    intervalRef.current = setInterval(debouncedFetch, refreshInterval);
+    intervalRef.current = setInterval(fetchMetrics, refreshInterval);
     
     return () => {
       if (intervalRef.current) {
@@ -201,7 +202,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
         intervalRef.current = null;
       }
     };
-  }, [enabled, refreshInterval, debouncedFetch, fetchMetrics]);
+  }, [enabled, refreshInterval, fetchMetrics]);
   
   // Formatar ETA para exibição
   const formatEta = useCallback((minutes: number | null) => {

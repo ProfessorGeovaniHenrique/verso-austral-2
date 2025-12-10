@@ -469,42 +469,51 @@ export function useEnrichmentJobsList() {
     }
   }, []);
 
-  // Ref para debounce do realtime
+  // Refs para debounce do realtime - estáveis para evitar re-renders
   const lastRealtimeFetchRef = useRef<number>(0);
   const pendingFetchRef = useRef<NodeJS.Timeout | null>(null);
+  const isThrottledRef = useRef(false);
+  const fetchJobsRef = useRef(fetchJobs);
+  fetchJobsRef.current = fetchJobs;
 
-  // Fetch com debounce para realtime
-  const debouncedRealtimeFetch = useCallback(() => {
+  // Fetch com throttle de 5 segundos para realtime
+  const throttledRealtimeFetch = useCallback(() => {
+    // Se já está throttled, ignorar
+    if (isThrottledRef.current) return;
+    
     // Cancelar fetch pendente
     if (pendingFetchRef.current) {
       clearTimeout(pendingFetchRef.current);
+      pendingFetchRef.current = null;
     }
     
     const now = Date.now();
     const timeSinceLastFetch = now - lastRealtimeFetchRef.current;
     
-    // Se último fetch foi há menos de 2s, agendar para depois
-    if (timeSinceLastFetch < 2000) {
+    // Throttle de 5 segundos
+    if (timeSinceLastFetch < 5000) {
+      isThrottledRef.current = true;
       pendingFetchRef.current = setTimeout(() => {
+        isThrottledRef.current = false;
         lastRealtimeFetchRef.current = Date.now();
-        fetchJobs();
-      }, 2000 - timeSinceLastFetch);
+        fetchJobsRef.current();
+      }, 5000 - timeSinceLastFetch);
       return;
     }
     
     lastRealtimeFetchRef.current = now;
-    fetchJobs();
-  }, [fetchJobs]);
+    fetchJobsRef.current();
+  }, []); // Sem dependências - usa refs
 
   useEffect(() => {
-    fetchJobs();
+    fetchJobsRef.current();
 
     const channel = supabase
       .channel('all-enrichment-jobs')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'enrichment_jobs' },
-        debouncedRealtimeFetch
+        throttledRealtimeFetch
       )
       .subscribe();
 
@@ -514,7 +523,7 @@ export function useEnrichmentJobsList() {
       }
       supabase.removeChannel(channel);
     };
-  }, [fetchJobs, debouncedRealtimeFetch]);
+  }, [throttledRealtimeFetch]);
 
   return { jobs, isLoading, refetch: fetchJobs };
 }
