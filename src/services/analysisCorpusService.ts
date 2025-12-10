@@ -316,7 +316,7 @@ export async function getArtistsByCorpusType(
     
     // Buscar artistas com contagem de músicas
     const { data: artists, error } = await supabase
-      .from('artist_stats_mv')
+      .from('artist_stats_secure')
       .select('artist_id, artist_name, total_songs')
       .eq('corpus_id', corporaData.id)
       .order('artist_name');
