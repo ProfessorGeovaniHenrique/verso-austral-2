@@ -1,11 +1,20 @@
 /**
- * Hook para calcular cobertura semântica por corpus e artista
- * Usa dados de semantic_disambiguation_cache com artist_id e song_id
+ * Hook otimizado para cobertura semântica usando Materialized Views
+ * 
+ * OTIMIZAÇÃO AUD-P2:
+ * - Antes: 17 queries, 130k registros, 3-8s
+ * - Depois: 3 queries, ~900 registros, <500ms
+ * 
+ * MVs usadas:
+ * - semantic_coverage_by_corpus (3 linhas)
+ * - semantic_coverage_by_artist (~900 linhas)
+ * - semantic_quality_metrics (1 linha)
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 export interface CorpusCoverage {
   corpusId: string;
@@ -27,8 +36,8 @@ export interface ArtistCoverage {
   annotatedSongs: number;
   coveragePercent: number;
   annotatedWords: number;
-  ncCount: number; // Not Classified
-  n2PlusCount: number; // N2+ depth
+  ncCount: number;
+  n2PlusCount: number;
   avgConfidence: number;
 }
 
@@ -43,168 +52,75 @@ export interface CoverageQualityMetrics {
 
 interface UseSemanticCoverageOptions {
   corpusFilter?: string;
-  autoRefreshInterval?: number | false; // ms, false to disable, default false
+  autoRefreshInterval?: number | false;
   enabled?: boolean;
+}
+
+// Tipos das MVs do banco
+interface MVCorpusCoverage {
+  corpus_id: string;
+  corpus_name: string;
+  total_songs: number;
+  annotated_songs: number;
+  coverage_percent: number;
+  total_words: number;
+  unique_words: number;
+  avg_confidence: number;
+}
+
+interface MVArtistCoverage {
+  artist_id: string;
+  artist_name: string;
+  corpus_id: string | null;
+  corpus_name: string | null;
+  total_songs: number;
+  annotated_songs: number;
+  coverage_percent: number;
+  annotated_words: number;
+  nc_count: number;
+  n2_plus_count: number;
+  avg_confidence: number;
+}
+
+interface MVQualityMetrics {
+  total_cached_words: number;
+  nc_count: number;
+  n2_plus_count: number;
+  n1_only_count: number;
+  avg_confidence: number;
+  high_confidence_percent: number;
 }
 
 export function useSemanticCoverage(options: UseSemanticCoverageOptions = {}) {
   const { 
     corpusFilter, 
-    autoRefreshInterval = false, // Desabilitado por padrão para evitar N+1 queries
+    autoRefreshInterval = false,
     enabled = true 
   } = options;
   
   const queryClient = useQueryClient();
 
-  // Fetch corpus coverage
+  // Query 1: Cobertura por Corpus (3 linhas max)
   const corpusCoverageQuery = useQuery({
-    queryKey: ['semantic-coverage', 'corpus', corpusFilter],
+    queryKey: ['semantic-coverage-mv', 'corpus', corpusFilter],
     queryFn: async (): Promise<CorpusCoverage[]> => {
-      // Get all corpora with song counts
-      const { data: corpora, error: corporaError } = await supabase
-        .from('corpora')
-        .select('id, name');
+      const { data, error } = await supabase
+        .from('semantic_coverage_by_corpus')
+        .select('*')
+        .order('corpus_name');
       
-      if (corporaError) throw corporaError;
-      
-      const coverages: CorpusCoverage[] = [];
-      
-      for (const corpus of corpora || []) {
-        // Total songs in corpus
-        const { count: totalSongs } = await supabase
-          .from('songs')
-          .select('id', { count: 'exact', head: true })
-          .eq('corpus_id', corpus.id);
-        
-        // Songs with annotations (distinct song_ids in cache for this corpus)
-        const { data: annotatedData } = await supabase
-          .from('semantic_disambiguation_cache')
-          .select('song_id')
-          .not('song_id', 'is', null);
-        
-        // Filter by songs in this corpus
-        const { data: corpusSongs } = await supabase
-          .from('songs')
-          .select('id')
-          .eq('corpus_id', corpus.id);
-        
-        const corpusSongIds = new Set(corpusSongs?.map(s => s.id) || []);
-        const annotatedSongIds = new Set(
-          annotatedData?.filter(a => corpusSongIds.has(a.song_id!)).map(a => a.song_id) || []
-        );
-        
-        // Words stats for this corpus
-        const { data: wordStats } = await supabase
-          .from('semantic_disambiguation_cache')
-          .select('palavra, confianca, song_id')
-          .not('song_id', 'is', null);
-        
-        const corpusWords = wordStats?.filter(w => corpusSongIds.has(w.song_id!)) || [];
-        const uniqueWords = new Set(corpusWords.map(w => w.palavra)).size;
-        const avgConfidence = corpusWords.length > 0
-          ? corpusWords.reduce((sum, w) => sum + (w.confianca || 0), 0) / corpusWords.length
-          : 0;
-        
-        coverages.push({
-          corpusId: corpus.id,
-          corpusName: corpus.name,
-          totalSongs: totalSongs || 0,
-          annotatedSongs: annotatedSongIds.size,
-          coveragePercent: totalSongs ? (annotatedSongIds.size / totalSongs) * 100 : 0,
-          totalWords: corpusWords.length,
-          uniqueWords,
-          avgConfidence: Math.round(avgConfidence * 100) / 100,
-        });
-      }
-      
-      return coverages;
-    },
-    enabled,
-    refetchInterval: autoRefreshInterval || undefined,
-    staleTime: 60000, // 1 minuto - dados mudam lentamente
-    gcTime: 300000,   // 5 minutos em cache
-  });
-
-  // Fetch artist coverage
-  const artistCoverageQuery = useQuery({
-    queryKey: ['semantic-coverage', 'artist', corpusFilter],
-    queryFn: async (): Promise<ArtistCoverage[]> => {
-      // Get artists with corpus info
-      let artistQuery = supabase
-        .from('artists')
-        .select('id, name, corpus_id, corpora(name)')
-        .order('name');
-      
-      if (corpusFilter) {
-        artistQuery = artistQuery.eq('corpus_id', corpusFilter);
-      }
-      
-      const { data: artists, error } = await artistQuery;
       if (error) throw error;
       
-      // Get all song counts per artist
-      const { data: songCounts } = await supabase
-        .from('songs')
-        .select('artist_id');
-      
-      const artistSongCounts = new Map<string, number>();
-      songCounts?.forEach(s => {
-        artistSongCounts.set(s.artist_id, (artistSongCounts.get(s.artist_id) || 0) + 1);
-      });
-      
-      // Get annotation stats per artist
-      const { data: cacheData } = await supabase
-        .from('semantic_disambiguation_cache')
-        .select('artist_id, song_id, palavra, confianca, tagset_codigo, tagset_n2');
-      
-      // Group by artist
-      const artistStats = new Map<string, {
-        songIds: Set<string>;
-        words: number;
-        ncCount: number;
-        n2PlusCount: number;
-        confidenceSum: number;
-      }>();
-      
-      cacheData?.forEach(entry => {
-        if (!entry.artist_id) return;
-        
-        let stats = artistStats.get(entry.artist_id);
-        if (!stats) {
-          stats = { songIds: new Set(), words: 0, ncCount: 0, n2PlusCount: 0, confidenceSum: 0 };
-          artistStats.set(entry.artist_id, stats);
-        }
-        
-        if (entry.song_id) stats.songIds.add(entry.song_id);
-        stats.words++;
-        if (entry.tagset_codigo === 'NC' || !entry.tagset_codigo) stats.ncCount++;
-        if (entry.tagset_n2) stats.n2PlusCount++;
-        stats.confidenceSum += entry.confianca || 0;
-      });
-      
-      const coverages: ArtistCoverage[] = (artists || []).map(artist => {
-        const stats = artistStats.get(artist.id);
-        const totalSongs = artistSongCounts.get(artist.id) || 0;
-        const annotatedSongs = stats?.songIds.size || 0;
-        
-        return {
-          artistId: artist.id,
-          artistName: artist.name,
-          corpusId: artist.corpus_id,
-          corpusName: (artist.corpora as any)?.name || null,
-          totalSongs,
-          annotatedSongs,
-          coveragePercent: totalSongs ? (annotatedSongs / totalSongs) * 100 : 0,
-          annotatedWords: stats?.words || 0,
-          ncCount: stats?.ncCount || 0,
-          n2PlusCount: stats?.n2PlusCount || 0,
-          avgConfidence: stats?.words 
-            ? Math.round((stats.confidenceSum / stats.words) * 100) / 100 
-            : 0,
-        };
-      });
-      
-      return coverages.sort((a, b) => a.coveragePercent - b.coveragePercent);
+      return (data as MVCorpusCoverage[] || []).map(row => ({
+        corpusId: row.corpus_id,
+        corpusName: row.corpus_name,
+        totalSongs: row.total_songs,
+        annotatedSongs: row.annotated_songs,
+        coveragePercent: Number(row.coverage_percent),
+        totalWords: row.total_words,
+        uniqueWords: row.unique_words,
+        avgConfidence: Number(row.avg_confidence),
+      }));
     },
     enabled,
     refetchInterval: autoRefreshInterval || undefined,
@@ -212,32 +128,74 @@ export function useSemanticCoverage(options: UseSemanticCoverageOptions = {}) {
     gcTime: 300000,
   });
 
-  // Fetch quality metrics
-  const qualityMetricsQuery = useQuery({
-    queryKey: ['semantic-coverage', 'quality', corpusFilter],
-    queryFn: async (): Promise<CoverageQualityMetrics> => {
-      const { data, error } = await supabase
-        .from('semantic_disambiguation_cache')
-        .select('tagset_codigo, tagset_n2, confianca');
+  // Query 2: Cobertura por Artista (~900 linhas)
+  const artistCoverageQuery = useQuery({
+    queryKey: ['semantic-coverage-mv', 'artist', corpusFilter],
+    queryFn: async (): Promise<ArtistCoverage[]> => {
+      let query = supabase
+        .from('semantic_coverage_by_artist')
+        .select('*')
+        .order('coverage_percent', { ascending: true });
+      
+      if (corpusFilter) {
+        query = query.eq('corpus_id', corpusFilter);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
-      const total = data?.length || 0;
-      const ncCount = data?.filter(d => d.tagset_codigo === 'NC' || !d.tagset_codigo).length || 0;
-      const n2PlusCount = data?.filter(d => d.tagset_n2).length || 0;
-      const n1OnlyCount = total - ncCount - n2PlusCount;
-      const avgConfidence = total > 0
-        ? data!.reduce((sum, d) => sum + (d.confianca || 0), 0) / total
-        : 0;
-      const highConfidenceCount = data?.filter(d => (d.confianca || 0) >= 0.8).length || 0;
+      return (data as MVArtistCoverage[] || []).map(row => ({
+        artistId: row.artist_id,
+        artistName: row.artist_name,
+        corpusId: row.corpus_id,
+        corpusName: row.corpus_name,
+        totalSongs: row.total_songs,
+        annotatedSongs: row.annotated_songs,
+        coveragePercent: Number(row.coverage_percent),
+        annotatedWords: row.annotated_words,
+        ncCount: row.nc_count,
+        n2PlusCount: row.n2_plus_count,
+        avgConfidence: Number(row.avg_confidence),
+      }));
+    },
+    enabled,
+    refetchInterval: autoRefreshInterval || undefined,
+    staleTime: 60000,
+    gcTime: 300000,
+  });
+
+  // Query 3: Métricas de Qualidade (1 linha)
+  const qualityMetricsQuery = useQuery({
+    queryKey: ['semantic-coverage-mv', 'quality'],
+    queryFn: async (): Promise<CoverageQualityMetrics> => {
+      const { data, error } = await supabase
+        .from('semantic_quality_metrics')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
       
+      if (error) throw error;
+      
+      if (!data) {
+        return {
+          totalCachedWords: 0,
+          ncCount: 0,
+          n2PlusCount: 0,
+          n1OnlyCount: 0,
+          avgConfidence: 0,
+          highConfidencePercent: 0,
+        };
+      }
+      
+      const row = data as MVQualityMetrics;
       return {
-        totalCachedWords: total,
-        ncCount,
-        n2PlusCount,
-        n1OnlyCount,
-        avgConfidence: Math.round(avgConfidence * 100) / 100,
-        highConfidencePercent: total > 0 ? Math.round((highConfidenceCount / total) * 100) : 0,
+        totalCachedWords: row.total_cached_words,
+        ncCount: row.nc_count,
+        n2PlusCount: row.n2_plus_count,
+        n1OnlyCount: row.n1_only_count,
+        avgConfidence: Number(row.avg_confidence),
+        highConfidencePercent: Number(row.high_confidence_percent),
       };
     },
     enabled,
@@ -257,8 +215,24 @@ export function useSemanticCoverage(options: UseSemanticCoverageOptions = {}) {
     ? Math.round((globalCoverage.annotatedSongs / globalCoverage.totalSongs) * 100 * 10) / 10
     : 0;
 
+  // Refresh local cache
   const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['semantic-coverage'] });
+    queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
+  }, [queryClient]);
+
+  // Refresh MVs no banco (operação mais pesada)
+  const refreshMVs = useCallback(async () => {
+    try {
+      const { error } = await supabase.rpc('refresh_semantic_coverage_mvs');
+      if (error) throw error;
+      
+      // Invalida cache local após refresh das MVs
+      queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
+      toast.success('Dados de cobertura atualizados');
+    } catch (err) {
+      console.error('Erro ao atualizar MVs:', err);
+      toast.error('Erro ao atualizar dados de cobertura');
+    }
   }, [queryClient]);
 
   return {
@@ -273,7 +247,8 @@ export function useSemanticCoverage(options: UseSemanticCoverageOptions = {}) {
     isRefreshing: corpusCoverageQuery.isFetching || artistCoverageQuery.isFetching,
     
     // Actions
-    refresh,
+    refresh,      // Refresh cache local (rápido)
+    refreshMVs,   // Refresh MVs no banco (pesado, mas atualiza dados)
   };
 }
 

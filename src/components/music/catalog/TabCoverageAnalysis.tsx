@@ -30,15 +30,25 @@ export const TabCoverageAnalysis = React.memo(function TabCoverageAnalysis({
   const [ncOpen, setNcOpen] = useState(false);
   
   // Lazy loading: só busca dados quando aba está ativa
+  // OTIMIZAÇÃO AUD-P2: Agora usa MVs (17 queries → 3)
   const { 
     globalCoveragePercent, 
     isLoading,
     isRefreshing,
-    refresh 
+    refresh,
+    refreshMVs 
   } = useSemanticCoverage({ 
     enabled: isActive,
     autoRefreshInterval: false // Desabilitado - refresh manual
   });
+  
+  const [isRefreshingMVs, setIsRefreshingMVs] = useState(false);
+  
+  const handleRefreshMVs = async () => {
+    setIsRefreshingMVs(true);
+    await refreshMVs();
+    setIsRefreshingMVs(false);
+  };
 
   if (!isActive) {
     return (
@@ -50,20 +60,35 @@ export const TabCoverageAnalysis = React.memo(function TabCoverageAnalysis({
 
   return (
     <div className="space-y-6">
-      {/* Botão global de refresh */}
-      <div className="flex justify-end">
+      {/* Botões de refresh */}
+      <div className="flex justify-end gap-2">
         <Button
           variant="outline"
           size="sm"
           onClick={refresh}
           disabled={isRefreshing}
+          title="Atualiza cache local (rápido)"
         >
           {isRefreshing ? (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           ) : (
             <RefreshCw className="mr-2 h-4 w-4" />
           )}
-          Atualizar Dados
+          Atualizar Cache
+        </Button>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={handleRefreshMVs}
+          disabled={isRefreshingMVs}
+          title="Recalcula dados do banco (mais lento, mais preciso)"
+        >
+          {isRefreshingMVs ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Brain className="mr-2 h-4 w-4" />
+          )}
+          Recalcular Dados
         </Button>
       </div>
 

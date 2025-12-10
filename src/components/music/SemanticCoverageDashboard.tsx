@@ -81,7 +81,8 @@ export const SemanticCoverageDashboard = React.memo(function SemanticCoverageDas
     globalCoveragePercent,
     isLoading, 
     isRefreshing,
-    refresh 
+    refresh,
+    refreshMVs 
   } = useSemanticCoverage({ corpusFilter });
 
   const [selectedArtists, setSelectedArtists] = useState<Set<string>>(new Set());
@@ -90,6 +91,13 @@ export const SemanticCoverageDashboard = React.memo(function SemanticCoverageDas
   const [sortField, setSortField] = useState<SortField>('coverage');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [isAnnotating, setIsAnnotating] = useState(false);
+  const [isRefreshingMVs, setIsRefreshingMVs] = useState(false);
+  
+  const handleRefreshMVs = async () => {
+    setIsRefreshingMVs(true);
+    await refreshMVs();
+    setIsRefreshingMVs(false);
+  };
 
   // Filter and sort artists
   const filteredArtists = useMemo(() => {
@@ -236,10 +244,16 @@ export const SemanticCoverageDashboard = React.memo(function SemanticCoverageDas
             </p>
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={refresh} disabled={isRefreshing}>
-          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-          Atualizar
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={refresh} disabled={isRefreshing}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Cache
+          </Button>
+          <Button variant="default" size="sm" onClick={handleRefreshMVs} disabled={isRefreshingMVs}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshingMVs ? 'animate-spin' : ''}`} />
+            Recalcular
+          </Button>
+        </div>
       </div>
 
       {/* Corpus Coverage Cards */}

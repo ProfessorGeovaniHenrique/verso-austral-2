@@ -581,6 +581,13 @@ export type Database = {
             referencedRelation: "corpora"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
+          },
         ]
       }
       batch_seeding_jobs: {
@@ -866,6 +873,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "corpus_annotation_jobs_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
+          },
+          {
             foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
             columns: ["current_artist_id"]
             isOneToOne: false
@@ -885,6 +899,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
+            columns: ["current_artist_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_artist"
+            referencedColumns: ["artist_id"]
           },
           {
             foreignKeyName: "corpus_annotation_jobs_current_artist_job_id_fkey"
@@ -1502,11 +1523,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "enrichment_jobs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
             foreignKeyName: "enrichment_jobs_corpus_id_fkey"
             columns: ["corpus_id"]
             isOneToOne: false
             referencedRelation: "corpora"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "enrichment_jobs_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
           },
         ]
       }
@@ -2529,6 +2564,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "semantic_disambiguation_cache_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
             foreignKeyName: "semantic_disambiguation_cache_song_id_fkey"
             columns: ["song_id"]
             isOneToOne: false
@@ -3044,11 +3086,25 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_artist"
+            referencedColumns: ["artist_id"]
+          },
+          {
             foreignKeyName: "songs_corpus_id_fkey"
             columns: ["corpus_id"]
             isOneToOne: false
             referencedRelation: "corpora"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "songs_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
           },
           {
             foreignKeyName: "songs_upload_id_fkey"
@@ -3462,6 +3518,13 @@ export type Database = {
             referencedRelation: "corpora"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
+          },
         ]
       }
       artist_stats_secure: {
@@ -3486,7 +3549,69 @@ export type Database = {
             referencedRelation: "corpora"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
+          },
         ]
+      }
+      semantic_coverage_by_artist: {
+        Row: {
+          annotated_songs: number | null
+          annotated_words: number | null
+          artist_id: string | null
+          artist_name: string | null
+          avg_confidence: number | null
+          corpus_id: string | null
+          corpus_name: string | null
+          coverage_percent: number | null
+          n2_plus_count: number | null
+          nc_count: number | null
+          total_songs: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "semantic_coverage_by_corpus"
+            referencedColumns: ["corpus_id"]
+          },
+        ]
+      }
+      semantic_coverage_by_corpus: {
+        Row: {
+          annotated_songs: number | null
+          avg_confidence: number | null
+          corpus_id: string | null
+          corpus_name: string | null
+          coverage_percent: number | null
+          total_songs: number | null
+          total_words: number | null
+          unique_words: number | null
+        }
+        Relationships: []
+      }
+      semantic_quality_metrics: {
+        Row: {
+          avg_confidence: number | null
+          high_confidence_percent: number | null
+          n1_only_count: number | null
+          n2_plus_count: number | null
+          nc_count: number | null
+          total_cached_words: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
@@ -3610,6 +3735,7 @@ export type Database = {
         Returns: boolean
       }
       normalize_text: { Args: { "": string }; Returns: string }
+      refresh_semantic_coverage_mvs: { Args: never; Returns: undefined }
       truncate_gutenberg_table: { Args: never; Returns: undefined }
       unaccent: { Args: { "": string }; Returns: string }
       verify_invite_token: {
