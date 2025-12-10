@@ -27,6 +27,7 @@ export { useCatalogExtendedStats } from './useCatalogExtendedStats';
 export { useArtistSongs } from './useArtistSongs';
 export { useDeduplication } from './useDeduplication';
 export { useEnrichment } from './useEnrichment';
+export { useGlobalEnrichmentStats } from './useGlobalEnrichmentStats';
 
 // Analysis
 export { useBasicToolsAnalysis } from './useBasicToolsAnalysis';

@@ -7,3 +7,4 @@ export * from './CatalogSearchAutocomplete';
 export * from './CatalogBreadcrumb';
 export { TabActiveJobs } from './TabActiveJobs';
 export { TabCoverageAnalysis } from './TabCoverageAnalysis';
+export * from './GlobalEnrichmentProgress';

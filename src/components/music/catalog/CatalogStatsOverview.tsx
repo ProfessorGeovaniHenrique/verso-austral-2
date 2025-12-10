@@ -1,6 +1,6 @@
 /**
  * CatalogStatsOverview - Card de resumo para página inicial do catálogo
- * Sprint 5 - Adicionado na página principal do catálogo
+ * Sprint 5 + AUD-P1: Adicionado GlobalEnrichmentProgress com Collapsible
  */
 
 import { useCatalogExtendedStats, CorpusBreakdown } from '@/hooks/useCatalogExtendedStats';
@@ -8,13 +8,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Music, Users, FileText, Youtube, PenTool, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Music, Users, FileText, Youtube, PenTool, CheckCircle, AlertCircle, Clock, ChevronDown, Rocket } from 'lucide-react';
+import { useState } from 'react';
+import { GlobalEnrichmentProgress } from './GlobalEnrichmentProgress';
 
 interface CatalogStatsOverviewProps {
   compact?: boolean;
 }
 
 export function CatalogStatsOverview({ compact = false }: CatalogStatsOverviewProps) {
+  const [enrichmentOpen, setEnrichmentOpen] = useState(false);
   const { data: stats, isLoading } = useCatalogExtendedStats();
 
   if (isLoading) {
@@ -95,6 +99,25 @@ export function CatalogStatsOverview({ compact = false }: CatalogStatsOverviewPr
             </span>
           </div>
         </div>
+
+        {/* Sprint AUD-P1: Collapsible de Gerenciamento de Enriquecimento */}
+        <Collapsible open={enrichmentOpen} onOpenChange={setEnrichmentOpen}>
+          <CollapsibleTrigger className="flex items-center justify-between w-full p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors">
+            <div className="flex items-center gap-2">
+              <Rocket className="h-4 w-4 text-primary" />
+              <span className="font-medium text-sm">Gerenciar Enriquecimento</span>
+              {enrichedPercentage < 50 && (
+                <Badge variant="destructive" className="text-xs">
+                  {(100 - enrichedPercentage).toFixed(0)}% pendente
+                </Badge>
+              )}
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${enrichmentOpen ? 'rotate-180' : ''}`} />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-4">
+            <GlobalEnrichmentProgress showDetails={true} />
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Breakdown por Corpus */}
         {stats.corpusBreakdown.length > 0 && (
