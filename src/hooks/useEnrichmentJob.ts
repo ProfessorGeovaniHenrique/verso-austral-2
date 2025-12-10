@@ -5,6 +5,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { createLogger } from '@/lib/loggerFactory';
+
+const log = createLogger('useEnrichmentJob');
 
 export type EnrichmentJobType = 'metadata' | 'youtube' | 'lyrics' | 'full';
 export type EnrichmentScope = 'all' | 'artist' | 'corpus' | 'selection' | 'letter';
@@ -82,7 +85,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
       const { data, error } = await query;
 
       if (error) {
-        console.error('[useEnrichmentJob] Erro buscando job:', error);
+        log.error('Error fetching job', error);
         return;
       }
 
@@ -143,7 +146,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
 
       if (error) {
         toast.error('Erro ao iniciar job de enriquecimento');
-        console.error('[useEnrichmentJob] Erro iniciando job:', error);
+        log.error('Error starting job', error);
         return null;
       }
 
@@ -219,7 +222,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
 
       if (error) {
         toast.error('Erro ao forçar retomada do job');
-        console.error('[useEnrichmentJob] Erro forçando retomada:', error);
+        log.error('Error forcing resume', error);
         return;
       }
 
@@ -366,7 +369,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
           table: 'enrichment_jobs',
         },
         (payload) => {
-          console.log('[useEnrichmentJob] Realtime update:', payload);
+          log.debug('Realtime update', { eventType: payload.eventType });
           
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const job = payload.new as EnrichmentJob;
@@ -456,7 +459,7 @@ export function useEnrichmentJobsList() {
         .limit(50);
 
       if (error) {
-        console.error('[useEnrichmentJobsList] Erro:', error);
+        log.error('Error fetching jobs list', error);
         return;
       }
 

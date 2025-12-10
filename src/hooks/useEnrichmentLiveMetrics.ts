@@ -5,7 +5,9 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { createLogger } from '@/lib/loggerFactory';
 
+const log = createLogger('useEnrichmentLiveMetrics');
 export interface EnrichmentLiveMetrics {
   // Métricas de progresso
   songsUpdatedLastMinute: number;
@@ -86,7 +88,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
         .limit(20);
       
       if (recentError) {
-        console.error('[useEnrichmentLiveMetrics] Erro buscando atualizações:', recentError);
+        log.error('Error fetching recent updates', recentError);
         return;
       }
       
@@ -162,7 +164,7 @@ export function useEnrichmentLiveMetrics(options: UseEnrichmentLiveMetricsOption
       });
       
     } catch (err) {
-      console.error('[useEnrichmentLiveMetrics] Erro:', err);
+      log.error('Error in fetchMetrics', err as Error);
     } finally {
       setIsLoading(false);
     }

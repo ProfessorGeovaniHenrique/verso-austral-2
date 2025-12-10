@@ -6,7 +6,7 @@ import { Activity, Database, AlertTriangle, TrendingUp, TestTube, BookOpen, Load
 import { useSemanticPipelineStats } from '@/hooks/useSemanticPipelineStats';
 import { SemanticDomainChart } from '@/components/admin/SemanticDomainChart';
 import { AnnotationJobsTable } from '@/components/admin/AnnotationJobsTable';
-import { NCWordsPanel } from '@/components/admin/NCWordsPanel';
+import { NCCurationPanel } from '@/components/admin/NCCurationPanel';
 import { NCWordCorrectionTool } from '@/components/admin/NCWordCorrectionTool';
 import { BatchSeedingControl } from '@/components/admin/BatchSeedingControl';
 import { DuplicateMonitoringCard } from '@/components/admin/DuplicateMonitoringCard';
@@ -227,7 +227,7 @@ export default function AdminSemanticPipeline() {
       <DuplicateMonitoringCard />
 
       {/* NC Words Panel */}
-      <NCWordsPanel />
+      <NCCurationPanel />
 
       {/* NC Word Correction Tool */}
       <NCWordCorrectionTool />
