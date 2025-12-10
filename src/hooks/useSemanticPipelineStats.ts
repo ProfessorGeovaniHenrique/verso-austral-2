@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { parseMVStats, parseActiveJobs, type ActiveJob } from '@/lib/schemas/pipelineStatsSchema';
 
 export interface PipelineStats {
   cacheStats: {
@@ -22,34 +23,7 @@ export interface PipelineStats {
     count: number;
     percentage: number;
   }>;
-  activeJobs: Array<{
-    id: string;
-    artist_name: string;
-    status: string;
-    processed_words: number;
-    total_words: number;
-    progress: number;
-    tempo_inicio: string;
-    tempo_fim: string | null;
-    erro_mensagem: string | null;
-    last_chunk_at: string | null;
-    chunks_processed: number | null;
-  }>;
-}
-
-interface MVStats {
-  total_words: number;
-  unique_tagsets: number;
-  nc_words: number;
-  avg_confidence: number;
-  total_entries: number;
-  gemini_percentage: number;
-  rule_based_percentage: number;
-  pos_based_percentage: number;
-  words_with_insignias: number;
-  polysemous_words: number;
-  lexicon_entries: number;
-  domain_distribution: Array<{ tagset: string; count: number }> | null;
+  activeJobs: Array<ActiveJob & { progress: number }>;
 }
 
 export function useSemanticPipelineStats() {
@@ -64,36 +38,15 @@ export function useSemanticPipelineStats() {
 
       if (mvError) throw mvError;
 
-      // Parse domain_distribution from JSONB (comes as Json type from Supabase)
-      const rawDomainDist = mvData?.domain_distribution;
-      const parsedDomainDist: Array<{ tagset: string; count: number }> = 
-        Array.isArray(rawDomainDist) 
-          ? (rawDomainDist as Array<{ tagset: string; count: number }>)
-          : [];
+      // Parse and validate with Zod schema (graceful fallback on validation error)
+      const stats = parseMVStats(mvData);
 
-      // Default values if MV is empty
-      const stats: MVStats = {
-        total_words: mvData?.total_words ?? 0,
-        unique_tagsets: mvData?.unique_tagsets ?? 0,
-        nc_words: mvData?.nc_words ?? 0,
-        avg_confidence: mvData?.avg_confidence ?? 0,
-        total_entries: mvData?.total_entries ?? 0,
-        gemini_percentage: mvData?.gemini_percentage ?? 0,
-        rule_based_percentage: mvData?.rule_based_percentage ?? 0,
-        pos_based_percentage: mvData?.pos_based_percentage ?? 0,
-        words_with_insignias: mvData?.words_with_insignias ?? 0,
-        polysemous_words: mvData?.polysemous_words ?? 0,
-        lexicon_entries: mvData?.lexicon_entries ?? 0,
-        domain_distribution: parsedDomainDist
-      };
-
-      // 2. Parse domain distribution from JSONB
-      const domainDistribution = (stats.domain_distribution || []).map(d => ({
+      // 2. Calculate domain distribution percentages with division guard
+      const totalEntries = stats.lexicon_entries;
+      const domainDistribution = stats.domain_distribution.map(d => ({
         tagset: d.tagset,
         count: d.count,
-        percentage: stats.total_entries > 0 
-          ? (d.count / stats.total_entries) * 100 
-          : 0
+        percentage: totalEntries > 0 ? (d.count / totalEntries) * 100 : 0
       }));
 
       // 3. Fetch active jobs (small query, max 10 rows)
@@ -106,7 +59,10 @@ export function useSemanticPipelineStats() {
 
       if (jobsError) throw jobsError;
 
-      const activeJobs = (jobsData || []).map(job => ({
+      // Validate jobs with Zod schema
+      const validatedJobs = parseActiveJobs(jobsData);
+      
+      const activeJobs = validatedJobs.map(job => ({
         ...job,
         progress: job.total_words > 0 ? (job.processed_words / job.total_words) * 100 : 0
       }));
