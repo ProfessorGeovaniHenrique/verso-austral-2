@@ -3683,6 +3683,23 @@ export type Database = {
         }
         Relationships: []
       }
+      semantic_pipeline_stats_mv: {
+        Row: {
+          avg_confidence: number | null
+          domain_distribution: Json | null
+          gemini_percentage: number | null
+          lexicon_entries: number | null
+          nc_words: number | null
+          polysemous_words: number | null
+          pos_based_percentage: number | null
+          rule_based_percentage: number | null
+          total_entries: number | null
+          total_words: number | null
+          unique_tagsets: number | null
+          words_with_insignias: number | null
+        }
+        Relationships: []
+      }
       semantic_quality_metrics: {
         Row: {
           avg_confidence: number | null
@@ -3818,6 +3835,7 @@ export type Database = {
       normalize_text: { Args: { "": string }; Returns: string }
       refresh_enrichment_throughput_mv: { Args: never; Returns: undefined }
       refresh_semantic_coverage_mvs: { Args: never; Returns: undefined }
+      refresh_semantic_pipeline_stats_mv: { Args: never; Returns: undefined }
       truncate_gutenberg_table: { Args: never; Returns: undefined }
       unaccent: { Args: { "": string }; Returns: string }
       verify_invite_token: {
