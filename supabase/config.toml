@@ -1,5 +1,8 @@
 project_id = "kywmhuubbsvclkorxrse"
 
+[functions.orchestrate-corpus-enrichment]
+verify_jwt = false
+
 [functions.annotate-single-song]
 verify_jwt = false
 
