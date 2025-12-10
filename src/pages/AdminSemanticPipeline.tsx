@@ -13,6 +13,9 @@ import { DuplicateMonitoringCard } from '@/components/admin/DuplicateMonitoringC
 import { PipelineTestInterface } from '@/components/admin/PipelineTestInterface';
 import { CulturalInsigniaCurationPanel } from '@/components/admin/CulturalInsigniaCurationPanel';
 import { SectionErrorBoundary } from '@/components/admin/SectionErrorBoundary';
+import { MetricCardWithTooltip } from '@/components/admin/MetricCardWithTooltip';
+import { CollapsibleSection } from '@/components/admin/CollapsibleSection';
+import { PIPELINE_METRIC_DEFINITIONS } from '@/lib/pipelineMetricDefinitions';
 
 // Lazy load heavy component
 const SemanticLexiconPanel = lazy(() => import('@/components/admin/SemanticLexiconPanel').then(m => ({ default: m.SemanticLexiconPanel })));
@@ -59,6 +62,7 @@ export default function AdminSemanticPipeline() {
   };
 
   const systemStatus = getSystemStatus();
+  const defs = PIPELINE_METRIC_DEFINITIONS;
 
   return (
     <div className="min-h-screen bg-background p-6 space-y-6">
@@ -98,208 +102,199 @@ export default function AdminSemanticPipeline() {
 
         <TabsContent value="dashboard" className="space-y-6 mt-6">
 
-          {/* Main Stats Grid - Wrapped */}
+          {/* Main Stats Grid - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Estatísticas Principais" 
             sectionId="stats-grid"
             severity="high"
             fallbackHeight="min-h-[180px]"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">Cache Coverage</h2>
-                  <Database className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.cacheStats.totalWords.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    palavras únicas no cache
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats.cacheStats.uniqueTagsets} domínios semânticos
-                  </p>
-                </CardContent>
-              </Card>
+            <CollapsibleSection
+              storageKey="pipeline-stats"
+              title="Estatísticas Principais"
+              icon={Database}
+              defaultOpen={true}
+              badge={{ label: `${stats.cacheStats.totalWords.toLocaleString()} palavras`, variant: 'secondary' }}
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <MetricCardWithTooltip
+                  title={defs.cacheStats.totalWords.label}
+                  value={stats.cacheStats.totalWords}
+                  subtitle={`${stats.cacheStats.uniqueTagsets} domínios semânticos`}
+                  tooltip={defs.cacheStats.totalWords.tooltip}
+                  icon={Database}
+                />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">Semantic Lexicon</h2>
-                  <Database className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.semanticLexicon.totalEntries.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    entradas pré-classificadas
-                  </p>
-                  <Badge 
-                    variant={stats.semanticLexicon.status === 'empty' ? 'destructive' : 'secondary'}
-                    className="mt-2"
-                  >
-                    {stats.semanticLexicon.status === 'empty' ? '⚠️ Vazio' :
-                     stats.semanticLexicon.status === 'partial' ? '🟡 Parcial' : '✅ Completo'}
-                  </Badge>
-                </CardContent>
-              </Card>
+                <MetricCardWithTooltip
+                  title={defs.semanticLexicon.totalEntries.label}
+                  value={stats.semanticLexicon.totalEntries}
+                  subtitle="entradas pré-classificadas"
+                  tooltip={defs.semanticLexicon.totalEntries.tooltip}
+                  icon={Database}
+                  badge={{
+                    label: stats.semanticLexicon.status === 'empty' ? '⚠️ Vazio' :
+                           stats.semanticLexicon.status === 'partial' ? '🟡 Parcial' : '✅ Completo',
+                    variant: stats.semanticLexicon.status === 'empty' ? 'destructive' : 'secondary'
+                  }}
+                />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">NC Words</h2>
-                  <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-destructive">
-                    {stats.cacheStats.ncWords.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    palavras não classificadas
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stats.cacheStats.totalWords > 0 
-                      ? ((stats.cacheStats.ncWords / stats.cacheStats.totalWords) * 100).toFixed(1)
-                      : '0.0'}% do cache
-                  </p>
-                </CardContent>
-              </Card>
+                <MetricCardWithTooltip
+                  title={defs.cacheStats.ncWords.label}
+                  value={stats.cacheStats.ncWords}
+                  subtitle={`${stats.cacheStats.totalWords > 0 
+                    ? ((stats.cacheStats.ncWords / stats.cacheStats.totalWords) * 100).toFixed(1)
+                    : '0.0'}% do cache`}
+                  tooltip={defs.cacheStats.ncWords.tooltip}
+                  icon={AlertTriangle}
+                  iconClassName="text-destructive"
+                  valueClassName="text-destructive"
+                />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">Confidence</h2>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {(stats.cacheStats.avgConfidence * 100).toFixed(1)}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    confiança média global
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Gemini: {stats.cacheStats.geminiPercentage.toFixed(1)}% | 
-                    POS: {stats.cacheStats.posBasedPercentage.toFixed(1)}% |
-                    Rules: {stats.cacheStats.ruleBasedPercentage.toFixed(1)}%
-                  </p>
-                </CardContent>
-              </Card>
+                <MetricCardWithTooltip
+                  title={defs.cacheStats.avgConfidence.label}
+                  value={`${(stats.cacheStats.avgConfidence * 100).toFixed(1)}%`}
+                  subtitle={`Gemini: ${stats.cacheStats.geminiPercentage.toFixed(1)}% | POS: ${stats.cacheStats.posBasedPercentage.toFixed(1)}% | Rules: ${stats.cacheStats.ruleBasedPercentage.toFixed(1)}%`}
+                  tooltip={defs.cacheStats.avgConfidence.tooltip}
+                  icon={TrendingUp}
+                />
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">Léxico Semântico</h2>
-                  <Activity className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.semanticLexicon.totalEntries.toLocaleString()}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    entradas no léxico
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Status: {stats.semanticLexicon.status === 'complete' ? '✅ Completo' : 
-                             stats.semanticLexicon.status === 'partial' ? '🔄 Parcial' : '❌ Vazio'}
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <h2 className="text-sm font-medium tracking-tight">Cultural Insignias</h2>
-                  <Activity className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.cacheStats.wordsWithInsignias || 0}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    palavras com marcadores culturais
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Polissêmicas: {stats.cacheStats.polysemousWords || 0}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <MetricCardWithTooltip
+                  title={defs.cacheStats.wordsWithInsignias.label}
+                  value={stats.cacheStats.wordsWithInsignias || 0}
+                  subtitle={`Polissêmicas: ${stats.cacheStats.polysemousWords || 0}`}
+                  tooltip={defs.cacheStats.wordsWithInsignias.tooltip}
+                  icon={Activity}
+                />
+              </div>
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* Active Jobs - Wrapped */}
+          {/* Active Jobs - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Jobs de Anotação" 
             sectionId="annotation-jobs"
             severity="high"
             fallbackHeight="min-h-[300px]"
           >
-            <AnnotationJobsTable jobs={stats.activeJobs} onRefresh={refetch} />
+            <CollapsibleSection
+              storageKey="pipeline-jobs"
+              title="Jobs de Anotação"
+              icon={Activity}
+              defaultOpen={true}
+              badge={{ label: `${stats.activeJobs.length} ativos`, variant: stats.activeJobs.length > 0 ? 'default' : 'secondary' }}
+            >
+              <AnnotationJobsTable jobs={stats.activeJobs} onRefresh={refetch} />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* Domain Distribution - Wrapped */}
+          {/* Domain Distribution - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Distribuição de Domínios" 
             sectionId="domain-chart"
             severity="medium"
             fallbackHeight="min-h-[400px]"
           >
-            <SemanticDomainChart data={stats.domainDistribution} />
+            <CollapsibleSection
+              storageKey="pipeline-chart"
+              title="Distribuição de Domínios"
+              description="Visualização da distribuição de classificações semânticas"
+              defaultOpen={false}
+            >
+              <SemanticDomainChart data={stats.domainDistribution} />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* Batch Seeding Control - Wrapped */}
+          {/* Batch Seeding Control - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Batch Seeding" 
             sectionId="batch-seeding"
             severity="medium"
             fallbackHeight="min-h-[200px]"
           >
-            <BatchSeedingControl 
-              semanticLexiconCount={stats.semanticLexicon.totalEntries}
-              status={stats.semanticLexicon.status}
-            />
+            <CollapsibleSection
+              storageKey="pipeline-seeding"
+              title="Batch Seeding - Léxico Semântico"
+              icon={Database}
+              defaultOpen={false}
+              badge={{ 
+                label: stats.semanticLexicon.status === 'empty' ? '⚠️ Vazio' : 
+                       stats.semanticLexicon.status === 'partial' ? '🟡 Parcial' : '✅ Completo',
+                variant: stats.semanticLexicon.status === 'empty' ? 'destructive' : 'secondary'
+              }}
+            >
+              <BatchSeedingControl 
+                semanticLexiconCount={stats.semanticLexicon.totalEntries}
+                status={stats.semanticLexicon.status}
+              />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* Duplicate Monitoring - Wrapped */}
+          {/* Duplicate Monitoring - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Monitoramento de Duplicatas" 
             sectionId="duplicate-monitoring"
             severity="low"
             fallbackHeight="min-h-[150px]"
           >
-            <DuplicateMonitoringCard />
+            <CollapsibleSection
+              storageKey="pipeline-duplicates"
+              title="Monitoramento de Duplicatas"
+              description="Acompanhe duplicatas no cache de classificação"
+              defaultOpen={false}
+            >
+              <DuplicateMonitoringCard />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* NC Words Panel - Wrapped */}
+          {/* NC Words Panel - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Curadoria NC" 
             sectionId="nc-curation"
             severity="high"
             fallbackHeight="min-h-[400px]"
           >
-            <NCCurationPanel />
+            <CollapsibleSection
+              storageKey="pipeline-nc"
+              title="Curadoria de Palavras NC"
+              icon={AlertTriangle}
+              defaultOpen={true}
+              badge={{ label: `${stats.cacheStats.ncWords} NC`, variant: stats.cacheStats.ncWords > 100 ? 'destructive' : 'secondary' }}
+            >
+              <NCCurationPanel />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* NC Word Correction Tool - Wrapped */}
+          {/* NC Word Correction Tool - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Correção de Palavras NC" 
             sectionId="nc-correction"
             severity="medium"
             fallbackHeight="min-h-[200px]"
           >
-            <NCWordCorrectionTool />
+            <CollapsibleSection
+              storageKey="pipeline-nc-correction"
+              title="Ferramenta de Correção NC"
+              description="Corrigir palavras concatenadas ou mal formatadas"
+              defaultOpen={false}
+            >
+              <NCWordCorrectionTool />
+            </CollapsibleSection>
           </SectionErrorBoundary>
 
-          {/* System Health Summary - Wrapped */}
+          {/* System Health Summary - Wrapped with Collapsible */}
           <SectionErrorBoundary 
             sectionName="Saúde do Sistema" 
             sectionId="system-health"
             severity="low"
             fallbackHeight="min-h-[200px]"
           >
-            <Card>
-              <CardHeader>
-                <h2 className="text-2xl font-semibold leading-none tracking-tight">Resumo de Saúde do Sistema</h2>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <CollapsibleSection
+              storageKey="pipeline-health"
+              title="Resumo de Saúde do Sistema"
+              badge={{ label: systemStatus.label, variant: systemStatus.variant }}
+              defaultOpen={false}
+            >
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Status Geral</span>
                   <Badge variant={systemStatus.variant}>{systemStatus.label}</Badge>
@@ -329,8 +324,8 @@ export default function AdminSemanticPipeline() {
                     {stats.cacheStats.geminiPercentage.toFixed(1)}%
                   </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </CollapsibleSection>
           </SectionErrorBoundary>
         </TabsContent>
 
