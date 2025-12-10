@@ -480,17 +480,22 @@ function applyContextualRules(palavra: string, lema?: string, pos?: string): Sem
     return null;
   }
   
-  // Regra 1: Sentimentos específicos (N2)
+  // Regra 1: Sentimentos específicos (N2) - CÓDIGOS ATUALIZADOS
   const sentimentosMap: Record<string, { codigo: string; justificativa: string }> = {
-    'saudade': { codigo: 'SE.SA', justificativa: 'Saudade específica (sentimento nostálgico)' },
-    'amor': { codigo: 'SE.AM', justificativa: 'Sentimento de amor/afeto' },
-    'paixão': { codigo: 'SE.AM', justificativa: 'Sentimento de amor/paixão' },
-    'alegria': { codigo: 'SE.PO', justificativa: 'Sentimento positivo' },
-    'felicidade': { codigo: 'SE.PO', justificativa: 'Sentimento positivo' },
-    'dor': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
-    'tristeza': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
-    'medo': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
-    'raiva': { codigo: 'SE.NE', justificativa: 'Sentimento negativo' },
+    'saudade': { codigo: 'SE.TRI', justificativa: 'Sentimento de saudade/nostalgia (tristeza)' },
+    'nostalgia': { codigo: 'SE.TRI', justificativa: 'Sentimento nostálgico (tristeza)' },
+    'amor': { codigo: 'SE.AMO', justificativa: 'Sentimento de amor/afeto' },
+    'paixão': { codigo: 'SE.AMO', justificativa: 'Sentimento de amor/paixão' },
+    'carinho': { codigo: 'SE.AMO', justificativa: 'Sentimento de carinho/afeto' },
+    'alegria': { codigo: 'SE.ALE', justificativa: 'Sentimento de alegria (positivo)' },
+    'felicidade': { codigo: 'SE.ALE', justificativa: 'Sentimento de felicidade (positivo)' },
+    'esperança': { codigo: 'SE.ALE', justificativa: 'Sentimento de esperança (positivo)' },
+    'dor': { codigo: 'SE.TRI', justificativa: 'Sentimento de dor emocional (tristeza)' },
+    'tristeza': { codigo: 'SE.TRI', justificativa: 'Sentimento de tristeza' },
+    'medo': { codigo: 'SE.MED', justificativa: 'Sentimento de medo' },
+    'temor': { codigo: 'SE.MED', justificativa: 'Sentimento de temor/receio' },
+    'raiva': { codigo: 'SE.RAI', justificativa: 'Sentimento de raiva/ira' },
+    'ódio': { codigo: 'SE.RAI', justificativa: 'Sentimento de ódio' },
     'verso': { codigo: 'CC.ART', justificativa: 'Arte poética' },
     'sonho': { codigo: 'AB.EXI', justificativa: 'Conceito existencial' },
   };
@@ -504,24 +509,37 @@ function applyContextualRules(palavra: string, lema?: string, pos?: string): Sem
     };
   }
 
-  // Regra 2: Natureza específica (N2)
+  // Regra 2: Natureza específica (N2) - CÓDIGOS ATUALIZADOS
   const naturezaMap: Record<string, { codigo: string; justificativa: string }> = {
-    'sol': { codigo: 'NA.CLI', justificativa: 'Elemento climático' },
-    'lua': { codigo: 'NA.CLI', justificativa: 'Elemento celestial' },
-    'estrela': { codigo: 'NA.CLI', justificativa: 'Elemento celestial' },
-    'céu': { codigo: 'NA.CLI', justificativa: 'Elemento climático' },
-    'chuva': { codigo: 'NA.CLI', justificativa: 'Fenômeno climático' },
-    'vento': { codigo: 'NA.CLI', justificativa: 'Fenômeno climático' },
-    'campo': { codigo: 'NA.GEO', justificativa: 'Geografia/paisagem' },
-    'rio': { codigo: 'NA.GEO', justificativa: 'Geografia/hidrografia' },
-    'pampa': { codigo: 'NA.GEO', justificativa: 'Geografia regional' },
-    'coxilha': { codigo: 'NA.GEO', justificativa: 'Geografia regional gaúcha' },
-    'várzea': { codigo: 'NA.GEO', justificativa: 'Geografia/topografia' },
-    'árvore': { codigo: 'NA.FLO', justificativa: 'Flora' },
-    'flor': { codigo: 'NA.FLO', justificativa: 'Flora' },
-    'cavalo': { codigo: 'NA.FAU', justificativa: 'Fauna doméstica' },
-    'gado': { codigo: 'NA.FAU', justificativa: 'Fauna doméstica' },
-    'pássaro': { codigo: 'NA.FAU', justificativa: 'Fauna' },
+    // Fenômenos Naturais (NA.FN) e Elementos Celestes (NA.EC)
+    'sol': { codigo: 'NA.EC', justificativa: 'Elemento celeste' },
+    'lua': { codigo: 'NA.EC', justificativa: 'Elemento celeste' },
+    'estrela': { codigo: 'NA.EC', justificativa: 'Elemento celeste' },
+    'céu': { codigo: 'NA.EC', justificativa: 'Elemento celeste' },
+    'chuva': { codigo: 'NA.FN', justificativa: 'Fenômeno natural' },
+    'vento': { codigo: 'NA.FN', justificativa: 'Fenômeno natural' },
+    'tempestade': { codigo: 'NA.FN', justificativa: 'Fenômeno natural' },
+    'neve': { codigo: 'NA.FN', justificativa: 'Fenômeno natural' },
+    // Geografia (NA.GE)
+    'campo': { codigo: 'NA.GE', justificativa: 'Geografia/paisagem' },
+    'rio': { codigo: 'NA.GE', justificativa: 'Geografia/hidrografia' },
+    'pampa': { codigo: 'NA.GE', justificativa: 'Geografia regional' },
+    'coxilha': { codigo: 'NA.GE', justificativa: 'Geografia regional gaúcha' },
+    'várzea': { codigo: 'NA.GE', justificativa: 'Geografia/topografia' },
+    'serra': { codigo: 'NA.GE', justificativa: 'Geografia/relevo' },
+    'montanha': { codigo: 'NA.GE', justificativa: 'Geografia/relevo' },
+    // Flora (NA.FL)
+    'árvore': { codigo: 'NA.FL', justificativa: 'Flora' },
+    'flor': { codigo: 'NA.FL', justificativa: 'Flora' },
+    'planta': { codigo: 'NA.FL', justificativa: 'Flora' },
+    'mato': { codigo: 'NA.FL', justificativa: 'Flora' },
+    'erva': { codigo: 'NA.FL', justificativa: 'Flora' },
+    // Fauna (NA.FA)
+    'cavalo': { codigo: 'NA.FA', justificativa: 'Fauna doméstica' },
+    'gado': { codigo: 'NA.FA', justificativa: 'Fauna doméstica' },
+    'pássaro': { codigo: 'NA.FA', justificativa: 'Fauna' },
+    'boi': { codigo: 'NA.FA', justificativa: 'Fauna doméstica' },
+    'vaca': { codigo: 'NA.FA', justificativa: 'Fauna doméstica' },
   };
   if (lemaNorm in naturezaMap) {
     const mapping = naturezaMap[lemaNorm];
@@ -665,7 +683,7 @@ async function batchClassifyWithGemini(
 - SH (Indivíduo): pessoa, corpo humano, características humanas, identidade
 - SP (Sociedade e Organização Política): governo, lei, relações sociais, política
 
-**SUBDOMÍNIOS IMPORTANTES N2 (USE ESTES PREFERENCIALMENTE):**
+**SUBDOMÍNIOS IMPORTANTES N2 (USE ESTES PREFERENCIALMENTE - CÓDIGOS ATUALIZADOS):**
 - AC.MD (Movimento): andar, correr, pular, sentar, virar, cavalgar
 - AC.MI (Manipulação): pegar, segurar, empurrar, amarrar, abrir, fechar
 - AC.TR (Transformação): construir, quebrar, cortar, limpar, escrever, criar
@@ -684,19 +702,20 @@ async function batchClassifyWithGemini(
 - CC.EDU (Educação/Aprendizado): estudar, escola, professor, ensinar
 - CC.REL (Religiosidade/Espiritualidade): Deus, fé, alma, reza, igreja
 - CC.COM (Comunicação/Mídia): jornal, mensagem, conversa, notícia
-- NA.FAU (Fauna): cavalo, gado, pássaro, peixe, animal
-- NA.FLO (Flora): árvore, flor, planta, erva, mato
-- NA.GEO (Geografia): campo, pampa, coxilha, rio, várzea, cerro
-- NA.CLI (Clima): sol, lua, chuva, vento, estrela, céu
+- NA.FA (Fauna): cavalo, gado, pássaro, peixe, animal, boi
+- NA.FL (Flora): árvore, flor, planta, erva, mato
+- NA.GE (Geografia): campo, pampa, coxilha, rio, várzea, cerro, serra
+- NA.FN (Fenômenos Naturais): chuva, vento, tempestade, neve, neblina
+- NA.EC (Elementos Celestes): sol, lua, estrela, céu, aurora
 - SB.DOE (Doenças/Condições): gripe, diabetes, febre, dor, ferida
 - SB.TRA (Tratamentos/Cuidados): remédio, cirurgia, hospital, médico, vacina
 - SB.BEM (Bem-Estar/Estilo de Vida): dieta, exercício, higiene, descanso
 - SB.MEN (Saúde Mental): depressão, ansiedade, memória, personalidade
-- SB.05 (Saúde Animal - Veterinária): veterinário, castração animal, doenças animais
-- SE.SA (Saudade): saudade, nostalgia, lembranças
-- SE.AM (Amor): amor, paixão, carinho, afeto
-- SE.PO (Positivos): alegria, felicidade, esperança
-- SE.NE (Negativos): tristeza, dor, medo, raiva
+- SE.ALE (Alegria): alegria, felicidade, esperança, contentamento
+- SE.AMO (Amor): amor, paixão, carinho, afeto
+- SE.TRI (Tristeza/Saudade): tristeza, saudade, nostalgia, melancolia, dor emocional
+- SE.MED (Medo): medo, temor, receio, pavor
+- SE.RAI (Raiva): raiva, ódio, ira, frustração
 - SP.GOV (Governo/Estado): democracia, ministério, imposto, eleição
 - SP.LEI (Lei/Justiça): lei, julgamento, crime, polícia, prisão
 - SP.GUE (Guerra/Conflito): guerra, batalha, atacar, defender

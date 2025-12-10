@@ -25,14 +25,18 @@ interface LexiconRule {
 }
 
 /**
- * Mapeamento de categorias temáticas → Domínios N1
+ * Mapeamento de categorias temáticas → Domínios N1/N2
+ * CÓDIGOS ATUALIZADOS conforme semantic_tagset validado
  */
 const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> = {
-  // Natureza
-  'fauna': { codigo: 'NA', nome: 'Natureza' },
-  'flora': { codigo: 'NA', nome: 'Natureza' },
-  'clima': { codigo: 'NA', nome: 'Natureza' },
-  'geografia_natural': { codigo: 'NA', nome: 'Natureza' },
+  // Natureza - CÓDIGOS ATUALIZADOS
+  'fauna': { codigo: 'NA.FA', nome: 'Fauna' },
+  'flora': { codigo: 'NA.FL', nome: 'Flora' },
+  'clima': { codigo: 'NA.FN', nome: 'Fenômenos Naturais' },
+  'fenomenos_naturais': { codigo: 'NA.FN', nome: 'Fenômenos Naturais' },
+  'elementos_celestes': { codigo: 'NA.EC', nome: 'Elementos Celestes' },
+  'geografia_natural': { codigo: 'NA.GE', nome: 'Geografia e Paisagem' },
+  'geografia': { codigo: 'NA.GE', nome: 'Geografia e Paisagem' },
   
   // Atividades e Práticas - EXPANDIDO
   'lida_campeira': { codigo: 'AP.TRA.RUR', nome: 'Trabalho Rural' },
@@ -40,7 +44,7 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'gastronomia': { codigo: 'AP.ALI', nome: 'Alimentação e Culinária' },
   'transporte': { codigo: 'AP.DES', nome: 'Transporte e Deslocamento' },
   
-  // Ações e Processos (Ações Concretas) - NOVO
+  // Ações e Processos (Ações Concretas)
   'movimento': { codigo: 'AC.MD', nome: 'Movimento e Deslocamento' },
   'locomocao': { codigo: 'AC.MD.LOC', nome: 'Locomoção' },
   'manipulacao': { codigo: 'AC.MI', nome: 'Manipulação e Interação' },
@@ -48,7 +52,7 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'percepcao_ativa': { codigo: 'AC.PS', nome: 'Percepção Sensorial Ativa' },
   'expressao_fisica': { codigo: 'AC.EC', nome: 'Expressão e Comunicação Física' },
   
-  // Cultura e Conhecimento - EXPANDIDO
+  // Cultura e Conhecimento
   'musica_danca': { codigo: 'CC.ART.MUS', nome: 'Música' },
   'literatura': { codigo: 'CC.ART', nome: 'Arte e Expressão Cultural' },
   'poesia': { codigo: 'CC.ART.POE', nome: 'Literatura em Poesia' },
@@ -58,7 +62,16 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'ciencia': { codigo: 'CC.CIT', nome: 'Ciência e Tecnologia' },
   'comunicacao': { codigo: 'CC.COM', nome: 'Comunicação e Mídia' },
   
-  // Abstrações - EXPANDIDO
+  // Sentimentos - CÓDIGOS ATUALIZADOS
+  'sentimentos': { codigo: 'SE', nome: 'Sentimentos e Emoções' },
+  'alegria': { codigo: 'SE.ALE', nome: 'Alegria e Felicidade' },
+  'amor': { codigo: 'SE.AMO', nome: 'Amor e Afeto' },
+  'tristeza': { codigo: 'SE.TRI', nome: 'Tristeza e Saudade' },
+  'saudade': { codigo: 'SE.TRI', nome: 'Tristeza e Saudade' },
+  'medo': { codigo: 'SE.MED', nome: 'Medo e Ansiedade' },
+  'raiva': { codigo: 'SE.RAI', nome: 'Raiva e Frustração' },
+  
+  // Abstrações
   'filosofia': { codigo: 'AB.FIL', nome: 'Conceitos Filosóficos e Éticos' },
   'etica': { codigo: 'AB.FIL.MOR', nome: 'Valores Morais' },
   'politica_abstrata': { codigo: 'AB.SOC', nome: 'Conceitos Sociais e Políticos' },
@@ -71,17 +84,16 @@ const CATEGORY_TO_DOMAIN_MAP: Record<string, { codigo: string; nome: string }> =
   'arreios': { codigo: 'OA', nome: 'Objetos' },
   
   // Estruturas e Lugares
-  'geografia': { codigo: 'EL', nome: 'Estruturas' },
   'construcoes': { codigo: 'EL', nome: 'Estruturas' },
   'locais': { codigo: 'EL', nome: 'Estruturas' },
   
-  // Sociedade e Política - EXPANDIDO
+  // Sociedade e Política
   'politica': { codigo: 'SP.POL', nome: 'Processos Políticos' },
   'social': { codigo: 'SP.EST', nome: 'Estrutura Social' },
   'governo': { codigo: 'SP.GOV', nome: 'Governo e Estado' },
   'familia': { codigo: 'SP.EST', nome: 'Estrutura Social' },
   
-  // Saúde e Bem-Estar - NOVO
+  // Saúde e Bem-Estar
   'saude': { codigo: 'SB', nome: 'Saúde e Bem-Estar' },
   'medicina': { codigo: 'SB.TRA', nome: 'Tratamentos e Cuidados Médicos' },
   'psicologia': { codigo: 'SB.MEN', nome: 'Saúde Mental e Psicologia' },

@@ -51,42 +51,60 @@ serve(async (req) => {
 
     const prompt = `Você é um especialista em análise semântica. Estas palavras foram classificadas em domínios N1 (genéricos). Sua tarefa é especificar qual SUBDOMÍNIO N2 melhor se aplica.
 
-**SUBDOMÍNIOS N2 DISPONÍVEIS:**
-- AC.MD (Movimento): andar, correr, pular, cavalgar
-- AC.MI (Manipulação): pegar, segurar, empurrar, abrir
-- AC.TR (Transformação): construir, quebrar, criar, limpar
-- AC.PS (Percepção): olhar, ver, escutar, cheirar, sentir
-- AC.EC (Expressão): falar, cantar, gritar, sussurrar
-- AP.TRA (Trabalho/Economia): plantar, colher, tropeiro, peão
-- AP.ALI (Alimentação): chimarrão, churrasco, mate, cuia
-- AP.VES (Vestuário): bombacha, bota, poncho, pilcha
-- AP.LAZ (Lazer): festa, fandango, rodeio, dança
-- AP.DES (Transporte): cavalgar, viajar, tropear
-- CC.ART (Arte): poesia, música, verso, canção
-- CC.EDU (Educação): estudar, escola, professor
-- CC.REL (Religiosidade): Deus, fé, reza, alma
-- CC.COM (Comunicação): conversa, mensagem, falar
-- NA.FAU (Fauna): cavalo, gado, pássaro, bagual
-- NA.FLO (Flora): árvore, flor, erva, mato
-- NA.GEO (Geografia): campo, pampa, coxilha, rio, várzea
-- NA.CLI (Clima): sol, lua, chuva, vento, estrela
-- SE.SA (Saudade): saudade, nostalgia, lembrança
-- SE.AM (Amor): amor, paixão, carinho
-- SE.PO (Positivos): alegria, felicidade, esperança
-- SE.NE (Negativos): tristeza, dor, medo, raiva
-- SB.DOE (Doenças): gripe, febre, dor, ferida
-- SB.TRA (Tratamentos): remédio, hospital, médico
-- SB.BEM (Bem-Estar): exercício, dieta, descanso
-- SB.MEN (Saúde Mental): depressão, ansiedade, memória
-- SP.GOV (Governo): democracia, ministério, eleição
-- SP.LEI (Lei/Justiça): lei, crime, polícia, prisão
-- SP.POL (Processos Políticos): voto, protesto, cidadania
-- AB.FIL (Filosofia/Ética): liberdade, justiça, verdade
-- AB.SOC (Social/Político): poder, direito, paz
-- AB.EXI (Existencial): destino, vida, morte, sonho
-- AB.LOG (Lógico): lógica, razão, proporção
+**SUBDOMÍNIOS N2 DISPONÍVEIS (CÓDIGOS ATUALIZADOS):**
 
-**REGRA:** Se nenhum N2 se aplica claramente, retorne o código N1 original. Se N2 se aplica, retorne o código completo (ex: "SE.SA", "NA.FAU").
+**Ações e Processos (AC):**
+- AC.MD (Movimento): andar, correr, pular, cavalgar, caminhar
+- AC.MI (Manipulação): pegar, segurar, empurrar, abrir, fechar
+- AC.TR (Transformação): construir, quebrar, criar, limpar, cortar
+- AC.PS (Percepção): olhar, ver, escutar, cheirar, sentir, provar
+- AC.EC (Expressão): falar, cantar, gritar, sussurrar, acenar
+
+**Atividades e Práticas (AP):**
+- AP.TRA (Trabalho/Economia): plantar, colher, tropeiro, peão, vender
+- AP.ALI (Alimentação): chimarrão, churrasco, mate, cuia, cozinhar
+- AP.VES (Vestuário): bombacha, bota, poncho, pilcha, vestir
+- AP.LAZ (Lazer): festa, fandango, rodeio, dança, futebol
+- AP.DES (Transporte): cavalgar, viajar, tropear, rota
+
+**Cultura e Conhecimento (CC):**
+- CC.ART (Arte): poesia, música, verso, canção, pintura
+- CC.EDU (Educação): estudar, escola, professor, ensinar
+- CC.REL (Religiosidade): Deus, fé, reza, alma, igreja
+- CC.COM (Comunicação): conversa, mensagem, notícia, jornal
+
+**Natureza (NA):**
+- NA.FA (Fauna): cavalo, gado, pássaro, bagual, boi
+- NA.FL (Flora): árvore, flor, erva, mato, planta
+- NA.GE (Geografia): campo, pampa, coxilha, rio, várzea, serra
+- NA.FN (Fenômenos Naturais): chuva, vento, tempestade, neve
+- NA.EC (Elementos Celestes): sol, lua, estrela, céu
+
+**Sentimentos (SE):**
+- SE.ALE (Alegria): alegria, felicidade, esperança, contentamento
+- SE.AMO (Amor): amor, paixão, carinho, afeto
+- SE.TRI (Tristeza): tristeza, saudade, nostalgia, melancolia, dor
+- SE.MED (Medo): medo, temor, receio, pavor
+- SE.RAI (Raiva): raiva, ódio, ira, frustração
+
+**Saúde e Bem-Estar (SB):**
+- SB.DOE (Doenças): gripe, febre, dor física, ferida
+- SB.TRA (Tratamentos): remédio, hospital, médico, cirurgia
+- SB.BEM (Bem-Estar): exercício, dieta, descanso, higiene
+- SB.MEN (Saúde Mental): depressão, ansiedade, memória
+
+**Sociedade e Política (SP):**
+- SP.GOV (Governo): democracia, ministério, eleição, imposto
+- SP.LEI (Lei/Justiça): lei, crime, polícia, prisão, julgamento
+- SP.POL (Processos Políticos): voto, protesto, cidadania
+
+**Abstrações (AB):**
+- AB.FIL (Filosofia/Ética): liberdade, justiça, verdade, virtude
+- AB.SOC (Social/Político): poder, direito, paz, democracia
+- AB.EXI (Existencial): destino, vida, morte, sonho, eternidade
+- AB.LOG (Lógico): lógica, razão, proporção, infinito
+
+**REGRA:** Se nenhum N2 se aplica claramente, retorne o código N1 original. Se N2 se aplica, retorne o código completo (ex: "SE.TRI", "NA.FA").
 
 **PALAVRAS PARA ENRIQUECER:**
 ${palavrasList}
