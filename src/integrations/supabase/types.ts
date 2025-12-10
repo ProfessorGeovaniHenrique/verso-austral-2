@@ -876,6 +876,13 @@ export type Database = {
             foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
             columns: ["current_artist_id"]
             isOneToOne: false
+            referencedRelation: "artist_stats_secure"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "corpus_annotation_jobs_current_artist_id_fkey"
+            columns: ["current_artist_id"]
+            isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
           },
@@ -1478,6 +1485,13 @@ export type Database = {
             columns: ["artist_id"]
             isOneToOne: false
             referencedRelation: "artist_stats_mv"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "enrichment_jobs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
+            referencedRelation: "artist_stats_secure"
             referencedColumns: ["artist_id"]
           },
           {
@@ -2504,6 +2518,13 @@ export type Database = {
             foreignKeyName: "semantic_disambiguation_cache_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
+            referencedRelation: "artist_stats_secure"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "semantic_disambiguation_cache_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
           },
@@ -3012,6 +3033,13 @@ export type Database = {
             foreignKeyName: "songs_artist_id_fkey"
             columns: ["artist_id"]
             isOneToOne: false
+            referencedRelation: "artist_stats_secure"
+            referencedColumns: ["artist_id"]
+          },
+          {
+            foreignKeyName: "songs_artist_id_fkey"
+            columns: ["artist_id"]
+            isOneToOne: false
             referencedRelation: "artists"
             referencedColumns: ["id"]
           },
@@ -3413,6 +3441,30 @@ export type Database = {
     }
     Views: {
       artist_stats_mv: {
+        Row: {
+          artist_id: string | null
+          artist_name: string | null
+          corpus_color: string | null
+          corpus_id: string | null
+          corpus_name: string | null
+          enriched_songs: number | null
+          error_songs: number | null
+          genre: string | null
+          normalized_name: string | null
+          pending_songs: number | null
+          total_songs: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "artists_corpus_id_fkey"
+            columns: ["corpus_id"]
+            isOneToOne: false
+            referencedRelation: "corpora"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      artist_stats_secure: {
         Row: {
           artist_id: string | null
           artist_name: string | null
