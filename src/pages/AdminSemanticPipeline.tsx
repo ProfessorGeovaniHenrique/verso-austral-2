@@ -72,22 +72,22 @@ export default function AdminSemanticPipeline() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="dashboard">
-            <Database className="w-4 h-4 mr-2" />
-            Dashboard
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+          <TabsTrigger value="dashboard" className="gap-1 md:gap-2">
+            <Database className="w-4 h-4" />
+            <span className="hidden sm:inline">Dashboard</span>
           </TabsTrigger>
-          <TabsTrigger value="lexicon">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Léxico Anotado
+          <TabsTrigger value="lexicon" className="gap-1 md:gap-2">
+            <BookOpen className="w-4 h-4" />
+            <span className="hidden sm:inline">Léxico Anotado</span>
           </TabsTrigger>
-          <TabsTrigger value="insignias">
-            <Award className="w-4 h-4 mr-2" />
-            Insígnias Culturais
+          <TabsTrigger value="insignias" className="gap-1 md:gap-2">
+            <Award className="w-4 h-4" />
+            <span className="hidden sm:inline">Insígnias</span>
           </TabsTrigger>
-          <TabsTrigger value="test">
-            <TestTube className="w-4 h-4 mr-2" />
-            Teste de Pipeline
+          <TabsTrigger value="test" className="gap-1 md:gap-2">
+            <TestTube className="w-4 h-4" />
+            <span className="hidden sm:inline">Teste</span>
           </TabsTrigger>
         </TabsList>
 
@@ -148,7 +148,9 @@ export default function AdminSemanticPipeline() {
               palavras não classificadas
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {((stats.cacheStats.ncWords / stats.cacheStats.totalWords) * 100).toFixed(1)}% do cache
+              {stats.cacheStats.totalWords > 0 
+                ? ((stats.cacheStats.ncWords / stats.cacheStats.totalWords) * 100).toFixed(1)
+                : '0.0'}% do cache
             </p>
           </CardContent>
         </Card>
