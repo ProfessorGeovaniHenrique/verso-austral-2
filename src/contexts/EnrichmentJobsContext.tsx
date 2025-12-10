@@ -329,15 +329,46 @@ export function EnrichmentJobsProvider({ children }: { children: React.ReactNode
   const cancelJob = useCallback(async (jobId: string) => {
     setActionLoading(jobId);
     try {
-      const { error } = await supabase
+      // Buscar status atual do job
+      const { data: job, error: fetchError } = await supabase
         .from('enrichment_jobs')
-        .update({ is_cancelling: true })
-        .eq('id', jobId);
+        .select('status')
+        .eq('id', jobId)
+        .single();
       
-      if (error) throw error;
-      toast.info('Cancelamento solicitado');
+      if (fetchError || !job) {
+        throw new Error('Job não encontrado');
+      }
+      
+      // Se job está pausado/pendente/erro, cancelar diretamente
+      // Se está processando, apenas marcar is_cancelling (Edge Function irá processar)
+      if (['pausado', 'pendente', 'erro'].includes(job.status)) {
+        const { error } = await supabase
+          .from('enrichment_jobs')
+          .update({ 
+            status: 'cancelado',
+            tempo_fim: new Date().toISOString(),
+            is_cancelling: false,
+            erro_mensagem: null
+          })
+          .eq('id', jobId);
+        
+        if (error) throw error;
+        toast.success('Job cancelado');
+      } else {
+        // Job está processando - marcar flag para Edge Function processar
+        const { error } = await supabase
+          .from('enrichment_jobs')
+          .update({ is_cancelling: true })
+          .eq('id', jobId);
+        
+        if (error) throw error;
+        toast.info('Cancelamento solicitado (será processado no próximo chunk)');
+      }
+      
       await fetchJobs();
     } catch (err) {
+      log.error('Erro ao cancelar job', err as Error);
       toast.error('Erro ao cancelar job');
     } finally {
       setActionLoading(null);

@@ -117,6 +117,7 @@ export const TabActiveJobs = React.memo(function TabActiveJobs() {
           formattedEta={formattedEta}
           onPause={() => pauseJob(job.id)}
           onResume={() => resumeJob(job)}
+          onCancel={() => cancelJob(job.id)}
           isActionLoading={actionLoading === job.id}
         />
       ))}

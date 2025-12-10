@@ -22,6 +22,7 @@ import {
   Loader2,
   Zap,
   Gauge,
+  X,
 } from 'lucide-react';
 import { useProgressWithETA } from '@/hooks/useProgressWithETA';
 import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
@@ -36,6 +37,7 @@ interface EnrichmentLiveCardOptimizedProps {
   formattedEta: string | null;
   onPause?: () => void;
   onResume?: () => void;
+  onCancel?: () => void;
   isActionLoading?: boolean;
 }
 
@@ -45,6 +47,7 @@ export const EnrichmentLiveCardOptimized = React.memo(function EnrichmentLiveCar
   formattedEta,
   onPause,
   onResume,
+  onCancel,
   isActionLoading,
 }: EnrichmentLiveCardOptimizedProps) {
   const progress = job.total_songs > 0
@@ -125,6 +128,22 @@ export const EnrichmentLiveCardOptimized = React.memo(function EnrichmentLiveCar
                   <Play className="h-4 w-4 mr-1" />
                 )}
                 Retomar
+              </Button>
+            )}
+            
+            {onCancel && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onCancel}
+                disabled={isActionLoading}
+              >
+                {isActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <X className="h-4 w-4 mr-1" />
+                )}
+                Cancelar
               </Button>
             )}
           </div>

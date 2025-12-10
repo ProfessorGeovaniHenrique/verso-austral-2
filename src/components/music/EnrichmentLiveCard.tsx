@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Zap,
   Gauge,
+  X,
 } from 'lucide-react';
 import { useEnrichmentLiveMetrics } from '@/hooks/useEnrichmentLiveMetrics';
 import { EnrichmentJob } from '@/hooks/useEnrichmentJob';
@@ -37,6 +38,7 @@ interface EnrichmentLiveCardProps {
   job: EnrichmentJob;
   onPause?: () => void;
   onResume?: () => void;
+  onCancel?: () => void;
   isActionLoading?: boolean;
 }
 
@@ -45,6 +47,7 @@ export const EnrichmentLiveCard = React.memo(function EnrichmentLiveCard({
   job, 
   onPause, 
   onResume,
+  onCancel,
   isActionLoading 
 }: EnrichmentLiveCardProps) {
   const { metrics, formattedEta, isLoading, refetch } = useEnrichmentLiveMetrics({
@@ -144,6 +147,22 @@ export const EnrichmentLiveCard = React.memo(function EnrichmentLiveCard({
                   <Play className="h-4 w-4 mr-1" />
                 )}
                 Retomar
+              </Button>
+            )}
+            
+            {onCancel && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={onCancel}
+                disabled={isActionLoading}
+              >
+                {isActionLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                ) : (
+                  <X className="h-4 w-4 mr-1" />
+                )}
+                Cancelar
               </Button>
             )}
           </div>
