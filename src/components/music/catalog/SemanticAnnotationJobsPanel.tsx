@@ -2,6 +2,7 @@
  * SemanticAnnotationJobsPanel - Painel de gerenciamento de jobs de anotação semântica
  * 
  * Integra AnnotationJobsTable existente com controles e estatísticas
+ * Exibe tanto jobs de corpus (corpus_annotation_jobs) quanto jobs de artista (semantic_annotation_jobs)
  */
 
 import React, { useState } from 'react';
@@ -18,9 +19,13 @@ import {
   CheckCircle2, 
   AlertCircle,
   Pause,
-  Clock
+  Clock,
+  XCircle,
+  AlertTriangle,
+  Database
 } from 'lucide-react';
 import { useSemanticAnnotationStats } from '@/hooks/useSemanticAnnotationStats';
+import { useCorpusAnnotationJobs } from '@/hooks/useCorpusAnnotationJobs';
 import { AnnotationJobsTable } from '@/components/admin/AnnotationJobsTable';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -44,6 +49,20 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
     refetchInterval: 5000
   });
 
+  const {
+    jobs: corpusJobs,
+    activeJobs: activeCorpusJobs,
+    isLoading: isLoadingCorpusJobs,
+    refetch: refetchCorpusJobs,
+    cancelJob: cancelCorpusJob,
+    isStuck
+  } = useCorpusAnnotationJobs();
+
+  const handleRefresh = () => {
+    refetch();
+    refetchCorpusJobs();
+  };
+
   const handleStartCorpusAnnotation = async () => {
     setIsStartingAnnotation(true);
     const toastId = toast.loading(`Iniciando anotação do corpus ${selectedCorpus}...`);
@@ -62,8 +81,8 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
           try {
             const parsed = JSON.parse(errorContext.body);
             if (parsed.existingJobId) {
-              toast.info(`Já existe um job ativo para ${selectedCorpus}. Aguarde a conclusão.`, { id: toastId });
-              refetch(); // Atualizar lista para mostrar job existente
+              toast.info(`Já existe um job ativo para ${selectedCorpus}. Aguarde a conclusão ou cancele-o.`, { id: toastId });
+              handleRefresh();
               return;
             }
           } catch {
@@ -74,12 +93,19 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
       }
 
       toast.success(`Anotação do corpus ${selectedCorpus} iniciada!`, { id: toastId });
-      refetch();
+      handleRefresh();
     } catch (error: any) {
       console.error('Error starting corpus annotation:', error);
       toast.error(error.message || 'Erro ao iniciar anotação', { id: toastId });
     } finally {
       setIsStartingAnnotation(false);
+    }
+  };
+
+  const handleCancelCorpusJob = async (jobId: string) => {
+    const success = await cancelCorpusJob(jobId);
+    if (success) {
+      refetch(); // Também atualizar stats gerais
     }
   };
 
@@ -104,6 +130,26 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
     ? Math.round((stats.completed / stats.totalJobs) * 100)
     : 0;
 
+  const getStatusBadge = (status: string, stuck: boolean) => {
+    if (stuck) {
+      return <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> Travado</Badge>;
+    }
+    switch (status) {
+      case 'processando':
+        return <Badge variant="default" className="gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Processando</Badge>;
+      case 'pausado':
+        return <Badge variant="secondary" className="gap-1"><Pause className="h-3 w-3" /> Pausado</Badge>;
+      case 'concluido':
+        return <Badge className="gap-1 bg-green-600"><CheckCircle2 className="h-3 w-3" /> Concluído</Badge>;
+      case 'cancelado':
+        return <Badge variant="outline" className="gap-1"><XCircle className="h-3 w-3" /> Cancelado</Badge>;
+      case 'erro':
+        return <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" /> Erro</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header com Controles */}
@@ -120,10 +166,10 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
-            disabled={isRefetching}
+            onClick={handleRefresh}
+            disabled={isRefetching || isLoadingCorpusJobs}
           >
-            {isRefetching ? (
+            {isRefetching || isLoadingCorpusJobs ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
@@ -131,6 +177,87 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
           </Button>
         </div>
       </div>
+
+      {/* Jobs de Corpus Ativos */}
+      {activeCorpusJobs.length > 0 && (
+        <Card className="border-primary/50">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              Jobs de Corpus Ativos
+              <Badge variant="default">{activeCorpusJobs.length}</Badge>
+            </CardTitle>
+            <CardDescription>
+              Jobs processando corpus completo (todos artistas)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {activeCorpusJobs.map(job => {
+              const stuck = isStuck(job);
+              const artistProgress = job.total_artists > 0 
+                ? Math.round((job.processed_artists / job.total_artists) * 100) 
+                : 0;
+              
+              return (
+                <div key={job.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium">{job.corpus_name}</span>
+                      {getStatusBadge(job.status, stuck)}
+                    </div>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleCancelCorpusJob(job.id)}
+                    >
+                      <XCircle className="h-4 w-4 mr-1" />
+                      Cancelar
+                    </Button>
+                  </div>
+
+                  {stuck && (
+                    <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 p-2 rounded">
+                      <AlertTriangle className="h-4 w-4" />
+                      Job travado há mais de 30 minutos sem progresso. Cancele e reinicie.
+                    </div>
+                  )}
+
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Artistas</span>
+                      <span>{job.processed_artists || 0} / {job.total_artists || 0}</span>
+                    </div>
+                    <Progress value={artistProgress} className="h-2" />
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Músicas:</span>{' '}
+                      <span className="font-medium">{job.processed_songs?.toLocaleString() || 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Palavras:</span>{' '}
+                      <span className="font-medium">{job.processed_words?.toLocaleString() || 0}</span>
+                    </div>
+                    {job.current_artist_name && (
+                      <div className="col-span-2">
+                        <span className="text-muted-foreground">Artista atual:</span>{' '}
+                        <span className="font-medium">{job.current_artist_name}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {job.erro_mensagem && (
+                    <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
+                      {job.erro_mensagem}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cards de Estatísticas */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -227,7 +354,7 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
 
             <Button
               onClick={handleStartCorpusAnnotation}
-              disabled={isStartingAnnotation || stats.processing > 0}
+              disabled={isStartingAnnotation || activeCorpusJobs.length > 0}
             >
               {isStartingAnnotation ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -237,17 +364,17 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
               Iniciar Anotação
             </Button>
 
-            {stats.processing > 0 && (
+            {activeCorpusJobs.length > 0 && (
               <Badge variant="secondary" className="gap-1">
                 <Clock className="h-3 w-3" />
-                {stats.processing} job(s) em andamento
+                {activeCorpusJobs.length} job(s) de corpus em andamento
               </Badge>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Tabela de Jobs Ativos */}
+      {/* Tabela de Jobs de Artista Ativos */}
       {isLoading ? (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -256,14 +383,14 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              Jobs Ativos
+              Jobs de Artista Ativos
               <Badge variant="default">{transformedJobs.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <AnnotationJobsTable 
               jobs={transformedJobs} 
-              onRefresh={refetch} 
+              onRefresh={handleRefresh} 
             />
           </CardContent>
         </Card>
@@ -271,7 +398,7 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">
-              Nenhum job de anotação ativo no momento
+              Nenhum job de artista ativo no momento
             </p>
           </CardContent>
         </Card>
