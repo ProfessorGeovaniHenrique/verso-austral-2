@@ -203,3 +203,6 @@ timeout = 240
 
 [functions.detect-anomalies]
 verify_jwt = false
+
+[functions.refresh-semantic-mvs]
+verify_jwt = false

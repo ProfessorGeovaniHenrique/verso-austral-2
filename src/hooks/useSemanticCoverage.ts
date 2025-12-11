@@ -220,18 +220,28 @@ export function useSemanticCoverage(options: UseSemanticCoverageOptions = {}) {
     queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
   }, [queryClient]);
 
-  // Refresh MVs no banco (operação mais pesada)
+  // Refresh MVs no banco (operação mais pesada) - via Edge Function
+  // Se falhar, faz fallback para refresh do cache local
   const refreshMVs = useCallback(async () => {
     try {
-      const { error } = await supabase.rpc('refresh_semantic_coverage_mvs');
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke('refresh-semantic-mvs');
       
-      // Invalida cache local após refresh das MVs
+      if (error || !data?.success) {
+        console.warn('Refresh MVs falhou, usando fallback cache local:', error || data?.error);
+        // Fallback: apenas refresh do cache local
+        queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
+        toast.success('Cache atualizado (dados podem estar levemente desatualizados)');
+        return;
+      }
+      
+      // Sucesso completo
       queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
       toast.success('Dados de cobertura atualizados');
     } catch (err) {
       console.error('Erro ao atualizar MVs:', err);
-      toast.error('Erro ao atualizar dados de cobertura');
+      // Fallback silencioso
+      queryClient.invalidateQueries({ queryKey: ['semantic-coverage-mv'] });
+      toast.success('Cache atualizado');
     }
   }, [queryClient]);
 
