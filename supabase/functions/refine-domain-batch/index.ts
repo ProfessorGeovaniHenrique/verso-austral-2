@@ -620,45 +620,52 @@ Responda APENAS com JSON válido:
   return { refined, errors, n2Count, n3Count, n4Count, samples };
 }
 
-async function scheduleNextChunk(jobId: string, retryCount: number = 0): Promise<void> {
+/**
+ * SPRINT SEMANTIC-ANNOTATION-FIX: Auto-invocação síncrona com retry robusto
+ * Padrão alinhado com enrich-songs-batch
+ */
+async function scheduleNextChunk(jobId: string): Promise<void> {
   const MAX_RETRIES = 3;
   const BASE_DELAY_MS = 2000;
   
-  const delay = retryCount === 0 ? 500 : BASE_DELAY_MS * Math.pow(2, retryCount - 1);
-  await new Promise(resolve => setTimeout(resolve, delay));
-  
-  try {
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/refine-domain-batch`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ jobId }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-    }
-    
-    console.log(`[refine-domain-batch] Auto-invoke success for job ${jobId}`);
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[refine-domain-batch] Auto-invoke attempt ${retryCount + 1}/${MAX_RETRIES} failed:`, errorMsg);
-    
-    if (retryCount < MAX_RETRIES - 1) {
-      return scheduleNextChunk(jobId, retryCount + 1);
-    } else {
-      console.error(`[refine-domain-batch] All ${MAX_RETRIES} retries failed, pausing job ${jobId}`);
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      // Delay inicial mínimo, exponencial em retries
+      const delay = attempt === 1 ? 200 : BASE_DELAY_MS * Math.pow(2, attempt - 2);
+      await new Promise(resolve => setTimeout(resolve, delay));
       
-      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-      await supabase
-        .from('semantic_refinement_jobs')
-        .update({ 
-          status: 'pausado',
-          erro_mensagem: `Auto-invocação falhou após ${MAX_RETRIES} tentativas: ${errorMsg}`,
-        })
-        .eq('id', jobId);
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/refine-domain-batch`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ jobId }),
+      });
+
+      if (response.ok) {
+        console.log(`[refine-domain-batch] Auto-invoke ${attempt}/${MAX_RETRIES} success for job ${jobId}`);
+        return; // Sucesso, sair
+      }
+      
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[refine-domain-batch] Auto-invoke attempt ${attempt}/${MAX_RETRIES} failed:`, errorMsg);
+      
+      if (attempt === MAX_RETRIES) {
+        console.error(`[refine-domain-batch] All ${MAX_RETRIES} retries failed, pausing job ${jobId}`);
+        
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        await supabase
+          .from('semantic_refinement_jobs')
+          .update({ 
+            status: 'pausado',
+            erro_mensagem: `Auto-invocação falhou após ${MAX_RETRIES} tentativas: ${errorMsg}`,
+          })
+          .eq('id', jobId);
+      }
     }
   }
 }

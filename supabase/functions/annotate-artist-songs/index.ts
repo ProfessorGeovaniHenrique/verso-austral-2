@@ -234,9 +234,20 @@ serve(async (req) => {
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-    // Iniciar primeiro chunk assincronamente
+    // SPRINT SEMANTIC-ANNOTATION-FIX: Iniciar primeiro chunk com tratamento de erro robusto
     processChunk(supabaseClient, newJob.id, { songIndex: 0, wordIndex: 0 }, logger)
-      .catch(err => logger.error('First chunk failed', err));
+      .catch(async (err) => {
+        logger.error('First chunk failed', err);
+        // Marcar job como erro se primeiro chunk falhar
+        await supabaseClient
+          .from('semantic_annotation_jobs')
+          .update({ 
+            status: 'erro', 
+            erro_mensagem: `Primeiro chunk falhou: ${err instanceof Error ? err.message : String(err)}`,
+            tempo_fim: new Date().toISOString() 
+          })
+          .eq('id', newJob.id);
+      });
 
     return response;
 
@@ -813,50 +824,67 @@ async function processChunk(
       insigniasAssigned
     });
 
-    // Se não terminou, auto-invocar para próximo chunk
+    // Se não terminou, auto-invocar para próximo chunk com retry
     if (!isCompleted) {
       const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
       const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-      logger.info('Iniciando auto-invocação', { 
+      logger.info('Iniciando auto-invocação com retry', { 
         jobId, 
         nextSongIndex: currentSongIndex, 
         nextWordIndex: currentWordIndex 
       });
       
-      // Fire-and-forget: executar fetch diretamente sem setTimeout (que não funciona em Edge Functions)
-      fetch(`${SUPABASE_URL}/functions/v1/annotate-artist-songs`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jobId: jobId,
-          continueFrom: {
-            songIndex: currentSongIndex,
-            wordIndex: currentWordIndex,
-          }
-        }),
-      })
-      .then(response => {
-        if (response.ok) {
-          logger.info('Auto-invocação bem-sucedida', { jobId });
-        } else {
-          logger.warn('Auto-invocação falhou', { jobId, status: response.status });
-        }
-      })
-      .catch(err => {
-        logger.error('Auto-invoke failed', err);
-        // Marcar job como pausado se auto-invocação falhar
-        supabase
-          .from('semantic_annotation_jobs')
-          .update({ status: 'pausado' })
-          .eq('id', jobId)
-          .then(() => logger.warn('Job marcado como pausado', { jobId }));
-      });
+      // SPRINT SEMANTIC-ANNOTATION-FIX: Auto-invocação síncrona com retry (padrão enrich-songs-batch)
+      const MAX_RETRIES = 3;
+      const BASE_DELAY_MS = 2000;
       
-      logger.info('Auto-invocação disparada (fire-and-forget)', { jobId });
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/annotate-artist-songs`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              jobId: jobId,
+              continueFrom: {
+                songIndex: currentSongIndex,
+                wordIndex: currentWordIndex,
+              }
+            }),
+          });
+
+          if (response.ok) {
+            logger.info(`Auto-invocação ${attempt}/${MAX_RETRIES} bem-sucedida`, { jobId });
+            break;
+          } else {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : String(err);
+          logger.warn(`Auto-invocação ${attempt}/${MAX_RETRIES} falhou`, { jobId, error: errorMsg });
+          
+          if (attempt === MAX_RETRIES) {
+            logger.error(`Todas ${MAX_RETRIES} tentativas falharam, pausando job`, { jobId });
+            await supabase
+              .from('semantic_annotation_jobs')
+              .update({ 
+                status: 'pausado',
+                erro_mensagem: `Auto-invocação falhou após ${MAX_RETRIES} tentativas: ${errorMsg}`
+              })
+              .eq('id', jobId);
+          } else {
+            // Exponential backoff
+            const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+        }
+      }
+      
+      logger.info('Auto-invocação processada', { jobId });
     }
 
   } catch (error) {
