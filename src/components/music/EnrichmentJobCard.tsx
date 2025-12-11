@@ -1,11 +1,13 @@
 /**
  * Card para exibir status e controles de jobs de enriquecimento
+ * Sprint ENRICH-ARCHITECTURE-FIX: Monitoramento de saúde adicionado
  */
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Play, 
   Pause, 
@@ -15,11 +17,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  Zap,
+  Activity
 } from 'lucide-react';
-import { useEnrichmentJob, EnrichmentJob, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
-import { formatDistanceToNow } from 'date-fns';
+import { useEnrichmentJob, EnrichmentJobType } from '@/hooks/useEnrichmentJob';
+import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { useMemo } from 'react';
 
 interface EnrichmentJobCardProps {
   artistId?: string;
@@ -45,6 +51,13 @@ const STATUS_CONFIG: Record<string, { label: string; variant: 'default' | 'secon
   concluido: { label: 'Concluído', variant: 'default', icon: <CheckCircle2 className="h-3 w-3" /> },
   erro: { label: 'Erro', variant: 'destructive', icon: <AlertCircle className="h-3 w-3" /> },
   cancelado: { label: 'Cancelado', variant: 'secondary', icon: <X className="h-3 w-3" /> },
+};
+
+// Thresholds para alertas de saúde
+const HEALTH_THRESHOLDS = {
+  heartbeatWarning: 60, // segundos
+  heartbeatCritical: 180, // segundos
+  minSongsPerMinute: 2, // mínimo aceitável
 };
 
 export function EnrichmentJobCard({
@@ -75,6 +88,67 @@ export function EnrichmentJobCard({
     resumeJobWithForce,
     forceRestartJob,
   } = useEnrichmentJob({ artistId, corpusId, jobType });
+
+  // Calcular métricas de saúde
+  const healthMetrics = useMemo(() => {
+    if (!activeJob) return null;
+    
+    const metadata = activeJob.metadata as Record<string, unknown> || {};
+    const lastChunkStats = metadata.lastChunkStats as Record<string, unknown> || {};
+    
+    // Tempo desde último heartbeat
+    const lastHeartbeat = activeJob.last_chunk_at 
+      ? differenceInSeconds(new Date(), new Date(activeJob.last_chunk_at))
+      : null;
+    
+    // Velocidade de processamento
+    const songsPerMinute = lastChunkStats.songsPerMinute as number || 0;
+    const avgTimePerSong = lastChunkStats.avgTimePerSongMs as number || 0;
+    
+    // Circuit breaker state
+    const consecutiveChunkFailures = metadata.consecutiveChunkFailures as number || 0;
+    const chunksWithoutProgress = metadata.chunksWithoutProgress as number || 0;
+    const circuitBreakerTriggered = metadata.circuitBreakerTriggered as boolean || false;
+    const circuitBreakerReason = metadata.circuitBreakerReason as string || '';
+    
+    // Calcular status de saúde
+    let healthStatus: 'good' | 'warning' | 'critical' = 'good';
+    let healthMessage = '';
+    
+    if (circuitBreakerTriggered) {
+      healthStatus = 'critical';
+      healthMessage = circuitBreakerReason;
+    } else if (lastHeartbeat !== null && lastHeartbeat > HEALTH_THRESHOLDS.heartbeatCritical) {
+      healthStatus = 'critical';
+      healthMessage = `Sem heartbeat há ${Math.round(lastHeartbeat / 60)}min`;
+    } else if (lastHeartbeat !== null && lastHeartbeat > HEALTH_THRESHOLDS.heartbeatWarning) {
+      healthStatus = 'warning';
+      healthMessage = 'Heartbeat atrasado';
+    } else if (consecutiveChunkFailures >= 2) {
+      healthStatus = 'warning';
+      healthMessage = `${consecutiveChunkFailures} chunks falharam`;
+    } else if (songsPerMinute > 0 && songsPerMinute < HEALTH_THRESHOLDS.minSongsPerMinute) {
+      healthStatus = 'warning';
+      healthMessage = 'Velocidade baixa';
+    }
+    
+    // Calcular ETA
+    const remaining = activeJob.total_songs - activeJob.songs_processed;
+    const etaMinutes = songsPerMinute > 0 ? Math.round(remaining / songsPerMinute) : null;
+    
+    return {
+      lastHeartbeat,
+      songsPerMinute,
+      avgTimePerSong,
+      consecutiveChunkFailures,
+      chunksWithoutProgress,
+      circuitBreakerTriggered,
+      circuitBreakerReason,
+      healthStatus,
+      healthMessage,
+      etaMinutes,
+    };
+  }, [activeJob]);
 
   const handleStart = async () => {
     await startJob({
@@ -132,13 +206,35 @@ export function EnrichmentJobCard({
             <CardTitle className="text-base">
               Enriquecimento de {JOB_TYPE_LABELS[job?.job_type || jobType]}
             </CardTitle>
-            {statusConfig && (
-              <Badge variant={statusConfig.variant} className="gap-1">
-                {statusConfig.icon}
-                {statusConfig.label}
-                {isAbandoned && ' (Travado)'}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2">
+              {/* Health indicator */}
+              {hasActiveJob && healthMetrics && (
+                <Badge 
+                  variant={
+                    healthMetrics.healthStatus === 'critical' ? 'destructive' :
+                    healthMetrics.healthStatus === 'warning' ? 'outline' : 'secondary'
+                  }
+                  className="gap-1"
+                >
+                  {healthMetrics.healthStatus === 'critical' ? (
+                    <AlertTriangle className="h-3 w-3" />
+                  ) : healthMetrics.healthStatus === 'warning' ? (
+                    <AlertCircle className="h-3 w-3" />
+                  ) : (
+                    <Activity className="h-3 w-3" />
+                  )}
+                  {healthMetrics.healthStatus === 'good' ? 'Saudável' : 
+                   healthMetrics.healthStatus === 'warning' ? 'Alerta' : 'Crítico'}
+                </Badge>
+              )}
+              {statusConfig && (
+                <Badge variant={statusConfig.variant} className="gap-1">
+                  {statusConfig.icon}
+                  {statusConfig.label}
+                  {isAbandoned && ' (Travado)'}
+                </Badge>
+              )}
+            </div>
           </div>
           {job?.artist_name && (
             <CardDescription>
@@ -149,6 +245,20 @@ export function EnrichmentJobCard({
       )}
 
       <CardContent className={compact ? 'p-0 space-y-2' : 'space-y-3'}>
+        {/* Alerta de saúde */}
+        {hasActiveJob && healthMetrics && healthMetrics.healthMessage && (
+          <Alert variant={healthMetrics.healthStatus === 'critical' ? 'destructive' : 'default'} className="py-2">
+            <AlertDescription className="text-xs flex items-center gap-2">
+              {healthMetrics.healthStatus === 'critical' ? (
+                <AlertTriangle className="h-3 w-3" />
+              ) : (
+                <AlertCircle className="h-3 w-3" />
+              )}
+              {healthMetrics.healthMessage}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Progresso */}
         {hasActiveJob && (
           <>
@@ -175,6 +285,26 @@ export function EnrichmentJobCard({
                 <div className="text-muted-foreground">Falhas</div>
               </div>
             </div>
+
+            {/* Métricas de performance */}
+            {healthMetrics && (healthMetrics.songsPerMinute > 0 || healthMetrics.etaMinutes) && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                <div className="flex items-center gap-1">
+                  <Zap className="h-3 w-3" />
+                  {healthMetrics.songsPerMinute > 0 ? (
+                    <span>{healthMetrics.songsPerMinute} músicas/min</span>
+                  ) : (
+                    <span>Calculando...</span>
+                  )}
+                </div>
+                {healthMetrics.etaMinutes && (
+                  <div className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    <span>ETA: {healthMetrics.etaMinutes}min</span>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Última atualização */}
             {activeJob?.last_chunk_at && (

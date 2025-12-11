@@ -1,13 +1,12 @@
 /**
  * Edge Function: enrich-songs-batch
- * Sprint ENRICH-REWRITE: Arquitetura à prova de falhas
+ * Sprint ENRICH-ARCHITECTURE-FIX: Auto-invocação síncrona
  * 
- * MUDANÇAS CRÍTICAS:
- * - CHUNK_SIZE: 5 (ultra-conservador para garantir conclusão em <240s)
- * - PARALLEL_SONGS: 1 (sequencial para evitar timeouts)
- * - Auto-invocação ANTES do processamento via EdgeRuntime.waitUntil()
- * - Heartbeat após CADA música processada
- * - Detecção de abandono baseada em last_chunk_at (não songs_processed)
+ * CORREÇÕES CRÍTICAS:
+ * - Auto-invocação SÍNCRONA (não setTimeout que é cancelado)
+ * - Circuit breaker para prevenir loops infinitos
+ * - Retry resiliente com exponential backoff
+ * - Monitoramento melhorado com métricas de saúde
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
@@ -17,19 +16,23 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// ============ CONSTANTES ULTRA-CONSERVADORAS ============
-const CHUNK_SIZE = 5; // CRÍTICO: 5 músicas por chunk (~5s/música = ~25s total, bem dentro de 240s)
-const PARALLEL_SONGS = 1; // CRÍTICO: Sequencial para máximo controle
+// ============ CONSTANTES ============
+const CHUNK_SIZE = 5;
+const PARALLEL_SONGS = 1;
 const LOCK_TIMEOUT_MS = 90000;
-const AUTO_INVOKE_DELAY_MS = 1000;
-const ABANDONED_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos (reduzido de 5)
+const ABANDONED_TIMEOUT_MS = 3 * 60 * 1000;
 const AUTO_INVOKE_RETRIES = 3;
 const RATE_LIMIT_BASE_MS = 300;
 const RATE_LIMIT_MAX_MS = 2000;
 const RATE_LIMIT_BACKOFF_FACTOR = 1.5;
 const RATE_LIMIT_COOLDOWN_FACTOR = 0.9;
 const MAX_CONSECUTIVE_ERRORS = 5;
-const RETRY_ATTEMPTS = 2; // Reduzido de 3 para 2
+const RETRY_ATTEMPTS = 2;
+
+// ============ CIRCUIT BREAKER CONSTANTS ============
+const CIRCUIT_BREAKER_MAX_CHUNKS_NO_PROGRESS = 10;
+const CIRCUIT_BREAKER_MAX_TOTAL_TIME_MS = 30 * 60 * 1000; // 30 minutos
+const CIRCUIT_BREAKER_MAX_CONSECUTIVE_FAILURES = 3;
 
 interface EnrichmentJobPayload {
   jobId?: string;
@@ -78,6 +81,13 @@ interface EnrichResult {
   rateLimitHit: boolean;
 }
 
+interface CircuitBreakerState {
+  consecutiveChunkFailures: number;
+  chunksWithoutProgress: number;
+  lastSuccessfulChunk: number;
+  jobStartTime: number;
+}
+
 function createSupabaseClient() {
   const url = Deno.env.get('SUPABASE_URL') || '';
   const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -110,15 +120,9 @@ async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jo
   return !error && data && data.length > 0;
 }
 
-/**
- * SPRINT ENRICH-REWRITE: Detecção corrigida
- * Detecta jobs parados baseado em last_chunk_at (não songs_processed)
- */
 async function detectAndHandleAbandonedJobs(supabase: ReturnType<typeof createSupabaseClient>): Promise<number> {
   const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
   
-  // CORREÇÃO: Remover condição songs_processed = 0
-  // Jobs com progresso mas sem heartbeat também são abandonados
   const { data: abandonedJobs, error } = await supabase
     .from('enrichment_jobs')
     .select('id, job_type, artist_name, songs_processed, last_chunk_at')
@@ -129,17 +133,16 @@ async function detectAndHandleAbandonedJobs(supabase: ReturnType<typeof createSu
     return 0;
   }
   
-  console.log(`[enrich-batch] 🔍 Detectados ${abandonedJobs.length} jobs abandonados (sem heartbeat há 3min)`);
+  console.log(`[enrich-batch] 🔍 Detectados ${abandonedJobs.length} jobs abandonados`);
   
   for (const job of abandonedJobs) {
-    console.log(`[enrich-batch] ⚠️ Marcando job ${job.id} (${job.artist_name || job.job_type}) como pausado (abandonado com ${job.songs_processed} músicas processadas)`);
+    console.log(`[enrich-batch] ⚠️ Pausando job ${job.id} (${job.artist_name || job.job_type}) - ${job.songs_processed} músicas`);
     
-    // Marcar como PAUSADO (não erro) para permitir retomada
     await supabase
       .from('enrichment_jobs')
       .update({ 
         status: 'pausado', 
-        erro_mensagem: `Job pausado automaticamente (sem heartbeat por 3min). Processou ${job.songs_processed} músicas. Clique "Retomar" para continuar.`,
+        erro_mensagem: `Pausado automaticamente (sem heartbeat). Processou ${job.songs_processed} músicas.`,
         updated_at: new Date().toISOString()
       })
       .eq('id', job.id);
@@ -158,9 +161,6 @@ async function checkCancellation(supabase: ReturnType<typeof createSupabaseClien
   return data?.is_cancelling || data?.status === 'cancelado';
 }
 
-/**
- * SPRINT ENRICH-REWRITE: Heartbeat imediato após cada música
- */
 async function updateHeartbeat(
   supabase: ReturnType<typeof createSupabaseClient>,
   jobId: string,
@@ -168,22 +168,31 @@ async function updateHeartbeat(
   songsSucceeded: number,
   songsFailed: number,
   currentIndex: number,
-  lastSongId?: string
+  lastSongId?: string,
+  additionalMetadata?: Record<string, unknown>
 ): Promise<void> {
+  const updateData: Record<string, unknown> = {
+    songs_processed: songsProcessed,
+    songs_succeeded: songsSucceeded,
+    songs_failed: songsFailed,
+    current_song_index: currentIndex,
+    last_chunk_at: new Date().toISOString(),
+  };
+  
+  if (lastSongId || additionalMetadata) {
+    updateData.metadata = {
+      ...(lastSongId ? { lastProcessedSongId: lastSongId } : {}),
+      ...additionalMetadata
+    };
+  }
+  
   const { error } = await supabase
     .from('enrichment_jobs')
-    .update({
-      songs_processed: songsProcessed,
-      songs_succeeded: songsSucceeded,
-      songs_failed: songsFailed,
-      current_song_index: currentIndex,
-      last_chunk_at: new Date().toISOString(),
-      metadata: lastSongId ? { lastProcessedSongId: lastSongId } : undefined
-    })
+    .update(updateData)
     .eq('id', jobId);
   
   if (error) {
-    console.error(`[enrich-batch] ⚠️ Erro atualizando heartbeat:`, error);
+    console.error(`[enrich-batch] ⚠️ Erro heartbeat:`, error.message);
   }
 }
 
@@ -235,7 +244,7 @@ async function getSongsToEnrich(
     return [];
   }
   
-  console.log(`[enrich-batch] 📋 Query retornou ${data?.length || 0} músicas (cursor: ${lastProcessedId || 'início'})`);
+  console.log(`[enrich-batch] 📋 ${data?.length || 0} músicas (cursor: ${lastProcessedId?.slice(0, 8) || 'início'})`);
   
   return (data || []).map(s => ({
     id: s.id,
@@ -268,14 +277,12 @@ async function enrichSingleSong(
                           error.message?.toLowerCase().includes('rate limit') ||
                           error.message?.toLowerCase().includes('quota');
       
-      console.error(`[enrich-batch] Erro enriquecendo ${songId}:`, error);
       return { success: false, error: error.message, durationMs, rateLimitHit: isRateLimit };
     }
 
     return { success: data?.success || false, error: data?.error, durationMs, rateLimitHit: false };
   } catch (err) {
     const durationMs = Date.now() - startTime;
-    console.error(`[enrich-batch] Exceção enriquecendo ${songId}:`, err);
     return { 
       success: false, 
       error: err instanceof Error ? err.message : 'Erro desconhecido',
@@ -301,9 +308,9 @@ async function enrichWithRetry(
       return lastResult;
     }
     
-    if (lastResult.rateLimitHit) {
+    if (lastResult.rateLimitHit && attempt < maxRetries) {
       const backoffMs = Math.min(2000 * Math.pow(2, attempt - 1), 8000);
-      console.log(`[enrich-batch] Rate limit detectado, aguardando ${backoffMs}ms (tentativa ${attempt}/${maxRetries})`);
+      console.log(`[enrich-batch] Rate limit, aguardando ${backoffMs}ms`);
       await new Promise(resolve => setTimeout(resolve, backoffMs));
     } else if (attempt < maxRetries) {
       await new Promise(resolve => setTimeout(resolve, 500));
@@ -314,15 +321,19 @@ async function enrichWithRetry(
 }
 
 /**
- * SPRINT ENRICH-REWRITE: Auto-invocação com fire-and-forget
+ * SPRINT ENRICH-ARCHITECTURE-FIX: Auto-invocação síncrona com retry resiliente
+ * Esta função é chamada DEPOIS do processamento, de forma síncrona (await)
  */
-async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise<boolean> {
+async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise<{ success: boolean; error?: string }> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
   const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
   for (let attempt = 1; attempt <= AUTO_INVOKE_RETRIES; attempt++) {
     try {
-      console.log(`[enrich-batch] 🚀 Auto-invocação tentativa ${attempt}/${AUTO_INVOKE_RETRIES} (índice ${continueFrom})...`);
+      console.log(`[enrich-batch] 🚀 Auto-invocação ${attempt}/${AUTO_INVOKE_RETRIES} (índice ${continueFrom})`);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
       
       const response = await fetch(`${supabaseUrl}/functions/v1/enrich-songs-batch`, {
         method: 'POST',
@@ -331,22 +342,26 @@ async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise
           'Authorization': `Bearer ${supabaseKey}`,
         },
         body: JSON.stringify({ jobId, continueFrom }),
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
 
       if (response.ok) {
-        console.log(`[enrich-batch] ✅ Auto-invocação bem sucedida na tentativa ${attempt}`);
-        return true;
+        console.log(`[enrich-batch] ✅ Auto-invocação bem sucedida`);
+        return { success: true };
       }
       
       const errorText = await response.text().catch(() => 'unknown');
-      console.warn(`[enrich-batch] ⚠️ Auto-invocação tentativa ${attempt} falhou: ${response.status} - ${errorText}`);
+      console.warn(`[enrich-batch] ⚠️ Auto-invocação ${attempt} falhou: ${response.status}`);
       
       if (attempt < AUTO_INVOKE_RETRIES) {
         const delayMs = 1000 * Math.pow(2, attempt - 1);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
     } catch (err) {
-      console.error(`[enrich-batch] ❌ Exceção na auto-invocação tentativa ${attempt}:`, err);
+      const errorMsg = err instanceof Error ? err.message : 'unknown';
+      console.error(`[enrich-batch] ❌ Exceção auto-invocação ${attempt}: ${errorMsg}`);
       
       if (attempt < AUTO_INVOKE_RETRIES) {
         const delayMs = 1000 * Math.pow(2, attempt - 1);
@@ -355,8 +370,43 @@ async function autoInvokeNextChunk(jobId: string, continueFrom: number): Promise
     }
   }
   
-  console.error(`[enrich-batch] 🛑 Auto-invocação falhou após ${AUTO_INVOKE_RETRIES} tentativas`);
-  return false;
+  return { success: false, error: `Falhou após ${AUTO_INVOKE_RETRIES} tentativas` };
+}
+
+/**
+ * CIRCUIT BREAKER: Verifica se o job deve ser pausado
+ */
+function checkCircuitBreaker(
+  state: CircuitBreakerState,
+  chunkSucceeded: number,
+  chunkFailed: number
+): { shouldBreak: boolean; reason?: string } {
+  // Verificar tempo total de execução
+  const elapsedMs = Date.now() - state.jobStartTime;
+  if (elapsedMs > CIRCUIT_BREAKER_MAX_TOTAL_TIME_MS) {
+    return { 
+      shouldBreak: true, 
+      reason: `Tempo máximo excedido (${Math.round(elapsedMs / 60000)}min)` 
+    };
+  }
+  
+  // Verificar falhas consecutivas de chunks
+  if (state.consecutiveChunkFailures >= CIRCUIT_BREAKER_MAX_CONSECUTIVE_FAILURES) {
+    return { 
+      shouldBreak: true, 
+      reason: `${state.consecutiveChunkFailures} chunks consecutivos falharam` 
+    };
+  }
+  
+  // Verificar chunks sem progresso real
+  if (state.chunksWithoutProgress >= CIRCUIT_BREAKER_MAX_CHUNKS_NO_PROGRESS) {
+    return { 
+      shouldBreak: true, 
+      reason: `${state.chunksWithoutProgress} chunks sem progresso` 
+    };
+  }
+  
+  return { shouldBreak: false };
 }
 
 async function countTotalSongs(
@@ -393,18 +443,19 @@ Deno.serve(async (req) => {
 
   try {
     const payload: EnrichmentJobPayload = await req.json();
-    console.log(`[enrich-batch] 🚀 SPRINT ENRICH-REWRITE: CHUNK=${CHUNK_SIZE}, PARALLEL=${PARALLEL_SONGS}`);
+    console.log(`[enrich-batch] 🏗️ ARCHITECTURE-FIX v2: CHUNK=${CHUNK_SIZE}`);
     console.log(`[enrich-batch] Payload:`, JSON.stringify(payload));
 
     // Detectar e limpar jobs abandonados
     const abandonedCount = await detectAndHandleAbandonedJobs(supabase);
     if (abandonedCount > 0) {
-      console.log(`[enrich-batch] ${abandonedCount} jobs abandonados foram pausados`);
+      console.log(`[enrich-batch] ${abandonedCount} jobs pausados`);
     }
 
     let job: EnrichmentJob;
     let startIndex = payload.continueFrom || 0;
     let isNewJob = false;
+    let circuitBreakerState: CircuitBreakerState;
 
     if (payload.jobId) {
       const { data, error } = await supabase
@@ -421,6 +472,15 @@ Deno.serve(async (req) => {
       }
 
       job = data as EnrichmentJob;
+      
+      // Inicializar circuit breaker state do metadata do job
+      const metadata = job.metadata || {};
+      circuitBreakerState = {
+        consecutiveChunkFailures: (metadata.consecutiveChunkFailures as number) || 0,
+        chunksWithoutProgress: (metadata.chunksWithoutProgress as number) || 0,
+        lastSuccessfulChunk: (metadata.lastSuccessfulChunk as number) || 0,
+        jobStartTime: job.tempo_inicio ? new Date(job.tempo_inicio).getTime() : Date.now(),
+      };
       
       if (job.status === 'cancelado' || job.status === 'concluido') {
         return new Response(
@@ -448,12 +508,11 @@ Deno.serve(async (req) => {
       const shouldForceLock = payload.forceLock || job.status === 'pausado';
       const lockAcquired = await acquireLock(supabase, job.id, shouldForceLock);
       if (!lockAcquired) {
-        console.log(`[enrich-batch] Lock não adquirido para job ${job.id}`);
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Lock não adquirido (outro chunk em execução)',
-            hint: 'Use forceLock: true para forçar reinício'
+            error: 'Lock não adquirido',
+            hint: 'Use forceLock: true para forçar'
           }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -481,7 +540,7 @@ Deno.serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Já existe um job ativo para este escopo',
+            error: 'Job ativo existente',
             existingJobId: existing[0].id
           }),
           { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -516,6 +575,12 @@ Deno.serve(async (req) => {
       }
 
       job = newJob as EnrichmentJob;
+      circuitBreakerState = {
+        consecutiveChunkFailures: 0,
+        chunksWithoutProgress: 0,
+        lastSuccessfulChunk: 0,
+        jobStartTime: Date.now(),
+      };
 
       const totalSongs = await countTotalSongs(supabase, job);
       await supabase
@@ -524,7 +589,7 @@ Deno.serve(async (req) => {
         .eq('id', job.id);
       
       job.total_songs = totalSongs;
-      console.log(`[enrich-batch] Novo job criado: ${job.id}, total: ${totalSongs} músicas`);
+      console.log(`[enrich-batch] Novo job: ${job.id}, ${totalSongs} músicas`);
     }
 
     if (!isNewJob) {
@@ -536,7 +601,7 @@ Deno.serve(async (req) => {
 
     // Buscar músicas para este chunk
     const songs = await getSongsToEnrich(supabase, job, startIndex);
-    console.log(`[enrich-batch] Processando ${songs.length} músicas a partir do índice ${startIndex}`);
+    console.log(`[enrich-batch] Processando ${songs.length} músicas a partir de ${startIndex}`);
 
     if (songs.length === 0) {
       await supabase
@@ -563,38 +628,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ============ SPRINT ENRICH-REWRITE: AUTO-INVOCAÇÃO ANTES DO PROCESSAMENTO ============
-    const nextIndex = startIndex + songs.length;
-    const hasMoreAfterThis = nextIndex < job.total_songs;
-    
-    // Agendar próximo chunk ANTES de processar (fire-and-forget usando queueMicrotask)
-    if (hasMoreAfterThis) {
-      console.log(`[enrich-batch] 🔄 Agendando próximo chunk (índice ${nextIndex}) em background...`);
-      
-      // Fire-and-forget: usar setTimeout para não bloquear
-      // O próximo chunk será invocado após o delay, independente do resultado deste
-      setTimeout(async () => {
-        try {
-          await new Promise(r => setTimeout(r, AUTO_INVOKE_DELAY_MS));
-          const success = await autoInvokeNextChunk(job.id, nextIndex);
-          
-          if (!success) {
-            const supabaseForCleanup = createSupabaseClient();
-            await supabaseForCleanup
-              .from('enrichment_jobs')
-              .update({ 
-                status: 'pausado',
-                erro_mensagem: 'Auto-invocação falhou. Clique "Retomar" para continuar.',
-              })
-              .eq('id', job.id)
-              .eq('status', 'processando');
-          }
-        } catch (err) {
-          console.error('[enrich-batch] Erro na auto-invocação em background:', err);
-        }
-      }, 100); // Inicia imediatamente após pequeno delay
-    }
-
     // ============ PROCESSAMENTO SEQUENCIAL COM HEARTBEAT ============
     let succeeded = 0;
     let failed = 0;
@@ -607,9 +640,9 @@ Deno.serve(async (req) => {
     for (let i = 0; i < songs.length; i++) {
       const song = songs[i];
       
-      // Verificar cancelamento antes de cada música
+      // Verificar cancelamento
       if (await checkCancellation(supabase, job.id)) {
-        console.log(`[enrich-batch] Job ${job.id} cancelado durante processamento`);
+        console.log(`[enrich-batch] Job cancelado`);
         await supabase
           .from('enrichment_jobs')
           .update({ 
@@ -628,7 +661,7 @@ Deno.serve(async (req) => {
         );
       }
 
-      console.log(`[enrich-batch] 🎵 [${i + 1}/${songs.length}] Processando: "${song.title.substring(0, 30)}..."`);
+      console.log(`[enrich-batch] 🎵 [${i + 1}/${songs.length}] "${song.title.substring(0, 25)}..."`);
 
       const result = await enrichWithRetry(supabase, song.id, job.job_type, job.force_reenrich);
       totalProcessingTimeMs += result.durationMs;
@@ -648,7 +681,7 @@ Deno.serve(async (req) => {
 
       lastSongId = song.id;
 
-      // ============ HEARTBEAT IMEDIATO APÓS CADA MÚSICA ============
+      // Heartbeat após cada música
       await updateHeartbeat(
         supabase,
         job.id,
@@ -659,24 +692,24 @@ Deno.serve(async (req) => {
         lastSongId
       );
 
-      console.log(`[enrich-batch] ${result.success ? '✅' : '❌'} "${song.title.substring(0, 20)}" em ${result.durationMs}ms | Total: ${succeeded}✅ ${failed}❌`);
+      console.log(`[enrich-batch] ${result.success ? '✅' : '❌'} ${result.durationMs}ms | ${succeeded}✅ ${failed}❌`);
 
-      // Auto-pause após muitos erros consecutivos
+      // Auto-pause após muitos erros
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        console.log(`[enrich-batch] 🛑 ${consecutiveErrors} erros consecutivos - pausando automaticamente`);
+        console.log(`[enrich-batch] 🛑 ${consecutiveErrors} erros - pausando`);
         
         await supabase
           .from('enrichment_jobs')
           .update({ 
             status: 'pausado',
-            erro_mensagem: `Auto-pausado após ${consecutiveErrors} erros consecutivos.`,
+            erro_mensagem: `Pausado: ${consecutiveErrors} erros consecutivos.`,
           })
           .eq('id', job.id);
         
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: `Auto-pausado após ${consecutiveErrors} erros consecutivos`,
+            error: `Pausado após ${consecutiveErrors} erros`,
             jobId: job.id,
             partialStats: { succeeded, failed, rateLimitHits }
           }),
@@ -690,15 +723,62 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Atualizar estatísticas finais do chunk
+    // Atualizar estatísticas do chunk
     const newProcessed = job.songs_processed + succeeded + failed;
     const newSucceeded = job.songs_succeeded + succeeded;
     const newFailed = job.songs_failed + failed;
     const chunksProcessed = job.chunks_processed + 1;
+    const nextIndex = startIndex + songs.length;
+    const hasMoreAfterThis = nextIndex < job.total_songs;
 
     const avgTimePerSong = songs.length > 0 ? Math.round(totalProcessingTimeMs / songs.length) : 0;
     const songsPerMinute = avgTimePerSong > 0 ? Math.round(60000 / avgTimePerSong) : 0;
 
+    // Atualizar circuit breaker state
+    const chunkHadProgress = succeeded > 0;
+    if (chunkHadProgress) {
+      circuitBreakerState.consecutiveChunkFailures = 0;
+      circuitBreakerState.chunksWithoutProgress = 0;
+      circuitBreakerState.lastSuccessfulChunk = chunksProcessed;
+    } else {
+      circuitBreakerState.consecutiveChunkFailures++;
+      circuitBreakerState.chunksWithoutProgress++;
+    }
+
+    // Verificar circuit breaker
+    const circuitCheck = checkCircuitBreaker(circuitBreakerState, succeeded, failed);
+    if (circuitCheck.shouldBreak) {
+      console.log(`[enrich-batch] 🔌 Circuit breaker ativado: ${circuitCheck.reason}`);
+      
+      await supabase
+        .from('enrichment_jobs')
+        .update({ 
+          status: 'pausado',
+          erro_mensagem: `Circuit breaker: ${circuitCheck.reason}`,
+          songs_processed: newProcessed,
+          songs_succeeded: newSucceeded,
+          songs_failed: newFailed,
+          metadata: {
+            ...job.metadata,
+            circuitBreakerTriggered: true,
+            circuitBreakerReason: circuitCheck.reason,
+            ...circuitBreakerState
+          }
+        })
+        .eq('id', job.id);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Circuit breaker: ${circuitCheck.reason}`,
+          jobId: job.id,
+          stats: { succeeded, failed }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Atualizar job com estatísticas e circuit breaker state
     await supabase
       .from('enrichment_jobs')
       .update({
@@ -711,6 +791,7 @@ Deno.serve(async (req) => {
         metadata: {
           ...job.metadata,
           lastProcessedSongId: lastSongId,
+          ...circuitBreakerState,
           lastChunkStats: {
             avgTimePerSongMs: avgTimePerSong,
             songsPerMinute,
@@ -722,10 +803,30 @@ Deno.serve(async (req) => {
       })
       .eq('id', job.id);
 
-    console.log(`[enrich-batch] 📊 Chunk ${chunksProcessed} concluído: ${succeeded}✅ ${failed}❌ | ${songsPerMinute} músicas/min`);
+    console.log(`[enrich-batch] 📊 Chunk ${chunksProcessed}: ${succeeded}✅ ${failed}❌ | ${songsPerMinute}/min`);
 
-    // Se não há mais músicas, marcar como concluído
-    if (!hasMoreAfterThis) {
+    // ============ AUTO-INVOCAÇÃO SÍNCRONA (CORREÇÃO CRÍTICA) ============
+    // Fazer auto-invocação SÍNCRONA APÓS o processamento
+    // Não usa setTimeout que seria cancelado ao retornar Response
+    if (hasMoreAfterThis) {
+      console.log(`[enrich-batch] 🔗 Invocando próximo chunk (índice ${nextIndex})...`);
+      
+      const invokeResult = await autoInvokeNextChunk(job.id, nextIndex);
+      
+      if (!invokeResult.success) {
+        // Marcar como pausado se auto-invocação falhou
+        console.log(`[enrich-batch] ⚠️ Auto-invocação falhou, pausando job`);
+        
+        await supabase
+          .from('enrichment_jobs')
+          .update({ 
+            status: 'pausado',
+            erro_mensagem: `Auto-invocação falhou: ${invokeResult.error}. Clique "Retomar".`,
+          })
+          .eq('id', job.id);
+      }
+    } else {
+      // Job concluído
       await supabase
         .from('enrichment_jobs')
         .update({
@@ -734,7 +835,7 @@ Deno.serve(async (req) => {
         })
         .eq('id', job.id);
       
-      console.log(`[enrich-batch] 🎉 Job ${job.id} concluído com sucesso!`);
+      console.log(`[enrich-batch] 🎉 Job ${job.id} concluído!`);
     }
 
     const duration = Date.now() - startTime;
