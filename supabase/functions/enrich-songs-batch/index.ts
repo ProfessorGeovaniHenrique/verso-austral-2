@@ -17,10 +17,11 @@ const corsHeaders = {
 };
 
 // ============ CONSTANTES ============
-const CHUNK_SIZE = 15; // Aumentado de 5 para 15 para melhor throughput
+const CHUNK_SIZE = 15;
 const PARALLEL_SONGS = 1;
 const LOCK_TIMEOUT_MS = 90000;
-const ABANDONED_TIMEOUT_MS = 3 * 60 * 1000;
+const ABANDONED_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutos sem heartbeat
+const STUCK_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos sem progresso (novo critério)
 const AUTO_INVOKE_RETRIES = 3;
 const RATE_LIMIT_BASE_MS = 300;
 const RATE_LIMIT_MAX_MS = 2000;
@@ -31,7 +32,7 @@ const RETRY_ATTEMPTS = 2;
 
 // ============ CIRCUIT BREAKER CONSTANTS ============
 const CIRCUIT_BREAKER_MAX_CHUNKS_NO_PROGRESS = 10;
-const CIRCUIT_BREAKER_MAX_TOTAL_TIME_MS = 60 * 60 * 1000; // 60 minutos (aumentado de 30)
+const CIRCUIT_BREAKER_MAX_TOTAL_TIME_MS = 60 * 60 * 1000;
 const CIRCUIT_BREAKER_MAX_CONSECUTIVE_FAILURES = 3;
 
 interface EnrichmentJobPayload {
@@ -121,28 +122,38 @@ async function acquireLock(supabase: ReturnType<typeof createSupabaseClient>, jo
 }
 
 async function detectAndHandleAbandonedJobs(supabase: ReturnType<typeof createSupabaseClient>): Promise<number> {
+  // Critério 1: Jobs sem heartbeat por 3 minutos
   const abandonedThreshold = new Date(Date.now() - ABANDONED_TIMEOUT_MS).toISOString();
+  // Critério 2: Jobs "processando" há mais de 30 minutos sem progresso real
+  const stuckThreshold = new Date(Date.now() - STUCK_TIMEOUT_MS).toISOString();
   
+  // Buscar jobs abandonados (sem heartbeat)
   const { data: abandonedJobs, error } = await supabase
     .from('enrichment_jobs')
-    .select('id, job_type, artist_name, songs_processed, last_chunk_at')
+    .select('id, job_type, artist_name, songs_processed, last_chunk_at, updated_at')
     .eq('status', 'processando')
-    .lt('last_chunk_at', abandonedThreshold);
+    .or(`last_chunk_at.lt.${abandonedThreshold},updated_at.lt.${stuckThreshold}`)
+    .limit(10);
   
   if (error || !abandonedJobs || abandonedJobs.length === 0) {
     return 0;
   }
   
-  console.log(`[enrich-batch] 🔍 Detectados ${abandonedJobs.length} jobs abandonados`);
+  console.log(`[enrich-batch] 🔍 Detectados ${abandonedJobs.length} jobs abandonados/stuck`);
   
   for (const job of abandonedJobs) {
-    console.log(`[enrich-batch] ⚠️ Pausando job ${job.id} (${job.artist_name || job.job_type}) - ${job.songs_processed} músicas`);
+    const lastActivity = job.last_chunk_at || job.updated_at;
+    const minutesInactive = lastActivity 
+      ? Math.round((Date.now() - new Date(lastActivity).getTime()) / 60000)
+      : 999;
+    
+    console.log(`[enrich-batch] ⚠️ Pausando job ${job.id} (${job.artist_name || job.job_type}) - sem atividade há ${minutesInactive}min`);
     
     await supabase
       .from('enrichment_jobs')
       .update({ 
         status: 'pausado', 
-        erro_mensagem: `Pausado automaticamente (sem heartbeat). Processou ${job.songs_processed} músicas.`,
+        erro_mensagem: `Auto-pausado: sem atividade há ${minutesInactive} min. Clique "Retomar" para continuar.`,
         updated_at: new Date().toISOString()
       })
       .eq('id', job.id);
@@ -811,53 +822,49 @@ Deno.serve(async (req) => {
 
     console.log(`[enrich-batch] 📊 Chunk ${chunksProcessed}: ${succeeded}✅ ${failed}❌ | ${songsPerMinute}/min`);
 
-    // ============ AUTO-INVOCAÇÃO COM WAITUNTIL (SPRINT ENRICHMENT-AUTO-RESUME) ============
-    // Usa EdgeRuntime.waitUntil para garantir retry mesmo após response
+    // ============ AUTO-INVOCAÇÃO COM FALLBACK IMEDIATO ============
     if (hasMoreAfterThis) {
       console.log(`[enrich-batch] 🔗 Invocando próximo chunk (índice ${nextIndex})...`);
       
       const invokeResult = await autoInvokeNextChunk(job.id, nextIndex);
       
       if (!invokeResult.success) {
-        console.log(`[enrich-batch] ⚠️ Auto-invocação falhou, agendando retry via waitUntil`);
+        console.log(`[enrich-batch] ⚠️ Auto-invocação falhou, marcando como PAUSADO imediatamente`);
         
-        // SPRINT ENRICHMENT-AUTO-RESUME: Usar EdgeRuntime.waitUntil para retry em background
-        // Isso permite que a response seja retornada enquanto o retry acontece
+        // CORREÇÃO CRÍTICA: Marcar como pausado IMEDIATAMENTE
+        // Não confiar apenas no EdgeRuntime.waitUntil que pode falhar silenciosamente
+        await supabase
+          .from('enrichment_jobs')
+          .update({ 
+            status: 'pausado',
+            erro_mensagem: `Auto-invocação falhou após ${AUTO_INVOKE_RETRIES} tentativas. Frontend/GitHub Actions retomará automaticamente.`,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', job.id);
+        
+        // OPCIONAL: Tentar EdgeRuntime.waitUntil como backup secundário
         // @ts-ignore - EdgeRuntime.waitUntil existe no Deno runtime do Supabase
         if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
           // @ts-ignore
           EdgeRuntime.waitUntil((async () => {
-            console.log(`[enrich-batch] ⏳ waitUntil: Aguardando 30s para retry...`);
-            await new Promise(r => setTimeout(r, 30000)); // 30 segundos
+            console.log(`[enrich-batch] ⏳ waitUntil backup: Aguardando 30s...`);
+            await new Promise(r => setTimeout(r, 30000));
             
-            console.log(`[enrich-batch] 🔄 waitUntil: Tentando auto-invocação novamente...`);
-            const retryResult = await autoInvokeNextChunk(job.id, nextIndex);
+            // Verificar se job ainda está pausado (não foi retomado manualmente)
+            const { data: currentJob } = await supabase
+              .from('enrichment_jobs')
+              .select('status')
+              .eq('id', job.id)
+              .single();
             
-            if (!retryResult.success) {
-              console.log(`[enrich-batch] ❌ waitUntil: Retry também falhou, marcando como pausado`);
-              await supabase
-                .from('enrichment_jobs')
-                .update({ 
-                  status: 'pausado',
-                  erro_mensagem: `Auto-invocação falhou após retry. GitHub Actions ou frontend retomará em breve.`,
-                })
-                .eq('id', job.id);
-            } else {
-              console.log(`[enrich-batch] ✅ waitUntil: Retry bem sucedido!`);
+            if (currentJob?.status === 'pausado') {
+              console.log(`[enrich-batch] 🔄 waitUntil: Tentando retry backup...`);
+              const retryResult = await autoInvokeNextChunk(job.id, nextIndex);
+              if (retryResult.success) {
+                console.log(`[enrich-batch] ✅ waitUntil backup: Retry bem sucedido!`);
+              }
             }
           })());
-          
-          // Não marcar como pausado ainda - waitUntil vai tentar
-          console.log(`[enrich-batch] 🕐 Retry agendado via EdgeRuntime.waitUntil`);
-        } else {
-          // Fallback se EdgeRuntime não disponível
-          await supabase
-            .from('enrichment_jobs')
-            .update({ 
-              status: 'pausado',
-              erro_mensagem: `Auto-invocação falhou: ${invokeResult.error}. Clique "Retomar".`,
-            })
-            .eq('id', job.id);
         }
       }
     } else {

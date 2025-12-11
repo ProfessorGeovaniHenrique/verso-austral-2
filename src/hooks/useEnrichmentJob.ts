@@ -52,6 +52,8 @@ export interface UseEnrichmentJobOptions {
 
 // SPRINT ENRICH-REWRITE: Reduzido de 5 para 3 minutos
 const ABANDONED_TIMEOUT_MINUTES = 3;
+// SPRINT ENRICH-RECOVERY-FIX: Detecção de jobs travados (sem progresso mas "processando")
+const STUCK_DETECTION_MINUTES = 10;
 // SPRINT ENRICHMENT-AUTO-RESUME: Configurações de auto-retomada
 const AUTO_RESUME_DELAY_MS = 15000; // 15 segundos antes de tentar auto-retomar
 const MAX_AUTO_RESUME_RETRIES = 3;
@@ -370,8 +372,18 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     ? new Date().getTime() - new Date(activeJob.last_chunk_at).getTime() > ABANDONED_TIMEOUT_MINUTES * 60 * 1000
     : false;
 
-  // Verificar se job precisa de atenção (pausado ou abandonado)
-  const needsAttention = isAbandoned || activeJob?.status === 'pausado';
+  // SPRINT ENRICH-RECOVERY-FIX: Verificar se job está travado (processando sem progresso por muito tempo)
+  const isStuck = activeJob && activeJob.status === 'processando' && activeJob.last_chunk_at
+    ? new Date().getTime() - new Date(activeJob.last_chunk_at).getTime() > STUCK_DETECTION_MINUTES * 60 * 1000
+    : false;
+
+  // Calcular minutos desde última atividade
+  const minutesSinceLastActivity = activeJob?.last_chunk_at 
+    ? Math.round((Date.now() - new Date(activeJob.last_chunk_at).getTime()) / 60000)
+    : null;
+
+  // Verificar se job precisa de atenção (pausado, abandonado ou stuck)
+  const needsAttention = isAbandoned || isStuck || activeJob?.status === 'pausado';
 
   // Setup inicial e realtime
   useEffect(() => {
@@ -434,7 +446,7 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     };
   }, [autoRefresh, activeJob, refreshInterval, fetchActiveJob]);
 
-  // SPRINT ENRICHMENT-AUTO-RESUME: Auto-retomada de jobs pausados
+  // SPRINT ENRICHMENT-AUTO-RESUME: Auto-retomada de jobs pausados e stuck
   useEffect(() => {
     // Limpar timeout anterior
     if (autoResumeTimeoutRef.current) {
@@ -445,14 +457,12 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     // Não tentar auto-retomar se:
     // - Auto-resume desabilitado
     // - Não há job ativo
-    // - Job não está pausado
     // - Já está retomando
     // - Atingiu limite de tentativas
     // - Erro é de circuit breaker (requer intervenção manual)
     if (
       !autoResumeEnabled ||
       !activeJob ||
-      activeJob.status !== 'pausado' ||
       isResuming ||
       isAutoResuming ||
       autoResumeCount >= MAX_AUTO_RESUME_RETRIES ||
@@ -461,19 +471,31 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
       return;
     }
 
-    log.info(`Auto-resume scheduled (attempt ${autoResumeCount + 1}/${MAX_AUTO_RESUME_RETRIES})`);
+    // Condições para auto-resume:
+    // 1. Job está pausado
+    // 2. Job está stuck (processando mas sem atividade por STUCK_DETECTION_MINUTES)
+    const shouldAutoResume = activeJob.status === 'pausado' || isStuck;
+    
+    if (!shouldAutoResume) {
+      return;
+    }
+
+    const resumeReason = isStuck ? 'stuck' : 'pausado';
+    log.info(`Auto-resume scheduled (${resumeReason}, attempt ${autoResumeCount + 1}/${MAX_AUTO_RESUME_RETRIES})`);
 
     autoResumeTimeoutRef.current = setTimeout(async () => {
       setIsAutoResuming(true);
       
       try {
-        log.info(`Auto-resuming job ${activeJob.id}...`);
-        toast.info('Retomando job automaticamente...', { duration: 3000 });
+        const useForce = isStuck; // Usar force lock para jobs stuck
+        log.info(`Auto-resuming job ${activeJob.id} (force=${useForce})...`);
+        toast.info(`Retomando job automaticamente${useForce ? ' (forçado)' : ''}...`, { duration: 3000 });
         
         const { data, error } = await supabase.functions.invoke('enrich-songs-batch', {
           body: {
             jobId: activeJob.id,
             continueFrom: activeJob.current_song_index,
+            forceLock: useForce,
           }
         });
 
@@ -524,9 +546,13 @@ export function useEnrichmentJob(options: UseEnrichmentJobOptions = {}) {
     isResuming,
     progress,
     isAbandoned,
+    // SPRINT ENRICH-RECOVERY-FIX: Novos estados de detecção
+    isStuck,
+    minutesSinceLastActivity,
+    needsAttention,
 
     // Flags derivadas
-    isProcessing: activeJob?.status === 'processando' && !isAbandoned,
+    isProcessing: activeJob?.status === 'processando' && !isAbandoned && !isStuck,
     isPaused: activeJob?.status === 'pausado',
     isCompleted: activeJob?.status === 'concluido',
     isCancelling: activeJob?.is_cancelling || false,
