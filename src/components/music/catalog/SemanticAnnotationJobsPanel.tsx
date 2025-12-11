@@ -51,8 +51,7 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
     try {
       const { data, error } = await supabase.functions.invoke('annotate-corpus', {
         body: { 
-          corpusType: selectedCorpus,
-          action: 'start'
+          corpusName: selectedCorpus
         }
       });
 
