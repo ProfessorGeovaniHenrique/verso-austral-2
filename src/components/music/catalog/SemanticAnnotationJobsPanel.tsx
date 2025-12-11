@@ -55,7 +55,23 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        // Tentar extrair JSON do erro 409
+        const errorContext = error.context as { body?: string } | undefined;
+        if (errorContext?.body) {
+          try {
+            const parsed = JSON.parse(errorContext.body);
+            if (parsed.existingJobId) {
+              toast.info(`Já existe um job ativo para ${selectedCorpus}. Aguarde a conclusão.`, { id: toastId });
+              refetch(); // Atualizar lista para mostrar job existente
+              return;
+            }
+          } catch {
+            // Não é JSON, continuar com erro padrão
+          }
+        }
+        throw error;
+      }
 
       toast.success(`Anotação do corpus ${selectedCorpus} iniciada!`, { id: toastId });
       refetch();
