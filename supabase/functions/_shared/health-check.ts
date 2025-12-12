@@ -1,27 +1,32 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createLogger } from "./structured-logger.ts";
 import { checkBackpressureStatus, type BackpressureStatus } from "./backpressure.ts";
+import { getJobSlotStatus, type JobSlotStatus } from "./job-slot-manager.ts";
 
 interface CheckResult {
-  status: "healthy" | "degraded" | "unhealthy";
+  status: "healthy" | "degraded" | "unhealthy" | "critical";
   latency_ms: number;
   message?: string;
 }
 
 export interface HealthStatus {
-  status: "healthy" | "degraded" | "unhealthy";
+  status: "healthy" | "degraded" | "unhealthy" | "critical";
   timestamp: string;
   version: string;
   checks: {
     database: CheckResult;
     circuitBreaker: CheckResult;
+    concurrency: CheckResult;
   };
   metrics: {
     uptime: number;
     requestCount: number;
     errorRate: number;
+    activeJobs: number;
+    maxConcurrentJobs: number;
   };
   backpressure?: BackpressureStatus;
+  concurrency?: JobSlotStatus;
 }
 
 // In-memory metrics (reset on cold start)
@@ -61,12 +66,28 @@ async function checkDatabase(): Promise<CheckResult> {
       };
     }
     
-    // Latency thresholds
+    // Latency thresholds - escalonados
+    if (latency > 3000) {
+      return {
+        status: "critical",
+        latency_ms: latency,
+        message: "Critical latency detected",
+      };
+    }
+    
     if (latency > 1000) {
+      return {
+        status: "unhealthy",
+        latency_ms: latency,
+        message: "High latency detected",
+      };
+    }
+    
+    if (latency > 500) {
       return {
         status: "degraded",
         latency_ms: latency,
-        message: "High latency detected",
+        message: "Elevated latency",
       };
     }
     
@@ -76,7 +97,7 @@ async function checkDatabase(): Promise<CheckResult> {
     };
   } catch (error) {
     return {
-      status: "unhealthy",
+      status: "critical",
       latency_ms: Date.now() - start,
       message: error instanceof Error ? error.message : "Unknown error",
     };
@@ -84,9 +105,16 @@ async function checkDatabase(): Promise<CheckResult> {
 }
 
 function checkCircuitBreaker(): CheckResult {
-  // Simple in-memory circuit breaker check
   const uptime = Date.now() - startTime;
   const errorRate = requestCount > 0 ? (errorCount / requestCount) * 100 : 0;
+  
+  if (errorRate > 75) {
+    return {
+      status: "critical",
+      latency_ms: 0,
+      message: `Critical error rate: ${errorRate.toFixed(2)}%`,
+    };
+  }
   
   if (errorRate > 50) {
     return {
@@ -111,13 +139,58 @@ function checkCircuitBreaker(): CheckResult {
   };
 }
 
+function checkConcurrency(slotStatus: JobSlotStatus | null): CheckResult {
+  if (!slotStatus) {
+    return {
+      status: "healthy",
+      latency_ms: 0,
+      message: "Concurrency check unavailable",
+    };
+  }
+  
+  switch (slotStatus.level) {
+    case "CRITICAL":
+      return {
+        status: "critical",
+        latency_ms: 0,
+        message: `Critical concurrency: ${slotStatus.activeJobCount}/${slotStatus.maxConcurrentJobs} jobs`,
+      };
+    case "HIGH":
+      return {
+        status: "unhealthy",
+        latency_ms: 0,
+        message: `High concurrency: ${slotStatus.activeJobCount}/${slotStatus.maxConcurrentJobs} jobs`,
+      };
+    case "ELEVATED":
+      return {
+        status: "degraded",
+        latency_ms: 0,
+        message: `Elevated concurrency: ${slotStatus.activeJobCount}/${slotStatus.maxConcurrentJobs} jobs`,
+      };
+    default:
+      return {
+        status: "healthy",
+        latency_ms: 0,
+        message: `Normal concurrency: ${slotStatus.activeJobCount}/${slotStatus.maxConcurrentJobs} jobs`,
+      };
+  }
+}
+
 export async function createHealthCheck(
   functionName: string,
-  version: string = "1.0.0",
+  version: string = "2.0.0",
   includeBackpressure: boolean = false
 ): Promise<HealthStatus> {
   const logger = createLogger(functionName);
   logger.debug("Performing health check", { functionName });
+  
+  // Obter status de slots em paralelo
+  let slotStatus: JobSlotStatus | null = null;
+  try {
+    slotStatus = await getJobSlotStatus();
+  } catch (err) {
+    logger.warn("Failed to get job slot status", { error: err });
+  }
   
   const [dbCheck, cbCheck, bpStatus] = await Promise.all([
     checkDatabase(),
@@ -125,21 +198,26 @@ export async function createHealthCheck(
     includeBackpressure ? checkBackpressureStatus() : Promise.resolve(undefined),
   ]);
   
-  // Determine overall status
-  let overallStatus: "healthy" | "degraded" | "unhealthy" = "healthy";
+  const concurrencyCheck = checkConcurrency(slotStatus);
   
-  if (dbCheck.status === "unhealthy" || cbCheck.status === "unhealthy") {
+  // Determine overall status (pior status prevalece)
+  const statuses = [dbCheck.status, cbCheck.status, concurrencyCheck.status];
+  let overallStatus: "healthy" | "degraded" | "unhealthy" | "critical" = "healthy";
+  
+  if (statuses.includes("critical")) {
+    overallStatus = "critical";
+  } else if (statuses.includes("unhealthy")) {
     overallStatus = "unhealthy";
-  } else if (dbCheck.status === "degraded" || cbCheck.status === "degraded") {
+  } else if (statuses.includes("degraded")) {
     overallStatus = "degraded";
   }
   
-  // Se backpressure ativo, forçar status unhealthy
-  if (bpStatus?.isActive) {
+  // Se backpressure ativo, forçar status unhealthy no mínimo
+  if (bpStatus?.isActive && overallStatus === "healthy") {
     overallStatus = "unhealthy";
   }
   
-  const uptime = (Date.now() - startTime) / 1000; // seconds
+  const uptime = (Date.now() - startTime) / 1000;
   const errorRate = requestCount > 0 ? (errorCount / requestCount) * 100 : 0;
   
   return {
@@ -149,12 +227,16 @@ export async function createHealthCheck(
     checks: {
       database: dbCheck,
       circuitBreaker: cbCheck,
+      concurrency: concurrencyCheck,
     },
     metrics: {
       uptime,
       requestCount,
       errorRate: parseFloat(errorRate.toFixed(2)),
+      activeJobs: slotStatus?.activeJobCount || 0,
+      maxConcurrentJobs: slotStatus?.maxConcurrentJobs || 5,
     },
     backpressure: bpStatus,
+    concurrency: slotStatus || undefined,
   };
 }
