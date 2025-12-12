@@ -21,8 +21,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Baixa pacotes NLTK necessários
 RUN python -m nltk.downloader stopwords punkt
 
-# --- CORREÇÃO AQUI ---
-# Instala o modelo spaCy pt_core_news_lg diretamente via pip, com a versão correta
+# Instala o modelo spaCy pt_core_news_lg diretamente via pip
 RUN pip install https://github.com/explosion/spacy-models/releases/download/pt_core_news_lg-3.7.0/pt_core_news_lg-3.7.0.tar.gz
 
 # Copia código da aplicação
@@ -33,3 +32,4 @@ EXPOSE 8080
 
 # Comando de inicialização para aplicação Flask com Gunicorn
 CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
+
