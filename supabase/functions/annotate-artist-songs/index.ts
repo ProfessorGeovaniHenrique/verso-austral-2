@@ -215,6 +215,45 @@ serve(async (req) => {
       );
     }
 
+    // ========== CORREÇÃO 2: VERIFICAR JOB CONCLUÍDO RECENTEMENTE ==========
+    // Evitar reprocessar artista que foi concluído há menos de 1 hora
+    const { data: recentlyCompleted } = await supabaseClient
+      .from('semantic_annotation_jobs')
+      .select('id, tempo_fim, processed_words, total_words')
+      .eq('artist_id', artist.id)
+      .eq('status', 'concluido')
+      .order('tempo_fim', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (recentlyCompleted && recentlyCompleted.tempo_fim) {
+      const completedTime = new Date(recentlyCompleted.tempo_fim);
+      const hoursSinceCompletion = (Date.now() - completedTime.getTime()) / 3600000;
+      
+      if (hoursSinceCompletion < 1) {
+        logger.info('Artista já processado recentemente, evitando reprocessamento', { 
+          existingJobId: recentlyCompleted.id, 
+          hoursSinceCompletion: hoursSinceCompletion.toFixed(2)
+        });
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            jobId: recentlyCompleted.id,
+            artistId: artist.id,
+            artistName: artist.name,
+            isExisting: true,
+            isRecent: true,
+            status: 'concluido',
+            progress: 100,
+            hoursSinceCompletion: hoursSinceCompletion.toFixed(2),
+            message: `Artista já processado há ${Math.round(hoursSinceCompletion * 60)} minutos`
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Buscar músicas com letra E corpus_id para detecção dinâmica de corpus
     const { data: songs, error: songsError } = await supabaseClient
       .from('songs')

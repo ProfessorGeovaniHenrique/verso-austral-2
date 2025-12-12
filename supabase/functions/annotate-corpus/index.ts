@@ -328,6 +328,7 @@ async function startNextArtist(supabase: any, jobId: string, artists: any[], art
       .update({
         status: 'concluido',
         tempo_fim: new Date().toISOString(),
+        processed_artists: artists.length,
       })
       .eq('id', jobId);
     return;
@@ -335,6 +336,18 @@ async function startNextArtist(supabase: any, jobId: string, artists: any[], art
 
   const artist = artists[artistIndex];
   console.log(`Iniciando artista ${artistIndex + 1}/${artists.length}: ${artist.name}`);
+
+  // ========== CORREÇÃO 1: Atualizar ANTES de invocar para evitar race condition ==========
+  // Pré-registrar o artista atual ANTES de invocar
+  await supabase
+    .from('corpus_annotation_jobs')
+    .update({
+      current_artist_id: artist.id,
+      current_artist_name: artist.name,
+      current_artist_job_id: null, // Será atualizado após a resposta
+      last_artist_at: new Date().toISOString(),
+    })
+    .eq('id', jobId);
 
   // Invocar annotate-artist-songs
   const { data: artistJobData, error: invokeError } = await supabase.functions.invoke(
@@ -355,15 +368,33 @@ async function startNextArtist(supabase: any, jobId: string, artists: any[], art
       .eq('id', jobId);
   }
 
-  // SPRINT SEMANTIC-PIPELINE-FIX: Tratar resposta de job existente
+  // ========== CORREÇÃO 1: Extrair jobId da resposta e atualizar SINCRONAMENTE ==========
   const artistJobId = artistJobData?.jobId || null;
+  const isRecent = artistJobData?.isRecent || false;
+  const isExisting = artistJobData?.isExisting || false;
   
-  // Atualizar job com artista atual
+  // Se artista foi marcado como recente (já processado), incrementar contador e prosseguir
+  if (isRecent || (isExisting && artistJobData?.status === 'concluido')) {
+    console.log(`Artista ${artist.name} já processado recentemente, pulando para próximo`);
+    
+    // Incrementar processed_artists e continuar para o próximo
+    await supabase
+      .from('corpus_annotation_jobs')
+      .update({
+        processed_artists: artistIndex + 1,
+        last_artist_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    
+    // Invocar próximo artista imediatamente
+    await startNextArtist(supabase, jobId, artists, artistIndex + 1);
+    return;
+  }
+  
+  // Atualizar job com o artistJobId APÓS a resposta (correção do bug original)
   await supabase
     .from('corpus_annotation_jobs')
     .update({
-      current_artist_id: artist.id,
-      current_artist_name: artist.name,
       current_artist_job_id: artistJobId,
       last_artist_at: new Date().toISOString(),
     })
