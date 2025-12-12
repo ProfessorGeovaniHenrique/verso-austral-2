@@ -249,7 +249,57 @@ const { data, isLoading, error, refetch } = useQuery({
 
 ---
 
+## System Resilience & Backpressure
+
+### Protection Layers
+
+The system implements a 4-layer protection architecture to prevent database overload:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ L1: Pre-flight Check (Frontend)                             │
+│     └── checkCanStartJob() before starting any job          │
+├─────────────────────────────────────────────────────────────┤
+│ L2: Job Slot Manager (Redis)                                │
+│     └── Limits 5 concurrent jobs globally                   │
+├─────────────────────────────────────────────────────────────┤
+│ L3: Backpressure Detection (Edge Functions)                 │
+│     └── Detects latency and activates cooldowns             │
+├─────────────────────────────────────────────────────────────┤
+│ L4: Kill Switch (Redis + Edge Functions)                    │
+│     └── Stops everything immediately in emergency           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| Job Slot Manager | `_shared/job-slot-manager.ts` | Redis-based concurrency control |
+| Backpressure System | `_shared/backpressure.ts` | Latency detection & cooldowns |
+| Health Check | `_shared/health-check.ts` | System health aggregation |
+| Kill Switch | `emergency-kill-jobs/index.ts` | Emergency stop all jobs |
+| Frontend Hook | `useBackpressureStatus.ts` | UI integration |
+| Alert Component | `BackpressureAlert.tsx` | Visual feedback |
+
+### Severity Levels
+
+| Level | Active Jobs | Action |
+|-------|-------------|--------|
+| 🟢 Normal | 0-3 | None |
+| 🟡 Elevated | 4-5 | 2x delay |
+| 🟠 High | 6-8 | 4x delay, block new jobs |
+| 🔴 Critical | 9+ | Kill switch, 30min cooldown |
+
+### Emergency Documentation
+
+- [Emergency Runbook](./EMERGENCY_RUNBOOK.md) - Step-by-step crisis procedures
+- [Incident 2024-12-12](./INCIDENT_2024_12_12_SUPABASE_OVERLOAD.md) - Post-mortem analysis
+
+---
+
 ## Development Guidelines
 
 See [CODE_CONVENTIONS.md](./CODE_CONVENTIONS.md) for coding standards.
 See [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for edge function documentation.
+See [EMERGENCY_RUNBOOK.md](./EMERGENCY_RUNBOOK.md) for emergency procedures.
