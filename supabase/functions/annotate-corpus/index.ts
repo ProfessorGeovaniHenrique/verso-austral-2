@@ -377,17 +377,31 @@ async function startNextArtist(supabase: any, jobId: string, artists: any[], art
   if (isRecent || (isExisting && artistJobData?.status === 'concluido')) {
     console.log(`Artista ${artist.name} já processado recentemente, pulando para próximo`);
     
-    // Incrementar processed_artists e continuar para o próximo
+    // CORREÇÃO: Buscar processed_artists atual do banco para evitar race condition
+    const { data: currentJob } = await supabase
+      .from('corpus_annotation_jobs')
+      .select('processed_artists')
+      .eq('id', jobId)
+      .single();
+    
+    const newProcessedArtists = (currentJob?.processed_artists || artistIndex) + 1;
+    
+    // Incrementar processed_artists com valor correto do banco
     await supabase
       .from('corpus_annotation_jobs')
       .update({
-        processed_artists: artistIndex + 1,
+        processed_artists: newProcessedArtists,
         last_artist_at: new Date().toISOString(),
+        current_artist_id: null,
+        current_artist_name: null,
+        current_artist_job_id: null,
       })
       .eq('id', jobId);
     
-    // Invocar próximo artista imediatamente
-    await startNextArtist(supabase, jobId, artists, artistIndex + 1);
+    console.log(`Artista ${artist.name} skipped, processed_artists: ${newProcessedArtists}`);
+    
+    // Invocar próximo artista imediatamente usando o índice correto
+    await startNextArtist(supabase, jobId, artists, newProcessedArtists);
     return;
   }
   
