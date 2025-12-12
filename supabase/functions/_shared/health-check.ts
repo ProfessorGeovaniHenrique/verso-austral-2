@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { createLogger } from "./structured-logger.ts";
+import { checkBackpressureStatus, type BackpressureStatus } from "./backpressure.ts";
 
 interface CheckResult {
   status: "healthy" | "degraded" | "unhealthy";
@@ -20,6 +21,7 @@ export interface HealthStatus {
     requestCount: number;
     errorRate: number;
   };
+  backpressure?: BackpressureStatus;
 }
 
 // In-memory metrics (reset on cold start)
@@ -111,14 +113,16 @@ function checkCircuitBreaker(): CheckResult {
 
 export async function createHealthCheck(
   functionName: string,
-  version: string = "1.0.0"
+  version: string = "1.0.0",
+  includeBackpressure: boolean = false
 ): Promise<HealthStatus> {
   const logger = createLogger(functionName);
   logger.debug("Performing health check", { functionName });
   
-  const [dbCheck, cbCheck] = await Promise.all([
+  const [dbCheck, cbCheck, bpStatus] = await Promise.all([
     checkDatabase(),
     Promise.resolve(checkCircuitBreaker()),
+    includeBackpressure ? checkBackpressureStatus() : Promise.resolve(undefined),
   ]);
   
   // Determine overall status
@@ -128,6 +132,11 @@ export async function createHealthCheck(
     overallStatus = "unhealthy";
   } else if (dbCheck.status === "degraded" || cbCheck.status === "degraded") {
     overallStatus = "degraded";
+  }
+  
+  // Se backpressure ativo, forçar status unhealthy
+  if (bpStatus?.isActive) {
+    overallStatus = "unhealthy";
   }
   
   const uptime = (Date.now() - startTime) / 1000; // seconds
@@ -146,5 +155,6 @@ export async function createHealthCheck(
       requestCount,
       errorRate: parseFloat(errorRate.toFixed(2)),
     },
+    backpressure: bpStatus,
   };
 }
