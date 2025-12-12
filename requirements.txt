@@ -1,0 +1,18 @@
+# Web server e framework
+flask
+gunicorn
+
+# Bibliotecas de NLP
+nltk
+spacy
+
+# Conector para o banco de dados PostgreSQL
+psycopg2-binary
+
+# Biblioteca do Google Cloud para acessar o Storage
+google-cloud-storage
+
+# Adicione aqui outras dependências do seu projeto
+# Exemplo:
+# pandas
+# scikit-learn
