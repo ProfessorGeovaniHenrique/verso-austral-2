@@ -1,24 +1,31 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
-import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
+import { corsHeaders } from "../_shared/cors.ts";
 
 /**
+ * REFATORAÇÃO COMPLETA - Sistema de Lock Distribuído
  * Orquestra anotação semântica de corpus inteiro, processando artista por artista
+ * com proteção contra duplicatas e race conditions
  */
 
 interface AnnotateCorpusRequest {
-  jobId?: string;        // Continuar job existente
-  corpusId?: string;     // Criar novo job para este corpus
-  corpusName?: string;   // Ou pelo nome
+  jobId?: string;
+  corpusId?: string;
+  corpusName?: string;
   action?: 'pause' | 'resume' | 'cancel';
+  continueProcessing?: boolean;
 }
 
-const AUTO_INVOKE_DELAY_MS = 30000; // 30s entre verificações (tempo médio de um chunk)
+const AUTO_INVOKE_DELAY_MS = 10000; // 10s entre verificações (reduzido para agilidade)
+const ARTIST_JOB_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutos - timeout para considerar artista stuck
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
+  const requestId = crypto.randomUUID().slice(0, 8);
+  console.log(`\n========== [${requestId}] annotate-corpus ==========`);
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
@@ -27,21 +34,23 @@ serve(async (req) => {
 
   try {
     const body: AnnotateCorpusRequest = await req.json();
-    const { jobId, corpusId, corpusName, action } = body;
+    const { jobId, corpusId, corpusName, action, continueProcessing } = body;
+
+    console.log(`📋 Params: jobId=${jobId}, corpusId=${corpusId}, action=${action}, continue=${continueProcessing}`);
 
     // AÇÃO: Pausar, Retomar ou Cancelar
     if (jobId && action) {
-      return await handleAction(supabase, jobId, action);
+      return await handleAction(supabase, jobId, action, requestId);
     }
 
     // MODO: Continuar job existente
-    if (jobId && !action) {
-      return await continueJob(supabase, jobId);
+    if (jobId && (continueProcessing || !action)) {
+      return await continueJob(supabase, jobId, requestId);
     }
 
     // MODO: Criar novo job
     if (corpusId || corpusName) {
-      return await createNewJob(supabase, corpusId, corpusName);
+      return await createNewJob(supabase, corpusId, corpusName, requestId);
     }
 
     return new Response(
@@ -50,7 +59,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('annotate-corpus error:', error);
+    console.error(`❌ [${requestId}] Error:`, error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,7 +67,9 @@ serve(async (req) => {
   }
 });
 
-async function handleAction(supabase: any, jobId: string, action: string) {
+async function handleAction(supabase: any, jobId: string, action: string, requestId: string) {
+  console.log(`🎬 [${requestId}] Action: ${action} on job ${jobId}`);
+  
   const statusMap: Record<string, string> = {
     pause: 'pausado',
     resume: 'processando',
@@ -73,9 +84,44 @@ async function handleAction(supabase: any, jobId: string, action: string) {
     );
   }
 
-  const updates: any = { status: newStatus, updated_at: new Date().toISOString() };
+  const updates: any = { 
+    status: newStatus, 
+    updated_at: new Date().toISOString() 
+  };
+  
   if (action === 'cancel') {
     updates.tempo_fim = new Date().toISOString();
+    
+    // CORREÇÃO: Cancelar também o job de artista atual
+    const { data: job } = await supabase
+      .from('corpus_annotation_jobs')
+      .select('current_artist_job_id, current_artist_id')
+      .eq('id', jobId)
+      .single();
+    
+    if (job?.current_artist_job_id) {
+      await supabase
+        .from('semantic_annotation_jobs')
+        .update({ 
+          status: 'cancelado', 
+          erro_mensagem: 'Cancelado: corpus job cancelado',
+          tempo_fim: new Date().toISOString()
+        })
+        .eq('id', job.current_artist_job_id);
+    }
+    
+    // Cancelar todos os jobs pendentes do artista atual
+    if (job?.current_artist_id) {
+      await supabase
+        .from('semantic_annotation_jobs')
+        .update({ 
+          status: 'cancelado', 
+          erro_mensagem: 'Cancelado: corpus job cancelado',
+          tempo_fim: new Date().toISOString()
+        })
+        .eq('artist_id', job.current_artist_id)
+        .in('status', ['processando', 'pendente', 'pausado']);
+    }
   }
 
   const { error } = await supabase
@@ -87,7 +133,7 @@ async function handleAction(supabase: any, jobId: string, action: string) {
 
   // Se retomando, auto-invocar para processar próximo artista
   if (action === 'resume') {
-    autoInvoke(supabase, jobId);
+    scheduleAutoInvoke(supabase, jobId, 2000); // 2s delay
   }
 
   return new Response(
@@ -96,7 +142,9 @@ async function handleAction(supabase: any, jobId: string, action: string) {
   );
 }
 
-async function createNewJob(supabase: any, corpusId?: string, corpusName?: string) {
+async function createNewJob(supabase: any, corpusId?: string, corpusName?: string, requestId?: string) {
+  console.log(`🆕 [${requestId}] Creating new corpus job`);
+  
   // Buscar corpus
   let corpus;
   if (corpusId) {
@@ -136,7 +184,7 @@ async function createNewJob(supabase: any, corpusId?: string, corpusName?: strin
     );
   }
 
-  // Buscar artistas do corpus ordenados por total de músicas
+  // Buscar artistas do corpus ordenados por nome
   const { data: artists, error: artistsError } = await supabase
     .from('artists')
     .select('id, name')
@@ -157,7 +205,6 @@ async function createNewJob(supabase: any, corpusId?: string, corpusName?: strin
     .in('artist_id', artists.map((a: any) => a.id))
     .not('lyrics', 'is', null);
 
-  // Estimar palavras (média de 150 palavras por música)
   const estimatedWords = (totalSongs || 0) * 150;
 
   // Criar job
@@ -173,16 +220,17 @@ async function createNewJob(supabase: any, corpusId?: string, corpusName?: strin
       processed_songs: 0,
       total_words_estimated: estimatedWords,
       processed_words: 0,
+      tempo_inicio: new Date().toISOString(),
     })
     .select()
     .single();
 
   if (jobError || !newJob) throw new Error('Erro ao criar job: ' + jobError?.message);
 
-  console.log('Corpus annotation job criado:', newJob.id, 'Artistas:', artists.length);
+  console.log(`✅ [${requestId}] Corpus job criado: ${newJob.id}, ${artists.length} artistas`);
 
   // Iniciar primeiro artista
-  await startNextArtist(supabase, newJob.id, artists, 0);
+  await processNextArtist(supabase, newJob.id, artists, 0, requestId);
 
   return new Response(
     JSON.stringify({
@@ -199,8 +247,10 @@ async function createNewJob(supabase: any, corpusId?: string, corpusName?: strin
   );
 }
 
-async function continueJob(supabase: any, jobId: string) {
-  // Buscar job
+async function continueJob(supabase: any, jobId: string, requestId?: string) {
+  console.log(`🔄 [${requestId}] Continuing job ${jobId}`);
+  
+  // Buscar job com lock otimista
   const { data: job, error: jobError } = await supabase
     .from('corpus_annotation_jobs')
     .select('*')
@@ -210,37 +260,87 @@ async function continueJob(supabase: any, jobId: string) {
   if (jobError || !job) throw new Error('Job não encontrado');
 
   // Verificar status
-  if (job.status === 'cancelado' || job.status === 'concluido') {
+  if (job.status === 'cancelado') {
+    console.log(`⛔ [${requestId}] Job cancelado`);
     return new Response(
-      JSON.stringify({ success: false, message: `Job já ${job.status}` }),
+      JSON.stringify({ success: false, message: 'Job cancelado' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+  
+  if (job.status === 'concluido') {
+    console.log(`✅ [${requestId}] Job já concluído`);
+    return new Response(
+      JSON.stringify({ success: true, message: 'Job já concluído' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
   if (job.status === 'pausado') {
+    console.log(`⏸️ [${requestId}] Job pausado`);
     return new Response(
       JSON.stringify({ success: false, message: 'Job pausado. Use action=resume para retomar.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 
+  // Buscar artistas do corpus
+  const { data: artists } = await supabase
+    .from('artists')
+    .select('id, name')
+    .eq('corpus_id', job.corpus_id)
+    .order('name');
+
+  if (!artists?.length) {
+    throw new Error('Nenhum artista encontrado');
+  }
+
   // Verificar status do artista atual
   if (job.current_artist_job_id) {
     const { data: artistJob } = await supabase
       .from('semantic_annotation_jobs')
-      .select('status, processed_words, total_words')
+      .select('id, status, processed_words, total_words, last_chunk_at, tempo_inicio')
       .eq('id', job.current_artist_job_id)
       .single();
 
     if (artistJob) {
+      console.log(`📊 [${requestId}] Artista atual: ${job.current_artist_name}, status: ${artistJob.status}`);
+      
       if (artistJob.status === 'processando') {
-        // Ainda processando, não fazer nada
+        // Verificar se está stuck
+        const lastActivity = artistJob.last_chunk_at 
+          ? new Date(artistJob.last_chunk_at).getTime()
+          : new Date(artistJob.tempo_inicio).getTime();
+        
+        const timeSinceActivity = Date.now() - lastActivity;
+        
+        if (timeSinceActivity > ARTIST_JOB_TIMEOUT_MS) {
+          // Artista stuck - pausar e prosseguir
+          console.log(`⚠️ [${requestId}] Artista ${job.current_artist_name} stuck (${Math.round(timeSinceActivity / 60000)}min)`);
+          
+          await supabase
+            .from('semantic_annotation_jobs')
+            .update({ 
+              status: 'pausado', 
+              erro_mensagem: `Pausado automaticamente após ${Math.round(timeSinceActivity / 60000)}min sem atividade`
+            })
+            .eq('id', artistJob.id);
+          
+          // Prosseguir para próximo artista
+          const nextIndex = job.processed_artists + 1;
+          await processNextArtist(supabase, jobId, artists, nextIndex, requestId);
+        } else {
+          // Ainda processando normalmente
+          console.log(`⏳ [${requestId}] Artista ainda processando, agendando verificação`);
+          scheduleAutoInvoke(supabase, jobId, AUTO_INVOKE_DELAY_MS);
+        }
+        
         return new Response(
           JSON.stringify({
             success: true,
-            message: 'Artista atual ainda processando',
+            message: artistJob.status === 'processando' ? 'Artista atual ainda processando' : 'Próximo artista iniciado',
             currentArtist: job.current_artist_name,
-            artistProgress: artistJob.total_words > 0 
+            progress: artistJob.total_words > 0 
               ? Math.round((artistJob.processed_words / artistJob.total_words) * 100) 
               : 0,
           }),
@@ -248,55 +348,56 @@ async function continueJob(supabase: any, jobId: string) {
         );
       }
 
-      if (artistJob.status === 'concluido' || artistJob.status === 'erro') {
-        // Artista concluído, passar para o próximo
-        const processedArtists = job.processed_artists + 1;
+      if (artistJob.status === 'concluido' || artistJob.status === 'cancelado' || artistJob.status === 'erro') {
+        // Artista terminado, passar para o próximo
+        console.log(`✅ [${requestId}] Artista ${job.current_artist_name} finalizado (${artistJob.status})`);
         
-        // Buscar artistas do corpus
-        const { data: artists } = await supabase
-          .from('artists')
-          .select('id, name')
-          .eq('corpus_id', job.corpus_id)
-          .order('name');
-
-        if (processedArtists >= job.total_artists) {
+        const nextIndex = job.processed_artists + 1;
+        
+        // Atualizar progresso
+        await supabase
+          .from('corpus_annotation_jobs')
+          .update({
+            processed_artists: nextIndex,
+            processed_words: (job.processed_words || 0) + (artistJob.processed_words || 0),
+            last_artist_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+        
+        if (nextIndex >= job.total_artists) {
           // Corpus concluído!
           await supabase
             .from('corpus_annotation_jobs')
             .update({
               status: 'concluido',
-              processed_artists: processedArtists,
               tempo_fim: new Date().toISOString(),
+              current_artist_id: null,
+              current_artist_name: null,
+              current_artist_job_id: null,
             })
             .eq('id', jobId);
 
+          console.log(`🎉 [${requestId}] Corpus job ${jobId} concluído!`);
+          
           return new Response(
             JSON.stringify({
               success: true,
               message: 'Corpus anotação concluída!',
               totalArtists: job.total_artists,
-              processedArtists,
+              processedArtists: nextIndex,
             }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Atualizar progresso e iniciar próximo artista
-        await supabase
-          .from('corpus_annotation_jobs')
-          .update({
-            processed_artists: processedArtists,
-            last_artist_at: new Date().toISOString(),
-          })
-          .eq('id', jobId);
-
-        await startNextArtist(supabase, jobId, artists || [], processedArtists);
-
+        // Prosseguir para próximo artista
+        await processNextArtist(supabase, jobId, artists, nextIndex, requestId);
+        
         return new Response(
           JSON.stringify({
             success: true,
             message: 'Próximo artista iniciado',
-            processedArtists,
+            processedArtists: nextIndex,
             totalArtists: job.total_artists,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -306,13 +407,8 @@ async function continueJob(supabase: any, jobId: string) {
   }
 
   // Nenhum artista em andamento, iniciar o próximo
-  const { data: artists } = await supabase
-    .from('artists')
-    .select('id, name')
-    .eq('corpus_id', job.corpus_id)
-    .order('name');
-
-  await startNextArtist(supabase, jobId, artists || [], job.processed_artists);
+  console.log(`🚀 [${requestId}] Iniciando artista ${job.processed_artists + 1}/${job.total_artists}`);
+  await processNextArtist(supabase, jobId, artists, job.processed_artists, requestId);
 
   return new Response(
     JSON.stringify({ success: true, message: 'Processamento continuado' }),
@@ -320,77 +416,187 @@ async function continueJob(supabase: any, jobId: string) {
   );
 }
 
-async function startNextArtist(supabase: any, jobId: string, artists: any[], artistIndex: number) {
+async function processNextArtist(
+  supabase: any, 
+  jobId: string, 
+  artists: any[], 
+  artistIndex: number,
+  requestId?: string
+) {
+  // Verificar se corpus job ainda está ativo
+  const { data: corpusJob } = await supabase
+    .from('corpus_annotation_jobs')
+    .select('status, is_cancelling')
+    .eq('id', jobId)
+    .single();
+  
+  if (!corpusJob || corpusJob.status === 'cancelado' || corpusJob.is_cancelling) {
+    console.log(`⛔ [${requestId}] Corpus job cancelado, abortando`);
+    return;
+  }
+
   if (artistIndex >= artists.length) {
     // Concluído
+    console.log(`🎉 [${requestId}] Todos os ${artists.length} artistas processados!`);
     await supabase
       .from('corpus_annotation_jobs')
       .update({
         status: 'concluido',
         tempo_fim: new Date().toISOString(),
         processed_artists: artists.length,
+        current_artist_id: null,
+        current_artist_name: null,
+        current_artist_job_id: null,
       })
       .eq('id', jobId);
     return;
   }
 
   const artist = artists[artistIndex];
-  console.log(`Iniciando artista ${artistIndex + 1}/${artists.length}: ${artist.name}`);
+  console.log(`🎵 [${requestId}] Processando artista ${artistIndex + 1}/${artists.length}: ${artist.name}`);
 
-  // ========== CORREÇÃO 1: Atualizar ANTES de invocar para evitar race condition ==========
-  // Pré-registrar o artista atual ANTES de invocar
+  // CORREÇÃO 1: Cancelar TODOS os jobs pendentes/processando deste artista ANTES de iniciar
+  const { data: cancelledJobs } = await supabase
+    .from('semantic_annotation_jobs')
+    .update({ 
+      status: 'cancelado', 
+      erro_mensagem: 'Cancelado automaticamente: novo job de corpus iniciado',
+      tempo_fim: new Date().toISOString()
+    })
+    .eq('artist_id', artist.id)
+    .in('status', ['processando', 'pendente', 'pausado'])
+    .select('id');
+  
+  if (cancelledJobs?.length > 0) {
+    console.log(`🧹 [${requestId}] ${cancelledJobs.length} jobs anteriores cancelados para ${artist.name}`);
+  }
+
+  // CORREÇÃO 2: Verificar se artista já tem cobertura alta no cache
+  const { data: songs } = await supabase
+    .from('songs')
+    .select('lyrics')
+    .eq('artist_id', artist.id)
+    .not('lyrics', 'is', null);
+
+  if (!songs?.length) {
+    console.log(`⏭️ [${requestId}] Artista ${artist.name} sem músicas com letras, pulando`);
+    
+    await supabase
+      .from('corpus_annotation_jobs')
+      .update({
+        processed_artists: artistIndex + 1,
+        last_artist_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    
+    // Prosseguir para próximo artista recursivamente
+    await processNextArtist(supabase, jobId, artists, artistIndex + 1, requestId);
+    return;
+  }
+
+  // Tokenizar e verificar cobertura
+  const allWords = new Set<string>();
+  for (const song of songs) {
+    if (song.lyrics) {
+      const words = song.lyrics
+        .toLowerCase()
+        .replace(/[^\p{L}\p{N}\s-]/gu, ' ')
+        .split(/\s+/)
+        .filter((w: string) => w.length >= 2);
+      words.forEach((w: string) => allWords.add(w));
+    }
+  }
+
+  const wordsArray = Array.from(allWords);
+  
+  // Verificar quantas já estão no cache (amostra de até 500 palavras)
+  const sampleWords = wordsArray.slice(0, 500);
+  const { count: cachedCount } = await supabase
+    .from('semantic_disambiguation_cache')
+    .select('*', { count: 'exact', head: true })
+    .in('palavra', sampleWords);
+
+  const coverage = sampleWords.length > 0 ? ((cachedCount || 0) / sampleWords.length) * 100 : 0;
+
+  console.log(`📊 [${requestId}] ${artist.name}: ${wordsArray.length} palavras únicas, ${coverage.toFixed(1)}% cobertura`);
+
+  if (coverage >= 95) {
+    console.log(`⏭️ [${requestId}] Artista ${artist.name} já tem ${coverage.toFixed(1)}% cobertura, pulando`);
+    
+    await supabase
+      .from('corpus_annotation_jobs')
+      .update({
+        processed_artists: artistIndex + 1,
+        last_artist_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    
+    // Prosseguir para próximo artista recursivamente
+    await processNextArtist(supabase, jobId, artists, artistIndex + 1, requestId);
+    return;
+  }
+
+  // CORREÇÃO 3: Atualizar corpus job ANTES de invocar
   await supabase
     .from('corpus_annotation_jobs')
     .update({
       current_artist_id: artist.id,
       current_artist_name: artist.name,
-      current_artist_job_id: null, // Será atualizado após a resposta
+      current_artist_job_id: null,
       last_artist_at: new Date().toISOString(),
     })
     .eq('id', jobId);
 
-  // Invocar annotate-artist-songs
+  // Invocar annotate-artist-songs com corpusJobId
   const { data: artistJobData, error: invokeError } = await supabase.functions.invoke(
     'annotate-artist-songs',
     {
-      body: { artistId: artist.id },
+      body: { 
+        artistId: artist.id, 
+        artistName: artist.name,
+        corpusJobId: jobId
+      },
     }
   );
 
   if (invokeError) {
-    console.error('Erro ao invocar annotate-artist-songs:', invokeError);
-    // Marcar erro mas continuar com próximo artista
+    console.error(`❌ [${requestId}] Erro ao invocar annotate-artist-songs:`, invokeError);
+    
     await supabase
       .from('corpus_annotation_jobs')
       .update({
         erro_mensagem: `Erro no artista ${artist.name}: ${invokeError.message}`,
       })
       .eq('id', jobId);
+    
+    // Continuar para próximo artista mesmo com erro
+    await supabase
+      .from('corpus_annotation_jobs')
+      .update({
+        processed_artists: artistIndex + 1,
+        last_artist_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+    
+    scheduleAutoInvoke(supabase, jobId, 5000);
+    return;
   }
 
-  // ========== CORREÇÃO 1: Extrair jobId da resposta e atualizar SINCRONAMENTE ==========
+  // Extrair jobId da resposta
   const artistJobId = artistJobData?.jobId || null;
   const isRecent = artistJobData?.isRecent || false;
   const isExisting = artistJobData?.isExisting || false;
   
-  // Se artista foi marcado como recente (já processado), incrementar contador e prosseguir
-  if (isRecent || (isExisting && artistJobData?.status === 'concluido')) {
-    console.log(`Artista ${artist.name} já processado recentemente, pulando para próximo`);
+  console.log(`📋 [${requestId}] Resposta: jobId=${artistJobId}, isRecent=${isRecent}, isExisting=${isExisting}`);
+
+  // Se artista foi marcado como recente (já processado), incrementar e prosseguir
+  if (isRecent || (artistJobData?.coverage && artistJobData.coverage >= 95)) {
+    console.log(`⏭️ [${requestId}] Artista ${artist.name} já anotado, pulando`);
     
-    // CORREÇÃO: Buscar processed_artists atual do banco para evitar race condition
-    const { data: currentJob } = await supabase
-      .from('corpus_annotation_jobs')
-      .select('processed_artists')
-      .eq('id', jobId)
-      .single();
-    
-    const newProcessedArtists = (currentJob?.processed_artists || artistIndex) + 1;
-    
-    // Incrementar processed_artists com valor correto do banco
     await supabase
       .from('corpus_annotation_jobs')
       .update({
-        processed_artists: newProcessedArtists,
+        processed_artists: artistIndex + 1,
         last_artist_at: new Date().toISOString(),
         current_artist_id: null,
         current_artist_name: null,
@@ -398,58 +604,46 @@ async function startNextArtist(supabase: any, jobId: string, artists: any[], art
       })
       .eq('id', jobId);
     
-    console.log(`Artista ${artist.name} skipped, processed_artists: ${newProcessedArtists}`);
-    
-    // Invocar próximo artista imediatamente usando o índice correto
-    await startNextArtist(supabase, jobId, artists, newProcessedArtists);
+    // Prosseguir para próximo artista recursivamente (sem delay para agilidade)
+    await processNextArtist(supabase, jobId, artists, artistIndex + 1, requestId);
     return;
   }
   
-  // Atualizar job com o artistJobId APÓS a resposta (correção do bug original)
-  await supabase
-    .from('corpus_annotation_jobs')
-    .update({
-      current_artist_job_id: artistJobId,
-      last_artist_at: new Date().toISOString(),
-    })
-    .eq('id', jobId);
+  // Atualizar job com o artistJobId
+  if (artistJobId) {
+    await supabase
+      .from('corpus_annotation_jobs')
+      .update({
+        current_artist_job_id: artistJobId,
+        last_artist_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+  }
 
-  console.log(`Artista ${artist.name} iniciado. Job ID: ${artistJobId || 'N/A'}`);
+  console.log(`✅ [${requestId}] Artista ${artist.name} iniciado, job: ${artistJobId || 'N/A'}`);
 
-  // SPRINT SEMANTIC-PIPELINE-FIX: Usar EdgeRuntime.waitUntil para auto-invocação
-  // EdgeRuntime.waitUntil permite execução após resposta HTTP
-  autoInvoke(supabase, jobId);
+  // Agendar verificação do progresso
+  scheduleAutoInvoke(supabase, jobId, AUTO_INVOKE_DELAY_MS);
 }
 
-function autoInvoke(supabase: any, jobId: string) {
-  // SPRINT SEMANTIC-PIPELINE-FIX: Usar EdgeRuntime.waitUntil em vez de setTimeout
+function scheduleAutoInvoke(supabase: any, jobId: string, delayMs: number) {
   // @ts-ignore - EdgeRuntime disponível em Deno Edge Functions
   if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
     // @ts-ignore
     EdgeRuntime.waitUntil(
       (async () => {
-        await new Promise(resolve => setTimeout(resolve, AUTO_INVOKE_DELAY_MS));
+        await new Promise(resolve => setTimeout(resolve, delayMs));
         try {
-          console.log(`Auto-invoking annotate-corpus for job ${jobId}`);
+          console.log(`🔄 Auto-invoking annotate-corpus for job ${jobId}`);
           await supabase.functions.invoke('annotate-corpus', {
-            body: { jobId },
+            body: { jobId, continueProcessing: true },
           });
         } catch (err) {
-          console.error('EdgeRuntime auto-invoke failed:', err);
+          console.error('Auto-invoke failed:', err);
         }
       })()
     );
   } else {
-    // Fallback: setTimeout (não funciona após resposta HTTP, mas serve para testes)
-    console.warn('EdgeRuntime.waitUntil not available, using setTimeout fallback');
-    setTimeout(async () => {
-      try {
-        await supabase.functions.invoke('annotate-corpus', {
-          body: { jobId },
-        });
-      } catch (err) {
-        console.error('setTimeout auto-invoke failed:', err);
-      }
-    }, AUTO_INVOKE_DELAY_MS);
+    console.warn('EdgeRuntime.waitUntil not available');
   }
 }
