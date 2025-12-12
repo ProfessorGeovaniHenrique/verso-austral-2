@@ -9,6 +9,7 @@ import { enrichTokensWithPOS, calculatePOSCoverage } from "../_shared/pos-enrich
 import { normalizeText } from "../_shared/text-normalizer.ts";
 import { corsHeaders, handleCorsPreflightRequest } from "../_shared/cors.ts";
 import { performHealthCheck, getRecommendedDelay, triggerBackpressure } from "../_shared/backpressure.ts";
+import { isEmergencyKillActive } from "../_shared/emergency-check.ts";
 
 interface AnnotateArtistRequest {
   artistId?: string;
@@ -128,6 +129,28 @@ serve(async (req) => {
   const logger = createEdgeLogger('annotate-artist-songs', requestId);
 
   try {
+    // 🚨 KILL SWITCH: Verificar flag de emergência PRIMEIRO
+    const killActive = await isEmergencyKillActive();
+    if (killActive) {
+      logger.warn('🚨 KILL SWITCH ATIVO - Parando imediatamente');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'emergency_kill_active',
+          message: '🚨 Kill Switch de emergência ativo. Todos os processamentos foram pausados.',
+          retryAfterMs: 30 * 60 * 1000 // 30 minutos
+        }),
+        { 
+          status: 503, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '1800'
+          } 
+        }
+      );
+    }
+
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''

@@ -11,6 +11,7 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.81.1';
 import { performHealthCheck, triggerBackpressure } from "../_shared/backpressure.ts";
+import { isEmergencyKillActive } from "../_shared/emergency-check.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -460,6 +461,40 @@ Deno.serve(async (req) => {
     const payload: EnrichmentJobPayload = await req.json();
     console.log(`[enrich-batch] 🚀 OTIM-10X v1: CHUNK=${CHUNK_SIZE}, PARALLEL=${PARALLEL_SONGS}`);
     console.log(`[enrich-batch] Payload:`, JSON.stringify(payload));
+
+    // 🚨 KILL SWITCH: Verificar flag de emergência PRIMEIRO
+    const killActive = await isEmergencyKillActive();
+    if (killActive) {
+      console.log(`[enrich-batch] 🚨 KILL SWITCH ATIVO - Parando imediatamente`);
+      
+      // Pausar job se existir
+      if (payload.jobId) {
+        await supabase
+          .from('enrichment_jobs')
+          .update({
+            status: 'pausado',
+            error_message: '🚨 Kill Switch de emergência ativo. Pausado automaticamente.'
+          })
+          .eq('id', payload.jobId);
+      }
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'emergency_kill_active',
+          message: '🚨 Kill Switch de emergência ativo. Todos os processamentos foram pausados.',
+          retryAfterMs: 30 * 60 * 1000
+        }),
+        { 
+          status: 503, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '1800'
+          } 
+        }
+      );
+    }
 
     // SPRINT BP-1: Verificar backpressure antes de processar
     const healthResult = await performHealthCheck('enrich-songs-batch');

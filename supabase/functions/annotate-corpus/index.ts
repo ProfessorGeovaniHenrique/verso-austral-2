@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.81.1";
 import { corsHeaders } from "../_shared/cors.ts";
+import { isEmergencyKillActive } from "../_shared/emergency-check.ts";
 
 /**
  * REFATORAÇÃO COMPLETA - Sistema de Lock Distribuído
@@ -33,6 +34,28 @@ serve(async (req) => {
   );
 
   try {
+    // 🚨 KILL SWITCH: Verificar flag de emergência PRIMEIRO
+    const killActive = await isEmergencyKillActive();
+    if (killActive) {
+      console.log(`🚨 [${requestId}] KILL SWITCH ATIVO - Parando imediatamente`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'emergency_kill_active',
+          message: '🚨 Kill Switch de emergência ativo. Todos os processamentos foram pausados.',
+          retryAfterMs: 30 * 60 * 1000
+        }),
+        { 
+          status: 503, 
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Retry-After': '1800'
+          } 
+        }
+      );
+    }
+
     const body: AnnotateCorpusRequest = await req.json();
     const { jobId, corpusId, corpusName, action, continueProcessing } = body;
 
