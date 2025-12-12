@@ -5,7 +5,7 @@
  * Exibe tanto jobs de corpus (corpus_annotation_jobs) quanto jobs de artista (semantic_annotation_jobs)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,26 +109,47 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
     }
   };
 
-  // Transform jobs para formato esperado pelo AnnotationJobsTable
-  const transformedJobs = stats.activeJobs.map(job => ({
-    id: job.id,
-    artist_name: job.artist_name,
-    status: job.status,
-    processed_words: job.processed_words,
-    total_words: job.total_words,
-    progress: job.progress,
-    tempo_inicio: job.tempo_inicio,
-    tempo_fim: job.tempo_fim,
-    erro_mensagem: job.erro_mensagem,
-    last_chunk_at: job.last_chunk_at,
-    chunks_processed: job.chunks_processed,
-    current_song_index: job.current_song_index,
-    current_word_index: job.current_word_index
-  }));
+  // IDs de jobs de artista vinculados a corpus jobs ativos (evitar duplicação)
+  const artistJobIdsInCorpus = useMemo(() => {
+    return new Set(
+      activeCorpusJobs
+        .filter(cj => cj.current_artist_job_id)
+        .map(cj => cj.current_artist_job_id)
+    );
+  }, [activeCorpusJobs]);
 
-  const globalProgress = stats.totalJobs > 0 
-    ? Math.round((stats.completed / stats.totalJobs) * 100)
-    : 0;
+  // Transform jobs para formato esperado, FILTRANDO duplicatas de corpus jobs
+  const transformedJobs = useMemo(() => {
+    return stats.activeJobs
+      .filter(job => !artistJobIdsInCorpus.has(job.id))
+      .map(job => ({
+        id: job.id,
+        artist_name: job.artist_name,
+        status: job.status,
+        processed_words: job.processed_words,
+        total_words: job.total_words,
+        progress: job.progress,
+        tempo_inicio: job.tempo_inicio,
+        tempo_fim: job.tempo_fim,
+        erro_mensagem: job.erro_mensagem,
+        last_chunk_at: job.last_chunk_at,
+        chunks_processed: job.chunks_processed,
+        current_song_index: job.current_song_index,
+        current_word_index: job.current_word_index
+      }));
+  }, [stats.activeJobs, artistJobIdsInCorpus]);
+
+  // Progresso global baseado em PALAVRAS quando há corpus job, senão jobs
+  const globalProgress = useMemo(() => {
+    if (activeCorpusJobs.length > 0) {
+      const corpusJob = activeCorpusJobs[0];
+      if (corpusJob.total_words_estimated && corpusJob.total_words_estimated > 0) {
+        return Math.round((corpusJob.processed_words / corpusJob.total_words_estimated) * 100);
+      }
+    }
+    if (stats.totalJobs === 0) return 0;
+    return Math.round((stats.completed / stats.totalJobs) * 100);
+  }, [stats, activeCorpusJobs]);
 
   const getStatusBadge = (status: string, stuck: boolean) => {
     if (stuck) {
@@ -264,12 +285,17 @@ export function SemanticAnnotationJobsPanel({ isActive = true }: SemanticAnnotat
         <Card className="col-span-2">
           <CardContent className="pt-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-muted-foreground">Progresso Global</span>
+              <span className="text-sm text-muted-foreground">
+                {activeCorpusJobs.length > 0 ? 'Progresso do Corpus' : 'Jobs Concluídos'}
+              </span>
               <span className="text-lg font-bold">{globalProgress}%</span>
             </div>
             <Progress value={globalProgress} className="h-2" />
             <p className="text-xs text-muted-foreground mt-1">
-              {stats.completed.toLocaleString()} de {stats.totalJobs.toLocaleString()} jobs
+              {activeCorpusJobs.length > 0 
+                ? `${activeCorpusJobs[0].processed_words?.toLocaleString() || 0} palavras processadas`
+                : `${stats.completed.toLocaleString()} de ${stats.totalJobs.toLocaleString()} jobs`
+              }
             </p>
           </CardContent>
         </Card>
