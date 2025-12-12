@@ -62,10 +62,10 @@ export function useCorpusAnnotationJobs(): UseCorpusAnnotationJobsResult {
         .eq('id', jobId)
         .single();
 
-      // Cancelar job de artista atual se existir
+      // Cancelar job de artista atual se existir (tabela correta: semantic_annotation_jobs)
       if (job?.current_artist_job_id) {
         await supabase
-          .from('annotation_jobs')
+          .from('semantic_annotation_jobs')
           .update({ status: 'cancelado', tempo_fim: new Date().toISOString() })
           .eq('id', job.current_artist_job_id);
       }
