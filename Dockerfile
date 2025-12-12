@@ -22,10 +22,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
 RUN python -m spacy download pt_core_news_lg
 
 # Copia código da aplicação
-COPY app.py .
+COPY . . # Copia todo o conteúdo do diretório atual (incluindo app.py)
 
-# Expõe porta (Render usa $PORT)
+# Expõe porta (Cloud Run usa $PORT)
 EXPOSE 8080
 
-# Comando de inicialização
-CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8080}
+# Comando de inicialização para aplicação Flask com Gunicorn
+# 'app:app' significa que o objeto Flask 'app' está no arquivo 'app.py'
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "app:app"]
